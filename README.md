@@ -1,0 +1,116 @@
+# color-kit
+
+Open-source primitive UI components and tooling for building color interfaces.
+
+Built on **OKLCH** for perceptually uniform color manipulation. Headless React primitives with full accessibility support.
+
+## Packages
+
+| Package                                | Description                                                                                          |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [`@color-kit/core`](./packages/core)   | Pure TypeScript color utilities — conversion, contrast, harmony, scales, manipulation, gamut mapping |
+| [`@color-kit/react`](./packages/react) | Headless React primitives — color areas, sliders, swatches, inputs                                   |
+
+## Install
+
+```bash
+# Core utilities only
+pnpm add @color-kit/core
+
+# Core + React components
+pnpm add @color-kit/core @color-kit/react
+```
+
+### shadcn Registry
+
+```bash
+npx shadcn add color-area --registry color-kit
+```
+
+## Quick Start
+
+### Core
+
+```typescript
+import {
+  parse,
+  toHex,
+  lighten,
+  contrastRatio,
+  complementary,
+} from '@color-kit/core';
+
+// Parse any CSS color
+const blue = parse('#3b82f6');
+
+// Manipulate in OKLCH space
+const light = lighten(blue, 0.2);
+console.log(toHex(light));
+
+// Check accessibility
+const white = parse('#ffffff');
+console.log(contrastRatio(blue, white)); // WCAG 2.1
+
+// Generate harmonies
+const comp = complementary(blue);
+```
+
+### React
+
+```tsx
+import { ColorProvider, ColorArea, useColor } from '@color-kit/react';
+
+function ColorPicker() {
+  return (
+    <ColorProvider defaultColor="#3b82f6">
+      <ColorArea style={{ width: 200, height: 200 }} />
+    </ColorProvider>
+  );
+}
+```
+
+## Core API
+
+### Conversion
+
+`parse()` `toHex()` `toRgb()` `toHsl()` `toHsv()` `toOklch()` `toOklab()` `toP3()` `toCss()` `fromRgb()` `fromHex()` `fromHsl()` `fromHsv()` `fromOklch()` `fromOklab()` `fromP3()`
+
+### Contrast
+
+`contrastRatio()` `contrastAPCA()` `meetsAA()` `meetsAAA()` `relativeLuminance()`
+
+### Harmony
+
+`complementary()` `analogous()` `triadic()` `tetradic()` `splitComplementary()`
+
+### Scale
+
+`generateScale()` `interpolate()` `lightnessScale()`
+
+### Manipulation
+
+`lighten()` `darken()` `saturate()` `desaturate()` `adjustHue()` `mix()` `setAlpha()` `invert()` `grayscale()`
+
+### Gamut
+
+`inSrgbGamut()` `inP3Gamut()` `toSrgbGamut()` `toP3Gamut()`
+
+## Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm build
+
+# Run tests
+pnpm test
+
+# Start docs dev server
+pnpm dev
+```
+
+## License
+
+[MIT](./LICENSE)

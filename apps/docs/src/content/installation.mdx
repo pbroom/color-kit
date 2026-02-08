@@ -1,0 +1,59 @@
+# Installation
+
+## Package Manager
+
+Install the packages you need:
+
+```bash
+# Core utilities only
+pnpm add @color-kit/core
+
+# Core + React components
+pnpm add @color-kit/core @color-kit/react
+```
+
+## shadcn CLI
+
+If you're using shadcn/ui, you can add individual components via the registry:
+
+```bash
+npx shadcn add color-area --registry color-kit
+```
+
+This copies the component source into your project, giving you full ownership of the code.
+
+## Quick Start
+
+### Using core utilities
+
+```tsx
+import { parse, toHex, lighten, contrastRatio } from '@color-kit/core';
+
+// Parse any CSS color string
+const blue = parse('#3b82f6');
+
+// Manipulate in OKLCH space
+const lightBlue = lighten(blue, 0.2);
+console.log(toHex(lightBlue)); // #7db4fc
+
+// Check accessibility
+const white = parse('#ffffff');
+console.log(contrastRatio(blue, white)); // ~4.5
+```
+
+### Using React components
+
+```tsx
+import { ColorProvider, ColorArea, useColor } from '@color-kit/react';
+
+function MyPicker() {
+  const { hex } = useColor({ defaultColor: '#3b82f6' });
+
+  return (
+    <ColorProvider defaultColor="#3b82f6">
+      <ColorArea style={{ width: 200, height: 200 }} />
+      <p>Selected: {hex}</p>
+    </ColorProvider>
+  );
+}
+```

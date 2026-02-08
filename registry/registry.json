@@ -1,0 +1,54 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "color-kit",
+  "homepage": "https://github.com/pbroom/color-kit",
+  "items": [
+    {
+      "name": "color-area",
+      "type": "registry:component",
+      "title": "Color Area",
+      "description": "A 2D color picker area. Headless, accessible, and fully composable.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/color-area.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "use-color",
+      "type": "registry:hook",
+      "title": "useColor",
+      "description": "Core hook for color state management. Supports controlled and uncontrolled modes with conversions to all color spaces.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/hooks/use-color.ts",
+          "type": "registry:hook"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "color-provider",
+      "type": "registry:component",
+      "title": "Color Provider",
+      "description": "React context provider for sharing color state between color-kit components.",
+      "dependencies": ["@color-kit/core"],
+      "registryDependencies": ["use-color"],
+      "files": [
+        {
+          "path": "registry/components/color-provider.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "registry/hooks/color-context.ts",
+          "type": "registry:hook"
+        }
+      ],
+      "categories": ["color"]
+    }
+  ]
+}

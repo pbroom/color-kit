@@ -1,0 +1,29 @@
+{
+  "name": "color-kit",
+  "private": true,
+  "description": "Open-source primitive UI components and tooling for building color interfaces",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @color-kit/docs dev",
+    "test": "pnpm -r test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "pnpm -r exec rm -rf dist node_modules"
+  },
+  "keywords": [
+    "color",
+    "color-picker",
+    "oklch",
+    "ui-components",
+    "react",
+    "headless",
+    "accessibility"
+  ],
+  "author": "pbroom",
+  "license": "MIT",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,37 @@
+# Introduction
+
+Color Kit is an open-source toolkit for building color interfaces. It provides:
+
+- **`@color-kit/core`** — Pure TypeScript color utilities with zero dependencies. Conversions, contrast checking, harmony generation, scale creation, and gamut mapping — all built on the OKLCH color space.
+- **`@color-kit/react`** — Headless, accessible React primitives for color pickers, sliders, swatches, and more. Completely unstyled so you can bring your own design system.
+
+## Why OKLCH?
+
+Color Kit uses [OKLCH](https://oklch.com/) as its internal color representation. OKLCH is a **perceptually uniform** color space, which means:
+
+- Equal numeric steps produce equal _visual_ steps
+- Gradients between colors look smooth and natural
+- Color manipulation (lighten, darken, saturate) behaves intuitively
+- It maps cleanly to modern CSS (`oklch()` is supported in all browsers)
+
+Traditional color spaces like HSL produce uneven results — a "50% lightness" yellow looks much brighter than a "50% lightness" blue. OKLCH fixes this.
+
+## Architecture
+
+```
+@color-kit/core          (zero deps, any JS runtime)
+  └── @color-kit/react   (React 18+, peer dependency)
+```
+
+The core package works in any JavaScript environment — Node.js, Deno, Bun, browsers, edge functions. The React package depends on core and adds headless UI primitives.
+
+## Features
+
+| Module           | Description                                                            |
+| ---------------- | ---------------------------------------------------------------------- |
+| **Conversion**   | Parse/output hex, RGB, HSL, HSV, OKLCH, OKLAB, Display P3, CSS strings |
+| **Contrast**     | WCAG 2.1 contrast ratio, APCA, AA/AAA compliance checks                |
+| **Harmony**      | Complementary, analogous, triadic, tetradic, split-complementary       |
+| **Scale**        | Generate color scales/ramps with perceptually uniform interpolation    |
+| **Manipulation** | Lighten, darken, saturate, desaturate, mix, adjust hue, invert         |
+| **Gamut**        | Check and map colors to sRGB or Display P3 gamut boundaries            |
