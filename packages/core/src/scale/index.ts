@@ -76,6 +76,10 @@ export function lightnessScale(
   steps: number = 11,
   range: [number, number] = [0.05, 0.95],
 ): Color[] {
+  if (steps < 2) {
+    throw new Error('Lightness scale must have at least 2 steps');
+  }
+
   const [minL, maxL] = range;
   const colors: Color[] = [];
 

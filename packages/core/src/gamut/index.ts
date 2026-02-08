@@ -1,29 +1,57 @@
 import type { Color } from '../types.js';
-import { toRgb, toP3 } from '../conversion/index.js';
+import { oklchToOklab } from '../conversion/oklch.js';
+import { oklabToLinearRgb } from '../conversion/oklab.js';
+import { linearSrgbToLinearP3 } from '../conversion/p3.js';
+
+/** Small epsilon to account for floating-point rounding */
+const EPSILON = 0.000075;
 
 /**
  * Check if a Color is within the sRGB gamut.
- * A color is in gamut when all RGB channels are within 0-255.
+ *
+ * Uses unclamped linear sRGB values to avoid the false-positive
+ * caused by the clamping in `linearToSrgb` / `toRgb`.
  */
 export function inSrgbGamut(color: Color): boolean {
-  const rgb = toRgb(color);
+  const lab = oklchToOklab({
+    l: color.l,
+    c: color.c,
+    h: color.h,
+    alpha: color.alpha,
+  });
+  const linear = oklabToLinearRgb(lab);
   return (
-    rgb.r >= 0 &&
-    rgb.r <= 255 &&
-    rgb.g >= 0 &&
-    rgb.g <= 255 &&
-    rgb.b >= 0 &&
-    rgb.b <= 255
+    linear.r >= -EPSILON &&
+    linear.r <= 1 + EPSILON &&
+    linear.g >= -EPSILON &&
+    linear.g <= 1 + EPSILON &&
+    linear.b >= -EPSILON &&
+    linear.b <= 1 + EPSILON
   );
 }
 
 /**
  * Check if a Color is within the Display P3 gamut.
+ *
+ * Uses unclamped linear P3 values to avoid the false-positive
+ * caused by the clamping in `linearP3ToP3` / `toP3`.
  */
 export function inP3Gamut(color: Color): boolean {
-  const p3 = toP3(color);
+  const lab = oklchToOklab({
+    l: color.l,
+    c: color.c,
+    h: color.h,
+    alpha: color.alpha,
+  });
+  const linearSrgb = oklabToLinearRgb(lab);
+  const linearP3 = linearSrgbToLinearP3(linearSrgb);
   return (
-    p3.r >= 0 && p3.r <= 1 && p3.g >= 0 && p3.g <= 1 && p3.b >= 0 && p3.b <= 1
+    linearP3.r >= -EPSILON &&
+    linearP3.r <= 1 + EPSILON &&
+    linearP3.g >= -EPSILON &&
+    linearP3.g <= 1 + EPSILON &&
+    linearP3.b >= -EPSILON &&
+    linearP3.b <= 1 + EPSILON
   );
 }
 
