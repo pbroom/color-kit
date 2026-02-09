@@ -1,0 +1,29 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { ColorDisplayDemo } from '@/components/component-demos';
+
+# Color Display
+
+`ColorDisplay` is a presentational preview surface for the current color.
+
+<ComponentPreview>
+  <ColorDisplayDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.colorDisplay} />
+
+## Usage
+
+```tsx
+import { ColorDisplay } from '@color-kit/react';
+
+<ColorDisplay />;
+```
+
+## Non-UI API helpers
+
+- `ColorApi.getColorDisplayHex`
+- `ColorApi.getColorDisplayBackground`

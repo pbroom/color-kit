@@ -1,0 +1,32 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { ColorInputDemo } from '@/components/component-demos';
+
+# Color Input
+
+`ColorInput` parses and formats editable color strings in `hex`, `rgb`, `hsl`, and `oklch`.
+
+<ComponentPreview>
+  <ColorInputDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.colorInput} />
+
+## Usage
+
+```tsx
+import { ColorInput, useColor } from '@color-kit/react';
+
+const color = useColor({ defaultColor: '#6366f1' });
+
+<ColorInput color={color.color} onChange={color.setColor} format="oklch" />;
+```
+
+## Non-UI API helpers
+
+- `ColorApi.formatColorInputValue`
+- `ColorApi.parseColorInputValue`
+- `ColorApi.isColorInputValueValid`

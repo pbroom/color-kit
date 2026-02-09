@@ -1,0 +1,31 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { ColorAreaDemo } from '@/components/component-demos';
+
+# Color Area
+
+`ColorArea` is a two-dimensional control for channel pairs like chroma/lightness.
+
+<ComponentPreview>
+  <ColorAreaDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.colorArea} />
+
+## Usage
+
+```tsx
+import { ColorArea } from '@color-kit/react';
+
+<ColorArea channels={{ x: 'c', y: 'l' }} />;
+```
+
+## Non-UI API helpers
+
+- `ColorApi.resolveColorAreaRange`
+- `ColorApi.getColorAreaThumbPosition`
+- `ColorApi.colorFromColorAreaPosition`
+- `ColorApi.colorFromColorAreaKey`

@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
+import { colorsEqual } from './api/swatch-group.js';
 import { Swatch } from './swatch.js';
 
 export interface SwatchGroupProps extends Omit<
@@ -15,17 +16,6 @@ export interface SwatchGroupProps extends Omit<
   onChange?: (color: Color) => void;
   /** Optional grid column count hint */
   columns?: number;
-}
-
-const EPSILON = 0.001;
-
-function colorsEqual(a: Color, b: Color): boolean {
-  return (
-    Math.abs(a.l - b.l) < EPSILON &&
-    Math.abs(a.c - b.c) < EPSILON &&
-    Math.abs(a.h - b.h) < EPSILON &&
-    Math.abs(a.alpha - b.alpha) < EPSILON
-  );
 }
 
 /**

@@ -1,6 +1,6 @@
 import { forwardRef, useMemo, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
-import { contrastRatio, meetsAA, meetsAAA } from '@color-kit/core';
+import { getContrastBadgeSummary } from './api/contrast-badge.js';
 
 export interface ContrastBadgeProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -35,42 +35,24 @@ export const ContrastBadge = forwardRef<HTMLDivElement, ContrastBadgeProps>(
     { foreground, background, level = 'AA', children, ...props },
     ref,
   ) {
-    const ratio = useMemo(
-      () => contrastRatio(foreground, background),
-      [foreground, background],
+    const summary = useMemo(
+      () => getContrastBadgeSummary(foreground, background, level),
+      [foreground, background, level],
     );
-
-    const passesAA = useMemo(
-      () => meetsAA(foreground, background),
-      [foreground, background],
-    );
-
-    const passesAAA = useMemo(
-      () => meetsAAA(foreground, background),
-      [foreground, background],
-    );
-
-    const passes = level === 'AAA' ? passesAAA : passesAA;
-    const ratioFixed1 = `${ratio.toFixed(1)}:1`;
-
-    const levelLabel =
-      level === 'AAA'
-        ? `WCAG AAA: ${passesAAA ? 'pass' : 'fail'}`
-        : `WCAG AA: ${passesAA ? 'pass' : 'fail'}`;
 
     return (
       <div
         {...props}
         ref={ref}
         data-contrast-badge=""
-        data-ratio={ratio.toFixed(2)}
-        data-meets-aa={String(passesAA)}
-        data-meets-aaa={String(passesAAA)}
-        data-passes={passes || undefined}
+        data-ratio={summary.ratio.toFixed(2)}
+        data-meets-aa={String(summary.passesAA)}
+        data-meets-aaa={String(summary.passesAAA)}
+        data-passes={summary.passes || undefined}
         role="status"
-        aria-label={`Contrast ratio: ${ratioFixed1}, ${levelLabel}`}
+        aria-label={`Contrast ratio: ${summary.ratioText}, ${summary.levelLabel}`}
       >
-        {children ?? ratioFixed1}
+        {children ?? summary.ratioText}
       </div>
     );
   },

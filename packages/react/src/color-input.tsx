@@ -8,8 +8,13 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import type { Color } from '@color-kit/core';
-import { toCss, parse } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
+import {
+  formatColorInputValue,
+  isColorInputValueValid,
+  parseColorInputValue,
+  type ColorInputFormat,
+} from './api/color-input.js';
 
 export interface ColorInputProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -19,7 +24,7 @@ export interface ColorInputProps extends Omit<
    * Color format displayed in the input.
    * @default 'hex'
    */
-  format?: 'hex' | 'rgb' | 'hsl' | 'oklch';
+  format?: ColorInputFormat;
   /** Standalone color value (alternative to ColorProvider) */
   color?: Color;
   /** Standalone onChange (alternative to ColorProvider) */
@@ -54,7 +59,10 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       );
     }
 
-    const displayValue = useMemo(() => toCss(color, format), [color, format]);
+    const displayValue = useMemo(
+      () => formatColorInputValue(color, format),
+      [color, format],
+    );
 
     const [isEditing, setIsEditing] = useState(false);
     const [inputValue, setInputValue] = useState('');
@@ -63,22 +71,16 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     const currentValue = isEditing ? inputValue : displayValue;
 
     const isValid = useMemo(() => {
-      try {
-        parse(currentValue);
-        return true;
-      } catch {
-        return false;
-      }
+      return isColorInputValueValid(currentValue);
     }, [currentValue]);
 
     const commitValue = useCallback(() => {
       setIsEditing(false);
-      try {
-        const parsed = parse(inputValue);
+      const parsed = parseColorInputValue(inputValue);
+      if (parsed) {
         setColor(parsed);
-      } catch {
-        // Invalid input — revert to current color display value
       }
+      // Invalid input — revert to current color display value
     }, [inputValue, setColor]);
 
     const handleFocus = useCallback(() => {

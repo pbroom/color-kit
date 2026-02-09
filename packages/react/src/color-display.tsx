@@ -1,7 +1,10 @@
 import { forwardRef, useMemo, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
-import { toHex, toCss } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
+import {
+  getColorDisplayBackground,
+  getColorDisplayHex,
+} from './api/color-display.js';
 
 export interface ColorDisplayProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -33,14 +36,11 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
       );
     }
 
-    const hex = useMemo(() => toHex(color), [color]);
-
-    const backgroundColor = useMemo(() => {
-      if (color.alpha < 1) {
-        return toCss(color, 'rgb');
-      }
-      return hex;
-    }, [color, hex]);
+    const hex = useMemo(() => getColorDisplayHex(color), [color]);
+    const backgroundColor = useMemo(
+      () => getColorDisplayBackground(color, hex),
+      [color, hex],
+    );
 
     return (
       <div

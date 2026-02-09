@@ -1,44 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router';
-
-interface NavItem {
-  title: string;
-  href: string;
-}
-
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
-
-const navigation: NavSection[] = [
-  {
-    title: 'Getting Started',
-    items: [
-      { title: 'Introduction', href: '/docs/introduction' },
-      { title: 'Installation', href: '/docs/installation' },
-    ],
-  },
-  {
-    title: 'Core',
-    items: [
-      { title: 'Conversion', href: '/docs/core/conversion' },
-      { title: 'Contrast', href: '/docs/core/contrast' },
-      { title: 'Harmony', href: '/docs/core/harmony' },
-      { title: 'Scale', href: '/docs/core/scale' },
-      { title: 'Manipulation', href: '/docs/core/manipulation' },
-      { title: 'Gamut', href: '/docs/core/gamut' },
-    ],
-  },
-  {
-    title: 'Components',
-    items: [
-      { title: 'Color Area', href: '/docs/components/color-area' },
-      { title: 'Hue Slider', href: '/docs/components/hue-slider' },
-      { title: 'Swatch', href: '/docs/components/swatch' },
-      { title: 'Color Input', href: '/docs/components/color-input' },
-    ],
-  },
-];
+import { docsNavigation } from '../content/docs-registry.js';
 
 export function DocsLayout() {
   const location = useLocation();
@@ -78,7 +39,7 @@ export function DocsLayout() {
         {/* Sidebar */}
         <aside className="hidden md:block w-64 shrink-0 border-r border-border">
           <nav className="sticky top-14 p-6 overflow-y-auto max-h-[calc(100vh-3.5rem)]">
-            {navigation.map((section) => (
+            {docsNavigation.map((section) => (
               <div key={section.title} className="mb-6">
                 <h4 className="text-sm font-semibold mb-2">{section.title}</h4>
                 <ul className="space-y-1">

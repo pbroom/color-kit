@@ -8,8 +8,14 @@ import {
   type HTMLAttributes,
 } from 'react';
 import type { Color } from '@color-kit/core';
-import { clamp } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
+import {
+  colorFromColorAreaKey,
+  colorFromColorAreaPosition,
+  getColorAreaThumbPosition,
+  resolveColorAreaRange,
+  type ColorAreaChannel,
+} from './api/color-area.js';
 
 export interface ColorAreaProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -20,8 +26,8 @@ export interface ColorAreaProps extends Omit<
    * @default { x: 'c', y: 'l' }
    */
   channels?: {
-    x: 'l' | 'c' | 'h';
-    y: 'l' | 'c' | 'h';
+    x: ColorAreaChannel;
+    y: ColorAreaChannel;
   };
   /**
    * Range for each axis.
@@ -34,12 +40,6 @@ export interface ColorAreaProps extends Omit<
   /** Standalone onChange (alternative to ColorProvider) */
   onChange?: (color: Color) => void;
 }
-
-const DEFAULT_RANGES: Record<string, [number, number]> = {
-  l: [0, 1],
-  c: [0, 0.4],
-  h: [0, 360],
-};
 
 /**
  * A 2D color picker area.
@@ -82,13 +82,15 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const areaRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    const xR = xRange ?? DEFAULT_RANGES[channels.x];
-    const yR = yRange ?? DEFAULT_RANGES[channels.y];
+    const xR = resolveColorAreaRange(channels.x, xRange);
+    const yR = resolveColorAreaRange(channels.y, yRange);
 
-    // Compute normalized positions from color
-    const xNorm = (color[channels.x] - xR[0]) / (xR[1] - xR[0]);
-    // Y axis is inverted (0 at top = max value)
-    const yNorm = 1 - (color[channels.y] - yR[0]) / (yR[1] - yR[0]);
+    const { x: xNorm, y: yNorm } = getColorAreaThumbPosition(
+      color,
+      channels,
+      xR,
+      yR,
+    );
 
     const updateFromPosition = useCallback(
       (clientX: number, clientY: number) => {
@@ -96,17 +98,10 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         if (!el) return;
 
         const rect = el.getBoundingClientRect();
-        const x = clamp((clientX - rect.left) / rect.width, 0, 1);
-        const y = clamp((clientY - rect.top) / rect.height, 0, 1);
+        const x = (clientX - rect.left) / rect.width;
+        const y = (clientY - rect.top) / rect.height;
 
-        const xVal = xR[0] + x * (xR[1] - xR[0]);
-        const yVal = yR[0] + (1 - y) * (yR[1] - yR[0]);
-
-        setColor({
-          ...color,
-          [channels.x]: xVal,
-          [channels.y]: yVal,
-        });
+        setColor(colorFromColorAreaPosition(color, channels, x, y, xR, yR));
       },
       [color, setColor, channels, xR, yR],
     );
@@ -136,37 +131,14 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const onKeyDown = useCallback(
       (e: ReactKeyboardEvent) => {
         const step = e.shiftKey ? 0.1 : 0.01;
-        const xStep = step * (xR[1] - xR[0]);
-        const yStep = step * (yR[1] - yR[0]);
-
-        let newColor: Color | null = null;
-
-        switch (e.key) {
-          case 'ArrowRight':
-            newColor = {
-              ...color,
-              [channels.x]: clamp(color[channels.x] + xStep, xR[0], xR[1]),
-            };
-            break;
-          case 'ArrowLeft':
-            newColor = {
-              ...color,
-              [channels.x]: clamp(color[channels.x] - xStep, xR[0], xR[1]),
-            };
-            break;
-          case 'ArrowUp':
-            newColor = {
-              ...color,
-              [channels.y]: clamp(color[channels.y] + yStep, yR[0], yR[1]),
-            };
-            break;
-          case 'ArrowDown':
-            newColor = {
-              ...color,
-              [channels.y]: clamp(color[channels.y] - yStep, yR[0], yR[1]),
-            };
-            break;
-        }
+        const newColor: Color | null = colorFromColorAreaKey(
+          color,
+          channels,
+          e.key,
+          step,
+          xR,
+          yR,
+        );
 
         if (newColor) {
           e.preventDefault();

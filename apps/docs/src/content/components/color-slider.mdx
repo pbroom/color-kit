@@ -1,0 +1,32 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { ColorSliderDemo } from '@/components/component-demos';
+
+# Color Slider
+
+`ColorSlider` controls one channel (`l`, `c`, `h`, or `alpha`) in a single axis.
+
+<ComponentPreview>
+  <ColorSliderDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.colorSlider} />
+
+## Usage
+
+```tsx
+import { ColorSlider } from '@color-kit/react';
+
+<ColorSlider channel="h" />;
+```
+
+## Non-UI API helpers
+
+- `ColorApi.resolveColorSliderRange`
+- `ColorApi.getColorSliderThumbPosition`
+- `ColorApi.normalizeColorSliderPointer`
+- `ColorApi.colorFromColorSliderPosition`
+- `ColorApi.colorFromColorSliderKey`

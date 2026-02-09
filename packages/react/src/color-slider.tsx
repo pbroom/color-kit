@@ -8,8 +8,17 @@ import {
   type HTMLAttributes,
 } from 'react';
 import type { Color } from '@color-kit/core';
-import { clamp } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
+import {
+  colorFromColorSliderKey,
+  colorFromColorSliderPosition,
+  getColorSliderLabel,
+  getColorSliderThumbPosition,
+  normalizeColorSliderPointer,
+  resolveColorSliderRange,
+  type ColorSliderChannel,
+  type ColorSliderOrientation,
+} from './api/color-slider.js';
 
 export interface ColorSliderProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -18,7 +27,7 @@ export interface ColorSliderProps extends Omit<
   /**
    * Which color channel the slider controls.
    */
-  channel: 'l' | 'c' | 'h' | 'alpha';
+  channel: ColorSliderChannel;
   /**
    * Value range for the channel.
    * Defaults: l=[0,1], c=[0,0.4], h=[0,360], alpha=[0,1]
@@ -28,26 +37,12 @@ export interface ColorSliderProps extends Omit<
    * Slider orientation.
    * @default 'horizontal'
    */
-  orientation?: 'horizontal' | 'vertical';
+  orientation?: ColorSliderOrientation;
   /** Standalone color value (alternative to ColorProvider) */
   color?: Color;
   /** Standalone onChange (alternative to ColorProvider) */
   onChange?: (color: Color) => void;
 }
-
-const DEFAULT_RANGES: Record<string, [number, number]> = {
-  l: [0, 1],
-  c: [0, 0.4],
-  h: [0, 360],
-  alpha: [0, 1],
-};
-
-const CHANNEL_LABELS: Record<string, string> = {
-  l: 'Lightness',
-  c: 'Chroma',
-  h: 'Hue',
-  alpha: 'Opacity',
-};
 
 /**
  * A 1D color slider for a single color channel.
@@ -91,10 +86,9 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     const sliderRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    const r = range ?? DEFAULT_RANGES[channel];
+    const r = resolveColorSliderRange(channel, range);
 
-    // Compute normalized position from color
-    const norm = clamp((color[channel] - r[0]) / (r[1] - r[0]), 0, 1);
+    const norm = getColorSliderThumbPosition(color, channel, r);
 
     const updateFromPosition = useCallback(
       (clientX: number, clientY: number) => {
@@ -102,21 +96,14 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         if (!el) return;
 
         const rect = el.getBoundingClientRect();
-        let t: number;
+        const t = normalizeColorSliderPointer(
+          orientation,
+          orientation === 'horizontal' ? clientX : clientY,
+          orientation === 'horizontal' ? rect.left : rect.top,
+          orientation === 'horizontal' ? rect.width : rect.height,
+        );
 
-        if (orientation === 'horizontal') {
-          t = clamp((clientX - rect.left) / rect.width, 0, 1);
-        } else {
-          // Vertical: top = max, bottom = min (inverted)
-          t = 1 - clamp((clientY - rect.top) / rect.height, 0, 1);
-        }
-
-        const value = r[0] + t * (r[1] - r[0]);
-
-        setColor({
-          ...color,
-          [channel]: value,
-        });
+        setColor(colorFromColorSliderPosition(color, channel, t, r));
       },
       [color, setColor, channel, r, orientation],
     );
@@ -146,26 +133,13 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     const onKeyDown = useCallback(
       (e: ReactKeyboardEvent) => {
         const step = e.shiftKey ? 0.1 : 0.01;
-        const channelStep = step * (r[1] - r[0]);
-
-        let newColor: Color | null = null;
-
-        switch (e.key) {
-          case 'ArrowRight':
-          case 'ArrowUp':
-            newColor = {
-              ...color,
-              [channel]: clamp(color[channel] + channelStep, r[0], r[1]),
-            };
-            break;
-          case 'ArrowLeft':
-          case 'ArrowDown':
-            newColor = {
-              ...color,
-              [channel]: clamp(color[channel] - channelStep, r[0], r[1]),
-            };
-            break;
-        }
+        const newColor: Color | null = colorFromColorSliderKey(
+          color,
+          channel,
+          e.key,
+          step,
+          r,
+        );
 
         if (newColor) {
           e.preventDefault();
@@ -176,7 +150,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     );
 
     const isHorizontal = orientation === 'horizontal';
-    const defaultLabel = `${CHANNEL_LABELS[channel] ?? channel} slider`;
+    const defaultLabel = `${getColorSliderLabel(channel)} slider`;
 
     return (
       <div
