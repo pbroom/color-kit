@@ -38,3 +38,4 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-02-08 — Add epsilon tolerance to gamut boundary checks**: Floating-point rounding in color space matrix math means in-gamut colors can produce linear values like -0.00003. Use a small epsilon (~0.000075) in gamut boundary comparisons to avoid false negatives.
 - **2026-02-09 — Keep Codex guidance reusable**: Maintain a clean `AGENTS.template.md` and install script separate from repo-specific learnings so guidance can be copied across repos without dragging local history along.
 - **2026-02-09 — Rule file visibility**: User rules live in Cursor settings, but project rules must be `.mdc` files with frontmatter under `.cursor/rules` to appear in workspace context.
+- **2026-02-09 — MDX + Vite React plugin ordering**: `@mdx-js/rollup` must use `enforce: 'pre'` when combined with `@vitejs/plugin-react` so MDX→JSX transformation runs before Babel tries to parse raw `.mdx` files.
