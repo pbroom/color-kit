@@ -36,3 +36,6 @@ coverage/
 
 # Vite
 apps/docs/.vite/
+
+# Codex local workspace files
+.codex/
