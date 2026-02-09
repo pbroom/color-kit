@@ -11,8 +11,10 @@ import type { Color } from '@color-kit/core';
 import { clamp } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 
-export interface ColorAreaProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'color'> {
+export interface ColorAreaProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'onChange' | 'color'
+> {
   /**
    * Which color channels the X and Y axes control.
    * @default { x: 'c', y: 'l' }

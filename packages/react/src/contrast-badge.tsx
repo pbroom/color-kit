@@ -2,8 +2,10 @@ import { forwardRef, useMemo, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import { contrastRatio, meetsAA, meetsAAA } from '@color-kit/core';
 
-export interface ContrastBadgeProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'color'> {
+export interface ContrastBadgeProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'color'
+> {
   /** Text/foreground color */
   foreground: Color;
   /** Background color */

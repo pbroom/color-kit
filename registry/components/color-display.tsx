@@ -1,12 +1,14 @@
-"use client";
+'use client';
 
-import { forwardRef, useMemo, type HTMLAttributes } from "react";
-import type { Color } from "@color-kit/core";
-import { toHex } from "@color-kit/core";
-import { useOptionalColorContext } from "@/hooks/color-context";
+import { forwardRef, useMemo, type HTMLAttributes } from 'react';
+import type { Color } from '@color-kit/core';
+import { toHex } from '@color-kit/core';
+import { useOptionalColorContext } from '@/hooks/color-context';
 
-export interface ColorDisplayProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "color"> {
+export interface ColorDisplayProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'color'
+> {
   /** Standalone color value (alternative to ColorProvider) */
   color?: Color;
 }
@@ -29,7 +31,7 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
 
     if (!color) {
       throw new Error(
-        "ColorDisplay requires either a <ColorProvider> ancestor or an explicit color prop.",
+        'ColorDisplay requires either a <ColorProvider> ancestor or an explicit color prop.',
       );
     }
 
@@ -42,7 +44,7 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
         data-color-display=""
         data-color={hex}
         role="img"
-        aria-label={props["aria-label"] ?? `Color preview: ${hex}`}
+        aria-label={props['aria-label'] ?? `Color preview: ${hex}`}
         style={{
           backgroundColor: hex,
           ...style,

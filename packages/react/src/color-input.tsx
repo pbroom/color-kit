@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useRef,
   useState,
   useCallback,
   useMemo,
@@ -10,8 +11,10 @@ import type { Color } from '@color-kit/core';
 import { toCss, parse } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 
-export interface ColorInputProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'color'> {
+export interface ColorInputProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'onChange' | 'color'
+> {
   /**
    * Color format displayed in the input.
    * @default 'hex'
@@ -37,12 +40,7 @@ export interface ColorInputProps
  */
 export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
   function ColorInput(
-    {
-      format = 'hex',
-      color: colorProp,
-      onChange: onChangeProp,
-      ...props
-    },
+    { format = 'hex', color: colorProp, onChange: onChangeProp, ...props },
     ref,
   ) {
     const context = useOptionalColorContext();
@@ -60,6 +58,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
 
     const [isEditing, setIsEditing] = useState(false);
     const [inputValue, setInputValue] = useState('');
+    const skipBlurCommitRef = useRef(false);
 
     const currentValue = isEditing ? inputValue : displayValue;
 
@@ -88,6 +87,10 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     }, [displayValue]);
 
     const handleBlur = useCallback(() => {
+      if (skipBlurCommitRef.current) {
+        skipBlurCommitRef.current = false;
+        return;
+      }
       commitValue();
     }, [commitValue]);
 
@@ -101,15 +104,20 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     const handleKeyDown = useCallback(
       (e: ReactKeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
+          e.preventDefault();
           commitValue();
+          skipBlurCommitRef.current = true;
           (e.target as HTMLInputElement).blur();
         }
         if (e.key === 'Escape') {
+          e.preventDefault();
           setIsEditing(false);
+          setInputValue(displayValue);
+          skipBlurCommitRef.current = true;
           (e.target as HTMLInputElement).blur();
         }
       },
-      [commitValue],
+      [commitValue, displayValue],
     );
 
     return (

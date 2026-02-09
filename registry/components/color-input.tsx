@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   forwardRef,
@@ -7,21 +7,20 @@ import {
   useEffect,
   type InputHTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
-} from "react";
-import type { Color } from "@color-kit/core";
-import { toHex, toCss, parse } from "@color-kit/core";
-import { useOptionalColorContext } from "@/hooks/color-context";
+} from 'react';
+import type { Color } from '@color-kit/core';
+import { toHex, toCss, parse } from '@color-kit/core';
+import { useOptionalColorContext } from '@/hooks/color-context';
 
-export interface ColorInputProps
-  extends Omit<
-    InputHTMLAttributes<HTMLInputElement>,
-    "onChange" | "value" | "color"
-  > {
+export interface ColorInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'onChange' | 'value' | 'color'
+> {
   /**
    * The color format to display and parse.
    * @default "hex"
    */
-  format?: "hex" | "rgb" | "hsl" | "oklch";
+  format?: 'hex' | 'rgb' | 'hsl' | 'oklch';
   /** Standalone color value (alternative to ColorProvider) */
   color?: Color;
   /** Standalone onChange (alternative to ColorProvider) */
@@ -29,7 +28,7 @@ export interface ColorInputProps
 }
 
 function colorToString(color: Color, format: string): string {
-  if (format === "hex") return toHex(color);
+  if (format === 'hex') return toHex(color);
   return toCss(color, format);
 }
 
@@ -47,11 +46,11 @@ function colorToString(color: Color, format: string): string {
 export const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
   function ColorInput(
     {
-      format = "hex",
+      format = 'hex',
       color: colorProp,
       onChange: onChangeProp,
       onKeyDown,
-      "aria-label": ariaLabel,
+      'aria-label': ariaLabel,
       ...props
     },
     ref,
@@ -63,7 +62,7 @@ export const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
 
     if (!color || !setColor) {
       throw new Error(
-        "ColorInput requires either a <ColorProvider> ancestor or explicit color/onChange props.",
+        'ColorInput requires either a <ColorProvider> ancestor or explicit color/onChange props.',
       );
     }
 
@@ -95,10 +94,10 @@ export const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
 
     const handleKeyDown = useCallback(
       (e: ReactKeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter") {
+        if (e.key === 'Enter') {
           commit(text);
         }
-        if (e.key === "Escape") {
+        if (e.key === 'Escape') {
           setText(colorToString(color, format));
           setIsInvalid(false);
         }

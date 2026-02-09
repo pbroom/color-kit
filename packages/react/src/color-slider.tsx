@@ -11,8 +11,10 @@ import type { Color } from '@color-kit/core';
 import { clamp } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 
-export interface ColorSliderProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'color'> {
+export interface ColorSliderProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'onChange' | 'color'
+> {
   /**
    * Which color channel the slider controls.
    */

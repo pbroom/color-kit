@@ -1,11 +1,13 @@
-"use client";
+'use client';
 
-import { forwardRef, useMemo, type HTMLAttributes } from "react";
-import type { Color } from "@color-kit/core";
-import { contrastRatio, meetsAA, meetsAAA } from "@color-kit/core";
+import { forwardRef, useMemo, type HTMLAttributes } from 'react';
+import type { Color } from '@color-kit/core';
+import { contrastRatio, meetsAA, meetsAAA } from '@color-kit/core';
 
-export interface ContrastBadgeProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "color"> {
+export interface ContrastBadgeProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'color'
+> {
   /** Foreground (text) color */
   foreground: Color;
   /** Background color */
@@ -18,16 +20,12 @@ export interface ContrastBadgeProps
   largeText?: boolean;
 }
 
-export type WcagLevel = "AAA" | "AA" | "Fail";
+export type WcagLevel = 'AAA' | 'AA' | 'Fail';
 
-function getWcagLevel(
-  fg: Color,
-  bg: Color,
-  largeText: boolean,
-): WcagLevel {
-  if (meetsAAA(fg, bg, largeText)) return "AAA";
-  if (meetsAA(fg, bg, largeText)) return "AA";
-  return "Fail";
+function getWcagLevel(fg: Color, bg: Color, largeText: boolean): WcagLevel {
+  if (meetsAAA(fg, bg, largeText)) return 'AAA';
+  if (meetsAA(fg, bg, largeText)) return 'AA';
+  return 'Fail';
 }
 
 /**
@@ -72,8 +70,7 @@ export const ContrastBadge = forwardRef<HTMLDivElement, ContrastBadgeProps>(
         data-large-text={largeText || undefined}
         role="status"
         aria-label={
-          props["aria-label"] ??
-          `Contrast ratio ${ratioText}:1, WCAG ${level}`
+          props['aria-label'] ?? `Contrast ratio ${ratioText}:1, WCAG ${level}`
         }
       >
         {children ?? `${ratioText}:1 ${level}`}

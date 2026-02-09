@@ -1,6 +1,7 @@
 ## Agent Learnings
 
 - **2026-02-08 — Align eslint majors**: Keep `eslint` and `@eslint/js` on the same major version to avoid peer dependency warnings when adding linting to the workspace root.
+
 # Agents
 
 ## Agent Learnings

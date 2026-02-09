@@ -13,8 +13,10 @@ import type { Color } from '@color-kit/core';
 import { clamp } from '@color-kit/core';
 import { useOptionalColorContext } from '@/hooks/color-context';
 
-export interface ColorAreaProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'color'> {
+export interface ColorAreaProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'onChange' | 'color'
+> {
   channels?: {
     x: 'l' | 'c' | 'h';
     y: 'l' | 'c' | 'h';

@@ -3,8 +3,10 @@ import type { Color } from '@color-kit/core';
 import { toHex, toCss } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 
-export interface ColorDisplayProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'color'> {
+export interface ColorDisplayProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'color'
+> {
   /** Standalone color value (alternative to ColorProvider) */
   color?: Color;
 }

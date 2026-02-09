@@ -1,14 +1,12 @@
-import {
-  forwardRef,
-  useCallback,
-  type HTMLAttributes,
-} from 'react';
+import { forwardRef, useCallback, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import { Swatch } from './swatch.js';
 
-export interface SwatchGroupProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> {
+export interface SwatchGroupProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'onChange'
+> {
   /** Array of colors to display as swatches */
   colors: Color[];
   /** Currently selected color (controlled) */
@@ -25,7 +23,8 @@ function colorsEqual(a: Color, b: Color): boolean {
   return (
     Math.abs(a.l - b.l) < EPSILON &&
     Math.abs(a.c - b.c) < EPSILON &&
-    Math.abs(a.h - b.h) < EPSILON
+    Math.abs(a.h - b.h) < EPSILON &&
+    Math.abs(a.alpha - b.alpha) < EPSILON
   );
 }
 
@@ -64,6 +63,7 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
     );
 
     const hasHandler = !!(onChange || context?.setColor);
+    const selectedColor = value ?? context?.color;
 
     return (
       <div
@@ -73,19 +73,19 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
         role="listbox"
         aria-label={props['aria-label'] ?? 'Color swatches'}
         style={{
-          ...(columns != null ? { '--columns': columns } as React.CSSProperties : undefined),
+          ...(columns != null
+            ? ({ '--columns': columns } as React.CSSProperties)
+            : undefined),
           ...style,
         }}
       >
         {colors.map((color, index) => {
-          const selected = value ? colorsEqual(color, value) : false;
+          const selected = selectedColor
+            ? colorsEqual(color, selectedColor)
+            : false;
 
           return (
-            <div
-              key={index}
-              role="option"
-              aria-selected={selected}
-            >
+            <div key={index} role="option" aria-selected={selected}>
               <Swatch
                 color={color}
                 isSelected={selected}

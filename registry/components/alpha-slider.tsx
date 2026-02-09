@@ -1,16 +1,18 @@
-"use client";
+'use client';
 
-import { forwardRef, type HTMLAttributes } from "react";
-import type { Color } from "@color-kit/core";
-import { ColorSlider } from "@/components/color-slider";
+import { forwardRef, type HTMLAttributes } from 'react';
+import type { Color } from '@color-kit/core';
+import { ColorSlider } from '@/components/color-slider';
 
-export interface AlphaSliderProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange" | "color"> {
+export interface AlphaSliderProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'onChange' | 'color'
+> {
   /**
    * Slider orientation.
    * @default "horizontal"
    */
-  orientation?: "horizontal" | "vertical";
+  orientation?: 'horizontal' | 'vertical';
   /** Standalone color value (alternative to ColorProvider) */
   color?: Color;
   /** Standalone onChange (alternative to ColorProvider) */
@@ -28,7 +30,7 @@ export interface AlphaSliderProps
  */
 export const AlphaSlider = forwardRef<HTMLDivElement, AlphaSliderProps>(
   function AlphaSlider(
-    { orientation = "horizontal", color, onChange, ...props },
+    { orientation = 'horizontal', color, onChange, ...props },
     ref,
   ) {
     return (
@@ -39,7 +41,7 @@ export const AlphaSlider = forwardRef<HTMLDivElement, AlphaSliderProps>(
         orientation={orientation}
         color={color}
         onChange={onChange}
-        aria-label={props["aria-label"] ?? "Opacity"}
+        aria-label={props['aria-label'] ?? 'Opacity'}
         data-alpha-slider=""
       />
     );

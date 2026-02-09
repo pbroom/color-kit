@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   useRef,
@@ -8,17 +8,19 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   forwardRef,
   type HTMLAttributes,
-} from "react";
-import type { Color } from "@color-kit/core";
-import { clamp } from "@color-kit/core";
-import { useOptionalColorContext } from "@/hooks/color-context";
+} from 'react';
+import type { Color } from '@color-kit/core';
+import { clamp } from '@color-kit/core';
+import { useOptionalColorContext } from '@/hooks/color-context';
 
-export interface ColorSliderProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange" | "color"> {
+export interface ColorSliderProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'onChange' | 'color'
+> {
   /**
    * Which color channel the slider controls.
    */
-  channel: "l" | "c" | "h" | "alpha";
+  channel: 'l' | 'c' | 'h' | 'alpha';
   /**
    * Value range for the channel.
    * Defaults: l=[0,1], c=[0,0.4], h=[0,360], alpha=[0,1]
@@ -28,7 +30,7 @@ export interface ColorSliderProps
    * Slider orientation.
    * @default "horizontal"
    */
-  orientation?: "horizontal" | "vertical";
+  orientation?: 'horizontal' | 'vertical';
   /** Standalone color value (alternative to ColorProvider) */
   color?: Color;
   /** Standalone onChange (alternative to ColorProvider) */
@@ -43,10 +45,10 @@ const DEFAULT_RANGES: Record<string, [number, number]> = {
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
-  l: "Lightness",
-  c: "Chroma",
-  h: "Hue",
-  alpha: "Opacity",
+  l: 'Lightness',
+  c: 'Chroma',
+  h: 'Hue',
+  alpha: 'Opacity',
 };
 
 /**
@@ -70,7 +72,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     {
       channel,
       range,
-      orientation = "horizontal",
+      orientation = 'horizontal',
       color: colorProp,
       onChange: onChangeProp,
       ...props
@@ -84,7 +86,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     if (!color || !setColor) {
       throw new Error(
-        "ColorSlider requires either a <ColorProvider> ancestor or explicit color/onChange props.",
+        'ColorSlider requires either a <ColorProvider> ancestor or explicit color/onChange props.',
       );
     }
 
@@ -104,7 +106,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         const rect = el.getBoundingClientRect();
         let t: number;
 
-        if (orientation === "horizontal") {
+        if (orientation === 'horizontal') {
           t = clamp((clientX - rect.left) / rect.width, 0, 1);
         } else {
           // Vertical: top = max, bottom = min (inverted)
@@ -151,18 +153,18 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         let newColor: Color | null = null;
 
         const isForward =
-          orientation === "horizontal" ? "ArrowRight" : "ArrowUp";
+          orientation === 'horizontal' ? 'ArrowRight' : 'ArrowUp';
         const isBackward =
-          orientation === "horizontal" ? "ArrowLeft" : "ArrowDown";
+          orientation === 'horizontal' ? 'ArrowLeft' : 'ArrowDown';
 
         switch (e.key) {
           case isForward:
-          case "ArrowRight":
-          case "ArrowUp":
+          case 'ArrowRight':
+          case 'ArrowUp':
             if (
               e.key === isForward ||
-              e.key === "ArrowRight" ||
-              e.key === "ArrowUp"
+              e.key === 'ArrowRight' ||
+              e.key === 'ArrowUp'
             ) {
               newColor = {
                 ...color,
@@ -171,12 +173,12 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
             }
             break;
           case isBackward:
-          case "ArrowLeft":
-          case "ArrowDown":
+          case 'ArrowLeft':
+          case 'ArrowDown':
             if (
               e.key === isBackward ||
-              e.key === "ArrowLeft" ||
-              e.key === "ArrowDown"
+              e.key === 'ArrowLeft' ||
+              e.key === 'ArrowDown'
             ) {
               newColor = {
                 ...color,
@@ -194,7 +196,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       [color, setColor, channel, r, orientation],
     );
 
-    const isHorizontal = orientation === "horizontal";
+    const isHorizontal = orientation === 'horizontal';
     const defaultLabel = `${CHANNEL_LABELS[channel] ?? channel} slider`;
 
     return (
@@ -203,7 +205,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         ref={(node) => {
           (sliderRef as React.MutableRefObject<HTMLDivElement | null>).current =
             node;
-          if (typeof ref === "function") ref(node);
+          if (typeof ref === 'function') ref(node);
           else if (ref) ref.current = node;
         }}
         data-color-slider=""
@@ -211,7 +213,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         data-orientation={orientation}
         data-dragging={isDragging || undefined}
         role="slider"
-        aria-label={props["aria-label"] ?? defaultLabel}
+        aria-label={props['aria-label'] ?? defaultLabel}
         aria-valuemin={r[0]}
         aria-valuemax={r[1]}
         aria-valuenow={color[channel]}
@@ -222,8 +224,8 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         onPointerUp={onPointerUp}
         onKeyDown={onKeyDown}
         style={{
-          position: "relative",
-          touchAction: "none",
+          position: 'relative',
+          touchAction: 'none',
           ...props.style,
         }}
       >
@@ -231,19 +233,19 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           data-color-slider-thumb=""
           data-value={norm.toFixed(4)}
           style={{
-            position: "absolute",
+            position: 'absolute',
             ...(isHorizontal
               ? {
                   left: `${norm * 100}%`,
-                  top: "50%",
-                  transform: "translate(-50%, -50%)",
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
                 }
               : {
-                  left: "50%",
+                  left: '50%',
                   top: `${(1 - norm) * 100}%`,
-                  transform: "translate(-50%, -50%)",
+                  transform: 'translate(-50%, -50%)',
                 }),
-            pointerEvents: "none",
+            pointerEvents: 'none',
           }}
         />
         {props.children}

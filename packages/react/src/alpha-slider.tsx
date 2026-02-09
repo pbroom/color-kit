@@ -2,8 +2,10 @@ import { forwardRef, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import { ColorSlider } from './color-slider.js';
 
-export interface AlphaSliderProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'color'> {
+export interface AlphaSliderProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'onChange' | 'color'
+> {
   /**
    * Slider orientation.
    * @default 'horizontal'
