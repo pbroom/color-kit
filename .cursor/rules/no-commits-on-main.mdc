@@ -1,0 +1,58 @@
+---
+description: Prevent accidental commits to main branch - always work on feature branches
+alwaysApply: true
+---
+
+# Never Commit Directly to Main Branch
+
+**ALWAYS check the current Git branch before making any commits or changes.**
+
+## The Rule
+
+- **NEVER commit directly to `main` branch**
+- **NEVER make changes while on `main` without first creating a branch**
+- When on `main` and need to make changes:
+  1. **STOP immediately**
+  2. Create branch with Graphite: `gt create -m "type: description"` (preferred)
+  3. Or without commit: `gt create --no-commit` then name it
+  4. Then proceed with changes
+
+## Before ANY Code Changes
+
+```bash
+git branch --show-current
+```
+
+- **If `main`:** STOP. Create a branch first using `gt create`
+- **If feature branch:** Proceed normally
+
+## Graphite Commands (Preferred)
+
+| Action              | Command                            |
+| ------------------- | ---------------------------------- |
+| New branch + commit | `gt create -m "feat: description"` |
+| New branch only     | `gt create --no-commit`            |
+| Check stack status  | `gt log`                           |
+
+See `graphite-stacked-workflow.mdc` for full Graphite workflow.
+
+## Common Scenarios
+
+**On main, need to start work:**
+
+```bash
+gt create -m "feat: add new feature"
+```
+
+**On main, want branch without commit:**
+
+```bash
+gt create --no-commit
+# Then: gt modify -m "type: description" after making changes
+```
+
+## Why This Matters
+
+- Prevents accidental commits to `main`
+- Enables Graphite stacked PR workflow
+- Each increment = separate branch for clean review

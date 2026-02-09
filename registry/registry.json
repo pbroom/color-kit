@@ -1,0 +1,169 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "color-kit",
+  "homepage": "https://github.com/pbroom/color-kit",
+  "items": [
+    {
+      "name": "color-area",
+      "type": "registry:component",
+      "title": "Color Area",
+      "description": "A 2D color picker area. Headless, accessible, and fully composable.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/color-area.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "use-color",
+      "type": "registry:hook",
+      "title": "useColor",
+      "description": "Core hook for color state management. Supports controlled and uncontrolled modes with conversions to all color spaces.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/hooks/use-color.ts",
+          "type": "registry:hook"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "color-provider",
+      "type": "registry:component",
+      "title": "Color Provider",
+      "description": "React context provider for sharing color state between color-kit components.",
+      "dependencies": ["@color-kit/core"],
+      "registryDependencies": ["use-color"],
+      "files": [
+        {
+          "path": "registry/components/color-provider.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "registry/hooks/color-context.ts",
+          "type": "registry:hook"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "color-slider",
+      "type": "registry:component",
+      "title": "Color Slider",
+      "description": "A 1D color slider for any channel (lightness, chroma, hue, alpha). Headless, accessible, with pointer capture and keyboard navigation.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/color-slider.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "hue-slider",
+      "type": "registry:component",
+      "title": "Hue Slider",
+      "description": "A convenience hue slider pre-configured for the hue channel. Wraps ColorSlider.",
+      "dependencies": ["@color-kit/core"],
+      "registryDependencies": ["color-slider"],
+      "files": [
+        {
+          "path": "registry/components/hue-slider.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "alpha-slider",
+      "type": "registry:component",
+      "title": "Alpha Slider",
+      "description": "A convenience alpha/opacity slider pre-configured for the alpha channel. Wraps ColorSlider.",
+      "dependencies": ["@color-kit/core"],
+      "registryDependencies": ["color-slider"],
+      "files": [
+        {
+          "path": "registry/components/alpha-slider.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "swatch",
+      "type": "registry:component",
+      "title": "Swatch",
+      "description": "A single color swatch that displays a color. Optionally interactive with click-to-select support.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/swatch.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "swatch-group",
+      "type": "registry:component",
+      "title": "Swatch Group",
+      "description": "A group of color swatches with selection state and keyboard navigation.",
+      "dependencies": ["@color-kit/core"],
+      "registryDependencies": ["swatch"],
+      "files": [
+        {
+          "path": "registry/components/swatch-group.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "color-input",
+      "type": "registry:component",
+      "title": "Color Input",
+      "description": "A text input for color values with format support (hex, rgb, hsl, oklch). Parses on blur or Enter.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/color-input.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "color-display",
+      "type": "registry:component",
+      "title": "Color Display",
+      "description": "A visual color preview that renders the current color as a background.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/color-display.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "contrast-badge",
+      "type": "registry:component",
+      "title": "Contrast Badge",
+      "description": "Displays the contrast ratio between two colors with WCAG AA/AAA compliance level.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/contrast-badge.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    }
+  ]
+}

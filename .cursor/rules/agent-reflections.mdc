@@ -1,0 +1,42 @@
+---
+description: Agents reflect on their approach at the end of each completion and record learnings
+alwaysApply: true
+---
+
+# Agent Reflection
+
+At the **end of every completion** (before your final message), briefly reflect:
+
+1. **What worked** — techniques, tool usage, or patterns that were effective
+2. **What didn't** — wasted steps, wrong assumptions, dead ends
+3. **Lesson** — one actionable takeaway for next time
+
+## Recording learnings
+
+Append a short entry to the `## Agent Learnings` section of the nearest relevant `AGENTS.md` file. Create the file and section if they don't exist.
+
+Use this format:
+
+```
+- **<DATE> — <Short title>**: <One or two sentence actionable lesson.>
+```
+
+### Choosing the right file
+
+| Situation                             | Where to write                |
+| ------------------------------------- | ----------------------------- |
+| General workflow / tooling lesson     | `AGENTS.md` at workspace root |
+| Lesson specific to a directory's code | `AGENTS.md` in that directory |
+
+**Prefer the nearest existing `AGENTS.md` up the tree** — only create a new nested one when there are 3+ learnings specific to that directory.
+
+### Quality guardrails
+
+- **Be conservative** — only record genuinely useful, reusable insights. Skip if the lesson is trivial or too context-specific.
+- **No duplicates** — read the target file first. Don't repeat an existing lesson.
+- **Keep it brief** — one line per entry. The section should stay scannable.
+- **Instructions stay separate** — never mix learnings into the main body of `AGENTS.md`. The `## Agent Learnings` section is the only place for reflections.
+
+## Reading learnings
+
+At the start of non-trivial tasks, read `AGENTS.md` files from the workspace root down to your working directory to benefit from past experience.
