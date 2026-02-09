@@ -51,9 +51,10 @@ export const ContrastBadge = forwardRef<HTMLDivElement, ContrastBadgeProps>(
     const passes = level === 'AAA' ? passesAAA : passesAA;
     const ratioFixed1 = `${ratio.toFixed(1)}:1`;
 
-    const levelLabel = level === 'AAA'
-      ? `WCAG AAA: ${passesAAA ? 'pass' : 'fail'}`
-      : `WCAG AA: ${passesAA ? 'pass' : 'fail'}`;
+    const levelLabel =
+      level === 'AAA'
+        ? `WCAG AAA: ${passesAAA ? 'pass' : 'fail'}`
+        : `WCAG AA: ${passesAA ? 'pass' : 'fail'}`;
 
     return (
       <div
