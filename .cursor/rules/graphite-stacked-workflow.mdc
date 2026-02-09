@@ -1,0 +1,74 @@
+---
+description: Guide for using Graphite stacked PR workflow - prefer gt commands over raw git
+alwaysApply: true
+---
+
+# Graphite Stacked PR Workflow
+
+Use Graphite (`gt`) for all branch and commit operations. This enables stacked PRs where each branch builds on the previous.
+
+## Core Commands
+
+| Action         | Command                            | Note                    |
+| -------------- | ---------------------------------- | ----------------------- |
+| Create branch  | `gt create -m "type: description"` | Creates branch + commit |
+| Branch only    | `gt create --no-commit`            | Branch without commit   |
+| Amend current  | `gt modify -m "new message"`       | Updates current branch  |
+| Submit PRs     | `gt submit --stack`                | Pushes entire stack     |
+| Sync with main | `gt sync`                          | Rebases stack on main   |
+| Navigate down  | `gt checkout <branch>`             | Or `gt bottom` for base |
+| Navigate up    | `gt up`                            | Move up the stack       |
+
+## Stacking Pattern
+
+```
+main
+└── feat/data-layer      ← PR #1 (merged first)
+    └── feat/api         ← PR #2 (depends on #1)
+        └── feat/ui      ← PR #3 (depends on #2)
+```
+
+**One logical change per branch.** Keep stacks shallow (3-5 branches max).
+
+## Branch Naming
+
+Use prefixes: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`
+
+```bash
+gt create -m "feat(sidebar): add collapsible navigation"
+```
+
+## Commit Messages
+
+Conventional Commits format:
+
+- `feat:` — New functionality
+- `fix:` — Bug fix
+- `refactor:` — Code restructuring
+- `chore:` — Maintenance, deps, config
+- `docs:` — Documentation only
+
+## When to Create a New Branch vs Amend
+
+| Situation                          | Action                     |
+| ---------------------------------- | -------------------------- |
+| Starting new logical unit          | `gt create -m "..."`       |
+| Fixing something in current branch | `gt modify`                |
+| Adding to current work             | `git add . && gt modify`   |
+| Switching context                  | Create new stack from main |
+
+## Quick Reference
+
+```bash
+# Start new work from main
+gt sync && gt create -m "feat: add user auth"
+
+# Continue building on current stack
+gt create -m "feat: add auth middleware"
+
+# Fix current branch
+gt modify -m "feat: add user auth with validation"
+
+# Submit when ready
+gt submit --stack --no-interactive
+```

@@ -1,0 +1,42 @@
+---
+description: When to use git worktrees for parallel agent workflows
+alwaysApply: true
+---
+
+# Parallel Agent Workflow
+
+Multiple agents in the same repo can conflict (branch switching, wrong commits). Use **git worktrees** to isolate each agent's work.
+
+## When to Create a Worktree
+
+Create a worktree when:
+
+- Starting a new feature/fix that requires commits
+- Working on a task that may conflict with other agents
+
+## When to Skip
+
+Do NOT need a worktree if:
+
+1. **Read-only** - Just exploring code, answering questions
+2. **Already in worktree** - `.agent-context` exists and branch matches
+3. **Trivial change** - Quick single-file fix that won't conflict
+
+## Quick Reference
+
+| Command                                                      | Purpose                  |
+| ------------------------------------------------------------ | ------------------------ |
+| `~/.cursor/scripts/worktree-manager.sh find <branch>`        | Find worktree for branch |
+| `~/.cursor/scripts/worktree-manager.sh create <id> [branch]` | Create new worktree      |
+| `~/.cursor/scripts/worktree-manager.sh list`                 | List all worktrees       |
+| `~/.cursor/scripts/worktree-manager.sh cleanup <id>`         | Remove worktree          |
+| `~/.cursor/scripts/worktree-manager.sh status`               | Show all status          |
+
+## Commit Safety
+
+Pre-commit hook blocks if:
+
+- On `main` or `master` branch
+- `.agent-context` exists but branch doesn't match
+
+**For full setup instructions**, use the `parallel-agent-workflow` skill.

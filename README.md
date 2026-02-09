@@ -111,6 +111,18 @@ pnpm test
 pnpm dev
 ```
 
+## Codex Guidance Template
+
+Use the reusable Codex `AGENTS.md` template in this repo to bootstrap other repositories.
+
+```bash
+# From this repo
+scripts/install-codex-agents.sh /path/to/other-repo
+
+# Overwrite existing AGENTS.md (creates backup first)
+scripts/install-codex-agents.sh /path/to/other-repo --force
+```
+
 ## License
 
 [MIT](./LICENSE)
