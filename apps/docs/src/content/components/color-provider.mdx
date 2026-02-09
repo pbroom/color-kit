@@ -1,0 +1,36 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { ColorProviderDemo } from '@/components/component-demos';
+
+# Color Provider
+
+`ColorProvider` shares one color state across any nested color-kit components.
+
+<ComponentPreview>
+  <ColorProviderDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.colorProvider} />
+
+## Usage
+
+```tsx
+import { ColorProvider, ColorArea, HueSlider, ColorInput } from '@color-kit/react';
+
+export function Picker() {
+  return (
+    <ColorProvider defaultColor="#3b82f6">
+      <ColorArea />
+      <HueSlider />
+      <ColorInput />
+    </ColorProvider>
+  );
+}
+```
+
+## Non-UI API helpers
+
+Use `useColor` when you want provider-like state handling outside UI composition.

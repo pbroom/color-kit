@@ -1,0 +1,29 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { ContrastBadgeDemo } from '@/components/component-demos';
+
+# Contrast Badge
+
+`ContrastBadge` computes WCAG contrast and exposes pass/fail state via attributes.
+
+<ComponentPreview>
+  <ContrastBadgeDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.contrastBadge} />
+
+## Usage
+
+```tsx
+import { ContrastBadge } from '@color-kit/react';
+import { parse } from '@color-kit/core';
+
+<ContrastBadge foreground={parse('#111827')} background={parse('#f8fafc')} />;
+```
+
+## Non-UI API helpers
+
+`ColorApi.getContrastBadgeSummary` returns ratio + compliance metadata for custom UIs.

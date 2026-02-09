@@ -1,0 +1,31 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { SwatchGroupDemo } from '@/components/component-demos';
+
+# Swatch Group
+
+`SwatchGroup` renders an accessible listbox of swatches and syncs with context automatically.
+
+<ComponentPreview>
+  <SwatchGroupDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.swatchGroup} />
+
+## Usage
+
+```tsx
+import { SwatchGroup } from '@color-kit/react';
+import { parse } from '@color-kit/core';
+
+const palette = ['#ef4444', '#22c55e', '#3b82f6'].map(parse);
+
+<SwatchGroup colors={palette} columns={3} />;
+```
+
+## Non-UI API helpers
+
+`ColorApi.colorsEqual` powers tolerant color comparisons for selected states.

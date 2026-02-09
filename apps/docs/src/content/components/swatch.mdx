@@ -1,0 +1,29 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { SwatchDemo } from '@/components/component-demos';
+
+# Swatch
+
+`Swatch` renders a single color tile and becomes interactive when `onSelect` is provided.
+
+<ComponentPreview>
+  <SwatchDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.swatch} />
+
+## Usage
+
+```tsx
+import { Swatch } from '@color-kit/react';
+import { parse } from '@color-kit/core';
+
+<Swatch color={parse('#22c55e')} onSelect={(next) => console.log(next)} />;
+```
+
+## Non-UI API helpers
+
+Swatch selection logic is usually combined with `ColorApi.colorsEqual` in list UIs.

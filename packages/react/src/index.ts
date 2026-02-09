@@ -7,6 +7,16 @@ export type { ColorProviderProps } from './color-provider.js';
 // Hooks
 export { useColor } from './use-color.js';
 export type { UseColorOptions, UseColorReturn } from './use-color.js';
+export * as ColorApi from './api/index.js';
+export type {
+  ColorAreaChannel,
+  ColorAreaKey,
+  ColorInputFormat,
+  ColorSliderChannel,
+  ColorSliderKey,
+  ColorSliderOrientation,
+  ContrastBadgeSummary,
+} from './api/index.js';
 
 // Primitives
 export { ColorArea } from './color-area.js';

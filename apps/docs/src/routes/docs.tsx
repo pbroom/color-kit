@@ -1,15 +1,6 @@
 import { useParams } from 'react-router';
-import { lazy, Suspense } from 'react';
-
-/**
- * MDX content modules mapped by slug path.
- * This is a simple approach that avoids complex dynamic imports.
- * Add new docs pages here as they are created.
- */
-const pages: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
-  introduction: lazy(() => import('../content/introduction.mdx')),
-  installation: lazy(() => import('../content/installation.mdx')),
-};
+import { Suspense } from 'react';
+import { docsPages } from '../content/docs-registry.js';
 
 function NotFound() {
   return (
@@ -23,7 +14,7 @@ function NotFound() {
 export function DocsPage() {
   const { slug, category } = useParams();
   const path = category ? `${category}/${slug}` : slug;
-  const Page = path ? pages[path] : undefined;
+  const Page = path ? docsPages[path] : undefined;
 
   if (!Page) {
     return <NotFound />;

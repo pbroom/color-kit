@@ -39,3 +39,4 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-02-09 — Keep Codex guidance reusable**: Maintain a clean `AGENTS.template.md` and install script separate from repo-specific learnings so guidance can be copied across repos without dragging local history along.
 - **2026-02-09 — Rule file visibility**: User rules live in Cursor settings, but project rules must be `.mdc` files with frontmatter under `.cursor/rules` to appear in workspace context.
 - **2026-02-09 — MDX + Vite React plugin ordering**: `@mdx-js/rollup` must use `enforce: 'pre'` when combined with `@vitejs/plugin-react` so MDX→JSX transformation runs before Babel tries to parse raw `.mdx` files.
+- **2026-02-09 — Share docs nav and route registries**: Drive docs sidebar items and page module resolution from one registry file so new MDX pages are added once and cannot drift into broken links.
