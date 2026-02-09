@@ -36,7 +36,15 @@ export interface SwatchGroupProps
  */
 export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
   function SwatchGroup(
-    { colors, selectedIndex, onChange, ...props },
+    {
+      colors,
+      selectedIndex,
+      onChange,
+      onKeyDown,
+      children,
+      "aria-label": ariaLabel,
+      ...props
+    },
     ref,
   ) {
     const handleSelect = useCallback(
@@ -75,9 +83,9 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
           onChange(colors[next], next);
         }
 
-        props.onKeyDown?.(e);
+        onKeyDown?.(e);
       },
-      [colors, selectedIndex, onChange, props.onKeyDown],
+      [colors, selectedIndex, onChange, onKeyDown],
     );
 
     return (
@@ -86,7 +94,7 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
         ref={ref}
         data-swatch-group=""
         role="listbox"
-        aria-label={props["aria-label"] ?? "Color swatches"}
+        aria-label={ariaLabel ?? "Color swatches"}
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >
@@ -100,7 +108,7 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
             aria-selected={selectedIndex === index}
           />
         ))}
-        {props.children}
+        {children}
       </div>
     );
   },

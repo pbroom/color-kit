@@ -1,7 +1,7 @@
 import { forwardRef, useMemo, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import { toHex, toCss } from '@color-kit/core';
-import { useColorContext } from './context.js';
+import { useOptionalColorContext } from './context.js';
 
 export interface ColorDisplayProps
   extends Omit<HTMLAttributes<HTMLDivElement>, 'color'> {
@@ -21,13 +21,7 @@ export interface ColorDisplayProps
  */
 export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
   function ColorDisplay({ color: colorProp, style, ...props }, ref) {
-    const context = (() => {
-      try {
-        return useColorContext();
-      } catch {
-        return null;
-      }
-    })();
+    const context = useOptionalColorContext();
 
     const color = colorProp ?? context?.color;
 

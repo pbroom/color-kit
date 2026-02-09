@@ -4,7 +4,7 @@ import {
   type HTMLAttributes,
 } from 'react';
 import type { Color } from '@color-kit/core';
-import { useColorContext } from './context.js';
+import { useOptionalColorContext } from './context.js';
 import { Swatch } from './swatch.js';
 
 export interface SwatchGroupProps
@@ -50,13 +50,7 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
     { colors, value, onChange, columns, style, children, ...props },
     ref,
   ) {
-    const context = (() => {
-      try {
-        return useColorContext();
-      } catch {
-        return null;
-      }
-    })();
+    const context = useOptionalColorContext();
 
     const handleSelect = useCallback(
       (color: Color) => {

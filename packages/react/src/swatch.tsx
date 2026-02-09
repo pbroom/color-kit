@@ -32,15 +32,18 @@ export interface SwatchProps
  * - `[data-color]` — hex value string of the color
  */
 export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(
-  function Swatch({ color, isSelected, onSelect, style, ...props }, ref) {
+  function Swatch(
+    { color, isSelected, onSelect, style, onClick, onKeyDown, ...props },
+    ref,
+  ) {
     const hex = useMemo(() => toHex(color), [color]);
 
     const handleClick = useCallback(
       (e: ReactMouseEvent<HTMLDivElement>) => {
         onSelect?.(color);
-        props.onClick?.(e);
+        onClick?.(e);
       },
-      [color, onSelect, props.onClick],
+      [color, onSelect, onClick],
     );
 
     const handleKeyDown = useCallback(
@@ -49,9 +52,9 @@ export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(
           e.preventDefault();
           onSelect?.(color);
         }
-        props.onKeyDown?.(e);
+        onKeyDown?.(e);
       },
-      [color, onSelect, props.onKeyDown],
+      [color, onSelect, onKeyDown],
     );
 
     const isInteractive = !!onSelect;
@@ -67,8 +70,8 @@ export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(
         role={isInteractive ? 'button' : 'img'}
         tabIndex={isInteractive ? 0 : undefined}
         aria-label={isInteractive ? undefined : `Color ${hex}`}
-        onClick={isInteractive ? handleClick : props.onClick}
-        onKeyDown={isInteractive ? handleKeyDown : props.onKeyDown}
+        onClick={isInteractive ? handleClick : onClick}
+        onKeyDown={isInteractive ? handleKeyDown : onKeyDown}
         style={{
           backgroundColor: hex,
           ...style,

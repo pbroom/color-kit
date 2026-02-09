@@ -11,7 +11,7 @@ import {
 } from 'react';
 import type { Color } from '@color-kit/core';
 import { clamp } from '@color-kit/core';
-import { useColorContext } from '@/hooks/color-context';
+import { useOptionalColorContext } from '@/hooks/color-context';
 
 export interface ColorAreaProps
   extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'color'> {
@@ -43,13 +43,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     },
     ref,
   ) {
-    const context = (() => {
-      try {
-        return useColorContext();
-      } catch {
-        return null;
-      }
-    })();
+    const context = useOptionalColorContext();
 
     const color = colorProp ?? context?.color;
     const setColor = onChangeProp ?? context?.setColor;

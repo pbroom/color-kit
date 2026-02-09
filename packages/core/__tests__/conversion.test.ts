@@ -4,18 +4,13 @@ import {
   toHex,
   toRgb,
   toHsl,
-  toOklch,
-  toOklab,
-  toP3,
   toCss,
-  fromRgb,
   fromHex,
   fromHsl,
-  fromHsv,
   hexToRgb,
   rgbToHex,
 } from '../src/index.js';
-import type { Color, Rgb } from '../src/index.js';
+import type { Color } from '../src/index.js';
 
 describe('Hex conversion', () => {
   it('should parse 6-digit hex', () => {

@@ -11,7 +11,7 @@ import {
 } from "react";
 import type { Color } from "@color-kit/core";
 import { clamp } from "@color-kit/core";
-import { useColorContext } from "@/hooks/color-context";
+import { useOptionalColorContext } from "@/hooks/color-context";
 
 export interface ColorSliderProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange" | "color"> {
@@ -77,13 +77,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     },
     ref,
   ) {
-    const context = (() => {
-      try {
-        return useColorContext();
-      } catch {
-        return null;
-      }
-    })();
+    const context = useOptionalColorContext();
 
     const color = colorProp ?? context?.color;
     const setColor = onChangeProp ?? context?.setColor;

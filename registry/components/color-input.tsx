@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { Color } from "@color-kit/core";
 import { toHex, toCss, parse } from "@color-kit/core";
-import { useColorContext } from "@/hooks/color-context";
+import { useOptionalColorContext } from "@/hooks/color-context";
 
 export interface ColorInputProps
   extends Omit<
@@ -46,16 +46,17 @@ function colorToString(color: Color, format: string): string {
  */
 export const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
   function ColorInput(
-    { format = "hex", color: colorProp, onChange: onChangeProp, ...props },
+    {
+      format = "hex",
+      color: colorProp,
+      onChange: onChangeProp,
+      onKeyDown,
+      "aria-label": ariaLabel,
+      ...props
+    },
     ref,
   ) {
-    const context = (() => {
-      try {
-        return useColorContext();
-      } catch {
-        return null;
-      }
-    })();
+    const context = useOptionalColorContext();
 
     const color = colorProp ?? context?.color;
     const setColor = onChangeProp ?? context?.setColor;
@@ -101,9 +102,9 @@ export const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
           setText(colorToString(color, format));
           setIsInvalid(false);
         }
-        props.onKeyDown?.(e);
+        onKeyDown?.(e);
       },
-      [text, commit, color, format, props.onKeyDown],
+      [text, commit, color, format, onKeyDown],
     );
 
     return (
@@ -118,7 +119,7 @@ export const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
         onChange={(e) => setText(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        aria-label={props["aria-label"] ?? `Color value (${format})`}
+        aria-label={ariaLabel ?? `Color value (${format})`}
         aria-invalid={isInvalid || undefined}
       />
     );

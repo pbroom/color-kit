@@ -26,3 +26,11 @@ export function useColorContext(): ColorContextValue {
   }
   return ctx;
 }
+
+/**
+ * Access the nearest ColorProvider's color state if present.
+ * Returns null when used outside a ColorProvider.
+ */
+export function useOptionalColorContext(): ColorContextValue | null {
+  return useContext(ColorContext);
+}
