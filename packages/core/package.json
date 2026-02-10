@@ -44,6 +44,10 @@
     "url": "https://github.com/pbroom/color-kit.git",
     "directory": "packages/core"
   },
+  "publishConfig": {
+    "access": "public",
+    "tag": "next"
+  },
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
