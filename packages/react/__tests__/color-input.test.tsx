@@ -11,28 +11,38 @@ afterEach(() => {
 
 describe('ColorInput', () => {
   it('commits exactly once when pressing Enter', () => {
-    const onChange = vi.fn();
+    const onChangeRequested = vi.fn();
 
-    render(<ColorInput color={parse('#ff0000')} onChange={onChange} />);
+    render(
+      <ColorInput
+        requested={parse('#ff0000')}
+        onChangeRequested={onChangeRequested}
+      />,
+    );
 
     const input = screen.getByLabelText('Color value');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: '#00ff00' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
   });
 
   it('does not commit when pressing Escape', () => {
-    const onChange = vi.fn();
+    const onChangeRequested = vi.fn();
 
-    render(<ColorInput color={parse('#ff0000')} onChange={onChange} />);
+    render(
+      <ColorInput
+        requested={parse('#ff0000')}
+        onChangeRequested={onChangeRequested}
+      />,
+    );
 
     const input = screen.getByLabelText('Color value');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: '#00ff00' } });
     fireEvent.keyDown(input, { key: 'Escape' });
 
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChangeRequested).not.toHaveBeenCalled();
   });
 });

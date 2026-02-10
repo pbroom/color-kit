@@ -2,51 +2,90 @@
 
 import { forwardRef, useMemo, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
-import { toHex } from '@color-kit/core';
+import {
+  inP3Gamut,
+  inSrgbGamut,
+  toCss,
+  toHex,
+  toP3Gamut,
+  toSrgbGamut,
+} from '@color-kit/core';
 import { useOptionalColorContext } from '@/hooks/color-context';
+import type { GamutTarget } from '@/hooks/use-color';
 
 export interface ColorDisplayProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'color'
 > {
-  /** Standalone color value (alternative to ColorProvider) */
-  color?: Color;
+  requested?: Color;
+  gamut?: GamutTarget;
 }
 
-/**
- * A visual color preview that displays the current color as a background.
- *
- * Renders as a plain `<div>` — completely unstyled except for `backgroundColor`.
- * Use data attributes and CSS to style it (size, border-radius, border, etc.).
- *
- * Data attributes:
- * - `[data-color-display]` — always present
- * - `[data-color]` — hex value string of the color
- */
+function getDisplayStyles(
+  displayed: Color,
+  srgbFallback: Color,
+  activeGamut: GamutTarget,
+): { backgroundColor: string; backgroundImage?: string } {
+  if (activeGamut === 'display-p3') {
+    const p3 = toCss(displayed, 'p3');
+    return {
+      backgroundColor:
+        srgbFallback.alpha < 1
+          ? toCss(srgbFallback, 'rgb')
+          : toHex(srgbFallback),
+      backgroundImage: `linear-gradient(${p3}, ${p3})`,
+    };
+  }
+
+  return {
+    backgroundColor:
+      displayed.alpha < 1 ? toCss(displayed, 'rgb') : toHex(displayed),
+  };
+}
+
 export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
-  function ColorDisplay({ color: colorProp, style, ...props }, ref) {
+  function ColorDisplay(
+    { requested: requestedProp, gamut = 'display-p3', style, ...props },
+    ref,
+  ) {
     const context = useOptionalColorContext();
 
-    const color = colorProp ?? context?.color;
+    const requested = requestedProp ?? context?.requested;
+    const activeGamut = context?.activeGamut ?? gamut;
 
-    if (!color) {
+    if (!requested) {
       throw new Error(
-        'ColorDisplay requires either a <ColorProvider> ancestor or an explicit color prop.',
+        'ColorDisplay requires either a <ColorProvider> ancestor or an explicit requested prop.',
       );
     }
 
-    const hex = useMemo(() => toHex(color), [color]);
+    const displayedSrgb = useMemo(() => toSrgbGamut(requested), [requested]);
+    const displayedP3 = useMemo(() => toP3Gamut(requested), [requested]);
+    const displayed =
+      activeGamut === 'display-p3' ? displayedP3 : displayedSrgb;
+    const displayedHex = useMemo(() => toHex(displayedSrgb), [displayedSrgb]);
+    const outOfGamut =
+      activeGamut === 'display-p3'
+        ? !inP3Gamut(requested)
+        : !inSrgbGamut(requested);
+
+    const displayStyles = useMemo(
+      () => getDisplayStyles(displayed, displayedSrgb, activeGamut),
+      [displayed, displayedSrgb, activeGamut],
+    );
 
     return (
       <div
         {...props}
         ref={ref}
         data-color-display=""
-        data-color={hex}
+        data-color={displayedHex}
+        data-gamut={activeGamut}
+        data-out-of-gamut={outOfGamut || undefined}
         role="img"
-        aria-label={props['aria-label'] ?? `Color preview: ${hex}`}
+        aria-label={`Current displayed color: ${displayedHex}`}
         style={{
-          backgroundColor: hex,
+          ...displayStyles,
           ...style,
         }}
       />

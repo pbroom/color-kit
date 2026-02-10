@@ -57,8 +57,26 @@ export const docsNavigation: DocsNavSection[] = [
   {
     title: 'Getting Started',
     items: [
-      { title: 'Introduction', path: 'introduction', href: toDocsHref('introduction') },
-      { title: 'Installation', path: 'installation', href: toDocsHref('installation') },
+      {
+        title: 'Introduction',
+        path: 'introduction',
+        href: toDocsHref('introduction'),
+      },
+      {
+        title: 'Installation',
+        path: 'installation',
+        href: toDocsHref('installation'),
+      },
+      {
+        title: 'Dual-State Migration',
+        path: 'migration-dual-state',
+        href: toDocsHref('migration-dual-state'),
+      },
+      {
+        title: 'Multi-Color State',
+        path: 'multi-color-state',
+        href: toDocsHref('multi-color-state'),
+      },
     ],
   },
   {

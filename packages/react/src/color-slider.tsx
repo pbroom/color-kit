@@ -19,10 +19,11 @@ import {
   type ColorSliderChannel,
   type ColorSliderOrientation,
 } from './api/color-slider.js';
+import type { SetRequestedOptions } from './use-color.js';
 
 export interface ColorSliderProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
-  'onChange' | 'color'
+  'onChange'
 > {
   /**
    * Which color channel the slider controls.
@@ -38,10 +39,10 @@ export interface ColorSliderProps extends Omit<
    * @default 'horizontal'
    */
   orientation?: ColorSliderOrientation;
-  /** Standalone color value (alternative to ColorProvider) */
-  color?: Color;
-  /** Standalone onChange (alternative to ColorProvider) */
-  onChange?: (color: Color) => void;
+  /** Standalone requested color value (alternative to ColorProvider) */
+  requested?: Color;
+  /** Standalone change handler (alternative to ColorProvider) */
+  onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
 /**
@@ -66,20 +67,20 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       channel,
       range,
       orientation = 'horizontal',
-      color: colorProp,
-      onChange: onChangeProp,
+      requested: requestedProp,
+      onChangeRequested: onChangeRequestedProp,
       ...props
     },
     ref,
   ) {
     const context = useOptionalColorContext();
 
-    const color = colorProp ?? context?.color;
-    const setColor = onChangeProp ?? context?.setColor;
+    const requested = requestedProp ?? context?.requested;
+    const setRequested = onChangeRequestedProp ?? context?.setRequested;
 
-    if (!color || !setColor) {
+    if (!requested || !setRequested) {
       throw new Error(
-        'ColorSlider requires either a <ColorProvider> ancestor or explicit color/onChange props.',
+        'ColorSlider requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 
@@ -88,7 +89,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     const r = resolveColorSliderRange(channel, range);
 
-    const norm = getColorSliderThumbPosition(color, channel, r);
+    const norm = getColorSliderThumbPosition(requested, channel, r);
 
     const updateFromPosition = useCallback(
       (clientX: number, clientY: number) => {
@@ -103,9 +104,12 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           orientation === 'horizontal' ? rect.width : rect.height,
         );
 
-        setColor(colorFromColorSliderPosition(color, channel, t, r));
+        setRequested(colorFromColorSliderPosition(requested, channel, t, r), {
+          changedChannel: channel,
+          interaction: 'pointer',
+        });
       },
-      [color, setColor, channel, r, orientation],
+      [requested, setRequested, channel, r, orientation],
     );
 
     const onPointerDown = useCallback(
@@ -134,7 +138,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       (e: ReactKeyboardEvent) => {
         const step = e.shiftKey ? 0.1 : 0.01;
         const newColor: Color | null = colorFromColorSliderKey(
-          color,
+          requested,
           channel,
           e.key,
           step,
@@ -143,10 +147,13 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
         if (newColor) {
           e.preventDefault();
-          setColor(newColor);
+          setRequested(newColor, {
+            changedChannel: channel,
+            interaction: 'keyboard',
+          });
         }
       },
-      [color, setColor, channel, r],
+      [requested, setRequested, channel, r],
     );
 
     const isHorizontal = orientation === 'horizontal';
@@ -169,7 +176,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         aria-label={props['aria-label'] ?? defaultLabel}
         aria-valuemin={r[0]}
         aria-valuemax={r[1]}
-        aria-valuenow={color[channel]}
+        aria-valuenow={requested[channel]}
         aria-orientation={orientation}
         tabIndex={0}
         onPointerDown={onPointerDown}

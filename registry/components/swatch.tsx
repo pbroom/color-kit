@@ -9,40 +9,75 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import type { Color } from '@color-kit/core';
-import { toHex } from '@color-kit/core';
+import {
+  inP3Gamut,
+  inSrgbGamut,
+  toCss,
+  toHex,
+  toP3Gamut,
+  toSrgbGamut,
+} from '@color-kit/core';
+import type { GamutTarget } from '@/hooks/use-color';
 
 export interface SwatchProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
-  'color'
+  'color' | 'onSelect'
 > {
-  /** The color to display */
   color: Color;
-  /** Whether this swatch is currently selected */
+  gamut?: GamutTarget;
   isSelected?: boolean;
-  /** Called when the swatch is clicked/selected. Makes the swatch interactive. */
   onSelect?: (color: Color) => void;
 }
 
-/**
- * A single color swatch that displays a color.
- *
- * Renders as a plain `<div>` — completely unstyled.
- * Use data attributes and CSS to style it.
- *
- * Data attributes:
- * - `[data-swatch]` — always present
- * - `[data-selected]` — present when `isSelected` is true
- * - `[data-interactive]` — present when `onSelect` is provided
- * - `[data-color]` — hex value string of the color
- */
+function getDisplayStyles(
+  displayed: Color,
+  srgbFallback: Color,
+  activeGamut: GamutTarget,
+): { backgroundColor: string; backgroundImage?: string } {
+  if (activeGamut === 'display-p3') {
+    const p3 = toCss(displayed, 'p3');
+    return {
+      backgroundColor:
+        srgbFallback.alpha < 1
+          ? toCss(srgbFallback, 'rgb')
+          : toHex(srgbFallback),
+      backgroundImage: `linear-gradient(${p3}, ${p3})`,
+    };
+  }
+
+  return {
+    backgroundColor:
+      displayed.alpha < 1 ? toCss(displayed, 'rgb') : toHex(displayed),
+  };
+}
+
 export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(function Swatch(
-  { color, isSelected, onSelect, style, onClick, onKeyDown, ...props },
+  {
+    color,
+    gamut = 'display-p3',
+    isSelected,
+    onSelect,
+    style,
+    onClick,
+    onKeyDown,
+    ...props
+  },
   ref,
 ) {
-  const hex = useMemo(() => toHex(color), [color]);
+  const displayedSrgb = useMemo(() => toSrgbGamut(color), [color]);
+  const displayedP3 = useMemo(() => toP3Gamut(color), [color]);
+  const displayed = gamut === 'display-p3' ? displayedP3 : displayedSrgb;
+  const displayedHex = useMemo(() => toHex(displayedSrgb), [displayedSrgb]);
+  const outOfGamut =
+    gamut === 'display-p3' ? !inP3Gamut(color) : !inSrgbGamut(color);
+
+  const displayStyles = useMemo(
+    () => getDisplayStyles(displayed, displayedSrgb, gamut),
+    [displayed, displayedSrgb, gamut],
+  );
 
   const handleClick = useCallback(
-    (e: ReactMouseEvent) => {
+    (e: ReactMouseEvent<HTMLDivElement>) => {
       onSelect?.(color);
       onClick?.(e);
     },
@@ -69,14 +104,16 @@ export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(function Swatch(
       data-swatch=""
       data-selected={isSelected || undefined}
       data-interactive={isInteractive || undefined}
-      data-color={hex}
+      data-color={displayedHex}
+      data-gamut={gamut}
+      data-out-of-gamut={outOfGamut || undefined}
       role={isInteractive ? 'button' : 'img'}
       tabIndex={isInteractive ? 0 : undefined}
-      aria-label={isInteractive ? undefined : `Color ${hex}`}
+      aria-label={isInteractive ? undefined : `Color ${displayedHex}`}
       onClick={isInteractive ? handleClick : onClick}
       onKeyDown={isInteractive ? handleKeyDown : onKeyDown}
       style={{
-        backgroundColor: hex,
+        ...displayStyles,
         ...style,
       }}
     />

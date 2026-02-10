@@ -22,7 +22,11 @@ import { ColorInput, useColor } from '@color-kit/react';
 
 const color = useColor({ defaultColor: '#6366f1' });
 
-<ColorInput color={color.color} onChange={color.setColor} format="oklch" />;
+<ColorInput
+  requested={color.requested}
+  onChangeRequested={color.setRequested}
+  format="oklch"
+/>;
 ```
 
 ## Non-UI API helpers

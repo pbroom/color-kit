@@ -16,10 +16,11 @@ import {
   resolveColorAreaRange,
   type ColorAreaChannel,
 } from './api/color-area.js';
+import type { SetRequestedOptions } from './use-color.js';
 
 export interface ColorAreaProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
-  'onChange' | 'color'
+  'onChange'
 > {
   /**
    * Which color channels the X and Y axes control.
@@ -35,10 +36,10 @@ export interface ColorAreaProps extends Omit<
    */
   xRange?: [number, number];
   yRange?: [number, number];
-  /** Standalone color value (alternative to ColorProvider) */
-  color?: Color;
-  /** Standalone onChange (alternative to ColorProvider) */
-  onChange?: (color: Color) => void;
+  /** Standalone requested color (alternative to ColorProvider) */
+  requested?: Color;
+  /** Standalone change handler (alternative to ColorProvider) */
+  onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
 /**
@@ -62,20 +63,20 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       channels = { x: 'c', y: 'l' },
       xRange,
       yRange,
-      color: colorProp,
-      onChange: onChangeProp,
+      requested: requestedProp,
+      onChangeRequested: onChangeRequestedProp,
       ...props
     },
     ref,
   ) {
     const context = useOptionalColorContext();
 
-    const color = colorProp ?? context?.color;
-    const setColor = onChangeProp ?? context?.setColor;
+    const requested = requestedProp ?? context?.requested;
+    const setRequested = onChangeRequestedProp ?? context?.setRequested;
 
-    if (!color || !setColor) {
+    if (!requested || !setRequested) {
       throw new Error(
-        'ColorArea requires either a <ColorProvider> ancestor or explicit color/onChange props.',
+        'ColorArea requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 
@@ -86,7 +87,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const yR = resolveColorAreaRange(channels.y, yRange);
 
     const { x: xNorm, y: yNorm } = getColorAreaThumbPosition(
-      color,
+      requested,
       channels,
       xR,
       yR,
@@ -101,9 +102,14 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         const x = (clientX - rect.left) / rect.width;
         const y = (clientY - rect.top) / rect.height;
 
-        setColor(colorFromColorAreaPosition(color, channels, x, y, xR, yR));
+        setRequested(
+          colorFromColorAreaPosition(requested, channels, x, y, xR, yR),
+          {
+            interaction: 'pointer',
+          },
+        );
       },
-      [color, setColor, channels, xR, yR],
+      [requested, setRequested, channels, xR, yR],
     );
 
     const onPointerDown = useCallback(
@@ -132,7 +138,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       (e: ReactKeyboardEvent) => {
         const step = e.shiftKey ? 0.1 : 0.01;
         const newColor: Color | null = colorFromColorAreaKey(
-          color,
+          requested,
           channels,
           e.key,
           step,
@@ -142,10 +148,12 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
 
         if (newColor) {
           e.preventDefault();
-          setColor(newColor);
+          setRequested(newColor, {
+            interaction: 'keyboard',
+          });
         }
       },
-      [color, setColor, channels, xR, yR],
+      [requested, setRequested, channels, xR, yR],
     );
 
     return (
@@ -161,9 +169,9 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         data-dragging={isDragging || undefined}
         role="slider"
         aria-label="Color area"
-        aria-valuetext={`${channels.x}: ${color[channels.x].toFixed(2)}, ${
+        aria-valuetext={`${channels.x}: ${requested[channels.x].toFixed(2)}, ${
           channels.y
-        }: ${color[channels.y].toFixed(2)}`}
+        }: ${requested[channels.y].toFixed(2)}`}
         tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

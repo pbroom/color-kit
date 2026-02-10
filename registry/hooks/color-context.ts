@@ -1,14 +1,9 @@
 'use client';
 
 import { createContext, useContext } from 'react';
-import type { Color } from '@color-kit/core';
+import type { UseColorReturn } from '@/hooks/use-color';
 
-export interface ColorContextValue {
-  /** Current color state */
-  color: Color;
-  /** Update the color */
-  setColor: (color: Color) => void;
-}
+export type ColorContextValue = UseColorReturn;
 
 export const ColorContext = createContext<ColorContextValue | null>(null);
 
