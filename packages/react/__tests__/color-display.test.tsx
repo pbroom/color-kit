@@ -9,17 +9,17 @@ afterEach(() => {
 });
 
 describe('ColorDisplay', () => {
-  it('uses p3-first rendering with an sRGB fallback layer', () => {
+  it('uses p3-first rendering while keeping an sRGB fallback color', () => {
     const requested = { l: 0.8, c: 0.4, h: 145, alpha: 1 };
     const { getByRole } = render(<ColorDisplay requested={requested} />);
 
     const node = getByRole('img');
     expect(node.getAttribute('data-gamut')).toBe('display-p3');
     expect(node.getAttribute('data-out-of-gamut')).toBe('true');
-    expect(node.getAttribute('style')).toContain('background-image');
+    expect(node.getAttribute('style')).toContain('background: color(display-p3');
   });
 
-  it('renders without p3 background-image when gamut=srgb', () => {
+  it('renders without p3 background override when gamut=srgb', () => {
     const requested = { l: 0.8, c: 0.4, h: 145, alpha: 1 };
     const { getByRole } = render(
       <ColorDisplay requested={requested} gamut="srgb" />,
@@ -27,6 +27,6 @@ describe('ColorDisplay', () => {
 
     const node = getByRole('img');
     expect(node.getAttribute('data-gamut')).toBe('srgb');
-    expect(node.getAttribute('style')).not.toContain('background-image');
+    expect(node.getAttribute('style')).not.toContain('background: color(display-p3');
   });
 });

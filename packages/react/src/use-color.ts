@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Color, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
 import {
   fromHsl,
@@ -109,6 +109,12 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
 
   const isControlled = controlledState !== undefined;
   const state = isControlled ? controlledState : internalState;
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const getCurrentState = useCallback((): ColorState => {
+    return isControlled ? state : stateRef.current;
+  }, [isControlled, state]);
 
   const commitState = useCallback(
     (
@@ -117,6 +123,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
       interaction: ColorInteraction,
     ) => {
       if (!isControlled) {
+        stateRef.current = nextState;
         setInternalState(nextState);
       }
       onChange?.({
@@ -132,15 +139,16 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
     (requested: Color, options: SetRequestedOptions = {}) => {
       const interaction = options.interaction ?? 'programmatic';
       const source = resolveSource(interaction, options.source);
+      const currentState = getCurrentState();
       const nextState = createColorState(requested, {
-        activeGamut: state.activeGamut,
-        activeView: state.activeView,
+        activeGamut: currentState.activeGamut,
+        activeView: currentState.activeView,
         source,
       });
 
       commitState(nextState, options.changedChannel, interaction);
     },
-    [state.activeGamut, state.activeView, commitState],
+    [getCurrentState, commitState],
   );
 
   const setChannel = useCallback(
@@ -149,8 +157,9 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
       value: number,
       options: Omit<SetRequestedOptions, 'changedChannel'> = {},
     ) => {
+      const currentState = getCurrentState();
       const nextRequested: Color = {
-        ...state.requested,
+        ...currentState.requested,
         [channel]: value,
       };
       setRequested(nextRequested, {
@@ -158,7 +167,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
         changedChannel: channel,
       });
     },
-    [state.requested, setRequested],
+    [getCurrentState, setRequested],
   );
 
   const setFromString = useCallback(
@@ -195,32 +204,34 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
 
   const setActiveGamut = useCallback(
     (gamut: GamutTarget, source: ColorSource = 'user') => {
+      const currentState = getCurrentState();
       const nextState: ColorState = {
-        ...state,
+        ...currentState,
         activeGamut: gamut,
         meta: {
-          ...state.meta,
+          ...currentState.meta,
           source,
         },
       };
       commitState(nextState, undefined, 'programmatic');
     },
-    [state, commitState],
+    [getCurrentState, commitState],
   );
 
   const setActiveView = useCallback(
     (view: ViewModel, source: ColorSource = 'user') => {
+      const currentState = getCurrentState();
       const nextState: ColorState = {
-        ...state,
+        ...currentState,
         activeView: view,
         meta: {
-          ...state.meta,
+          ...currentState.meta,
           source,
         },
       };
       commitState(nextState, undefined, 'programmatic');
     },
-    [state, commitState],
+    [getCurrentState, commitState],
   );
 
   const requested = state.requested;

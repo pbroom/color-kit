@@ -66,4 +66,28 @@ describe('requested/displayed contract', () => {
     expect(probe.requested).toEqual(requestedBefore);
     expect(probe.displayed).toEqual(probe.displayedP3);
   });
+
+  it('applies sequential channel edits from the latest state in one batch', () => {
+    let probe: UseColorReturn | null = null;
+
+    render(
+      <UseColorProbe
+        onReady={(value) => {
+          probe = value;
+        }}
+      />,
+    );
+
+    if (!probe) throw new Error('Probe was not initialized');
+
+    act(() => {
+      probe?.setChannel('l', 0.35, { interaction: 'user' });
+      probe?.setChannel('c', 0.1, { interaction: 'user' });
+    });
+
+    if (!probe) throw new Error('Probe was not initialized');
+    expect(probe.requested.l).toBeCloseTo(0.35, 6);
+    expect(probe.requested.c).toBeCloseTo(0.1, 6);
+    expect(probe.requested.h).toBeCloseTo(145, 6);
+  });
 });

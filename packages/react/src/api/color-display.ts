@@ -4,6 +4,7 @@ import type { GamutTarget } from '../color-state.js';
 
 export interface ColorDisplayStyles {
   backgroundColor: string;
+  background?: string;
   backgroundImage?: string;
 }
 
@@ -18,13 +19,13 @@ export function getColorDisplayStyles(
 ): ColorDisplayStyles {
   if (activeGamut === 'display-p3') {
     const p3 = toCss(displayed, 'p3');
+    const fallbackColor =
+      srgbFallback.alpha < 1 ? toCss(srgbFallback, 'rgb') : toHex(srgbFallback);
     return {
       // sRGB fallback for browsers without display-p3 support
-      backgroundColor:
-        srgbFallback.alpha < 1
-          ? toCss(srgbFallback, 'rgb')
-          : toHex(srgbFallback),
-      backgroundImage: `linear-gradient(${p3}, ${p3})`,
+      backgroundColor: fallbackColor,
+      // Override fallback in P3-capable browsers without layering alpha colors.
+      background: p3,
     };
   }
 

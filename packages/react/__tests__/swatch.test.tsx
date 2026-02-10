@@ -25,6 +25,6 @@ describe('Swatch', () => {
 
     const swatch = getByRole('img');
     expect(swatch.getAttribute('data-out-of-gamut')).toBe('true');
-    expect(swatch.getAttribute('style')).toContain('background-image');
+    expect(swatch.getAttribute('style')).toContain('background: color(display-p3');
   });
 });

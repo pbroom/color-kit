@@ -94,8 +94,10 @@ describe('Color API helpers', () => {
     const srgbStyles = getColorDisplayStyles(translucent, translucent, 'srgb');
 
     expect(p3Styles.backgroundColor).toMatch(/^rgb\(/);
-    expect(p3Styles.backgroundImage).toContain('linear-gradient');
+    expect(p3Styles.background).toMatch(/^color\(display-p3 /);
+    expect(p3Styles.backgroundImage).toBeUndefined();
     expect(srgbStyles.backgroundColor).toMatch(/^rgb\(/);
+    expect(srgbStyles.background).toBeUndefined();
     expect(srgbStyles.backgroundImage).toBeUndefined();
   });
 });
