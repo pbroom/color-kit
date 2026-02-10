@@ -445,6 +445,7 @@ a {
 
 .docs-segmented {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 0.22rem;
   padding: 0.2rem;
   border-radius: 0.55rem;
@@ -457,11 +458,17 @@ a {
   border-radius: 0.38rem;
   min-width: 1.7rem;
   min-height: 1.45rem;
+  padding: 0 0.45rem;
   background: transparent;
   color: var(--color-segmented-text);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   cursor: pointer;
+}
+
+.docs-segmented button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .docs-segmented button.is-active {

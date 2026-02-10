@@ -126,6 +126,7 @@ export function Picker() {
     ],
     props: componentApiDocs.colorSlider,
     anatomy: `<ColorSlider>\n  <div data-color-slider-thumb />\n</ColorSlider>`,
+    supportsPropertiesPanel: true,
   },
   'hue-slider': {
     slug: 'hue-slider',
@@ -222,6 +223,7 @@ export function Picker() {
     ],
     props: componentApiDocs.swatchGroup,
     anatomy: `<SwatchGroup>\n  <Swatch />\n</SwatchGroup>`,
+    supportsPropertiesPanel: true,
   },
   'color-input': {
     slug: 'color-input',
@@ -249,6 +251,7 @@ export function Picker() {
     ],
     props: componentApiDocs.colorInput,
     anatomy: `<ColorInput />`,
+    supportsPropertiesPanel: true,
   },
   'color-display': {
     slug: 'color-display',
@@ -300,6 +303,7 @@ export function Picker() {
     ],
     props: componentApiDocs.contrastBadge,
     anatomy: `<ContrastBadge />`,
+    supportsPropertiesPanel: true,
   },
 };
 

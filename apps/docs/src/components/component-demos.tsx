@@ -12,9 +12,10 @@ import {
   Swatch,
   SwatchGroup,
   type ColorAreaChannel,
+  type ColorSliderChannel,
   useColor,
 } from '@color-kit/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useOptionalDocsInspector } from './docs-inspector-context.js';
 
 const DOC_SWATCHES = [
@@ -41,6 +42,46 @@ const AREA_GRADIENT =
   'linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0)), linear-gradient(to right, #ffffff, #3b82f6)';
 const CHECKERBOARD_GRADIENT =
   'linear-gradient(45deg, rgba(13, 18, 29, 0.7) 25%, transparent 25%), linear-gradient(-45deg, rgba(13, 18, 29, 0.7) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(13, 18, 29, 0.7) 75%), linear-gradient(-45deg, transparent 75%, rgba(13, 18, 29, 0.7) 75%)';
+
+const SLIDER_GRADIENTS: Record<ColorSliderChannel, string> = {
+  l: 'linear-gradient(90deg, #0f172a, #f8fafc)',
+  c: SATURATION_GRADIENT,
+  h: HUE_GRADIENT,
+  alpha: ALPHA_GRADIENT,
+};
+
+const SWATCH_GROUP_PALETTES = {
+  spectrum: DOC_SWATCHES,
+  nature: [
+    '#14532d',
+    '#166534',
+    '#22c55e',
+    '#84cc16',
+    '#facc15',
+    '#78350f',
+  ].map((value) => parse(value)),
+  neon: ['#ff2e88', '#ff5f1f', '#ffe53b', '#17f9a3', '#00e7ff', '#7a5cff'].map(
+    (value) => parse(value),
+  ),
+} as const;
+
+const CONTRAST_PRESETS = {
+  interface: {
+    foreground: parse('#111827'),
+    background: parse('#f8fafc'),
+    sample: 'The quick brown fox jumps over the lazy dog.',
+  },
+  editorial: {
+    foreground: parse('#3f1d0a'),
+    background: parse('#ffedd5'),
+    sample: 'Typography pairs should remain readable at body sizes.',
+  },
+  alert: {
+    foreground: parse('#fff7ed'),
+    background: parse('#7c2d12'),
+    sample: 'Warning surfaces need clear, testable readability.',
+  },
+} as const;
 
 function toSvgPath(points: Array<{ x: number; y: number }>): string {
   if (points.length < 2) return '';
@@ -121,11 +162,13 @@ export function ColorAreaDemo({
     defaultColor: '#2563eb',
     defaultGamut: state?.gamut ?? 'display-p3',
   });
+  const inspectorGamut = state?.gamut;
+  const setColorAreaGamut = color.setActiveGamut;
 
   useEffect(() => {
-    if (!state) return;
-    color.setActiveGamut(state.gamut, 'programmatic');
-  }, [state?.gamut, color.setActiveGamut]);
+    if (!inspectorGamut) return;
+    setColorAreaGamut(inspectorGamut, 'programmatic');
+  }, [inspectorGamut, setColorAreaGamut]);
 
   const hue = color.requested.h;
   const boundarySrgb = useMemo(() => {
@@ -253,23 +296,53 @@ export function ColorAreaDemo({
   );
 }
 
-export function ColorSliderDemo() {
+export function ColorSliderDemo({
+  inspectorDriven = false,
+}: {
+  inspectorDriven?: boolean;
+}) {
+  const inspector = useOptionalDocsInspector();
+  const state =
+    inspectorDriven && inspector ? inspector.colorSliderState : null;
+  const channel = state?.channel ?? 'c';
+  const color = useColor({
+    defaultColor: '#8b5cf6',
+    defaultGamut: state?.gamut ?? 'display-p3',
+  });
+  const sliderGamut = state?.gamut;
+  const sliderGamutSetterRef = useRef(color.setActiveGamut);
+
+  useEffect(() => {
+    sliderGamutSetterRef.current = color.setActiveGamut;
+  }, [color.setActiveGamut]);
+
+  useEffect(() => {
+    if (!sliderGamut) return;
+    if (color.activeGamut === sliderGamut) return;
+    sliderGamutSetterRef.current(sliderGamut, 'programmatic');
+  }, [sliderGamut, color.activeGamut]);
+
   return (
-    <ColorProvider defaultColor="#8b5cf6">
-      <div className="ck-demo-stack">
-        <ColorSlider
-          channel="c"
-          className="ck-slider"
-          style={{ background: SATURATION_GRADIENT }}
-        />
-        <ColorSlider
-          channel="l"
-          className="ck-slider"
-          style={{ background: 'linear-gradient(90deg, #0f172a, #f8fafc)' }}
-        />
-        <ColorInput format="oklch" className="ck-input" />
-      </div>
-    </ColorProvider>
+    <div className="ck-demo-stack">
+      <ColorSlider
+        channel={channel}
+        className="ck-slider"
+        requested={color.requested}
+        onChangeRequested={color.setRequested}
+        style={{ background: SLIDER_GRADIENTS[channel] }}
+      />
+      <ColorInput
+        format="oklch"
+        className="ck-input"
+        requested={color.requested}
+        onChangeRequested={color.setRequested}
+      />
+      <ColorDisplay
+        className="ck-color-display"
+        requested={color.requested}
+        gamut={color.activeGamut}
+      />
+    </div>
   );
 }
 
@@ -328,41 +401,76 @@ export function SwatchDemo() {
   );
 }
 
-export function SwatchGroupDemo() {
+export function SwatchGroupDemo({
+  inspectorDriven = false,
+}: {
+  inspectorDriven?: boolean;
+}) {
+  const inspector = useOptionalDocsInspector();
+  const state =
+    inspectorDriven && inspector ? inspector.swatchGroupState : null;
+  const paletteName = state?.palette ?? 'spectrum';
+  const palette = SWATCH_GROUP_PALETTES[paletteName];
+  const [selected, setSelected] = useState(palette[0]);
+
+  useEffect(() => {
+    setSelected(palette[0]);
+  }, [palette]);
+
   return (
-    <ColorProvider defaultColor="#22c55e">
-      <div className="ck-demo-stack">
-        <SwatchGroup
-          colors={DOC_SWATCHES}
-          columns={4}
-          className="ck-swatch-grid"
-        />
-        <ColorInput className="ck-input" />
-      </div>
-    </ColorProvider>
+    <div className="ck-demo-stack">
+      <SwatchGroup
+        colors={palette}
+        columns={state?.columns ?? 4}
+        value={selected}
+        onChange={setSelected}
+        className="ck-swatch-grid"
+      />
+      <ColorInput
+        className="ck-input"
+        requested={selected}
+        onChangeRequested={setSelected}
+      />
+    </div>
   );
 }
 
-export function ColorInputDemo() {
+export function ColorInputDemo({
+  inspectorDriven = false,
+}: {
+  inspectorDriven?: boolean;
+}) {
+  const inspector = useOptionalDocsInspector();
+  const state = inspectorDriven && inspector ? inspector.colorInputState : null;
   const colorState = useColor({ defaultColor: '#6366f1' });
+  const inputGamut = state?.gamut;
+  const setInputGamut = colorState.setActiveGamut;
+
+  useEffect(() => {
+    if (!inputGamut) return;
+    setInputGamut(inputGamut, 'programmatic');
+  }, [inputGamut, setInputGamut]);
 
   return (
     <div className="ck-demo-stack">
       <ColorInput
         className="ck-input"
-        format="hex"
+        format={state?.format ?? 'hex'}
         requested={colorState.requested}
         onChangeRequested={colorState.setRequested}
+        aria-label="Primary color input"
       />
       <ColorInput
         className="ck-input"
         format="oklch"
         requested={colorState.requested}
         onChangeRequested={colorState.setRequested}
+        aria-label="OKLCH reference input"
       />
       <ColorDisplay
         className="ck-color-display"
         requested={colorState.requested}
+        gamut={state?.gamut ?? 'display-p3'}
       />
     </div>
   );
@@ -383,9 +491,53 @@ export function ColorDisplayDemo() {
   );
 }
 
-export function ContrastBadgeDemo() {
-  const foreground = useColor({ defaultColor: '#111827' });
-  const background = useColor({ defaultColor: '#f8fafc' });
+export function ContrastBadgeDemo({
+  inspectorDriven = false,
+}: {
+  inspectorDriven?: boolean;
+}) {
+  const inspector = useOptionalDocsInspector();
+  const state =
+    inspectorDriven && inspector ? inspector.contrastBadgeState : null;
+  const preset = CONTRAST_PRESETS[state?.preset ?? 'interface'];
+  const foreground = useColor({
+    defaultColor: toCss(preset.foreground, 'hex'),
+  });
+  const background = useColor({
+    defaultColor: toCss(preset.background, 'hex'),
+  });
+  const presetKey = state?.preset;
+  const foregroundSetterRef = useRef(foreground.setRequested);
+  const backgroundSetterRef = useRef(background.setRequested);
+
+  useEffect(() => {
+    foregroundSetterRef.current = foreground.setRequested;
+  }, [foreground.setRequested]);
+
+  useEffect(() => {
+    backgroundSetterRef.current = background.setRequested;
+  }, [background.setRequested]);
+
+  useEffect(() => {
+    if (!presetKey) return;
+    const nextPreset = CONTRAST_PRESETS[presetKey];
+    const currentForeground = toCss(foreground.requested, 'hex').toLowerCase();
+    const currentBackground = toCss(background.requested, 'hex').toLowerCase();
+    const nextForeground = toCss(nextPreset.foreground, 'hex').toLowerCase();
+    const nextBackground = toCss(nextPreset.background, 'hex').toLowerCase();
+
+    if (currentForeground !== nextForeground) {
+      foregroundSetterRef.current(nextPreset.foreground, {
+        interaction: 'programmatic',
+      });
+    }
+
+    if (currentBackground !== nextBackground) {
+      backgroundSetterRef.current(nextPreset.background, {
+        interaction: 'programmatic',
+      });
+    }
+  }, [presetKey, foreground.requested, background.requested]);
 
   return (
     <div className="ck-demo-stack">
@@ -412,13 +564,13 @@ export function ContrastBadgeDemo() {
           backgroundColor: toCss(background.requested, 'rgb'),
         }}
       >
-        The quick brown fox jumps over the lazy dog.
+        {preset.sample}
       </div>
       <ContrastBadge
         className="ck-contrast-badge"
         foreground={foreground.requested}
         background={background.requested}
-        level="AA"
+        level={state?.level ?? 'AA'}
       />
     </div>
   );
