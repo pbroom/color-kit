@@ -1,0 +1,42 @@
+# Multi-Color State
+
+`useMultiColor` manages named color collections (palette entries, gradient stops) with shared display configuration.
+
+```tsx
+import { useMultiColor } from '@color-kit/react';
+
+export function Palette() {
+  const colors = useMultiColor({
+    defaultColors: {
+      base: '#3b82f6',
+      accent: 'oklch(0.8 0.4 145)',
+    },
+    defaultSelectedId: 'base',
+  });
+
+  return (
+    <>
+      <button onClick={() => colors.select('accent')}>Select accent</button>
+      <button onClick={() => colors.setActiveGamut('srgb')}>
+        Preview sRGB
+      </button>
+      <button
+        onClick={() =>
+          colors.setChannel('accent', 'h', 210, { interaction: 'user' })
+        }
+      >
+        Shift accent hue
+      </button>
+    </>
+  );
+}
+```
+
+## Key API
+
+- `state.colors[id]`: full `ColorState` per entry
+- `setRequested(id, requested, options?)`
+- `setChannel(id, channel, value, options?)`
+- `setActiveGamut(gamut)` / `setActiveView(view)`
+- `addColor(id, color)` / `removeColor(id)` / `renameColor(id, nextId)`
+- `select(id)`

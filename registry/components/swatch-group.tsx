@@ -1,94 +1,54 @@
 'use client';
 
-import {
-  forwardRef,
-  useCallback,
-  type HTMLAttributes,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from 'react';
+import { forwardRef, useCallback, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
+import { useOptionalColorContext } from '@/hooks/color-context';
 import { Swatch } from '@/components/swatch';
+
+const EPSILON = 0.001;
+
+function colorsEqual(a: Color, b: Color, epsilon = EPSILON): boolean {
+  return (
+    Math.abs(a.l - b.l) < epsilon &&
+    Math.abs(a.c - b.c) < epsilon &&
+    Math.abs(a.h - b.h) < epsilon &&
+    Math.abs(a.alpha - b.alpha) < epsilon
+  );
+}
 
 export interface SwatchGroupProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
 > {
-  /** Array of colors to display as swatches */
   colors: Color[];
-  /** Currently selected color index */
-  selectedIndex?: number;
-  /** Called when a swatch is selected */
-  onChange?: (color: Color, index: number) => void;
+  value?: Color;
+  onChange?: (color: Color) => void;
+  columns?: number;
 }
 
-/**
- * A group of color swatches with selection support.
- *
- * Renders as a `<div>` with `role="listbox"` containing `Swatch` children.
- * Completely unstyled -- use data attributes and CSS to style it.
- *
- * Data attributes on the root:
- * - `[data-swatch-group]` — always present
- *
- * Keyboard navigation:
- * - ArrowRight / ArrowDown — move selection forward
- * - ArrowLeft / ArrowUp — move selection backward
- * - Home — select first swatch
- * - End — select last swatch
- */
 export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
   function SwatchGroup(
-    {
-      colors,
-      selectedIndex,
-      onChange,
-      onKeyDown,
-      children,
-      'aria-label': ariaLabel,
-      ...props
-    },
+    { colors, value, onChange, columns, style, children, ...props },
     ref,
   ) {
+    const context = useOptionalColorContext();
+
     const handleSelect = useCallback(
-      (color: Color, index: number) => {
-        onChange?.(color, index);
+      (color: Color) => {
+        if (onChange) {
+          onChange(color);
+        } else {
+          context?.setRequested(color, {
+            interaction: 'pointer',
+            source: 'derived',
+          });
+        }
       },
-      [onChange],
+      [onChange, context],
     );
 
-    const handleKeyDown = useCallback(
-      (e: ReactKeyboardEvent<HTMLDivElement>) => {
-        if (!onChange || colors.length === 0) return;
-
-        const current = selectedIndex ?? 0;
-        let next: number | null = null;
-
-        switch (e.key) {
-          case 'ArrowRight':
-          case 'ArrowDown':
-            next = current < colors.length - 1 ? current + 1 : 0;
-            break;
-          case 'ArrowLeft':
-          case 'ArrowUp':
-            next = current > 0 ? current - 1 : colors.length - 1;
-            break;
-          case 'Home':
-            next = 0;
-            break;
-          case 'End':
-            next = colors.length - 1;
-            break;
-        }
-
-        if (next !== null) {
-          e.preventDefault();
-          onChange(colors[next], next);
-        }
-
-        onKeyDown?.(e);
-      },
-      [colors, selectedIndex, onChange, onKeyDown],
-    );
+    const hasHandler = !!(onChange || context?.setRequested);
+    const selectedColor = value ?? context?.requested;
 
     return (
       <div
@@ -96,20 +56,30 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
         ref={ref}
         data-swatch-group=""
         role="listbox"
-        aria-label={ariaLabel ?? 'Color swatches'}
-        tabIndex={0}
-        onKeyDown={handleKeyDown}
+        aria-label={props['aria-label'] ?? 'Color swatches'}
+        style={{
+          ...(columns != null
+            ? ({ '--columns': columns } as React.CSSProperties)
+            : undefined),
+          ...style,
+        }}
       >
-        {colors.map((color, index) => (
-          <Swatch
-            key={index}
-            color={color}
-            isSelected={selectedIndex === index}
-            onSelect={() => handleSelect(color, index)}
-            role="option"
-            aria-selected={selectedIndex === index}
-          />
-        ))}
+        {colors.map((color, index) => {
+          const selected = selectedColor
+            ? colorsEqual(color, selectedColor)
+            : false;
+
+          return (
+            <div key={index} role="option" aria-selected={selected}>
+              <Swatch
+                color={color}
+                gamut={context?.activeGamut}
+                isSelected={selected}
+                onSelect={hasHandler ? handleSelect : undefined}
+              />
+            </div>
+          );
+        })}
         {children}
       </div>
     );

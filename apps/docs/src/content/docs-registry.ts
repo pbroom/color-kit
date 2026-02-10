@@ -72,6 +72,11 @@ export const docsNavigation: DocsNavSection[] = [
         path: 'migration-dual-state',
         href: toDocsHref('migration-dual-state'),
       },
+      {
+        title: 'Multi-Color State',
+        path: 'multi-color-state',
+        href: toDocsHref('multi-color-state'),
+      },
     ],
   },
   {

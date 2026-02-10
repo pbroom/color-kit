@@ -12,29 +12,17 @@ import {
 import type { Color } from '@color-kit/core';
 import { clamp } from '@color-kit/core';
 import { useOptionalColorContext } from '@/hooks/color-context';
+import type { SetRequestedOptions } from '@/hooks/use-color';
 
 export interface ColorSliderProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
-  'onChange' | 'color'
+  'onChange'
 > {
-  /**
-   * Which color channel the slider controls.
-   */
   channel: 'l' | 'c' | 'h' | 'alpha';
-  /**
-   * Value range for the channel.
-   * Defaults: l=[0,1], c=[0,0.4], h=[0,360], alpha=[0,1]
-   */
   range?: [number, number];
-  /**
-   * Slider orientation.
-   * @default "horizontal"
-   */
   orientation?: 'horizontal' | 'vertical';
-  /** Standalone color value (alternative to ColorProvider) */
-  color?: Color;
-  /** Standalone onChange (alternative to ColorProvider) */
-  onChange?: (color: Color) => void;
+  requested?: Color;
+  onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
 const DEFAULT_RANGES: Record<string, [number, number]> = {
@@ -51,42 +39,26 @@ const CHANNEL_LABELS: Record<string, string> = {
   alpha: 'Opacity',
 };
 
-/**
- * A 1D color slider for a single color channel.
- *
- * Renders as a plain `<div>` with a draggable thumb (`<div>`).
- * Completely unstyled -- use data attributes and CSS to style it.
- *
- * Data attributes on the root:
- * - `[data-color-slider]` - always present
- * - `[data-channel]` - the channel name (l, c, h, alpha)
- * - `[data-orientation]` - horizontal or vertical
- * - `[data-dragging]` - present while the user is dragging
- *
- * Data attributes on the thumb (first child):
- * - `[data-color-slider-thumb]` - always present
- * - `[data-value]` - normalized position (0-1)
- */
 export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
   function ColorSlider(
     {
       channel,
       range,
       orientation = 'horizontal',
-      color: colorProp,
-      onChange: onChangeProp,
+      requested: requestedProp,
+      onChangeRequested: onChangeRequestedProp,
       ...props
     },
     ref,
   ) {
     const context = useOptionalColorContext();
 
-    const color = colorProp ?? context?.color;
-    const setColor = onChangeProp ?? context?.setColor;
+    const requested = requestedProp ?? context?.requested;
+    const setRequested = onChangeRequestedProp ?? context?.setRequested;
 
-    if (!color || !setColor) {
+    if (!requested || !setRequested) {
       throw new Error(
-        'ColorSlider requires either a <ColorProvider> ancestor or explicit color/onChange props.',
+        'ColorSlider requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 
@@ -94,9 +66,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     const [isDragging, setIsDragging] = useState(false);
 
     const r = range ?? DEFAULT_RANGES[channel];
-
-    // Compute normalized position from color
-    const norm = clamp((color[channel] - r[0]) / (r[1] - r[0]), 0, 1);
+    const norm = clamp((requested[channel] - r[0]) / (r[1] - r[0]), 0, 1);
 
     const updateFromPosition = useCallback(
       (clientX: number, clientY: number) => {
@@ -109,18 +79,23 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         if (orientation === 'horizontal') {
           t = clamp((clientX - rect.left) / rect.width, 0, 1);
         } else {
-          // Vertical: top = max, bottom = min (inverted)
           t = 1 - clamp((clientY - rect.top) / rect.height, 0, 1);
         }
 
         const value = r[0] + t * (r[1] - r[0]);
 
-        setColor({
-          ...color,
-          [channel]: value,
-        });
+        setRequested(
+          {
+            ...requested,
+            [channel]: value,
+          },
+          {
+            changedChannel: channel,
+            interaction: 'pointer',
+          },
+        );
       },
-      [color, setColor, channel, r, orientation],
+      [requested, setRequested, channel, r, orientation],
     );
 
     const onPointerDown = useCallback(
@@ -150,50 +125,34 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         const step = e.shiftKey ? 0.1 : 0.01;
         const channelStep = step * (r[1] - r[0]);
 
-        let newColor: Color | null = null;
-
-        const isForward =
-          orientation === 'horizontal' ? 'ArrowRight' : 'ArrowUp';
-        const isBackward =
-          orientation === 'horizontal' ? 'ArrowLeft' : 'ArrowDown';
+        let next: Color | null = null;
 
         switch (e.key) {
-          case isForward:
           case 'ArrowRight':
           case 'ArrowUp':
-            if (
-              e.key === isForward ||
-              e.key === 'ArrowRight' ||
-              e.key === 'ArrowUp'
-            ) {
-              newColor = {
-                ...color,
-                [channel]: clamp(color[channel] + channelStep, r[0], r[1]),
-              };
-            }
+            next = {
+              ...requested,
+              [channel]: clamp(requested[channel] + channelStep, r[0], r[1]),
+            };
             break;
-          case isBackward:
           case 'ArrowLeft':
           case 'ArrowDown':
-            if (
-              e.key === isBackward ||
-              e.key === 'ArrowLeft' ||
-              e.key === 'ArrowDown'
-            ) {
-              newColor = {
-                ...color,
-                [channel]: clamp(color[channel] - channelStep, r[0], r[1]),
-              };
-            }
+            next = {
+              ...requested,
+              [channel]: clamp(requested[channel] - channelStep, r[0], r[1]),
+            };
             break;
         }
 
-        if (newColor) {
+        if (next) {
           e.preventDefault();
-          setColor(newColor);
+          setRequested(next, {
+            changedChannel: channel,
+            interaction: 'keyboard',
+          });
         }
       },
-      [color, setColor, channel, r, orientation],
+      [requested, setRequested, channel, r],
     );
 
     const isHorizontal = orientation === 'horizontal';
@@ -216,7 +175,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         aria-label={props['aria-label'] ?? defaultLabel}
         aria-valuemin={r[0]}
         aria-valuemax={r[1]}
-        aria-valuenow={color[channel]}
+        aria-valuenow={requested[channel]}
         aria-orientation={orientation}
         tabIndex={0}
         onPointerDown={onPointerDown}

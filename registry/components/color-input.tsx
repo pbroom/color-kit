@@ -2,125 +2,146 @@
 
 import {
   forwardRef,
+  useRef,
   useState,
   useCallback,
-  useEffect,
-  type InputHTMLAttributes,
+  useMemo,
+  type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import type { Color } from '@color-kit/core';
-import { toHex, toCss, parse } from '@color-kit/core';
+import { parse, toCss } from '@color-kit/core';
 import { useOptionalColorContext } from '@/hooks/color-context';
+import type { SetRequestedOptions } from '@/hooks/use-color';
 
 export interface ColorInputProps extends Omit<
-  InputHTMLAttributes<HTMLInputElement>,
-  'onChange' | 'value' | 'color'
+  HTMLAttributes<HTMLDivElement>,
+  'onChange'
 > {
-  /**
-   * The color format to display and parse.
-   * @default "hex"
-   */
   format?: 'hex' | 'rgb' | 'hsl' | 'oklch';
-  /** Standalone color value (alternative to ColorProvider) */
-  color?: Color;
-  /** Standalone onChange (alternative to ColorProvider) */
-  onChange?: (color: Color) => void;
+  requested?: Color;
+  onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
-function colorToString(color: Color, format: string): string {
-  if (format === 'hex') return toHex(color);
+function formatValue(
+  color: Color,
+  format: 'hex' | 'rgb' | 'hsl' | 'oklch',
+): string {
   return toCss(color, format);
 }
 
-/**
- * A text input for entering and editing color values.
- *
- * Parses color strings on blur or Enter key press.
- * Supports hex, rgb, hsl, and oklch formats.
- *
- * Data attributes:
- * - `[data-color-input]` — always present
- * - `[data-format]` — the current format (hex, rgb, hsl, oklch)
- * - `[data-invalid]` — present when the current text cannot be parsed
- */
-export const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
+function parseValue(value: string): Color | null {
+  try {
+    return parse(value);
+  } catch {
+    return null;
+  }
+}
+
+export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
   function ColorInput(
     {
       format = 'hex',
-      color: colorProp,
-      onChange: onChangeProp,
-      onKeyDown,
-      'aria-label': ariaLabel,
+      requested: requestedProp,
+      onChangeRequested: onChangeRequestedProp,
       ...props
     },
     ref,
   ) {
     const context = useOptionalColorContext();
 
-    const color = colorProp ?? context?.color;
-    const setColor = onChangeProp ?? context?.setColor;
+    const requested = requestedProp ?? context?.requested;
+    const setRequested = onChangeRequestedProp ?? context?.setRequested;
 
-    if (!color || !setColor) {
+    if (!requested || !setRequested) {
       throw new Error(
-        'ColorInput requires either a <ColorProvider> ancestor or explicit color/onChange props.',
+        'ColorInput requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 
-    const [text, setText] = useState(() => colorToString(color, format));
-    const [isInvalid, setIsInvalid] = useState(false);
-
-    // Sync text when color changes externally
-    useEffect(() => {
-      setText(colorToString(color, format));
-      setIsInvalid(false);
-    }, [color, format]);
-
-    const commit = useCallback(
-      (value: string) => {
-        try {
-          const parsed = parse(value.trim());
-          setColor(parsed);
-          setIsInvalid(false);
-        } catch {
-          setIsInvalid(true);
-        }
-      },
-      [setColor],
+    const displayValue = useMemo(
+      () => formatValue(requested, format),
+      [requested, format],
     );
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [inputValue, setInputValue] = useState('');
+    const skipBlurCommitRef = useRef(false);
+
+    const currentValue = isEditing ? inputValue : displayValue;
+    const isValid = useMemo(
+      () => parseValue(currentValue) !== null,
+      [currentValue],
+    );
+
+    const commitValue = useCallback(() => {
+      setIsEditing(false);
+      const parsed = parseValue(inputValue);
+      if (parsed) {
+        setRequested(parsed, { interaction: 'text-input' });
+      }
+    }, [inputValue, setRequested]);
+
+    const handleFocus = useCallback(() => {
+      setIsEditing(true);
+      setInputValue(displayValue);
+    }, [displayValue]);
+
     const handleBlur = useCallback(() => {
-      commit(text);
-    }, [text, commit]);
+      if (skipBlurCommitRef.current) {
+        skipBlurCommitRef.current = false;
+        return;
+      }
+      commitValue();
+    }, [commitValue]);
+
+    const handleChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputValue(e.target.value);
+      },
+      [],
+    );
 
     const handleKeyDown = useCallback(
       (e: ReactKeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
-          commit(text);
+          e.preventDefault();
+          commitValue();
+          skipBlurCommitRef.current = true;
+          (e.target as HTMLInputElement).blur();
         }
         if (e.key === 'Escape') {
-          setText(colorToString(color, format));
-          setIsInvalid(false);
+          e.preventDefault();
+          setIsEditing(false);
+          setInputValue(displayValue);
+          skipBlurCommitRef.current = true;
+          (e.target as HTMLInputElement).blur();
         }
-        onKeyDown?.(e);
       },
-      [text, commit, color, format, onKeyDown],
+      [commitValue, displayValue],
     );
 
     return (
-      <input
+      <div
         {...props}
         ref={ref}
-        type="text"
         data-color-input=""
         data-format={format}
-        data-invalid={isInvalid || undefined}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        aria-label={ariaLabel ?? `Color value (${format})`}
-        aria-invalid={isInvalid || undefined}
-      />
+        data-valid={isValid || undefined}
+        data-editing={isEditing || undefined}
+      >
+        <input
+          type="text"
+          value={currentValue}
+          aria-label="Color value"
+          spellCheck={false}
+          autoComplete="off"
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+        />
+      </div>
     );
   },
 );

@@ -84,6 +84,19 @@ color.displayed; // active rendered state
 color.setRequested({ l: 0.7, c: 0.2, h: 250, alpha: 1 });
 ```
 
+### Multi-Color State
+
+`useMultiColor` manages named color collections with shared gamut/view settings.
+
+```tsx
+const palette = useMultiColor({
+  defaultColors: { base: '#3b82f6', accent: 'oklch(0.8 0.4 145)' },
+});
+
+palette.setChannel('accent', 'h', 220, { interaction: 'user' });
+palette.setActiveGamut('srgb');
+```
+
 ## Core API
 
 ### Conversion
