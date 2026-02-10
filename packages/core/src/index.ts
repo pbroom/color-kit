@@ -59,6 +59,13 @@ export {
   contrastAPCA,
   meetsAA,
   meetsAAA,
+  contrastRegionPath,
+  contrastRegionPaths,
+} from './contrast/index.js';
+export type {
+  ContrastRegionLevel,
+  ContrastRegionPoint,
+  ContrastRegionPathOptions,
 } from './contrast/index.js';
 
 // Harmony

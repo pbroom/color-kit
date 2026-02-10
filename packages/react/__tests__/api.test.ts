@@ -6,6 +6,7 @@ import {
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
   colorsEqual,
+  getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
   getColorDisplayStyles,
   getContrastBadgeSummary,
@@ -62,6 +63,41 @@ describe('Color API helpers', () => {
       { steps: 8 },
     );
     expect(boundary).toEqual([]);
+  });
+
+  it('returns normalized contrast-region paths for l/c areas', () => {
+    const paths = getColorAreaContrastRegionPaths(
+      parse('#ffffff'),
+      220,
+      { x: 'c', y: 'l' },
+      [0, 0.4],
+      [0, 1],
+      { level: 'AA', lightnessSteps: 16, chromaSteps: 16 },
+    );
+
+    expect(paths.length).toBeGreaterThan(0);
+    for (const path of paths) {
+      expect(path.length).toBeGreaterThan(1);
+      for (const point of path) {
+        expect(point.x).toBeGreaterThanOrEqual(0);
+        expect(point.x).toBeLessThanOrEqual(1);
+        expect(point.y).toBeGreaterThanOrEqual(0);
+        expect(point.y).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('returns no contrast-region paths for non l/c color areas', () => {
+    const paths = getColorAreaContrastRegionPaths(
+      parse('#ffffff'),
+      220,
+      { x: 'h', y: 'l' },
+      [0, 360],
+      [0, 1],
+      { level: 'AA', lightnessSteps: 12, chromaSteps: 12 },
+    );
+
+    expect(paths).toEqual([]);
   });
 
   it('updates color area channels from keyboard input', () => {

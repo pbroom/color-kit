@@ -1,5 +1,11 @@
 import type { Color } from '@color-kit/core';
-import { clamp, gamutBoundaryPath, type GamutTarget } from '@color-kit/core';
+import {
+  clamp,
+  contrastRegionPaths,
+  gamutBoundaryPath,
+  type ContrastRegionLevel,
+  type GamutTarget,
+} from '@color-kit/core';
 
 export type ColorAreaChannel = 'l' | 'c' | 'h';
 export type ColorAreaKey = 'ArrowRight' | 'ArrowLeft' | 'ArrowUp' | 'ArrowDown';
@@ -23,6 +29,25 @@ export interface ColorAreaGamutBoundaryPoint {
 export interface ColorAreaGamutBoundaryOptions {
   gamut?: GamutTarget;
   steps?: number;
+}
+
+export interface ColorAreaContrastRegionPoint {
+  l: number;
+  c: number;
+  x: number;
+  y: number;
+}
+
+export interface ColorAreaContrastRegionOptions {
+  gamut?: GamutTarget;
+  level?: ContrastRegionLevel;
+  threshold?: number;
+  lightnessSteps?: number;
+  chromaSteps?: number;
+  maxChroma?: number;
+  tolerance?: number;
+  maxIterations?: number;
+  alpha?: number;
 }
 
 export function resolveColorAreaRange(
@@ -110,6 +135,49 @@ export function getColorAreaGamutBoundaryPoints(
       y: position.y,
     };
   });
+}
+
+export function getColorAreaContrastRegionPaths(
+  reference: Color,
+  hue: number,
+  channels: { x: ColorAreaChannel; y: ColorAreaChannel },
+  xRange: [number, number],
+  yRange: [number, number],
+  options: ColorAreaContrastRegionOptions = {},
+): ColorAreaContrastRegionPoint[][] {
+  if (!usesLightnessAndChroma(channels)) {
+    return [];
+  }
+
+  const paths = contrastRegionPaths(reference, hue, {
+    gamut: options.gamut ?? 'srgb',
+    level: options.level,
+    threshold: options.threshold,
+    lightnessSteps: options.lightnessSteps,
+    chromaSteps: options.chromaSteps,
+    maxChroma: options.maxChroma,
+    tolerance: options.tolerance,
+    maxIterations: options.maxIterations,
+    alpha: options.alpha,
+  });
+
+  return paths.map((path) =>
+    path.map((point) => {
+      const position = getColorAreaThumbPosition(
+        { l: point.l, c: point.c, h: hue, alpha: 1 },
+        channels,
+        xRange,
+        yRange,
+      );
+
+      return {
+        l: point.l,
+        c: point.c,
+        x: position.x,
+        y: position.y,
+      };
+    }),
+  );
 }
 
 export function colorFromColorAreaKey(
