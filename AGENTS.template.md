@@ -22,9 +22,11 @@ This file defines top-level guidance for Codex in this repository.
 
 ## Reflection and Learnings
 
-- At the end of non-trivial tasks, record reusable lessons in `## Agent Learnings`.
-- Add only non-duplicative, broadly useful entries.
+- At the end of non-trivial tasks, record reusable lessons in `AGENTS.learnings.archive.md`.
+- Add every new reusable learning to archive first; only promote to Active if it is evergreen and broadly useful; keep Active capped at 10 and demote displaced entries to archive.
 - Format:
   - `- **YYYY-MM-DD — Short title**: One or two sentence actionable lesson.`
 
-## Agent Learnings
+## Active Agent Learnings (Top 10 Evergreen)
+
+- Full history lives in `AGENTS.learnings.archive.md` (create it if missing).

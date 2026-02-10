@@ -151,6 +151,29 @@ scripts/install-codex-agents.sh /path/to/other-repo
 scripts/install-codex-agents.sh /path/to/other-repo --force
 ```
 
+## Agent Learnings Workflow
+
+Agent learnings use a split model:
+
+- `AGENTS.md` stores only the top 10 active evergreen learnings for fast agent context.
+- `AGENTS.learnings.archive.md` is the full historical source of truth.
+
+Use these commands:
+
+```bash
+# Add to archive only
+pnpm agents:add -- --title "Short title" --lesson "Actionable lesson"
+
+# Add/update archive and promote to active (keeps active list capped at 10)
+pnpm agents:add -- --title "Short title" --lesson "Actionable lesson" --active
+
+# Non-blocking checks (warnings only)
+pnpm agents:check
+
+# Strict checks (fails on warnings)
+pnpm agents:check:strict
+```
+
 ## License
 
 [MIT](./LICENSE)
