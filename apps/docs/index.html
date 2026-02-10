@@ -8,6 +8,26 @@
       name="description"
       content="Open-source primitive UI components and tooling for building color interfaces. Built with OKLCH, fully accessible, and headless."
     />
+    <script>
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem('color-kit-docs-theme-preference');
+        } catch (error) {}
+        var preference =
+          stored === 'light' || stored === 'dark' || stored === 'system'
+            ? stored
+            : 'system';
+        var prefersDark =
+          window.matchMedia &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var resolved =
+          preference === 'system' ? (prefersDark ? 'dark' : 'light') : preference;
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.dataset.themePreference = preference;
+        document.documentElement.style.colorScheme = resolved;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
