@@ -39,6 +39,8 @@ const SATURATION_GRADIENT =
 
 const AREA_GRADIENT =
   'linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0)), linear-gradient(to right, #ffffff, #3b82f6)';
+const CHECKERBOARD_GRADIENT =
+  'linear-gradient(45deg, rgba(13, 18, 29, 0.7) 25%, transparent 25%), linear-gradient(-45deg, rgba(13, 18, 29, 0.7) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(13, 18, 29, 0.7) 75%), linear-gradient(-45deg, transparent 75%, rgba(13, 18, 29, 0.7) 75%)';
 
 function toSvgPath(points: Array<{ x: number; y: number }>): string {
   if (points.length < 2) return '';
@@ -112,6 +114,7 @@ export function ColorAreaDemo({
   const state = inspectorDriven && inspector ? inspector.colorAreaState : null;
 
   const channels = normalizeChannels(state?.xAxis ?? 'c', state?.yAxis ?? 'l');
+  const showCheckerboard = state?.showCheckerboard ?? false;
   const xRange = channelRange(channels.x);
   const yRange = channelRange(channels.y);
   const color = useColor({
@@ -178,17 +181,30 @@ export function ColorAreaDemo({
     () => contrastPaths.map((path) => toSvgPath(path)).filter(Boolean),
     [contrastPaths],
   );
+  const areaBackground = useMemo(() => {
+    const baseBackground = getAreaBackground(channels);
+    if (!showCheckerboard) {
+      return {
+        backgroundImage: baseBackground,
+      };
+    }
+    return {
+      backgroundImage: `${CHECKERBOARD_GRADIENT}, ${baseBackground}`,
+      backgroundSize: '16px 16px, 16px 16px, 16px 16px, 16px 16px, auto',
+      backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0, 0 0',
+    };
+  }, [channels, showCheckerboard]);
 
   return (
     <div className="ck-demo-stack">
       <ColorArea
-        className={`ck-color-area ${state?.showCheckerboard ? 'ck-checker' : ''}`}
+        className="ck-color-area"
         requested={color.requested}
         onChangeRequested={color.setRequested}
         channels={channels}
         xRange={xRange}
         yRange={yRange}
-        style={{ background: getAreaBackground(channels) }}
+        style={areaBackground}
       >
         {(state?.showContrastRegion ?? false) && (
           <svg

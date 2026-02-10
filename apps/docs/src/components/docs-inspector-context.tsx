@@ -33,10 +33,44 @@ const DEFAULT_COLOR_AREA_STATE: ColorAreaInspectorState = {
   xAxis: 'c',
   yAxis: 'l',
   showCheckerboard: true,
-  showP3Boundary: true,
-  showSrgbBoundary: true,
+  showP3Boundary: false,
+  showSrgbBoundary: false,
   showContrastRegion: false,
 };
+
+const COLOR_AREA_DEMO_PRESETS: Record<
+  ColorAreaDemoId,
+  Pick<
+    ColorAreaInspectorState,
+    | 'showCheckerboard'
+    | 'showP3Boundary'
+    | 'showSrgbBoundary'
+    | 'showContrastRegion'
+  >
+> = {
+  requested: {
+    showCheckerboard: true,
+    showP3Boundary: false,
+    showSrgbBoundary: false,
+    showContrastRegion: false,
+  },
+  analysis: {
+    showCheckerboard: false,
+    showP3Boundary: true,
+    showSrgbBoundary: true,
+    showContrastRegion: true,
+  },
+};
+
+function normalizeColorAreaState(
+  state: ColorAreaInspectorState,
+): ColorAreaInspectorState {
+  const next = { ...state };
+  if (next.xAxis === next.yAxis) {
+    next.yAxis = next.yAxis === 'l' ? 'c' : 'l';
+  }
+  return next;
+}
 
 interface DocsInspectorContextValue {
   activeTab: DocsInspectorTab;
@@ -61,10 +95,10 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
     (patch: Partial<ColorAreaInspectorState>) => {
       setColorAreaStateInternal((current) => {
         const next = { ...current, ...patch };
-        if (next.xAxis === next.yAxis) {
-          next.yAxis = next.yAxis === 'l' ? 'c' : 'l';
+        if (patch.selectedDemo && patch.selectedDemo !== current.selectedDemo) {
+          Object.assign(next, COLOR_AREA_DEMO_PRESETS[patch.selectedDemo]);
         }
-        return next;
+        return normalizeColorAreaState(next);
       });
     },
     [],
@@ -77,10 +111,12 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
       );
       const nextIndex =
         (index + direction + COLOR_AREA_DEMOS.length) % COLOR_AREA_DEMOS.length;
-      return {
+      const selectedDemo = COLOR_AREA_DEMOS[nextIndex].id;
+      return normalizeColorAreaState({
         ...current,
-        selectedDemo: COLOR_AREA_DEMOS[nextIndex].id,
-      };
+        selectedDemo,
+        ...COLOR_AREA_DEMO_PRESETS[selectedDemo],
+      });
     });
   }, []);
 

@@ -26,30 +26,13 @@ function DocsLayoutInner() {
 
   useEffect(() => {
     let cancelled = false;
-    let rafId = 0;
-    let attempts = 0;
+    let contentObserver: MutationObserver | null = null;
+    let rootObserver: MutationObserver | null = null;
 
-    const readHeadings = () => {
-      if (cancelled) return;
-      const root = document.querySelector('[data-doc-content]');
-      if (!root) {
-        if (attempts < 10) {
-          attempts += 1;
-          rafId = window.requestAnimationFrame(readHeadings);
-        }
-        return;
-      }
-
+    const readHeadings = (root: Element) => {
       const nodes = Array.from(
         root.querySelectorAll<HTMLElement>('h2, h3'),
       ).filter((node) => node.textContent?.trim());
-
-      if (nodes.length === 0 && attempts < 10) {
-        attempts += 1;
-        rafId = window.requestAnimationFrame(readHeadings);
-        return;
-      }
-
       const ids = new Map<string, number>();
       const next = nodes.map((node) => {
         const title = node.textContent?.trim() ?? '';
@@ -70,10 +53,42 @@ function DocsLayoutInner() {
       }
     };
 
-    rafId = window.requestAnimationFrame(readHeadings);
+    const connectToRoot = () => {
+      const root = document.querySelector('[data-doc-content]');
+      if (!root) {
+        return false;
+      }
+      readHeadings(root);
+      contentObserver?.disconnect();
+      contentObserver = new MutationObserver(() => {
+        readHeadings(root);
+      });
+      contentObserver.observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+      return true;
+    };
+
+    setHeadings([]);
+    if (!connectToRoot()) {
+      rootObserver = new MutationObserver(() => {
+        if (connectToRoot()) {
+          rootObserver?.disconnect();
+          rootObserver = null;
+        }
+      });
+      rootObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
     return () => {
       cancelled = true;
-      window.cancelAnimationFrame(rafId);
+      contentObserver?.disconnect();
+      rootObserver?.disconnect();
     };
   }, [location.pathname]);
 
