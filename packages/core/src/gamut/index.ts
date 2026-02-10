@@ -86,7 +86,10 @@ export function maxChromaAt(
   }
 
   const minTolerance = tolerance > 0 ? tolerance : DEFAULT_TOLERANCE;
-  const iterations = maxIterations > 0 ? Math.floor(maxIterations) : 1;
+  const iterations =
+    Number.isFinite(maxIterations) && maxIterations > 0
+      ? Math.max(1, Math.floor(maxIterations))
+      : DEFAULT_MAX_ITERATIONS;
 
   for (let index = 0; index < iterations; index += 1) {
     if (hi - lo <= minTolerance) break;

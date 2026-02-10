@@ -47,4 +47,16 @@ describe('maxChromaAt()', () => {
     expect(first).toBe(second);
     expect(capped).toBeLessThanOrEqual(0.05);
   });
+
+  it('runs at least one iteration for fractional maxIterations', () => {
+    const l = 0.85;
+    const h = 145;
+    const c = maxChromaAt(l, h, {
+      gamut: 'srgb',
+      maxIterations: 0.5,
+    });
+
+    expect(c).toBeGreaterThan(0);
+    expect(inSrgbGamut({ l, c, h, alpha: 1 })).toBe(true);
+  });
 });
