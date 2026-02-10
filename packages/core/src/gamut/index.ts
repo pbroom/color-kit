@@ -46,6 +46,30 @@ export interface GamutBoundaryPathOptions extends MaxChromaAtOptions {
   steps?: number;
 }
 
+export type ChromaBandMode = 'clamped' | 'proportional';
+
+export interface ChromaBandOptions extends MaxChromaAtOptions {
+  /**
+   * Chroma distribution strategy across the lightness sweep.
+   * @default 'clamped'
+   */
+  mode?: ChromaBandMode;
+  /**
+   * Number of equal lightness segments to sample.
+   * The returned band has `steps + 1` colors.
+   */
+  steps?: number;
+  /**
+   * Lightness anchor for proportional mode.
+   * Used to resolve the requested/max chroma ratio.
+   * @default 0.5
+   */
+  selectedLightness?: number;
+}
+
+const DEFAULT_CHROMA_BAND_STEPS = 12;
+const DEFAULT_CHROMA_BAND_SELECTED_LIGHTNESS = 0.5;
+
 function isInTargetGamut(color: Color, gamut: GamutTarget): boolean {
   return gamut === 'display-p3' ? inP3Gamut(color) : inSrgbGamut(color);
 }
@@ -126,6 +150,76 @@ export function gamutBoundaryPath(
     path.push({ l, c });
   }
   return path;
+}
+
+/**
+ * Generate a tonal strip for a fixed hue and requested chroma.
+ *
+ * `clamped`: use requested chroma where available, otherwise clamp to boundary.
+ * `proportional`: scale by a fixed requested/max ratio across all lightness steps.
+ */
+export function chromaBand(
+  hue: number,
+  requestedChroma: number,
+  options: ChromaBandOptions = {},
+): Color[] {
+  if (!Number.isFinite(requestedChroma)) {
+    throw new Error('chromaBand() requires a finite requestedChroma');
+  }
+
+  const steps = options.steps ?? DEFAULT_CHROMA_BAND_STEPS;
+  if (!Number.isInteger(steps) || steps < 2) {
+    throw new Error('chromaBand() requires steps >= 2');
+  }
+
+  const mode = options.mode ?? 'clamped';
+  if (mode !== 'clamped' && mode !== 'proportional') {
+    throw new Error("chromaBand() mode must be 'clamped' or 'proportional'");
+  }
+
+  const gamut = options.gamut ?? 'srgb';
+  const alpha = options.alpha ?? 1;
+  const h = normalizeHue(hue);
+  const requested = Math.max(0, requestedChroma);
+  const selectedLightness = clamp(
+    options.selectedLightness ?? DEFAULT_CHROMA_BAND_SELECTED_LIGHTNESS,
+    0,
+    1,
+  );
+
+  const searchOptions: MaxChromaAtOptions = {
+    gamut,
+    tolerance: options.tolerance,
+    maxIterations: options.maxIterations,
+    maxChroma: options.maxChroma,
+    alpha,
+  };
+
+  let proportionalRatio = 1;
+  if (mode === 'proportional') {
+    const selectedMax = maxChromaAt(selectedLightness, h, searchOptions);
+    proportionalRatio =
+      selectedMax <= 0 ? 0 : clamp(requested / selectedMax, 0, 1);
+  }
+
+  const band: Color[] = [];
+  for (let index = 0; index <= steps; index += 1) {
+    const l = index / steps;
+    const maxInGamut = maxChromaAt(l, h, searchOptions);
+    const c =
+      mode === 'proportional'
+        ? proportionalRatio * maxInGamut
+        : Math.min(requested, maxInGamut);
+
+    band.push({
+      l,
+      c,
+      h,
+      alpha,
+    });
+  }
+
+  return band;
 }
 
 /**
