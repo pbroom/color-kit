@@ -15,20 +15,21 @@ import {
   parseColorInputValue,
   type ColorInputFormat,
 } from './api/color-input.js';
+import type { SetRequestedOptions } from './use-color.js';
 
 export interface ColorInputProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
-  'onChange' | 'color'
+  'onChange'
 > {
   /**
    * Color format displayed in the input.
    * @default 'hex'
    */
   format?: ColorInputFormat;
-  /** Standalone color value (alternative to ColorProvider) */
-  color?: Color;
-  /** Standalone onChange (alternative to ColorProvider) */
-  onChange?: (color: Color) => void;
+  /** Standalone requested color value (alternative to ColorProvider) */
+  requested?: Color;
+  /** Standalone change handler (alternative to ColorProvider) */
+  onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
 /**
@@ -45,23 +46,28 @@ export interface ColorInputProps extends Omit<
  */
 export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
   function ColorInput(
-    { format = 'hex', color: colorProp, onChange: onChangeProp, ...props },
+    {
+      format = 'hex',
+      requested: requestedProp,
+      onChangeRequested: onChangeRequestedProp,
+      ...props
+    },
     ref,
   ) {
     const context = useOptionalColorContext();
 
-    const color = colorProp ?? context?.color;
-    const setColor = onChangeProp ?? context?.setColor;
+    const requested = requestedProp ?? context?.requested;
+    const setRequested = onChangeRequestedProp ?? context?.setRequested;
 
-    if (!color || !setColor) {
+    if (!requested || !setRequested) {
       throw new Error(
-        'ColorInput requires either a <ColorProvider> ancestor or explicit color/onChange props.',
+        'ColorInput requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 
     const displayValue = useMemo(
-      () => formatColorInputValue(color, format),
-      [color, format],
+      () => formatColorInputValue(requested, format),
+      [requested, format],
     );
 
     const [isEditing, setIsEditing] = useState(false);
@@ -78,10 +84,12 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       setIsEditing(false);
       const parsed = parseColorInputValue(inputValue);
       if (parsed) {
-        setColor(parsed);
+        setRequested(parsed, {
+          interaction: 'text-input',
+        });
       }
       // Invalid input — revert to current color display value
-    }, [inputValue, setColor]);
+    }, [inputValue, setRequested]);
 
     const handleFocus = useCallback(() => {
       setIsEditing(true);

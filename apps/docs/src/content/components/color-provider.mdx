@@ -5,7 +5,10 @@ import { ColorProviderDemo } from '@/components/component-demos';
 
 # Color Provider
 
-`ColorProvider` shares one color state across any nested color-kit components.
+`ColorProvider` shares a dual-state contract across nested color-kit components:
+
+- `requested`: user intent in canonical OKLCH
+- `displayed`: deterministic sRGB and Display P3 mapped values
 
 <ComponentPreview>
   <ColorProviderDemo />
@@ -18,7 +21,12 @@ import { ColorProviderDemo } from '@/components/component-demos';
 ## Usage
 
 ```tsx
-import { ColorProvider, ColorArea, HueSlider, ColorInput } from '@color-kit/react';
+import {
+  ColorProvider,
+  ColorArea,
+  HueSlider,
+  ColorInput,
+} from '@color-kit/react';
 
 export function Picker() {
   return (
@@ -33,4 +41,8 @@ export function Picker() {
 
 ## Non-UI API helpers
 
-Use `useColor` when you want provider-like state handling outside UI composition.
+Use `useColor` outside UI composition when you need direct control over:
+
+- `setRequested` / `setChannel` updates
+- `activeGamut` switching (`srgb` / `display-p3`)
+- `requested` versus `displayed` rendering semantics

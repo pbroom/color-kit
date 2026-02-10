@@ -1,57 +1,79 @@
-import { useState, useCallback, useMemo } from 'react';
-import type { Color, Rgb, Hsl, Hsv, Oklch } from '@color-kit/core';
+import { useCallback, useMemo, useState } from 'react';
+import type { Color, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
 import {
-  toRgb,
+  fromHsl,
+  fromHsv,
+  fromRgb,
+  parse,
+  toCss,
   toHex,
   toHsl,
   toHsv,
   toOklch,
-  toCss,
-  fromRgb,
-  fromHsl,
-  fromHsv,
-  parse,
+  toRgb,
 } from '@color-kit/core';
+import {
+  createColorState,
+  getActiveDisplayedColor,
+  type ColorChannel,
+  type ColorInteraction,
+  type ColorSource,
+  type ColorState,
+  type ColorUpdateEvent,
+  type GamutTarget,
+  type ViewModel,
+} from './color-state.js';
 
 export interface UseColorOptions {
   /** Initial color value (CSS string, hex, or Color object) */
   defaultColor?: string | Color;
-  /** Controlled color value */
-  color?: Color;
-  /** Callback when color changes */
-  onChange?: (color: Color) => void;
+  /** Controlled full state value */
+  state?: ColorState;
+  /** Callback when state changes */
+  onChange?: (event: ColorUpdateEvent) => void;
+  /** Initial active display gamut in uncontrolled mode */
+  defaultGamut?: GamutTarget;
+  /** Initial active view model in uncontrolled mode */
+  defaultView?: ViewModel;
+}
+
+export interface SetRequestedOptions {
+  changedChannel?: ColorChannel;
+  interaction?: ColorInteraction;
+  source?: ColorSource;
 }
 
 export interface UseColorReturn {
-  /** Current color in internal OKLCH representation */
-  color: Color;
-  /** Set color from a Color object */
-  setColor: (color: Color) => void;
-  /** Set color from a CSS string */
-  setFromString: (css: string) => void;
-  /** Set color from RGB values */
-  setFromRgb: (rgb: Rgb) => void;
-  /** Set color from HSL values */
-  setFromHsl: (hsl: Hsl) => void;
-  /** Set color from HSV values */
-  setFromHsv: (hsv: Hsv) => void;
-  /** Current color as hex string */
+  state: ColorState;
+  requested: Color;
+  displayed: Color;
+  displayedSrgb: Color;
+  displayedP3: Color;
+  activeGamut: GamutTarget;
+  activeView: ViewModel;
+  setRequested: (requested: Color, options?: SetRequestedOptions) => void;
+  setChannel: (
+    channel: ColorChannel,
+    value: number,
+    options?: Omit<SetRequestedOptions, 'changedChannel'>,
+  ) => void;
+  setFromString: (css: string, options?: SetRequestedOptions) => void;
+  setFromRgb: (rgb: Rgb, options?: SetRequestedOptions) => void;
+  setFromHsl: (hsl: Hsl, options?: SetRequestedOptions) => void;
+  setFromHsv: (hsv: Hsv, options?: SetRequestedOptions) => void;
+  setActiveGamut: (gamut: GamutTarget, source?: ColorSource) => void;
+  setActiveView: (view: ViewModel, source?: ColorSource) => void;
   hex: string;
-  /** Current color as RGB */
   rgb: Rgb;
-  /** Current color as HSL */
   hsl: Hsl;
-  /** Current color as HSV */
   hsv: Hsv;
-  /** Current color as OKLCH */
   oklch: Oklch;
-  /** Get CSS string in any format */
-  css: (format?: string) => string;
+  requestedCss: (format?: string) => string;
+  displayedCss: (format?: string) => string;
 }
 
 function resolveInitialColor(defaultColor?: string | Color): Color {
   if (!defaultColor) {
-    // Default: vibrant blue
     return { l: 0.6, c: 0.2, h: 250, alpha: 1 };
   }
   if (typeof defaultColor === 'string') {
@@ -60,81 +82,194 @@ function resolveInitialColor(defaultColor?: string | Color): Color {
   return defaultColor;
 }
 
-/**
- * Core hook for color state management.
- *
- * Supports controlled and uncontrolled modes:
- * - Uncontrolled: pass `defaultColor` for initial value
- * - Controlled: pass `color` and `onChange`
- */
-export function useColor(options: UseColorOptions = {}): UseColorReturn {
-  const { defaultColor, color: controlledColor, onChange } = options;
+function resolveSource(
+  interaction: ColorInteraction,
+  source?: ColorSource,
+): ColorSource {
+  if (source) return source;
+  return interaction === 'programmatic' ? 'programmatic' : 'user';
+}
 
-  const [internalColor, setInternalColor] = useState<Color>(() =>
-    resolveInitialColor(defaultColor),
+export function useColor(options: UseColorOptions = {}): UseColorReturn {
+  const {
+    defaultColor,
+    state: controlledState,
+    onChange,
+    defaultGamut = 'display-p3',
+    defaultView = 'oklch',
+  } = options;
+
+  const [internalState, setInternalState] = useState<ColorState>(() =>
+    createColorState(resolveInitialColor(defaultColor), {
+      activeGamut: defaultGamut,
+      activeView: defaultView,
+      source: 'programmatic',
+    }),
   );
 
-  const isControlled = controlledColor !== undefined;
-  const color = isControlled ? controlledColor : internalColor;
+  const isControlled = controlledState !== undefined;
+  const state = isControlled ? controlledState : internalState;
 
-  const setColor = useCallback(
-    (newColor: Color) => {
+  const commitState = useCallback(
+    (
+      nextState: ColorState,
+      changedChannel: ColorChannel | undefined,
+      interaction: ColorInteraction,
+    ) => {
       if (!isControlled) {
-        setInternalColor(newColor);
+        setInternalState(nextState);
       }
-      onChange?.(newColor);
+      onChange?.({
+        next: nextState,
+        changedChannel,
+        interaction,
+      });
     },
     [isControlled, onChange],
   );
 
-  const setFromString = useCallback(
-    (css: string) => {
-      setColor(parse(css));
+  const setRequested = useCallback(
+    (requested: Color, options: SetRequestedOptions = {}) => {
+      const interaction = options.interaction ?? 'programmatic';
+      const source = resolveSource(interaction, options.source);
+      const nextState = createColorState(requested, {
+        activeGamut: state.activeGamut,
+        activeView: state.activeView,
+        source,
+      });
+
+      commitState(nextState, options.changedChannel, interaction);
     },
-    [setColor],
+    [state.activeGamut, state.activeView, commitState],
+  );
+
+  const setChannel = useCallback(
+    (
+      channel: ColorChannel,
+      value: number,
+      options: Omit<SetRequestedOptions, 'changedChannel'> = {},
+    ) => {
+      const nextRequested: Color = {
+        ...state.requested,
+        [channel]: value,
+      };
+      setRequested(nextRequested, {
+        ...options,
+        changedChannel: channel,
+      });
+    },
+    [state.requested, setRequested],
+  );
+
+  const setFromString = useCallback(
+    (css: string, options: SetRequestedOptions = {}) => {
+      setRequested(parse(css), {
+        interaction: options.interaction ?? 'text-input',
+        source: options.source,
+        changedChannel: options.changedChannel,
+      });
+    },
+    [setRequested],
   );
 
   const setFromRgb = useCallback(
-    (rgb: Rgb) => {
-      setColor(fromRgb(rgb));
+    (rgb: Rgb, options: SetRequestedOptions = {}) => {
+      setRequested(fromRgb(rgb), options);
     },
-    [setColor],
+    [setRequested],
   );
 
   const setFromHsl = useCallback(
-    (hsl: Hsl) => {
-      setColor(fromHsl(hsl));
+    (hsl: Hsl, options: SetRequestedOptions = {}) => {
+      setRequested(fromHsl(hsl), options);
     },
-    [setColor],
+    [setRequested],
   );
 
   const setFromHsv = useCallback(
-    (hsv: Hsv) => {
-      setColor(fromHsv(hsv));
+    (hsv: Hsv, options: SetRequestedOptions = {}) => {
+      setRequested(fromHsv(hsv), options);
     },
-    [setColor],
+    [setRequested],
   );
 
-  const hex = useMemo(() => toHex(color), [color]);
-  const rgb = useMemo(() => toRgb(color), [color]);
-  const hsl = useMemo(() => toHsl(color), [color]);
-  const hsv = useMemo(() => toHsv(color), [color]);
-  const oklch = useMemo(() => toOklch(color), [color]);
+  const setActiveGamut = useCallback(
+    (gamut: GamutTarget, source: ColorSource = 'user') => {
+      const nextState: ColorState = {
+        ...state,
+        activeGamut: gamut,
+        meta: {
+          ...state.meta,
+          source,
+        },
+      };
+      commitState(nextState, undefined, 'programmatic');
+    },
+    [state, commitState],
+  );
 
-  const css = useCallback((format?: string) => toCss(color, format), [color]);
+  const setActiveView = useCallback(
+    (view: ViewModel, source: ColorSource = 'user') => {
+      const nextState: ColorState = {
+        ...state,
+        activeView: view,
+        meta: {
+          ...state.meta,
+          source,
+        },
+      };
+      commitState(nextState, undefined, 'programmatic');
+    },
+    [state, commitState],
+  );
+
+  const requested = state.requested;
+  const displayed = getActiveDisplayedColor(state);
+  const displayedSrgb = state.displayed.srgb;
+  const displayedP3 = state.displayed.p3;
+
+  const hex = useMemo(() => toHex(requested), [requested]);
+  const rgb = useMemo(() => toRgb(requested), [requested]);
+  const hsl = useMemo(() => toHsl(requested), [requested]);
+  const hsv = useMemo(() => toHsv(requested), [requested]);
+  const oklch = useMemo(() => toOklch(requested), [requested]);
+
+  const requestedCss = useCallback(
+    (format?: string) => toCss(requested, format),
+    [requested],
+  );
+
+  const displayedCss = useCallback(
+    (format?: string) =>
+      toCss(
+        displayed,
+        format ?? (state.activeGamut === 'display-p3' ? 'p3' : 'hex'),
+      ),
+    [displayed, state.activeGamut],
+  );
 
   return {
-    color,
-    setColor,
+    state,
+    requested,
+    displayed,
+    displayedSrgb,
+    displayedP3,
+    activeGamut: state.activeGamut,
+    activeView: state.activeView,
+    setRequested,
+    setChannel,
     setFromString,
     setFromRgb,
     setFromHsl,
     setFromHsv,
+    setActiveGamut,
+    setActiveView,
     hex,
     rgb,
     hsl,
     hsv,
     oklch,
-    css,
+    requestedCss,
+    displayedCss,
   };
 }

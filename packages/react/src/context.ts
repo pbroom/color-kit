@@ -1,17 +1,12 @@
 import { createContext, useContext } from 'react';
-import type { Color } from '@color-kit/core';
+import type { UseColorReturn } from './use-color.js';
 
-export interface ColorContextValue {
-  /** Current color state */
-  color: Color;
-  /** Update the color */
-  setColor: (color: Color) => void;
-}
+export type ColorContextValue = UseColorReturn;
 
 export const ColorContext = createContext<ColorContextValue | null>(null);
 
 /**
- * Access the nearest ColorProvider's color state.
+ * Access the nearest ColorProvider color state.
  * Throws if used outside a ColorProvider.
  */
 export function useColorContext(): ColorContextValue {
@@ -26,7 +21,7 @@ export function useColorContext(): ColorContextValue {
 }
 
 /**
- * Access the nearest ColorProvider's color state if present.
+ * Access the nearest ColorProvider color state if present.
  * Returns null when used outside a ColorProvider.
  */
 export function useOptionalColorContext(): ColorContextValue | null {

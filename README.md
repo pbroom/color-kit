@@ -69,6 +69,21 @@ function ColorPicker() {
 }
 ```
 
+### Dual-State React Contract
+
+`useColor` and `ColorProvider` expose explicit requested/displayed state:
+
+- `requested`: canonical OKLCH user intent
+- `displayed`: deterministic gamut-mapped output (`srgb` and `display-p3`)
+
+```tsx
+const color = useColor({ defaultColor: '#3b82f6' });
+
+color.requested; // exact editable state
+color.displayed; // active rendered state
+color.setRequested({ l: 0.7, c: 0.2, h: 250, alpha: 1 });
+```
+
 ## Core API
 
 ### Conversion

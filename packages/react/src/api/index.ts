@@ -29,10 +29,8 @@ export {
 } from './color-input.js';
 export type { ColorInputFormat } from './color-input.js';
 
-export {
-  getColorDisplayBackground,
-  getColorDisplayHex,
-} from './color-display.js';
+export { getColorDisplayHex, getColorDisplayStyles } from './color-display.js';
+export type { ColorDisplayStyles } from './color-display.js';
 
 export { getContrastBadgeSummary } from './contrast-badge.js';
 export type { ContrastBadgeSummary } from './contrast-badge.js';

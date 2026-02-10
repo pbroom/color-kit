@@ -46,14 +46,17 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
         if (onChange) {
           onChange(color);
         } else {
-          context?.setColor(color);
+          context?.setRequested(color, {
+            interaction: 'pointer',
+            source: 'derived',
+          });
         }
       },
       [onChange, context],
     );
 
-    const hasHandler = !!(onChange || context?.setColor);
-    const selectedColor = value ?? context?.color;
+    const hasHandler = !!(onChange || context?.setRequested);
+    const selectedColor = value ?? context?.requested;
 
     return (
       <div
@@ -78,6 +81,7 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
             <div key={index} role="option" aria-selected={selected}>
               <Swatch
                 color={color}
+                gamut={context?.activeGamut}
                 isSelected={selected}
                 onSelect={hasHandler ? handleSelect : undefined}
               />

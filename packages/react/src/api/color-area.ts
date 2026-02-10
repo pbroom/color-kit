@@ -2,18 +2,16 @@ import type { Color } from '@color-kit/core';
 import { clamp } from '@color-kit/core';
 
 export type ColorAreaChannel = 'l' | 'c' | 'h';
-export type ColorAreaKey =
-  | 'ArrowRight'
-  | 'ArrowLeft'
-  | 'ArrowUp'
-  | 'ArrowDown';
+export type ColorAreaKey = 'ArrowRight' | 'ArrowLeft' | 'ArrowUp' | 'ArrowDown';
 
-export const COLOR_AREA_DEFAULT_RANGES: Record<ColorAreaChannel, [number, number]> =
-  {
-    l: [0, 1],
-    c: [0, 0.4],
-    h: [0, 360],
-  };
+export const COLOR_AREA_DEFAULT_RANGES: Record<
+  ColorAreaChannel,
+  [number, number]
+> = {
+  l: [0, 1],
+  c: [0, 0.4],
+  h: [0, 360],
+};
 
 export function resolveColorAreaRange(
   channel: ColorAreaChannel,

@@ -7,7 +7,15 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import type { Color } from '@color-kit/core';
-import { toHex } from '@color-kit/core';
+import {
+  createColorState,
+  getActiveDisplayedColor,
+  type GamutTarget,
+} from './color-state.js';
+import {
+  getColorDisplayHex,
+  getColorDisplayStyles,
+} from './api/color-display.js';
 
 export interface SwatchProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -15,6 +23,8 @@ export interface SwatchProps extends Omit<
 > {
   /** The color to display */
   color: Color;
+  /** Display gamut used for rendering this swatch */
+  gamut?: GamutTarget;
   /** Whether this swatch is currently selected */
   isSelected?: boolean;
   /** Called when the swatch is clicked/selected. Makes the swatch interactive. */
@@ -34,10 +44,43 @@ export interface SwatchProps extends Omit<
  * - `[data-color]` — hex value string of the color
  */
 export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(function Swatch(
-  { color, isSelected, onSelect, style, onClick, onKeyDown, ...props },
+  {
+    color,
+    gamut = 'display-p3',
+    isSelected,
+    onSelect,
+    style,
+    onClick,
+    onKeyDown,
+    ...props
+  },
   ref,
 ) {
-  const hex = useMemo(() => toHex(color), [color]);
+  const displayState = useMemo(
+    () =>
+      createColorState(color, {
+        activeGamut: gamut,
+        source: 'programmatic',
+      }),
+    [color, gamut],
+  );
+  const displayed = useMemo(
+    () => getActiveDisplayedColor(displayState),
+    [displayState],
+  );
+  const displayedHex = useMemo(
+    () => getColorDisplayHex(displayState.displayed.srgb),
+    [displayState.displayed.srgb],
+  );
+  const displayStyles = useMemo(
+    () =>
+      getColorDisplayStyles(
+        displayed,
+        displayState.displayed.srgb,
+        displayState.activeGamut,
+      ),
+    [displayed, displayState.displayed.srgb, displayState.activeGamut],
+  );
 
   const handleClick = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
@@ -67,14 +110,20 @@ export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(function Swatch(
       data-swatch=""
       data-selected={isSelected || undefined}
       data-interactive={isInteractive || undefined}
-      data-color={hex}
+      data-color={displayedHex}
+      data-gamut={displayState.activeGamut}
+      data-out-of-gamut={
+        displayState.meta.outOfGamut[
+          displayState.activeGamut === 'display-p3' ? 'p3' : 'srgb'
+        ] || undefined
+      }
       role={isInteractive ? 'button' : 'img'}
       tabIndex={isInteractive ? 0 : undefined}
-      aria-label={isInteractive ? undefined : `Color ${hex}`}
+      aria-label={isInteractive ? undefined : `Color ${displayedHex}`}
       onClick={isInteractive ? handleClick : onClick}
       onKeyDown={isInteractive ? handleKeyDown : onKeyDown}
       style={{
-        backgroundColor: hex,
+        ...displayStyles,
         ...style,
       }}
     />

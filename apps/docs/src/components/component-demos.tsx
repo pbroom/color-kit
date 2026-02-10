@@ -41,9 +41,15 @@ export function ColorProviderDemo() {
   return (
     <ColorProvider defaultColor="#3b82f6">
       <div className="ck-demo-stack">
-        <ColorArea className="ck-color-area" style={{ background: AREA_GRADIENT }} />
+        <ColorArea
+          className="ck-color-area"
+          style={{ background: AREA_GRADIENT }}
+        />
         <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
-        <AlphaSlider className="ck-slider" style={{ background: ALPHA_GRADIENT }} />
+        <AlphaSlider
+          className="ck-slider"
+          style={{ background: ALPHA_GRADIENT }}
+        />
         <div className="ck-row">
           <ColorInput className="ck-input" />
           <ColorDisplay className="ck-color-display" />
@@ -57,7 +63,10 @@ export function ColorAreaDemo() {
   return (
     <ColorProvider defaultColor="#2563eb">
       <div className="ck-demo-stack">
-        <ColorArea className="ck-color-area" style={{ background: AREA_GRADIENT }} />
+        <ColorArea
+          className="ck-color-area"
+          style={{ background: AREA_GRADIENT }}
+        />
         <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
         <ColorInput className="ck-input" />
       </div>
@@ -104,7 +113,10 @@ export function AlphaSliderDemo() {
     <ColorProvider defaultColor="oklch(0.72 0.2 220 / 0.65)">
       <div className="ck-demo-stack">
         <ColorDisplay className="ck-color-display ck-checker" />
-        <AlphaSlider className="ck-slider" style={{ background: ALPHA_GRADIENT }} />
+        <AlphaSlider
+          className="ck-slider"
+          style={{ background: ALPHA_GRADIENT }}
+        />
         <ColorInput format="rgb" className="ck-input" />
       </div>
     </ColorProvider>
@@ -130,7 +142,9 @@ export function SwatchDemo() {
           />
         ))}
       </div>
-      <div className="ck-caption">Selected: {toCss(DOC_SWATCHES[selectedIndex], 'hex')}</div>
+      <div className="ck-caption">
+        Selected: {toCss(DOC_SWATCHES[selectedIndex], 'hex')}
+      </div>
     </div>
   );
 }
@@ -139,7 +153,11 @@ export function SwatchGroupDemo() {
   return (
     <ColorProvider defaultColor="#22c55e">
       <div className="ck-demo-stack">
-        <SwatchGroup colors={DOC_SWATCHES} columns={4} className="ck-swatch-grid" />
+        <SwatchGroup
+          colors={DOC_SWATCHES}
+          columns={4}
+          className="ck-swatch-grid"
+        />
         <ColorInput className="ck-input" />
       </div>
     </ColorProvider>
@@ -154,16 +172,19 @@ export function ColorInputDemo() {
       <ColorInput
         className="ck-input"
         format="hex"
-        color={colorState.color}
-        onChange={colorState.setColor}
+        requested={colorState.requested}
+        onChangeRequested={colorState.setRequested}
       />
       <ColorInput
         className="ck-input"
         format="oklch"
-        color={colorState.color}
-        onChange={colorState.setColor}
+        requested={colorState.requested}
+        onChangeRequested={colorState.setRequested}
       />
-      <ColorDisplay className="ck-color-display" color={colorState.color} />
+      <ColorDisplay
+        className="ck-color-display"
+        requested={colorState.requested}
+      />
     </div>
   );
 }
@@ -174,7 +195,10 @@ export function ColorDisplayDemo() {
       <div className="ck-demo-stack">
         <ColorDisplay className="ck-color-display" />
         <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
-        <AlphaSlider className="ck-slider" style={{ background: ALPHA_GRADIENT }} />
+        <AlphaSlider
+          className="ck-slider"
+          style={{ background: ALPHA_GRADIENT }}
+        />
       </div>
     </ColorProvider>
   );
@@ -190,31 +214,31 @@ export function ContrastBadgeDemo() {
         <ColorInput
           className="ck-input"
           format="hex"
-          color={foreground.color}
-          onChange={foreground.setColor}
+          requested={foreground.requested}
+          onChangeRequested={foreground.setRequested}
           aria-label="Foreground color"
         />
         <ColorInput
           className="ck-input"
           format="hex"
-          color={background.color}
-          onChange={background.setColor}
+          requested={background.requested}
+          onChangeRequested={background.setRequested}
           aria-label="Background color"
         />
       </div>
       <div
         className="ck-contrast-sample"
         style={{
-          color: toCss(foreground.color, 'rgb'),
-          backgroundColor: toCss(background.color, 'rgb'),
+          color: toCss(foreground.requested, 'rgb'),
+          backgroundColor: toCss(background.requested, 'rgb'),
         }}
       >
         The quick brown fox jumps over the lazy dog.
       </div>
       <ContrastBadge
         className="ck-contrast-badge"
-        foreground={foreground.color}
-        background={background.color}
+        foreground={foreground.requested}
+        background={background.requested}
         level="AA"
       />
     </div>
