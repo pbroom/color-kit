@@ -36,6 +36,22 @@ function parseEntries(text) {
   return entries;
 }
 
+function getDuplicateKeys(items, keySelector) {
+  const counts = new Map();
+  for (const item of items) {
+    const key = keySelector(item);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const duplicates = [];
+  for (const [key, count] of counts.entries()) {
+    if (count > 1) {
+      duplicates.push({ key, count });
+    }
+  }
+  return duplicates;
+}
+
 function getSectionBounds(lines, heading) {
   const start = lines.findIndex((line) => line.trim() === heading);
   if (start === -1) {
@@ -80,6 +96,15 @@ function main() {
 
   const archiveEntries = parseEntries(archiveText);
   const archiveTitles = new Set(archiveEntries.map((entry) => entry.title));
+  const duplicateArchiveTitles = getDuplicateKeys(
+    archiveEntries,
+    (entry) => entry.title,
+  );
+  for (const duplicate of duplicateArchiveTitles) {
+    warnings.push(
+      `Archive contains duplicate learning title "${duplicate.key}" (${duplicate.count} entries).`,
+    );
+  }
 
   let activeEntries = [];
   if (agentsText) {
@@ -100,6 +125,16 @@ function main() {
   if (activeEntries.length > MAX_ACTIVE) {
     warnings.push(
       `Active learnings has ${activeEntries.length} entries; maximum is ${MAX_ACTIVE}.`,
+    );
+  }
+
+  const duplicateActiveTitles = getDuplicateKeys(
+    activeEntries,
+    (entry) => entry.title,
+  );
+  for (const duplicate of duplicateActiveTitles) {
+    warnings.push(
+      `Active learnings contains duplicate title "${duplicate.key}" (${duplicate.count} entries).`,
     );
   }
 
