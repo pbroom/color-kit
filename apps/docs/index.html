@@ -22,7 +22,11 @@
           window.matchMedia &&
           window.matchMedia('(prefers-color-scheme: dark)').matches;
         var resolved =
-          preference === 'system' ? (prefersDark ? 'dark' : 'light') : preference;
+          preference === 'system'
+            ? prefersDark
+              ? 'dark'
+              : 'light'
+            : preference;
         document.documentElement.dataset.theme = resolved;
         document.documentElement.dataset.themePreference = preference;
         document.documentElement.style.colorScheme = resolved;

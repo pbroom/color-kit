@@ -54,7 +54,10 @@ function resolveTheme(
 }
 
 function getSystemPrefersDark(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.matchMedia !== 'function'
+  ) {
     return false;
   }
   return window.matchMedia(PREFERS_DARK_QUERY).matches;
@@ -119,7 +122,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [preference, resolvedTheme],
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {

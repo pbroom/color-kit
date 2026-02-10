@@ -15,7 +15,9 @@ const agentsPath = path.join(repoRoot, 'AGENTS.md');
 const archivePath = path.join(repoRoot, 'AGENTS.learnings.archive.md');
 
 function usage() {
-  console.log(`Usage:\n  node scripts/agent-learning.mjs add --title "..." --lesson "..." [--active]`);
+  console.log(
+    `Usage:\n  node scripts/agent-learning.mjs add --title "..." --lesson "..." [--active]`,
+  );
 }
 
 function fail(message) {
@@ -205,7 +207,9 @@ function main() {
     lesson,
   };
 
-  const existingArchiveIndex = archiveEntries.findIndex((entry) => entry.title === title);
+  const existingArchiveIndex = archiveEntries.findIndex(
+    (entry) => entry.title === title,
+  );
   if (existingArchiveIndex >= 0) {
     archiveEntries[existingArchiveIndex] = newEntry;
   } else {
@@ -217,7 +221,9 @@ function main() {
     const agentsText = readFileOrFail(agentsPath);
     const { lines, bounds, entries } = parseActiveEntries(agentsText);
 
-    const existingActiveIndex = entries.findIndex((entry) => entry.title === title);
+    const existingActiveIndex = entries.findIndex(
+      (entry) => entry.title === title,
+    );
     if (existingActiveIndex >= 0) {
       entries.splice(existingActiveIndex, 1);
     }
