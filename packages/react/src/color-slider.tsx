@@ -116,7 +116,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       (e: ReactPointerEvent) => {
         e.preventDefault();
         setIsDragging(true);
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        e.currentTarget.setPointerCapture(e.pointerId);
         updateFromPosition(e.clientX, e.clientY);
       },
       [updateFromPosition],
