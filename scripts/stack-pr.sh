@@ -108,7 +108,11 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
-pr_number="$(gh pr view --head "$branch" --json number --jq '.number')"
+pr_number="$(gh pr list --head "$branch" --json number --jq '.[0].number')"
+if [[ -z "$pr_number" || "$pr_number" == "null" ]]; then
+  echo "Unable to locate PR for branch $branch." >&2
+  exit 1
+fi
 pr_url="$(gh pr view "$pr_number" --json url --jq '.url')"
 base_ref="$(gh pr view "$pr_number" --json baseRefName --jq '.baseRefName')"
 
