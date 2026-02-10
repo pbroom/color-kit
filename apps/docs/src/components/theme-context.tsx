@@ -53,16 +53,19 @@ function resolveTheme(
   return preference;
 }
 
+function getSystemPrefersDark(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+  return window.matchMedia(PREFERS_DARK_QUERY).matches;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState<ThemePreference>(() =>
     readStoredPreference(),
   );
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
-    if (typeof window === 'undefined') {
-      return 'dark';
-    }
-    const media = window.matchMedia(PREFERS_DARK_QUERY);
-    return resolveTheme(readStoredPreference(), media.matches);
+    return resolveTheme(readStoredPreference(), getSystemPrefersDark());
   });
 
   useEffect(() => {
@@ -76,6 +79,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (preference !== 'system') {
       setResolvedTheme(preference);
+      return;
+    }
+
+    if (typeof window.matchMedia !== 'function') {
+      setResolvedTheme('light');
       return;
     }
 
