@@ -9,6 +9,7 @@ import {
   ContrastBadgeDemo,
   SwatchGroupDemo,
 } from '../components/component-demos.js';
+import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 interface ShowcaseCard {
   title: string;
@@ -100,6 +101,7 @@ export function HomePage() {
               GitHub
             </a>
           </nav>
+          <ThemeSwitcher />
         </div>
       </header>
 

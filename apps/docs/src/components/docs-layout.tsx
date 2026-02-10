@@ -6,6 +6,7 @@ import {
   useDocsInspector,
 } from './docs-inspector-context.js';
 import { DocsRightRail, type DocsHeading } from './docs-right-rail.js';
+import { ThemeSwitcher } from './theme-switcher.js';
 
 function slugifyHeading(title: string): string {
   return title
@@ -100,25 +101,28 @@ function DocsLayoutInner() {
             <span className="docs-brand-dot" />
             Color Kit
           </Link>
-          <nav className="docs-header-nav">
-            <Link to="/docs/introduction" className="docs-top-link">
-              Docs
-            </Link>
-            <Link to="/docs/components/color-area" className="docs-top-link">
-              Components
-            </Link>
-            <Link to="/docs/shadcn-registry" className="docs-top-link">
-              Registry
-            </Link>
-            <a
-              href="https://github.com/pbroom/color-kit"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="docs-top-link"
-            >
-              GitHub
-            </a>
-          </nav>
+          <div className="docs-header-actions">
+            <nav className="docs-header-nav">
+              <Link to="/docs/introduction" className="docs-top-link">
+                Docs
+              </Link>
+              <Link to="/docs/components/color-area" className="docs-top-link">
+                Components
+              </Link>
+              <Link to="/docs/shadcn-registry" className="docs-top-link">
+                Registry
+              </Link>
+              <a
+                href="https://github.com/pbroom/color-kit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="docs-top-link"
+              >
+                GitHub
+              </a>
+            </nav>
+            <ThemeSwitcher />
+          </div>
         </div>
       </header>
 
