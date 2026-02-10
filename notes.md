@@ -1,4 +1,4 @@
-# Color Kit — Design & Planning Notes v1.3
+# Color Kit — Design & Planning Notes v1.3.1
 
 ## Product Direction
 
@@ -337,6 +337,92 @@ These proceed only after current release gates are consistently met.
 
 ---
 
+## Preserved UX Context Appendix (From v1.1)
+
+This appendix is intentionally detailed. It preserves interaction semantics and scenario-level UX behavior from v1.1 while keeping the core body execution-first.
+
+### Requested vs displayed color (operational model)
+
+- `requested` is the exact user-selected color in canonical OKLCH, even when out of gamut.
+- `displayed` is the mapped in-gamut color used for visible output and CSS emission.
+- UI controls always manipulate `requested`; the system never silently moves user-selected channel values.
+- When `requested` and `displayed` diverge, the UI should show that difference through indicators, labels, and/or dual-value readouts.
+
+### Channel persistence contract (must not regress)
+
+- Defaults initialize channels for first use (for example: `h=0`, `c=0`, `l=0.5`, `alpha=1`).
+- Once explicitly set, channels are sticky until directly changed by the user.
+- Degenerate math states do not erase intent:
+  - `c=0` does not reset hue.
+  - `l=0` or `l=1` does not reset hue/chroma.
+  - Switching views/models does not mutate previously requested channel values.
+- Persistence is axis-level in 2D controls: moving `x` must not teleport `y` and vice versa.
+
+### Handles never jump (scenario examples)
+
+- **Lightness to zero**: setting `l=0` makes output black, but hue/chroma controls stay at requested values so restoring lightness returns the prior color.
+- **Out-of-gamut chroma**: if `oklch(0.5 0.38 200)` exceeds active gamut, the thumb stays at `c=0.38`; mapped markers can indicate displayable chroma and local max.
+- **Out-of-gamut area point**: in `l×c` areas, the thumb may sit outside boundary overlays while loupe/inkwell previews mapped output and auxiliary markers show mapped landing points.
+
+Reference mockup: [Figma chroma slider requested vs actual markers](https://www.figma.com/design/LsKRJGa3DdtITEfQ5d8H7v/Plexiform?node-id=890-6031&t=StAXfudPUlXVSB0c-11)
+
+### Visual honesty in model gradients
+
+- HSL gradients use standard hue stops at 60-degree intervals across RGB primaries/secondaries.
+- OKLCH hue gradients must be generated from OKLCH gamut math, not HSL approximations:
+  1. sample hue along the circle,
+  2. find max chroma per hue in the target gamut,
+  3. use resulting `(l, c, h)` triplets as stops.
+- Slider and area gradients must stay model-correct and axis-correct under all channel configurations.
+
+### Area composition direction (kept as UX target)
+
+The composable area model remains a UX target for expressiveness and overlay clarity:
+
+- `Area` container for coordinate mapping and interaction plumbing.
+- `Area.ColorPlane` for the rendered gradient surface (P3-first where supported).
+- `Area.Layer` for overlay composition.
+- `Area.Line` for gamut boundaries and contrast contours.
+- `Area.Point` for mapped/fallback indicators.
+- `Area.Thumb` locked to requested coordinates.
+
+---
+
+## Preservation Matrix (v1.1 -> v1.3.1)
+
+| Original v1.1 section | New location in v1.3.1 | Status | Notes |
+| --------------------- | ---------------------- | ------ | ----- |
+| Philosophy / core tenets | `Core Ideals` + `Product Direction` | Preserved (condensed) | Strategic language tightened; principles intact. |
+| Color Models / internal format | `Model and Layer Status` + `Canonical State Contract` | Preserved (condensed) | Canonical OKLCH and model strategy retained. |
+| UX Principles / requested vs actual | `Rendering and Interaction Semantics` + appendix section | Preserved | Restored scenario-level semantics in appendix. |
+| UX Principles / channel persistence | `State invariants` + appendix section | Preserved | Sticky-channel and degenerate-state behavior explicitly restored. |
+| UX Principles / handles never jump | appendix section | Preserved | Concrete examples restored for slider/area behavior. |
+| UX Principles / visual honesty in gradients | `Hue and area gradients` + appendix section | Preserved | Added algorithmic details for OKLCH hue generation. |
+| Architecture / packages | `Model and Layer Status` + existing repo structure references | Preserved (condensed) | Delivery-focused representation retained. |
+| Architecture / performance strategy | `Performance Budgets` + `CI and Release Policy` | Preserved (reframed) | Converted from narrative guidance to release gates. |
+| API / what exists today | `Model and Layer Status` + `API Roadmap` | Preserved (reframed) | Existing vs planned translated into execution milestones. |
+| API / planned additions | `API Roadmap (Execution-Oriented)` | Preserved | Priorities and DoD made explicit. |
+| Components / currently implemented | roadmap + milestone sections | Preserved (condensed) | Component list absorbed into milestone plan context. |
+| Components / planned (Gradient, Dial, Eyedropper, etc.) | `Exploration Backlog` | Preserved (deferred) | Retained as post-gate exploration, not active delivery. |
+| Area enhanced composition model | appendix section | Preserved | Restored as explicit UX target. |
+| Gamut boundary path generation | `API Roadmap` + M4 status | Preserved | Core geometry APIs tracked as delivered/active. |
+| Max chroma for hue slider | `API Roadmap` + M4 status + appendix | Preserved | Mathematical intent retained and restated in appendix. |
+| Chroma band tonal strip | `API Roadmap` M6 | Preserved (scheduled) | Still planned; implementation remains gated. |
+| WCAG contrast regions | `API Roadmap` M5 | Preserved (scheduled) | Still planned with milestone/test gate. |
+| Accessibility requirements | `Accessibility Contract` | Preserved (condensed) | Core accessibility obligations retained as gates. |
+| Test coverage/gaps | `Test Gates by Milestone` | Preserved (reframed) | Converted into milestone-level release gates. |
+
+---
+
+## Loss Check (2026-02-10)
+
+- No UX behavior invariants were intentionally dropped in this version.
+- Detail that is not in active delivery scope is retained either in this appendix or in `Exploration Backlog`.
+- Future rewrites should keep this matrix and update row-by-row rather than replacing it.
+
+---
+
 ## Version Notes
 
 - **v1.3**: Locks strategic direction from product decisions; sets web-first design-tools focus, dual-track product shape, P3-first rendering stance, stable API-first roadmap, reordered milestone priorities, and explicit release/performance gates.
+- **v1.3.1**: Adds a preserved UX context appendix, explicit v1.1->v1.3.1 preservation matrix, and loss-check guardrails so detailed interaction intent remains available alongside execution-first planning.
