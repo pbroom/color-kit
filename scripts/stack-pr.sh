@@ -78,6 +78,19 @@ require_command gt
 require_command gh
 require_command rg
 
+resolve_ref() {
+  local ref="$1"
+  if git show-ref --verify --quiet "refs/remotes/origin/${ref}"; then
+    echo "origin/${ref}"
+    return 0
+  fi
+  if git show-ref --verify --quiet "refs/heads/${ref}"; then
+    echo "${ref}"
+    return 0
+  fi
+  return 1
+}
+
 branch="$(git branch --show-current)"
 if [[ -z "$branch" ]]; then
   echo "Could not determine current branch." >&2
@@ -91,6 +104,29 @@ fi
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Working tree is not clean. Commit or stash changes before running pr:stack." >&2
+  exit 1
+fi
+
+if git remote get-url origin >/dev/null 2>&1; then
+  if ! git fetch origin "$PARENT_BRANCH" --quiet; then
+    echo "Warning: failed to fetch origin/${PARENT_BRANCH}; using local refs for mergeability preflight." >&2
+  fi
+fi
+
+if ! parent_ref="$(resolve_ref "$PARENT_BRANCH")"; then
+  echo "Unable to resolve parent branch reference for '${PARENT_BRANCH}' (checked origin and local refs)." >&2
+  exit 1
+fi
+
+echo "Preflight: checking mergeability of ${branch} into ${parent_ref}"
+merge_tree_output=""
+if ! merge_tree_output="$(git merge-tree --write-tree HEAD "$parent_ref" 2>&1)"; then
+  echo "Branch ${branch} has merge conflicts with ${parent_ref}." >&2
+  echo "Merge/rebase from ${parent_ref} and resolve conflicts before running pr:stack." >&2
+  conflict_summary="$(echo "$merge_tree_output" | rg '^CONFLICT' || true)"
+  if [[ -n "$conflict_summary" ]]; then
+    echo "$conflict_summary" >&2
+  fi
   exit 1
 fi
 
@@ -149,7 +185,7 @@ if git show-ref --verify --quiet "refs/remotes/origin/${base_ref}"; then
 elif git show-ref --verify --quiet "refs/heads/${base_ref}"; then
   diff_base="${base_ref}"
 else
-  diff_base="$(git merge-base HEAD "$PARENT_BRANCH")"
+  diff_base="$(git merge-base HEAD "$parent_ref")"
 fi
 
 summary_items=()
