@@ -77,7 +77,6 @@ require_command git
 require_command gt
 require_command gh
 require_command rg
-require_command pnpm
 
 branch="$(git branch --show-current)"
 if [[ -z "$branch" ]]; then
@@ -95,17 +94,21 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-agent_learning_check_output=""
-if agent_learning_check_output="$(pnpm agents:check 2>&1)"; then
-  if [[ -n "$agent_learning_check_output" ]]; then
+if command -v pnpm >/dev/null 2>&1; then
+  agent_learning_check_output=""
+  if agent_learning_check_output="$(pnpm agents:check 2>&1)"; then
+    if [[ -n "$agent_learning_check_output" ]]; then
+      echo "$agent_learning_check_output"
+    fi
+    if echo "$agent_learning_check_output" | rg -q "WARNING:"; then
+      echo "Agent learning warnings detected. Update learnings or mark N/A in the PR checklist."
+    fi
+  else
     echo "$agent_learning_check_output"
-  fi
-  if echo "$agent_learning_check_output" | rg -q "WARNING:"; then
-    echo "Agent learning warnings detected. Update learnings or mark N/A in the PR checklist."
+    echo "Agent learning check errored; continuing without blocking stacked PR submission."
   fi
 else
-  echo "$agent_learning_check_output"
-  echo "Agent learning check errored; continuing without blocking stacked PR submission."
+  echo "pnpm not found; skipping optional agent learning check."
 fi
 
 # Track the branch if Graphite is not aware of it yet.
