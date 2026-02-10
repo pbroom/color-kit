@@ -124,17 +124,26 @@ else
   diff_base="$(git merge-base HEAD "$PARENT_BRANCH")"
 fi
 
-mapfile -t summary_items < <(git log --no-merges --format='%s' "${diff_base}..HEAD" | head -n "$MAX_SUMMARY_ITEMS")
+summary_items=()
+while IFS= read -r line; do
+  summary_items+=("$line")
+done < <(git log --no-merges --format='%s' "${diff_base}..HEAD" | head -n "$MAX_SUMMARY_ITEMS")
 if [[ "${#summary_items[@]}" -eq 0 ]]; then
   summary_items=("$(git log -1 --format='%s')")
 fi
 
-mapfile -t key_files < <(git diff --name-only "${diff_base}...HEAD" | head -n "$MAX_FILES")
+key_files=()
+while IFS= read -r line; do
+  key_files+=("$line")
+done < <(git diff --name-only "${diff_base}...HEAD" | head -n "$MAX_FILES")
 if [[ "${#key_files[@]}" -eq 0 ]]; then
   key_files=("(no file changes detected relative to ${base_ref})")
 fi
 
-mapfile -t milestones < <(git diff -U0 "${diff_base}...HEAD" -- notes.md 2>/dev/null | rg -o 'M[0-9]+' | sort -u)
+milestones=()
+while IFS= read -r line; do
+  milestones+=("$line")
+done < <(git diff -U0 "${diff_base}...HEAD" -- notes.md 2>/dev/null | rg -o 'M[0-9]+' | sort -u)
 if [[ "${#milestones[@]}" -eq 0 ]]; then
   milestones=("Not specified in this branch")
 fi
