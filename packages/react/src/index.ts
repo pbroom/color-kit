@@ -37,6 +37,8 @@ export type {
 export * as ColorApi from './api/index.js';
 export type {
   ColorAreaChannel,
+  ColorAreaContrastRegionOptions,
+  ColorAreaContrastRegionPoint,
   ColorAreaGamutBoundaryOptions,
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,

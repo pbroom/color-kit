@@ -2,12 +2,15 @@ export {
   COLOR_AREA_DEFAULT_RANGES,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
+  getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
   getColorAreaThumbPosition,
   resolveColorAreaRange,
 } from './color-area.js';
 export type {
   ColorAreaChannel,
+  ColorAreaContrastRegionOptions,
+  ColorAreaContrastRegionPoint,
   ColorAreaGamutBoundaryOptions,
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,

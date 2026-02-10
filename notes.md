@@ -205,6 +205,7 @@ interface ColorUpdateEvent {
 
 5. **M5: Contrast regions**
    - Add AA/AAA region path generation and integration points.
+   - ✅ Completed (2026-02-10): `contrastRegionPaths` + `contrastRegionPath` shipped in core; React area API now exposes normalized contrast-region overlay points.
 6. **M6: Chroma bands**
    - Add tonal strip generation in `clamped` and `proportional` modes.
 7. **M7+: Optional model expansion**
@@ -285,6 +286,7 @@ These are release gates, not aspirations.
 ### M5 gate
 
 - Add `packages/core/__tests__/contrast-regions.test.ts`
+- ✅ Completed (2026-02-10): `packages/core/__tests__/contrast-regions.test.ts` added with deterministic contour, threshold-behavior, and validation coverage.
 
 ### M6 gate
 

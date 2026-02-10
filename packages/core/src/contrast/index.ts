@@ -1,4 +1,5 @@
 import type { Color } from '../types.js';
+import { maxChromaAt, type GamutTarget } from '../gamut/index.js';
 import { toRgb } from '../conversion/index.js';
 import { srgbToLinearChannel } from '../utils/index.js';
 
@@ -102,4 +103,340 @@ export function meetsAAA(
 ): boolean {
   const ratio = contrastRatio(color1, color2);
   return largeText ? ratio >= 4.5 : ratio >= 7;
+}
+
+export type ContrastRegionLevel = 'AA' | 'AAA' | 'AA-large';
+
+export interface ContrastRegionPoint {
+  l: number;
+  c: number;
+}
+
+export interface ContrastRegionPathOptions {
+  gamut?: GamutTarget;
+  /**
+   * Explicit contrast threshold. If provided it overrides `level`.
+   */
+  threshold?: number;
+  /**
+   * WCAG threshold preset.
+   * @default 'AA' (4.5:1)
+   */
+  level?: ContrastRegionLevel;
+  /**
+   * Number of sampled lightness cells.
+   * The lightness axis has `lightnessSteps + 1` points.
+   */
+  lightnessSteps?: number;
+  /**
+   * Number of sampled chroma cells.
+   * The chroma axis has `chromaSteps + 1` points.
+   */
+  chromaSteps?: number;
+  /**
+   * Upper chroma bound used for sampling.
+   */
+  maxChroma?: number;
+  /**
+   * Shared search precision forwarded to `maxChromaAt`.
+   */
+  tolerance?: number;
+  /**
+   * Shared search iteration cap forwarded to `maxChromaAt`.
+   */
+  maxIterations?: number;
+  /**
+   * Alpha channel used while sampling.
+   */
+  alpha?: number;
+}
+
+const DEFAULT_LIGHTNESS_STEPS = 64;
+const DEFAULT_CHROMA_STEPS = 64;
+
+function resolveContrastThreshold(options: ContrastRegionPathOptions): number {
+  if (typeof options.threshold === 'number') {
+    return options.threshold;
+  }
+
+  switch (options.level ?? 'AA') {
+    case 'AAA':
+      return 7;
+    case 'AA-large':
+      return 3;
+    case 'AA':
+    default:
+      return 4.5;
+  }
+}
+
+function validateSteps(name: string, value: number): number {
+  if (!Number.isInteger(value) || value < 2) {
+    throw new Error(`${name} must be an integer >= 2`);
+  }
+  return value;
+}
+
+function pointKey(point: ContrastRegionPoint): string {
+  return `${point.l.toFixed(6)}:${point.c.toFixed(6)}`;
+}
+
+function edgeKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+function edgePoint(
+  edge: 0 | 1 | 2 | 3,
+  l0: number,
+  l1: number,
+  c0: number,
+  c1: number,
+): ContrastRegionPoint {
+  switch (edge) {
+    case 0:
+      return { l: (l0 + l1) / 2, c: c0 };
+    case 1:
+      return { l: l1, c: (c0 + c1) / 2 };
+    case 2:
+      return { l: (l0 + l1) / 2, c: c1 };
+    case 3:
+      return { l: l0, c: (c0 + c1) / 2 };
+    default:
+      return { l: l0, c: c0 };
+  }
+}
+
+function buildContourPaths(
+  segments: Array<[ContrastRegionPoint, ContrastRegionPoint]>,
+): ContrastRegionPoint[][] {
+  if (segments.length === 0) return [];
+
+  const pointByKey = new Map<string, ContrastRegionPoint>();
+  const adjacency = new Map<string, Set<string>>();
+  const visitedEdges = new Set<string>();
+
+  for (const [a, b] of segments) {
+    const aKey = pointKey(a);
+    const bKey = pointKey(b);
+    pointByKey.set(aKey, a);
+    pointByKey.set(bKey, b);
+
+    if (!adjacency.has(aKey)) adjacency.set(aKey, new Set());
+    if (!adjacency.has(bKey)) adjacency.set(bKey, new Set());
+    adjacency.get(aKey)?.add(bKey);
+    adjacency.get(bKey)?.add(aKey);
+  }
+
+  function tracePath(start: string, closeLoop: boolean): string[] {
+    const path = [start];
+    let current = start;
+    let guard = 0;
+
+    while (guard < 20000) {
+      guard += 1;
+      const neighbors = adjacency.get(current);
+      if (!neighbors || neighbors.size === 0) break;
+
+      let next: string | null = null;
+      for (const candidate of neighbors) {
+        if (!visitedEdges.has(edgeKey(current, candidate))) {
+          next = candidate;
+          break;
+        }
+      }
+
+      if (!next) break;
+
+      visitedEdges.add(edgeKey(current, next));
+      current = next;
+      path.push(current);
+
+      if (closeLoop && current === start) {
+        break;
+      }
+    }
+
+    return path;
+  }
+
+  const paths: ContrastRegionPoint[][] = [];
+
+  for (const [node, neighbors] of adjacency) {
+    if (neighbors.size !== 1) continue;
+    const traced = tracePath(node, false);
+    if (traced.length > 1) {
+      paths.push(
+        traced
+          .map((key) => pointByKey.get(key))
+          .filter(Boolean) as ContrastRegionPoint[],
+      );
+    }
+  }
+
+  for (const [node, neighbors] of adjacency) {
+    for (const neighbor of neighbors) {
+      if (visitedEdges.has(edgeKey(node, neighbor))) continue;
+      const traced = tracePath(node, true);
+      if (traced.length > 2) {
+        paths.push(
+          traced
+            .map((key) => pointByKey.get(key))
+            .filter(Boolean) as ContrastRegionPoint[],
+        );
+      }
+    }
+  }
+
+  return paths.sort((a, b) => b.length - a.length);
+}
+
+function segmentEdgesForCell(
+  mask: number,
+): Array<[0 | 1 | 2 | 3, 0 | 1 | 2 | 3]> {
+  switch (mask) {
+    case 0:
+    case 15:
+      return [];
+    case 1:
+      return [[3, 0]];
+    case 2:
+      return [[0, 1]];
+    case 3:
+      return [[3, 1]];
+    case 4:
+      return [[1, 2]];
+    case 5:
+      return [
+        [3, 2],
+        [0, 1],
+      ];
+    case 6:
+      return [[0, 2]];
+    case 7:
+      return [[3, 2]];
+    case 8:
+      return [[2, 3]];
+    case 9:
+      return [[0, 2]];
+    case 10:
+      return [
+        [0, 3],
+        [1, 2],
+      ];
+    case 11:
+      return [[1, 2]];
+    case 12:
+      return [[3, 1]];
+    case 13:
+      return [[0, 1]];
+    case 14:
+      return [[3, 0]];
+    default:
+      return [];
+  }
+}
+
+/**
+ * Generate contour paths for the region that meets or exceeds
+ * a WCAG contrast threshold at a fixed hue.
+ */
+export function contrastRegionPaths(
+  reference: Color,
+  hue: number,
+  options: ContrastRegionPathOptions = {},
+): ContrastRegionPoint[][] {
+  const threshold = resolveContrastThreshold(options);
+  if (!Number.isFinite(threshold) || threshold <= 1) {
+    throw new Error('contrastRegionPaths() requires threshold > 1');
+  }
+
+  const lightnessSteps = validateSteps(
+    'contrastRegionPaths() lightnessSteps',
+    options.lightnessSteps ?? DEFAULT_LIGHTNESS_STEPS,
+  );
+  const chromaSteps = validateSteps(
+    'contrastRegionPaths() chromaSteps',
+    options.chromaSteps ?? DEFAULT_CHROMA_STEPS,
+  );
+
+  const maxChroma = Math.max(0, options.maxChroma ?? 0.4);
+  if (maxChroma === 0) return [];
+
+  const alpha = options.alpha ?? 1;
+  const gamut = options.gamut ?? 'srgb';
+
+  const meetsGrid: boolean[][] = [];
+  for (
+    let lightnessIndex = 0;
+    lightnessIndex <= lightnessSteps;
+    lightnessIndex += 1
+  ) {
+    const l = lightnessIndex / lightnessSteps;
+    const maxInGamut = maxChromaAt(l, hue, {
+      gamut,
+      tolerance: options.tolerance,
+      maxIterations: options.maxIterations,
+      maxChroma,
+      alpha,
+    });
+
+    const row: boolean[] = [];
+    for (let chromaIndex = 0; chromaIndex <= chromaSteps; chromaIndex += 1) {
+      const c = (chromaIndex / chromaSteps) * maxChroma;
+
+      if (c > maxInGamut) {
+        row.push(false);
+        continue;
+      }
+
+      const sample: Color = { l, c, h: hue, alpha };
+      row.push(contrastRatio(sample, reference) >= threshold);
+    }
+    meetsGrid.push(row);
+  }
+
+  const segments: Array<[ContrastRegionPoint, ContrastRegionPoint]> = [];
+
+  for (
+    let lightnessIndex = 0;
+    lightnessIndex < lightnessSteps;
+    lightnessIndex += 1
+  ) {
+    const l0 = lightnessIndex / lightnessSteps;
+    const l1 = (lightnessIndex + 1) / lightnessSteps;
+
+    for (let chromaIndex = 0; chromaIndex < chromaSteps; chromaIndex += 1) {
+      const c0 = (chromaIndex / chromaSteps) * maxChroma;
+      const c1 = ((chromaIndex + 1) / chromaSteps) * maxChroma;
+
+      const b0 = meetsGrid[lightnessIndex][chromaIndex];
+      const b1 = meetsGrid[lightnessIndex + 1][chromaIndex];
+      const b2 = meetsGrid[lightnessIndex + 1][chromaIndex + 1];
+      const b3 = meetsGrid[lightnessIndex][chromaIndex + 1];
+
+      const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
+      const edgePairs = segmentEdgesForCell(mask);
+      if (edgePairs.length === 0) continue;
+
+      for (const [fromEdge, toEdge] of edgePairs) {
+        const from = edgePoint(fromEdge, l0, l1, c0, c1);
+        const to = edgePoint(toEdge, l0, l1, c0, c1);
+        segments.push([from, to]);
+      }
+    }
+  }
+
+  return buildContourPaths(segments);
+}
+
+/**
+ * Convenience helper that returns the largest detected contour path.
+ */
+export function contrastRegionPath(
+  reference: Color,
+  hue: number,
+  options: ContrastRegionPathOptions = {},
+): ContrastRegionPoint[] {
+  const paths = contrastRegionPaths(reference, hue, options);
+  return paths[0] ?? [];
 }
