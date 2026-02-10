@@ -1,0 +1,44 @@
+# React Primitives
+
+Color Kit React primitives are intentionally headless building blocks for design-tool workflows.
+
+## What makes them "primitives"
+
+- They own behavior and semantics, not visual branding.
+- They expose deterministic requested/displayed contracts.
+- They remain composable in controlled and uncontrolled setups.
+
+## Typical composition
+
+```tsx
+import {
+  ColorProvider,
+  ColorArea,
+  HueSlider,
+  AlphaSlider,
+  ColorInput,
+  ColorDisplay,
+} from '@color-kit/react';
+
+export function Picker() {
+  return (
+    <ColorProvider defaultColor="#3b82f6">
+      <ColorArea />
+      <HueSlider />
+      <AlphaSlider />
+      <ColorInput format="oklch" />
+      <ColorDisplay />
+    </ColorProvider>
+  );
+}
+```
+
+## API design goals
+
+- Stable, composable contracts.
+- Intent preservation under gamut constraints.
+- Accessibility-first interaction defaults.
+
+## Next stop
+
+Use the **Components** section to dive into each primitive's API, anatomy, and helper utilities.

@@ -77,6 +77,16 @@ export const docsNavigation: DocsNavSection[] = [
         path: 'multi-color-state',
         href: toDocsHref('multi-color-state'),
       },
+      {
+        title: 'React Primitives',
+        path: 'react-primitives',
+        href: toDocsHref('react-primitives'),
+      },
+      {
+        title: 'shadcn Registry',
+        path: 'shadcn-registry',
+        href: toDocsHref('shadcn-registry'),
+      },
     ],
   },
   {

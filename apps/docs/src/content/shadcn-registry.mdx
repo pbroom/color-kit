@@ -1,0 +1,30 @@
+# shadcn Registry
+
+Use the Color Kit registry to pull source-owned primitives into your app.
+
+## Install
+
+```bash
+npx shadcn add color-area --registry color-kit
+```
+
+## Why registry-first can help
+
+- You keep source ownership and can tailor behavior quickly.
+- You can align styles to your design system without wrappers.
+- You can test and profile component variants in your own app shell.
+
+## Suggested workflow
+
+1. Install the primitive from the registry.
+2. Keep Color Kit state semantics intact (`requested` vs `displayed`).
+3. Apply project-specific visual styles.
+4. Add scenario tests for keyboard and pointer behavior.
+
+## Registry examples
+
+```bash
+npx shadcn add color-provider --registry color-kit
+npx shadcn add color-slider --registry color-kit
+npx shadcn add color-input --registry color-kit
+```
