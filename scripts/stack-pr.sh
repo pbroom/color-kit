@@ -95,7 +95,18 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 # Track the branch if Graphite is not aware of it yet.
-if ! gt ls --no-interactive | rg -q "(^|[[:space:]])${branch}([[:space:]]|$)"; then
+if ! gt ls --no-interactive | awk -v branch="$branch" '
+  {
+    for (i = 1; i <= NF; i++) {
+      if ($i == branch) {
+        found = 1
+      }
+    }
+  }
+  END {
+    exit found ? 0 : 1
+  }
+'; then
   run gt track --parent "$PARENT_BRANCH" --no-interactive
 else
   echo "Branch $branch is already tracked by Graphite."
