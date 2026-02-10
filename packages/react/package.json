@@ -43,6 +43,10 @@
     "url": "https://github.com/pbroom/color-kit.git",
     "directory": "packages/react"
   },
+  "publishConfig": {
+    "access": "public",
+    "tag": "next"
+  },
   "dependencies": {
     "@color-kit/core": "workspace:*"
   },
