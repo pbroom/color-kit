@@ -57,7 +57,9 @@ function readFile(filePath, warnings) {
   try {
     return fs.readFileSync(filePath, 'utf8');
   } catch (error) {
-    warnings.push(`Unable to read ${path.basename(filePath)}: ${error.message}`);
+    warnings.push(
+      `Unable to read ${path.basename(filePath)}: ${error.message}`,
+    );
     return '';
   }
 }
@@ -84,7 +86,9 @@ function main() {
     const lines = agentsText.split(/\r?\n/);
     const bounds = getSectionBounds(lines, ACTIVE_HEADING);
     if (!bounds) {
-      warnings.push(`Missing active learnings section heading: ${ACTIVE_HEADING}`);
+      warnings.push(
+        `Missing active learnings section heading: ${ACTIVE_HEADING}`,
+      );
     } else {
       const sectionLines = lines.slice(bounds.start + 1, bounds.end);
       activeEntries = sectionLines
@@ -94,7 +98,9 @@ function main() {
   }
 
   if (activeEntries.length > MAX_ACTIVE) {
-    warnings.push(`Active learnings has ${activeEntries.length} entries; maximum is ${MAX_ACTIVE}.`);
+    warnings.push(
+      `Active learnings has ${activeEntries.length} entries; maximum is ${MAX_ACTIVE}.`,
+    );
   }
 
   for (const entry of activeEntries) {
