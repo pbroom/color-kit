@@ -41,3 +41,4 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-02-09 — MDX + Vite React plugin ordering**: `@mdx-js/rollup` must use `enforce: 'pre'` when combined with `@vitejs/plugin-react` so MDX→JSX transformation runs before Babel tries to parse raw `.mdx` files.
 - **2026-02-09 — Share docs nav and route registries**: Drive docs sidebar items and page module resolution from one registry file so new MDX pages are added once and cannot drift into broken links.
 - **2026-02-09 — Audit codebase before refining planning docs**: When refining a planning/design document, explore the actual codebase first to ground status tracking (done/planned) in reality rather than guessing from the notes alone.
+- **2026-02-10 — Execution-first planning docs**: For roadmap notes, define V1 scope, layer-specific status (core/react/docs), milestone ordering, and definition-of-done gates up front so planning can convert directly into PR-sized work.
