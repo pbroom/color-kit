@@ -47,12 +47,13 @@ console.log(contrastRatio(blue, white)); // ~4.5
 import { ColorProvider, ColorArea, useColor } from '@color-kit/react';
 
 function MyPicker() {
-  const { hex } = useColor({ defaultColor: '#3b82f6' });
+  const color = useColor({ defaultColor: '#3b82f6' });
 
   return (
     <ColorProvider defaultColor="#3b82f6">
       <ColorArea style={{ width: 200, height: 200 }} />
-      <p>Selected: {hex}</p>
+      <p>Requested: {color.requestedCss('oklch')}</p>
+      <p>Displayed: {color.displayedCss()}</p>
     </ColorProvider>
   );
 }

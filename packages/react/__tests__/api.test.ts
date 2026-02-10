@@ -6,7 +6,7 @@ import {
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
   colorsEqual,
-  getColorDisplayBackground,
+  getColorDisplayStyles,
   getContrastBadgeSummary,
   isColorInputValueValid,
   parseColorInputValue,
@@ -50,7 +50,13 @@ describe('Color API helpers', () => {
     const positioned = colorFromColorSliderPosition(base, 'alpha', 0.4, [0, 1]);
     expect(positioned.alpha).toBeCloseTo(0.4, 6);
 
-    const keyed = colorFromColorSliderKey(positioned, 'alpha', 'ArrowUp', 0.1, [0, 1]);
+    const keyed = colorFromColorSliderKey(
+      positioned,
+      'alpha',
+      'ArrowUp',
+      0.1,
+      [0, 1],
+    );
     expect(keyed?.alpha).toBeCloseTo(0.5, 6);
   });
 
@@ -60,7 +66,11 @@ describe('Color API helpers', () => {
   });
 
   it('builds contrast summaries with pass/fail metadata', () => {
-    const summary = getContrastBadgeSummary(parse('#111827'), parse('#f8fafc'), 'AA');
+    const summary = getContrastBadgeSummary(
+      parse('#111827'),
+      parse('#f8fafc'),
+      'AA',
+    );
 
     expect(summary.ratio).toBeGreaterThan(4.5);
     expect(summary.passes).toBe(true);
@@ -74,11 +84,20 @@ describe('Color API helpers', () => {
     expect(colorsEqual(a, b)).toBe(true);
   });
 
-  it('uses rgb output for alpha display backgrounds', () => {
+  it('builds deterministic display styles with p3 fallback', () => {
     const translucent = parse('rgba(59, 130, 246, 0.5)');
-    const solid = parse('#3b82f6');
+    const p3Styles = getColorDisplayStyles(
+      translucent,
+      translucent,
+      'display-p3',
+    );
+    const srgbStyles = getColorDisplayStyles(translucent, translucent, 'srgb');
 
-    expect(getColorDisplayBackground(translucent)).toMatch(/^rgb\(/);
-    expect(getColorDisplayBackground(solid)).toBe('#3b82f6');
+    expect(p3Styles.backgroundColor).toMatch(/^rgb\(/);
+    expect(p3Styles.background).toMatch(/^color\(display-p3 /);
+    expect(p3Styles.backgroundImage).toBeUndefined();
+    expect(srgbStyles.backgroundColor).toMatch(/^rgb\(/);
+    expect(srgbStyles.background).toBeUndefined();
+    expect(srgbStyles.backgroundImage).toBeUndefined();
   });
 });

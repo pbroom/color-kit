@@ -12,11 +12,9 @@ export function ColorProvider({
   children,
   ...colorOptions
 }: ColorProviderProps) {
-  const { color, setColor } = useColor(colorOptions);
+  const colorState = useColor(colorOptions);
 
   return (
-    <ColorContext.Provider value={{ color, setColor }}>
-      {children}
-    </ColorContext.Provider>
+    <ColorContext.Provider value={colorState}>{children}</ColorContext.Provider>
   );
 }

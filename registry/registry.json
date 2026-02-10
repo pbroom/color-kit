@@ -21,7 +21,7 @@
       "name": "use-color",
       "type": "registry:hook",
       "title": "useColor",
-      "description": "Core hook for color state management. Supports controlled and uncontrolled modes with conversions to all color spaces.",
+      "description": "Core dual-state hook for requested vs displayed color management with deterministic sRGB/P3 mapping.",
       "dependencies": ["@color-kit/core"],
       "files": [
         {
@@ -35,7 +35,7 @@
       "name": "color-provider",
       "type": "registry:component",
       "title": "Color Provider",
-      "description": "React context provider for sharing color state between color-kit components.",
+      "description": "React context provider for sharing dual-state color contracts between color-kit components.",
       "dependencies": ["@color-kit/core"],
       "registryDependencies": ["use-color"],
       "files": [
@@ -54,7 +54,7 @@
       "name": "color-slider",
       "type": "registry:component",
       "title": "Color Slider",
-      "description": "A 1D color slider for any channel (lightness, chroma, hue, alpha). Headless, accessible, with pointer capture and keyboard navigation.",
+      "description": "A 1D color slider for requested channel edits with interaction metadata and keyboard support.",
       "dependencies": ["@color-kit/core"],
       "files": [
         {
@@ -127,7 +127,7 @@
       "name": "color-input",
       "type": "registry:component",
       "title": "Color Input",
-      "description": "A text input for color values with format support (hex, rgb, hsl, oklch). Parses on blur or Enter.",
+      "description": "A text input for requested color values with format support (hex, rgb, hsl, oklch).",
       "dependencies": ["@color-kit/core"],
       "files": [
         {
@@ -141,7 +141,7 @@
       "name": "color-display",
       "type": "registry:component",
       "title": "Color Display",
-      "description": "A visual color preview that renders the current color as a background.",
+      "description": "A display-p3-first preview surface with deterministic sRGB fallback rendering.",
       "dependencies": ["@color-kit/core"],
       "files": [
         {

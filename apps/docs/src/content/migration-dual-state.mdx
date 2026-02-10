@@ -1,0 +1,50 @@
+# Dual-State Migration
+
+`@color-kit/react` now uses an explicit dual-state model:
+
+- `requested`: exact user intent in OKLCH
+- `displayed`: deterministic gamut-mapped values for `srgb` and `display-p3`
+
+## Breaking API Changes
+
+### `useColor`
+
+- `color` is replaced by `state` for controlled usage.
+- `setColor` is replaced by `setRequested`.
+- `onChange` now receives `{ next, changedChannel?, interaction }`.
+
+```tsx
+import { useColor } from '@color-kit/react';
+
+const color = useColor({ defaultColor: '#3b82f6' });
+
+color.requested; // canonical OKLCH request
+color.displayed; // currently active display color
+color.displayedSrgb; // deterministic sRGB mapping
+color.displayedP3; // deterministic P3 mapping
+color.setRequested({ l: 0.7, c: 0.2, h: 250, alpha: 1 });
+```
+
+### Component props
+
+- `color` -> `requested`
+- `onChange` -> `onChangeRequested`
+
+Updated components:
+
+- `ColorArea`
+- `ColorSlider`
+- `HueSlider`
+- `AlphaSlider`
+- `ColorInput`
+- `ColorDisplay` (`gamut` now configurable in standalone mode)
+
+## Behavior Changes
+
+- Pointer/keyboard/text updates annotate interaction metadata.
+- Slider and area thumb geometry always read from `requested`.
+- Display surfaces render `display-p3` first with deterministic sRGB fallback.
+
+## Why This Matters
+
+The new contract preserves editing intent at high precision while making display fallbacks explicit and testable.

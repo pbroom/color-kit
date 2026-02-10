@@ -71,24 +71,24 @@ Color Kit is explicitly dual-track, with equal importance:
 
 ### Supported models
 
-| Model | Core math | React UI behavior | Strategy |
-| --- | --- | --- | --- |
-| OKLCH | ✅ | ⚠️ Partial | Canonical and central |
-| OKLAB | ✅ | ⚠️ Partial | Internal/perceptual operations |
-| sRGB / Hex | ✅ | ✅ | Baseline output compatibility |
-| HSL | ✅ | ✅ | Interop model |
-| HSV/HSB | ✅ | ✅ | Interop model |
-| Display P3 | ✅ | ⚠️ Partial | **P3-first output target** |
-| HCT | ❌ | ❌ | Later |
-| CMYK simulation | ❌ | ❌ | Optional/later |
+| Model           | Core math | React UI behavior | Strategy                       |
+| --------------- | --------- | ----------------- | ------------------------------ |
+| OKLCH           | ✅        | ⚠️ Partial        | Canonical and central          |
+| OKLAB           | ✅        | ⚠️ Partial        | Internal/perceptual operations |
+| sRGB / Hex      | ✅        | ✅                | Baseline output compatibility  |
+| HSL             | ✅        | ✅                | Interop model                  |
+| HSV/HSB         | ✅        | ✅                | Interop model                  |
+| Display P3      | ✅        | ⚠️ Partial        | **P3-first output target**     |
+| HCT             | ❌        | ❌                | Later                          |
+| CMYK simulation | ❌        | ❌                | Optional/later                 |
 
 ### Repo track status
 
-| Track | Status | Notes |
-| --- | --- | --- |
-| `packages/core` | Strong base | Conversion/contrast/gamut/manipulation present |
+| Track            | Status              | Notes                                                    |
+| ---------------- | ------------------- | -------------------------------------------------------- |
+| `packages/core`  | Strong base         | Conversion/contrast/gamut/manipulation present           |
 | `packages/react` | Functional baseline | Needs dual-state semantics and P3-first display behavior |
-| `apps/docs` | Good baseline | Needs implementation-first guidance for new state model |
+| `apps/docs`      | Good baseline       | Needs implementation-first guidance for new state model  |
 
 ---
 
@@ -161,17 +161,17 @@ interface ColorUpdateEvent {
 
 ## API Roadmap (Execution-Oriented)
 
-| Item | Priority | Depends on | Definition of Done |
-| --- | --- | --- | --- |
-| Dual-state `useColor` contract | P0 | none | `requested`/`displayed` available and tested |
-| Gamut-aware setters (`setRequested`, `setChannel`) | P0 | dual-state | Channel edits preserve untouched channel state |
-| Multi-color state manager | P0 | dual-state | Named color collections with shared config |
-| Max chroma lookup (`maxChromaAt`) | P1 | none | Stable API + tolerance-tested sampling |
-| Gamut boundary path API | P1 | max-chroma lookup | Deterministic point arrays for sRGB/P3 overlays |
-| Contrast region path API | P2 | dual-state + boundary APIs | AA/AAA contours generated consistently |
-| Chroma band generation | P2 | max-chroma lookup | `clamped` and `proportional` modes |
-| HCT conversion | P3 | dependency decision | Conversion API + validation vectors |
-| Delta E utilities | P3 | none | `deltaEok`, optional `deltaE2000` |
+| Item                                               | Priority | Depends on                 | Definition of Done                              |
+| -------------------------------------------------- | -------- | -------------------------- | ----------------------------------------------- |
+| Dual-state `useColor` contract                     | P0       | none                       | `requested`/`displayed` available and tested    |
+| Gamut-aware setters (`setRequested`, `setChannel`) | P0       | dual-state                 | Channel edits preserve untouched channel state  |
+| Multi-color state manager                          | P0       | dual-state                 | Named color collections with shared config      |
+| Max chroma lookup (`maxChromaAt`)                  | P1       | none                       | Stable API + tolerance-tested sampling          |
+| Gamut boundary path API                            | P1       | max-chroma lookup          | Deterministic point arrays for sRGB/P3 overlays |
+| Contrast region path API                           | P2       | dual-state + boundary APIs | AA/AAA contours generated consistently          |
+| Chroma band generation                             | P2       | max-chroma lookup          | `clamped` and `proportional` modes              |
+| HCT conversion                                     | P3       | dependency decision        | Conversion API + validation vectors             |
+| Delta E utilities                                  | P3       | none                       | `deltaEok`, optional `deltaE2000`               |
 
 ---
 
@@ -221,13 +221,13 @@ These are release gates, not aspirations.
 
 ### Budgets
 
-| Scenario | Budget | Measure |
-| --- | --- | --- |
-| Slider drag (single channel) | p95 update <= 8ms | React interaction benchmark in browser harness |
-| Area drag (2D control) | p95 update <= 10ms | Browser interaction benchmark and trace |
-| Main thread stability | No long tasks > 50ms during continuous drag | Browser Performance timeline checks |
-| Core conversion throughput | >= 100k color conversions/sec | Node benchmark in CI |
-| Gamut boundary stability | No oscillation/jitter near boundary | Deterministic property tests |
+| Scenario                     | Budget                                      | Measure                                        |
+| ---------------------------- | ------------------------------------------- | ---------------------------------------------- |
+| Slider drag (single channel) | p95 update <= 8ms                           | React interaction benchmark in browser harness |
+| Area drag (2D control)       | p95 update <= 10ms                          | Browser interaction benchmark and trace        |
+| Main thread stability        | No long tasks > 50ms during continuous drag | Browser Performance timeline checks            |
+| Core conversion throughput   | >= 100k color conversions/sec               | Node benchmark in CI                           |
+| Gamut boundary stability     | No oscillation/jitter near boundary         | Deterministic property tests                   |
 
 ### Rollout
 

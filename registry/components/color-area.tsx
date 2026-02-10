@@ -12,10 +12,11 @@ import {
 import type { Color } from '@color-kit/core';
 import { clamp } from '@color-kit/core';
 import { useOptionalColorContext } from '@/hooks/color-context';
+import type { SetRequestedOptions } from '@/hooks/use-color';
 
 export interface ColorAreaProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
-  'onChange' | 'color'
+  'onChange'
 > {
   channels?: {
     x: 'l' | 'c' | 'h';
@@ -23,8 +24,8 @@ export interface ColorAreaProps extends Omit<
   };
   xRange?: [number, number];
   yRange?: [number, number];
-  color?: Color;
-  onChange?: (color: Color) => void;
+  requested?: Color;
+  onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
 const DEFAULT_RANGES: Record<string, [number, number]> = {
@@ -39,20 +40,20 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       channels = { x: 'c', y: 'l' },
       xRange,
       yRange,
-      color: colorProp,
-      onChange: onChangeProp,
+      requested: requestedProp,
+      onChangeRequested: onChangeRequestedProp,
       ...props
     },
     ref,
   ) {
     const context = useOptionalColorContext();
 
-    const color = colorProp ?? context?.color;
-    const setColor = onChangeProp ?? context?.setColor;
+    const requested = requestedProp ?? context?.requested;
+    const setRequested = onChangeRequestedProp ?? context?.setRequested;
 
-    if (!color || !setColor) {
+    if (!requested || !setRequested) {
       throw new Error(
-        'ColorArea requires either a <ColorProvider> ancestor or explicit color/onChange props.',
+        'ColorArea requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 
@@ -62,8 +63,13 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const xR = xRange ?? DEFAULT_RANGES[channels.x];
     const yR = yRange ?? DEFAULT_RANGES[channels.y];
 
-    const xNorm = (color[channels.x] - xR[0]) / (xR[1] - xR[0]);
-    const yNorm = 1 - (color[channels.y] - yR[0]) / (yR[1] - yR[0]);
+    const xNorm = clamp(
+      (requested[channels.x] - xR[0]) / (xR[1] - xR[0]),
+      0,
+      1,
+    );
+    const yNorm =
+      1 - clamp((requested[channels.y] - yR[0]) / (yR[1] - yR[0]), 0, 1);
 
     const updateFromPosition = useCallback(
       (clientX: number, clientY: number) => {
@@ -77,13 +83,16 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         const xVal = xR[0] + x * (xR[1] - xR[0]);
         const yVal = yR[0] + (1 - y) * (yR[1] - yR[0]);
 
-        setColor({
-          ...color,
-          [channels.x]: xVal,
-          [channels.y]: yVal,
-        });
+        setRequested(
+          {
+            ...requested,
+            [channels.x]: xVal,
+            [channels.y]: yVal,
+          },
+          { interaction: 'pointer' },
+        );
       },
-      [color, setColor, channels, xR, yR],
+      [requested, setRequested, channels, xR, yR],
     );
 
     const onPointerDown = useCallback(
@@ -114,41 +123,41 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         const xStep = step * (xR[1] - xR[0]);
         const yStep = step * (yR[1] - yR[0]);
 
-        let newColor: Color | null = null;
+        let next: Color | null = null;
 
         switch (e.key) {
           case 'ArrowRight':
-            newColor = {
-              ...color,
-              [channels.x]: clamp(color[channels.x] + xStep, xR[0], xR[1]),
+            next = {
+              ...requested,
+              [channels.x]: clamp(requested[channels.x] + xStep, xR[0], xR[1]),
             };
             break;
           case 'ArrowLeft':
-            newColor = {
-              ...color,
-              [channels.x]: clamp(color[channels.x] - xStep, xR[0], xR[1]),
+            next = {
+              ...requested,
+              [channels.x]: clamp(requested[channels.x] - xStep, xR[0], xR[1]),
             };
             break;
           case 'ArrowUp':
-            newColor = {
-              ...color,
-              [channels.y]: clamp(color[channels.y] + yStep, yR[0], yR[1]),
+            next = {
+              ...requested,
+              [channels.y]: clamp(requested[channels.y] + yStep, yR[0], yR[1]),
             };
             break;
           case 'ArrowDown':
-            newColor = {
-              ...color,
-              [channels.y]: clamp(color[channels.y] - yStep, yR[0], yR[1]),
+            next = {
+              ...requested,
+              [channels.y]: clamp(requested[channels.y] - yStep, yR[0], yR[1]),
             };
             break;
         }
 
-        if (newColor) {
+        if (next) {
           e.preventDefault();
-          setColor(newColor);
+          setRequested(next, { interaction: 'keyboard' });
         }
       },
-      [color, setColor, channels, xR, yR],
+      [requested, setRequested, channels, xR, yR],
     );
 
     return (
@@ -164,9 +173,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         data-dragging={isDragging || undefined}
         role="slider"
         aria-label="Color area"
-        aria-valuetext={`${channels.x}: ${color[channels.x].toFixed(2)}, ${
-          channels.y
-        }: ${color[channels.y].toFixed(2)}`}
+        aria-valuetext={`${channels.x}: ${requested[channels.x].toFixed(2)}, ${channels.y}: ${requested[channels.y].toFixed(2)}`}
         tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

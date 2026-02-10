@@ -3,34 +3,20 @@
 import { forwardRef, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import { ColorSlider } from '@/components/color-slider';
+import type { SetRequestedOptions } from '@/hooks/use-color';
 
 export interface HueSliderProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
-  'onChange' | 'color'
+  'onChange'
 > {
-  /**
-   * Slider orientation.
-   * @default "horizontal"
-   */
   orientation?: 'horizontal' | 'vertical';
-  /** Standalone color value (alternative to ColorProvider) */
-  color?: Color;
-  /** Standalone onChange (alternative to ColorProvider) */
-  onChange?: (color: Color) => void;
+  requested?: Color;
+  onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
-/**
- * A convenience hue slider pre-configured for the hue channel.
- *
- * Renders a `<ColorSlider channel="h">` with sensible defaults.
- * Completely unstyled -- use data attributes and CSS to style it.
- *
- * Data attributes (in addition to those from ColorSlider):
- * - `[data-hue-slider]` - always present
- */
 export const HueSlider = forwardRef<HTMLDivElement, HueSliderProps>(
   function HueSlider(
-    { orientation = 'horizontal', color, onChange, ...props },
+    { orientation = 'horizontal', requested, onChangeRequested, ...props },
     ref,
   ) {
     return (
@@ -39,8 +25,8 @@ export const HueSlider = forwardRef<HTMLDivElement, HueSliderProps>(
         ref={ref}
         channel="h"
         orientation={orientation}
-        color={color}
-        onChange={onChange}
+        requested={requested}
+        onChangeRequested={onChangeRequested}
         aria-label={props['aria-label'] ?? 'Hue'}
         data-hue-slider=""
       />

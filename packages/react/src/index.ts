@@ -6,7 +6,34 @@ export type { ColorProviderProps } from './color-provider.js';
 
 // Hooks
 export { useColor } from './use-color.js';
-export type { UseColorOptions, UseColorReturn } from './use-color.js';
+export { useMultiColor } from './use-multi-color.js';
+export type {
+  SetRequestedOptions,
+  UseColorOptions,
+  UseColorReturn,
+} from './use-color.js';
+export type {
+  MultiColorEntryInput,
+  MultiColorInput,
+  MultiColorState,
+  MultiColorUpdateEvent,
+  UseMultiColorOptions,
+  UseMultiColorReturn,
+} from './use-multi-color.js';
+export {
+  createColorState,
+  getActiveDisplayedColor,
+  mapDisplayedColors,
+} from './color-state.js';
+export type {
+  ColorChannel,
+  ColorInteraction,
+  ColorSource,
+  ColorState,
+  ColorUpdateEvent,
+  GamutTarget,
+  ViewModel,
+} from './color-state.js';
 export * as ColorApi from './api/index.js';
 export type {
   ColorAreaChannel,
