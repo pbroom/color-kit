@@ -15,11 +15,7 @@ export function ComponentPreview({
 }: ComponentPreviewProps) {
   return (
     <div className="not-prose my-6">
-      <div
-        className={`relative rounded-lg border border-border bg-card p-8 flex items-center justify-center min-h-[200px] ${className}`}
-      >
-        {children}
-      </div>
+      <div className={`docs-preview-shell ${className}`}>{children}</div>
     </div>
   );
 }

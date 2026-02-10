@@ -183,11 +183,13 @@ interface ColorUpdateEvent {
    - Implement canonical `ColorState` in `packages/react`.
    - Add deterministic adapters around existing `toSrgbGamut`/`toP3Gamut`.
    - Publish migration notes for current `useColor` consumers.
+   - ✅ Completed (2026-02-10): Canonical `ColorState` shipped in `packages/react` with deterministic display mapping and migration guidance in docs.
 
 2. **M2: Honest controls + P3-first display semantics**
    - Update `ColorArea`, `ColorSlider`, `HueSlider`, `AlphaSlider`, `ColorDisplay`, and `Swatch` to consume `requested` + `displayed`.
    - Enforce no thumb teleporting/clamping behavior.
    - Ensure display pathways prefer P3 output with deterministic fallback.
+   - ✅ Completed (2026-02-10): React controls and display components now keep geometry tied to `requested` while rendering `displayed` with deterministic P3-first fallback behavior.
 
 ### Next (M3-M4)
 
@@ -423,6 +425,7 @@ The composable area model remains a UX target for expressiveness and overlay cla
 - No UX behavior invariants were intentionally dropped in this version.
 - Detail that is not in active delivery scope is retained either in this appendix or in `Exploration Backlog`.
 - Future rewrites should keep this matrix and update row-by-row rather than replacing it.
+- Execution gap/status audit is tracked in `notes.execution-gap.md`.
 
 ---
 

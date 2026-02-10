@@ -12,38 +12,28 @@ interface ApiTableProps {
 export function ApiTable({ rows }: ApiTableProps) {
   return (
     <div className="not-prose my-6 overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="docs-api-table">
         <thead>
           <tr>
-            <th className="border border-border bg-muted px-3 py-2 text-left font-semibold">
-              Prop
-            </th>
-            <th className="border border-border bg-muted px-3 py-2 text-left font-semibold">
-              Type
-            </th>
-            <th className="border border-border bg-muted px-3 py-2 text-left font-semibold">
-              Default
-            </th>
-            <th className="border border-border bg-muted px-3 py-2 text-left font-semibold">
-              Description
-            </th>
+            <th>Prop</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.name}>
-              <td className="border border-border px-3 py-2 align-top">
+              <td>
                 <code>{row.name}</code>
               </td>
-              <td className="border border-border px-3 py-2 align-top">
+              <td>
                 <code>{row.type}</code>
               </td>
-              <td className="border border-border px-3 py-2 align-top">
+              <td>
                 {row.defaultValue ? <code>{row.defaultValue}</code> : '-'}
               </td>
-              <td className="border border-border px-3 py-2 align-top text-sm leading-relaxed">
-                {row.description}
-              </td>
+              <td>{row.description}</td>
             </tr>
           ))}
         </tbody>

@@ -1,30 +1,101 @@
 import { Link } from 'react-router';
+import type { ReactNode } from 'react';
+import {
+  ColorAreaDemo,
+  ColorDisplayDemo,
+  ColorInputDemo,
+  ColorProviderDemo,
+  ColorSliderDemo,
+  ContrastBadgeDemo,
+  SwatchGroupDemo,
+} from '../components/component-demos.js';
+
+interface ShowcaseCard {
+  title: string;
+  description: string;
+  href: string;
+  className?: string;
+  demo: ReactNode;
+}
+
+const cards: ShowcaseCard[] = [
+  {
+    title: 'Color Area',
+    description: '2D requested-value geometry with deterministic mapping.',
+    href: '/docs/components/color-area',
+    className: 'span-2',
+    demo: <ColorAreaDemo />,
+  },
+  {
+    title: 'Color Provider',
+    description: 'Shared canonical state for coordinated primitives.',
+    href: '/docs/components/color-provider',
+    demo: <ColorProviderDemo />,
+  },
+  {
+    title: 'Color Slider',
+    description: 'Single-axis channel control across lightness, hue, chroma.',
+    href: '/docs/components/color-slider',
+    demo: <ColorSliderDemo />,
+  },
+  {
+    title: 'Swatch Group',
+    description: 'Palette collections for design-tool workflows.',
+    href: '/docs/components/swatch-group',
+    demo: <SwatchGroupDemo />,
+  },
+  {
+    title: 'Color Input',
+    description: 'Typed entry for hex, RGB, HSL, and OKLCH.',
+    href: '/docs/components/color-input',
+    demo: <ColorInputDemo />,
+  },
+  {
+    title: 'Color Display + Contrast',
+    description: 'Rendered output and WCAG validation surfaces.',
+    href: '/docs/components/contrast-badge',
+    className: 'span-2',
+    demo: (
+      <div className="landing-duo">
+        <ColorDisplayDemo />
+        <ContrastBadgeDemo />
+      </div>
+    ),
+  },
+];
+
+function ShowcaseCard({ card }: { card: ShowcaseCard }) {
+  return (
+    <article className={`landing-card ${card.className ?? ''}`}>
+      <header>
+        <h3>{card.title}</h3>
+        <p>{card.description}</p>
+      </header>
+      <div className="landing-card-demo">{card.demo}</div>
+      <Link to={card.href} className="landing-card-link">
+        Open docs
+      </Link>
+    </article>
+  );
+}
 
 export function HomePage() {
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-border">
-        <div className="mx-auto max-w-7xl flex h-14 items-center px-6">
-          <Link
-            to="/"
-            className="flex items-center gap-2 font-semibold tracking-tight"
-          >
-            <span className="inline-block size-5 rounded-full bg-accent" />
-            color-kit
+    <div className="landing-shell">
+      <header className="landing-header">
+        <div className="landing-header-inner">
+          <Link to="/" className="docs-brand">
+            <span className="docs-brand-dot" />
+            Color Kit
           </Link>
-          <nav className="ml-auto flex items-center gap-6 text-sm">
-            <Link
-              to="/docs/introduction"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Docs
-            </Link>
+          <nav className="landing-nav">
+            <Link to="/docs/introduction">Docs</Link>
+            <Link to="/docs/components/color-area">Components</Link>
+            <Link to="/docs/shadcn-registry">Registry</Link>
             <a
               href="https://github.com/pbroom/color-kit"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               GitHub
             </a>
@@ -32,91 +103,38 @@ export function HomePage() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-7xl px-6 py-24 md:py-32">
-        <div className="max-w-3xl">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
-            Primitive UI components for{' '}
-            <span className="text-accent">color interfaces</span>
-          </h1>
-          <p className="mt-6 text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl">
-            An open-source toolkit for building color pickers, palettes, and
-            color tools. Headless React primitives powered by OKLCH, with full
-            accessibility and zero styling opinions.
+      <section className="landing-hero">
+        <div className="landing-kicker">React Primitives + shadcn Registry</div>
+        <h1>The Color Tooling Foundation for Product Teams</h1>
+        <p>
+          Build color interfaces with requested/displayed intent semantics,
+          deterministic gamut mapping, and composable React primitives.
+        </p>
+        <div className="landing-hero-actions">
+          <Link to="/docs/introduction" className="landing-cta-primary">
+            Get Started
+          </Link>
+          <Link
+            to="/docs/components/color-area"
+            className="landing-cta-secondary"
+          >
+            Explore Components
+          </Link>
+        </div>
+      </section>
+
+      <section className="landing-grid-wrap">
+        <div className="landing-grid-head">
+          <h2>Interactive Playground Grid</h2>
+          <p>
+            This surface doubles as product showcase, performance testbed, and
+            visual consistency harness for docs development.
           </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link
-              to="/docs/introduction"
-              className="inline-flex h-10 items-center rounded-md bg-accent px-6 text-sm font-medium text-accent-foreground hover:opacity-90 transition-opacity"
-            >
-              Get Started
-            </Link>
-            <a
-              href="https://github.com/pbroom/color-kit"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-10 items-center rounded-md border border-border px-6 text-sm font-medium hover:bg-muted transition-colors"
-            >
-              GitHub
-            </a>
-          </div>
         </div>
-      </section>
-
-      {/* Features */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-6 py-16 md:py-24">
-          <div className="grid gap-8 md:grid-cols-3">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">OKLCH-First</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Built on the OKLCH color space for perceptually uniform
-                gradients, accurate manipulation, and modern CSS compatibility.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">
-                Headless Primitives
-              </h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Unstyled, composable React components with full keyboard
-                navigation and ARIA support. Style with Tailwind, CSS Modules,
-                or anything else.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">shadcn Registry</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Install components via the shadcn CLI. Copy-paste friendly
-                source code that you own and control.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Install */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-6 py-16 md:py-24">
-          <h2 className="text-2xl font-semibold mb-6">Quick Install</h2>
-          <div className="grid gap-6 md:grid-cols-2 max-w-4xl">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-2">
-                npm / pnpm
-              </p>
-              <pre className="bg-muted border border-border rounded-lg p-4 text-sm font-mono overflow-x-auto">
-                pnpm add @color-kit/core @color-kit/react
-              </pre>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-2">
-                shadcn CLI
-              </p>
-              <pre className="bg-muted border border-border rounded-lg p-4 text-sm font-mono overflow-x-auto">
-                npx shadcn add color-area --registry color-kit
-              </pre>
-            </div>
-          </div>
+        <div className="landing-grid">
+          {cards.map((card) => (
+            <ShowcaseCard key={card.title} card={card} />
+          ))}
         </div>
       </section>
     </div>
