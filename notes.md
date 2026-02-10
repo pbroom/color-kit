@@ -208,6 +208,7 @@ interface ColorUpdateEvent {
    - ✅ Completed (2026-02-10): `contrastRegionPaths` + `contrastRegionPath` shipped in core; React area API now exposes normalized contrast-region overlay points.
 6. **M6: Chroma bands**
    - Add tonal strip generation in `clamped` and `proportional` modes.
+   - ✅ Completed (2026-02-10): `chromaBand` shipped in core with `clamped`/`proportional` modes and deterministic gamut-aware tonal strip output.
 7. **M7+: Optional model expansion**
    - HCT and optional CMYK simulation.
 
@@ -291,6 +292,7 @@ These are release gates, not aspirations.
 ### M6 gate
 
 - Add `packages/core/__tests__/chroma-band.test.ts`
+- ✅ Completed (2026-02-10): `packages/core/__tests__/chroma-band.test.ts` added with deterministic output, clamped/proportional behavior, and option validation coverage.
 
 ### Release gate
 
@@ -392,27 +394,27 @@ The composable area model remains a UX target for expressiveness and overlay cla
 
 ## Preservation Matrix (v1.1 -> v1.3.1)
 
-| Original v1.1 section | New location in v1.3.1 | Status | Notes |
-| --------------------- | ---------------------- | ------ | ----- |
-| Philosophy / core tenets | `Core Ideals` + `Product Direction` | Preserved (condensed) | Strategic language tightened; principles intact. |
-| Color Models / internal format | `Model and Layer Status` + `Canonical State Contract` | Preserved (condensed) | Canonical OKLCH and model strategy retained. |
-| UX Principles / requested vs actual | `Rendering and Interaction Semantics` + appendix section | Preserved | Restored scenario-level semantics in appendix. |
-| UX Principles / channel persistence | `State invariants` + appendix section | Preserved | Sticky-channel and degenerate-state behavior explicitly restored. |
-| UX Principles / handles never jump | appendix section | Preserved | Concrete examples restored for slider/area behavior. |
-| UX Principles / visual honesty in gradients | `Hue and area gradients` + appendix section | Preserved | Added algorithmic details for OKLCH hue generation. |
-| Architecture / packages | `Model and Layer Status` + existing repo structure references | Preserved (condensed) | Delivery-focused representation retained. |
-| Architecture / performance strategy | `Performance Budgets` + `CI and Release Policy` | Preserved (reframed) | Converted from narrative guidance to release gates. |
-| API / what exists today | `Model and Layer Status` + `API Roadmap` | Preserved (reframed) | Existing vs planned translated into execution milestones. |
-| API / planned additions | `API Roadmap (Execution-Oriented)` | Preserved | Priorities and DoD made explicit. |
-| Components / currently implemented | roadmap + milestone sections | Preserved (condensed) | Component list absorbed into milestone plan context. |
-| Components / planned (Gradient, Dial, Eyedropper, etc.) | `Exploration Backlog` | Preserved (deferred) | Retained as post-gate exploration, not active delivery. |
-| Area enhanced composition model | appendix section | Preserved | Restored as explicit UX target. |
-| Gamut boundary path generation | `API Roadmap` + M4 status | Preserved | Core geometry APIs tracked as delivered/active. |
-| Max chroma for hue slider | `API Roadmap` + M4 status + appendix | Preserved | Mathematical intent retained and restated in appendix. |
-| Chroma band tonal strip | `API Roadmap` M6 | Preserved (scheduled) | Still planned; implementation remains gated. |
-| WCAG contrast regions | `API Roadmap` M5 | Preserved (scheduled) | Still planned with milestone/test gate. |
-| Accessibility requirements | `Accessibility Contract` | Preserved (condensed) | Core accessibility obligations retained as gates. |
-| Test coverage/gaps | `Test Gates by Milestone` | Preserved (reframed) | Converted into milestone-level release gates. |
+| Original v1.1 section                                   | New location in v1.3.1                                        | Status                | Notes                                                                                |
+| ------------------------------------------------------- | ------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------ |
+| Philosophy / core tenets                                | `Core Ideals` + `Product Direction`                           | Preserved (condensed) | Strategic language tightened; principles intact.                                     |
+| Color Models / internal format                          | `Model and Layer Status` + `Canonical State Contract`         | Preserved (condensed) | Canonical OKLCH and model strategy retained.                                         |
+| UX Principles / requested vs actual                     | `Rendering and Interaction Semantics` + appendix section      | Preserved             | Restored scenario-level semantics in appendix.                                       |
+| UX Principles / channel persistence                     | `State invariants` + appendix section                         | Preserved             | Sticky-channel and degenerate-state behavior explicitly restored.                    |
+| UX Principles / handles never jump                      | appendix section                                              | Preserved             | Concrete examples restored for slider/area behavior.                                 |
+| UX Principles / visual honesty in gradients             | `Hue and area gradients` + appendix section                   | Preserved             | Added algorithmic details for OKLCH hue generation.                                  |
+| Architecture / packages                                 | `Model and Layer Status` + existing repo structure references | Preserved (condensed) | Delivery-focused representation retained.                                            |
+| Architecture / performance strategy                     | `Performance Budgets` + `CI and Release Policy`               | Preserved (reframed)  | Converted from narrative guidance to release gates.                                  |
+| API / what exists today                                 | `Model and Layer Status` + `API Roadmap`                      | Preserved (reframed)  | Existing vs planned translated into execution milestones.                            |
+| API / planned additions                                 | `API Roadmap (Execution-Oriented)`                            | Preserved             | Priorities and DoD made explicit.                                                    |
+| Components / currently implemented                      | roadmap + milestone sections                                  | Preserved (condensed) | Component list absorbed into milestone plan context.                                 |
+| Components / planned (Gradient, Dial, Eyedropper, etc.) | `Exploration Backlog`                                         | Preserved (deferred)  | Retained as post-gate exploration, not active delivery.                              |
+| Area enhanced composition model                         | appendix section                                              | Preserved             | Restored as explicit UX target.                                                      |
+| Gamut boundary path generation                          | `API Roadmap` + M4 status                                     | Preserved             | Core geometry APIs tracked as delivered/active.                                      |
+| Max chroma for hue slider                               | `API Roadmap` + M4 status + appendix                          | Preserved             | Mathematical intent retained and restated in appendix.                               |
+| Chroma band tonal strip                                 | `API Roadmap` M6                                              | Preserved (delivered) | Core tonal strip API shipped with clamped/proportional modes and test gate coverage. |
+| WCAG contrast regions                                   | `API Roadmap` M5                                              | Preserved (delivered) | Core contrast-region API shipped with deterministic contour + threshold coverage.    |
+| Accessibility requirements                              | `Accessibility Contract`                                      | Preserved (condensed) | Core accessibility obligations retained as gates.                                    |
+| Test coverage/gaps                                      | `Test Gates by Milestone`                                     | Preserved (reframed)  | Converted into milestone-level release gates.                                        |
 
 ---
 

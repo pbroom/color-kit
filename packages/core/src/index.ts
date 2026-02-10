@@ -101,12 +101,15 @@ export {
   toP3Gamut,
   maxChromaAt,
   gamutBoundaryPath,
+  chromaBand,
 } from './gamut/index.js';
 export type {
   GamutTarget,
   GamutBoundaryPoint,
   MaxChromaAtOptions,
   GamutBoundaryPathOptions,
+  ChromaBandMode,
+  ChromaBandOptions,
 } from './gamut/index.js';
 
 // Utilities
