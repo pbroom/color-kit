@@ -8,18 +8,43 @@ import {
 } from 'react';
 
 export type DocsInspectorTab = 'outline' | 'properties';
+export type DocsInspectorGamut = 'display-p3' | 'srgb';
 export type ColorAreaAxis = 'l' | 'c' | 'h';
 export type ColorAreaDemoId = 'requested' | 'analysis';
+export type ColorSliderDemoChannel = 'l' | 'c' | 'h' | 'alpha';
+export type ColorInputDemoFormat = 'hex' | 'rgb' | 'hsl' | 'oklch';
+export type SwatchGroupDemoPalette = 'spectrum' | 'nature' | 'neon';
+export type ContrastBadgeDemoPreset = 'interface' | 'editorial' | 'alert';
 
 export interface ColorAreaInspectorState {
   selectedDemo: ColorAreaDemoId;
-  gamut: 'display-p3' | 'srgb';
+  gamut: DocsInspectorGamut;
   xAxis: ColorAreaAxis;
   yAxis: ColorAreaAxis;
   showCheckerboard: boolean;
   showP3Boundary: boolean;
   showSrgbBoundary: boolean;
   showContrastRegion: boolean;
+}
+
+export interface ColorSliderInspectorState {
+  channel: ColorSliderDemoChannel;
+  gamut: DocsInspectorGamut;
+}
+
+export interface ColorInputInspectorState {
+  format: ColorInputDemoFormat;
+  gamut: DocsInspectorGamut;
+}
+
+export interface SwatchGroupInspectorState {
+  palette: SwatchGroupDemoPalette;
+  columns: 3 | 4 | 5;
+}
+
+export interface ContrastBadgeInspectorState {
+  preset: ContrastBadgeDemoPreset;
+  level: 'AA' | 'AAA';
 }
 
 const COLOR_AREA_DEMOS: Array<{ id: ColorAreaDemoId; label: string }> = [
@@ -36,6 +61,26 @@ const DEFAULT_COLOR_AREA_STATE: ColorAreaInspectorState = {
   showP3Boundary: false,
   showSrgbBoundary: false,
   showContrastRegion: false,
+};
+
+const DEFAULT_COLOR_SLIDER_STATE: ColorSliderInspectorState = {
+  channel: 'c',
+  gamut: 'display-p3',
+};
+
+const DEFAULT_COLOR_INPUT_STATE: ColorInputInspectorState = {
+  format: 'hex',
+  gamut: 'display-p3',
+};
+
+const DEFAULT_SWATCH_GROUP_STATE: SwatchGroupInspectorState = {
+  palette: 'spectrum',
+  columns: 4,
+};
+
+const DEFAULT_CONTRAST_BADGE_STATE: ContrastBadgeInspectorState = {
+  preset: 'interface',
+  level: 'AA',
 };
 
 const COLOR_AREA_DEMO_PRESETS: Record<
@@ -79,6 +124,14 @@ interface DocsInspectorContextValue {
   colorAreaState: ColorAreaInspectorState;
   setColorAreaState: (patch: Partial<ColorAreaInspectorState>) => void;
   cycleColorAreaDemo: (direction: 1 | -1) => void;
+  colorSliderState: ColorSliderInspectorState;
+  setColorSliderState: (patch: Partial<ColorSliderInspectorState>) => void;
+  colorInputState: ColorInputInspectorState;
+  setColorInputState: (patch: Partial<ColorInputInspectorState>) => void;
+  swatchGroupState: SwatchGroupInspectorState;
+  setSwatchGroupState: (patch: Partial<SwatchGroupInspectorState>) => void;
+  contrastBadgeState: ContrastBadgeInspectorState;
+  setContrastBadgeState: (patch: Partial<ContrastBadgeInspectorState>) => void;
 }
 
 const DocsInspectorContext = createContext<DocsInspectorContextValue | null>(
@@ -89,6 +142,18 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<DocsInspectorTab>('outline');
   const [colorAreaState, setColorAreaStateInternal] = useState(
     DEFAULT_COLOR_AREA_STATE,
+  );
+  const [colorSliderState, setColorSliderStateInternal] = useState(
+    DEFAULT_COLOR_SLIDER_STATE,
+  );
+  const [colorInputState, setColorInputStateInternal] = useState(
+    DEFAULT_COLOR_INPUT_STATE,
+  );
+  const [swatchGroupState, setSwatchGroupStateInternal] = useState(
+    DEFAULT_SWATCH_GROUP_STATE,
+  );
+  const [contrastBadgeState, setContrastBadgeStateInternal] = useState(
+    DEFAULT_CONTRAST_BADGE_STATE,
   );
 
   const setColorAreaState = useCallback(
@@ -120,6 +185,40 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setColorSliderState = useCallback(
+    (patch: Partial<ColorSliderInspectorState>) => {
+      setColorSliderStateInternal((current) => ({ ...current, ...patch }));
+    },
+    [],
+  );
+
+  const setColorInputState = useCallback(
+    (patch: Partial<ColorInputInspectorState>) => {
+      setColorInputStateInternal((current) => ({ ...current, ...patch }));
+    },
+    [],
+  );
+
+  const setSwatchGroupState = useCallback(
+    (patch: Partial<SwatchGroupInspectorState>) => {
+      setSwatchGroupStateInternal((current) => ({
+        ...current,
+        ...patch,
+      }));
+    },
+    [],
+  );
+
+  const setContrastBadgeState = useCallback(
+    (patch: Partial<ContrastBadgeInspectorState>) => {
+      setContrastBadgeStateInternal((current) => ({
+        ...current,
+        ...patch,
+      }));
+    },
+    [],
+  );
+
   const value = useMemo<DocsInspectorContextValue>(
     () => ({
       activeTab,
@@ -128,8 +227,29 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
       colorAreaState,
       setColorAreaState,
       cycleColorAreaDemo,
+      colorSliderState,
+      setColorSliderState,
+      colorInputState,
+      setColorInputState,
+      swatchGroupState,
+      setSwatchGroupState,
+      contrastBadgeState,
+      setContrastBadgeState,
     }),
-    [activeTab, colorAreaState, setColorAreaState, cycleColorAreaDemo],
+    [
+      activeTab,
+      colorAreaState,
+      setColorAreaState,
+      cycleColorAreaDemo,
+      colorSliderState,
+      setColorSliderState,
+      colorInputState,
+      setColorInputState,
+      swatchGroupState,
+      setSwatchGroupState,
+      contrastBadgeState,
+      setContrastBadgeState,
+    ],
   );
 
   return (
