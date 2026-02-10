@@ -92,6 +92,14 @@ export {
   inP3Gamut,
   toSrgbGamut,
   toP3Gamut,
+  maxChromaAt,
+  gamutBoundaryPath,
+} from './gamut/index.js';
+export type {
+  GamutTarget,
+  GamutBoundaryPoint,
+  MaxChromaAtOptions,
+  GamutBoundaryPathOptions,
 } from './gamut/index.js';
 
 // Utilities

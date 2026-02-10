@@ -6,6 +6,7 @@ import {
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
   colorsEqual,
+  getColorAreaGamutBoundaryPoints,
   getColorDisplayStyles,
   getContrastBadgeSummary,
   isColorInputValueValid,
@@ -27,6 +28,40 @@ describe('Color API helpers', () => {
 
     expect(next.c).toBeCloseTo(0.2, 6);
     expect(next.l).toBeCloseTo(0.75, 6);
+  });
+
+  it('returns normalized color area gamut boundary points for l/c areas', () => {
+    const boundary = getColorAreaGamutBoundaryPoints(
+      145,
+      { x: 'c', y: 'l' },
+      [0, 0.4],
+      [0, 1],
+      { gamut: 'srgb', steps: 8 },
+    );
+
+    expect(boundary).toHaveLength(9);
+    expect(boundary[0].x).toBeCloseTo(0, 6);
+    expect(boundary[0].y).toBeCloseTo(1, 6);
+    expect(boundary[8].x).toBeCloseTo(0, 6);
+    expect(boundary[8].y).toBeCloseTo(0, 6);
+
+    for (const point of boundary) {
+      expect(point.x).toBeGreaterThanOrEqual(0);
+      expect(point.x).toBeLessThanOrEqual(1);
+      expect(point.y).toBeGreaterThanOrEqual(0);
+      expect(point.y).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('returns an empty boundary when the color area is not l/c based', () => {
+    const boundary = getColorAreaGamutBoundaryPoints(
+      145,
+      { x: 'h', y: 'l' },
+      [0, 360],
+      [0, 1],
+      { steps: 8 },
+    );
+    expect(boundary).toEqual([]);
   });
 
   it('updates color area channels from keyboard input', () => {

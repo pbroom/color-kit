@@ -1,5 +1,5 @@
 import type { Color } from '@color-kit/core';
-import { clamp } from '@color-kit/core';
+import { clamp, gamutBoundaryPath, type GamutTarget } from '@color-kit/core';
 
 export type ColorAreaChannel = 'l' | 'c' | 'h';
 export type ColorAreaKey = 'ArrowRight' | 'ArrowLeft' | 'ArrowUp' | 'ArrowDown';
@@ -13,6 +13,18 @@ export const COLOR_AREA_DEFAULT_RANGES: Record<
   h: [0, 360],
 };
 
+export interface ColorAreaGamutBoundaryPoint {
+  l: number;
+  c: number;
+  x: number;
+  y: number;
+}
+
+export interface ColorAreaGamutBoundaryOptions {
+  gamut?: GamutTarget;
+  steps?: number;
+}
+
 export function resolveColorAreaRange(
   channel: ColorAreaChannel,
   range?: [number, number],
@@ -22,6 +34,16 @@ export function resolveColorAreaRange(
 
 function normalize(value: number, range: [number, number]): number {
   return clamp((value - range[0]) / (range[1] - range[0]), 0, 1);
+}
+
+function usesLightnessAndChroma(channels: {
+  x: ColorAreaChannel;
+  y: ColorAreaChannel;
+}): boolean {
+  return (
+    (channels.x === 'l' && channels.y === 'c') ||
+    (channels.x === 'c' && channels.y === 'l')
+  );
 }
 
 export function getColorAreaThumbPosition(
@@ -55,6 +77,39 @@ export function colorFromColorAreaPosition(
     [channels.x]: xValue,
     [channels.y]: yValue,
   };
+}
+
+export function getColorAreaGamutBoundaryPoints(
+  hue: number,
+  channels: { x: ColorAreaChannel; y: ColorAreaChannel },
+  xRange: [number, number],
+  yRange: [number, number],
+  options: ColorAreaGamutBoundaryOptions = {},
+): ColorAreaGamutBoundaryPoint[] {
+  if (!usesLightnessAndChroma(channels)) {
+    return [];
+  }
+
+  const boundary = gamutBoundaryPath(hue, {
+    gamut: options.gamut ?? 'srgb',
+    steps: options.steps,
+  });
+
+  return boundary.map((point) => {
+    const position = getColorAreaThumbPosition(
+      { l: point.l, c: point.c, h: hue, alpha: 1 },
+      channels,
+      xRange,
+      yRange,
+    );
+
+    return {
+      l: point.l,
+      c: point.c,
+      x: position.x,
+      y: position.y,
+    };
+  });
 }
 
 export function colorFromColorAreaKey(

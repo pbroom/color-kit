@@ -2,10 +2,16 @@ export {
   COLOR_AREA_DEFAULT_RANGES,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
+  getColorAreaGamutBoundaryPoints,
   getColorAreaThumbPosition,
   resolveColorAreaRange,
 } from './color-area.js';
-export type { ColorAreaChannel, ColorAreaKey } from './color-area.js';
+export type {
+  ColorAreaChannel,
+  ColorAreaGamutBoundaryOptions,
+  ColorAreaGamutBoundaryPoint,
+  ColorAreaKey,
+} from './color-area.js';
 
 export {
   COLOR_SLIDER_DEFAULT_RANGES,
