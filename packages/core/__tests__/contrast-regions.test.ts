@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  contrastRatio,
   contrastRegionPath,
   contrastRegionPaths,
   fromHex,
+  inP3Gamut,
+  inSrgbGamut,
 } from '../src/index.js';
 
 function flattenLightness(paths: Array<Array<{ l: number }>>): number[] {
@@ -72,6 +75,33 @@ describe('contrastRegionPaths()', () => {
     });
 
     expect(paths).toEqual([]);
+  });
+
+  it('uses unclamped luminance for display-p3 sampling', () => {
+    const reference = { l: 0.9, c: 0.03, h: 95, alpha: 1 };
+    const sample = {
+      l: 0.5,
+      c: 0.22809734908482968,
+      h: 24.864352050672835,
+      alpha: 1,
+    };
+    const threshold = 4.8;
+
+    expect(inP3Gamut(sample)).toBe(true);
+    expect(inSrgbGamut(sample)).toBe(false);
+    expect(contrastRatio(sample, reference)).toBeLessThan(threshold);
+
+    const maxChroma = sample.c * 2;
+    const paths = contrastRegionPaths(reference, sample.h, {
+      gamut: 'display-p3',
+      threshold,
+      lightnessSteps: 2,
+      chromaSteps: 2,
+      maxChroma,
+    });
+
+    const maxL = Math.max(...flattenLightness(paths));
+    expect(maxL).toBeGreaterThan(0.25);
   });
 
   it('exposes a convenience helper for the largest contour path', () => {

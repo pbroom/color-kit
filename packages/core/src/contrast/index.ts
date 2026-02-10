@@ -1,6 +1,13 @@
 import type { Color } from '../types.js';
-import { maxChromaAt, type GamutTarget } from '../gamut/index.js';
+import {
+  maxChromaAt,
+  toP3Gamut,
+  toSrgbGamut,
+  type GamutTarget,
+} from '../gamut/index.js';
 import { toRgb } from '../conversion/index.js';
+import { oklabToLinearRgb } from '../conversion/oklab.js';
+import { oklchToOklab } from '../conversion/oklch.js';
 import { srgbToLinearChannel } from '../utils/index.js';
 
 /**
@@ -153,6 +160,35 @@ export interface ContrastRegionPathOptions {
 
 const DEFAULT_LIGHTNESS_STEPS = 64;
 const DEFAULT_CHROMA_STEPS = 64;
+
+function mapToGamut(color: Color, gamut: GamutTarget): Color {
+  return gamut === 'display-p3' ? toP3Gamut(color) : toSrgbGamut(color);
+}
+
+/**
+ * Relative luminance from unclamped linear channels.
+ *
+ * This keeps P3-only colors accurate instead of implicitly clipping
+ * through an sRGB conversion path.
+ */
+function relativeLuminanceUnclamped(color: Color): number {
+  const lab = oklchToOklab({
+    l: color.l,
+    c: color.c,
+    h: color.h,
+    alpha: color.alpha,
+  });
+  const linear = oklabToLinearRgb(lab);
+  return 0.2126 * linear.r + 0.7152 * linear.g + 0.0722 * linear.b;
+}
+
+function contrastRatioUnclamped(color1: Color, color2: Color): number {
+  const l1 = relativeLuminanceUnclamped(color1);
+  const l2 = relativeLuminanceUnclamped(color2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 function resolveContrastThreshold(options: ContrastRegionPathOptions): number {
   if (typeof options.threshold === 'number') {
@@ -364,6 +400,7 @@ export function contrastRegionPaths(
 
   const alpha = options.alpha ?? 1;
   const gamut = options.gamut ?? 'srgb';
+  const mappedReference = mapToGamut(reference, gamut);
 
   const meetsGrid: boolean[][] = [];
   for (
@@ -390,7 +427,10 @@ export function contrastRegionPaths(
       }
 
       const sample: Color = { l, c, h: hue, alpha };
-      row.push(contrastRatio(sample, reference) >= threshold);
+      const mappedSample = mapToGamut(sample, gamut);
+      row.push(
+        contrastRatioUnclamped(mappedSample, mappedReference) >= threshold,
+      );
     }
     meetsGrid.push(row);
   }
