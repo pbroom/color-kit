@@ -11,14 +11,23 @@ Built on **OKLCH** for perceptually uniform color manipulation. Headless React p
 | [`@color-kit/core`](./packages/core)   | Pure TypeScript color utilities — conversion, contrast, harmony, scales, manipulation, gamut mapping |
 | [`@color-kit/react`](./packages/react) | Headless React primitives — color areas, sliders, swatches, inputs                                   |
 
+## Stability Policy
+
+This project is intentionally in a pre-production phase:
+
+- Public packages stay on `0.x.y`.
+- Breaking changes may land in minor releases while APIs are still settling.
+- `npm` publishes use the `next` dist-tag until `1.0.0` readiness.
+- CI blocks accidental `>=1.0.0` workspace package versions.
+
 ## Install
 
 ```bash
 # Core utilities only
-pnpm add @color-kit/core
+pnpm add @color-kit/core@next
 
 # Core + React components
-pnpm add @color-kit/core @color-kit/react
+pnpm add @color-kit/core@next @color-kit/react@next
 ```
 
 ### shadcn Registry
@@ -137,6 +146,16 @@ pnpm test
 
 # Start docs dev server
 pnpm dev
+```
+
+## Publishing (Maintainers)
+
+```bash
+# Validate pre-production policy, then publish workspace packages to npm @next
+pnpm publish:next
+
+# Same flow without publishing artifacts
+pnpm publish:next:dry
 ```
 
 ## Codex Guidance Template
