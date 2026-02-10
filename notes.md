@@ -194,10 +194,12 @@ interface ColorUpdateEvent {
 3. **M3: Multi-color state management**
    - Add first-class multi-color APIs for palette entries and gradient stops.
    - Ensure shared settings (gamut, view model) apply coherently.
+   - ✅ Completed (2026-02-10): `useMultiColor` state manager shipped with shared gamut/view controls and collection operations.
 
 4. **M4: Geometry APIs**
    - Ship `maxChromaAt` and gamut boundary path generation in `packages/core`.
    - Expose stable overlay data contracts for React components.
+   - ✅ Completed (2026-02-10): `maxChromaAt` + `gamutBoundaryPath` shipped in core; React area API now exposes normalized gamut boundary points for overlays.
 
 ### Later (M5+)
 

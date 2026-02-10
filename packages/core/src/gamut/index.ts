@@ -2,9 +2,131 @@ import type { Color } from '../types.js';
 import { oklchToOklab } from '../conversion/oklch.js';
 import { oklabToLinearRgb } from '../conversion/oklab.js';
 import { linearSrgbToLinearP3 } from '../conversion/p3.js';
+import { clamp, normalizeHue } from '../utils/index.js';
 
 /** Small epsilon to account for floating-point rounding */
 const EPSILON = 0.000075;
+const DEFAULT_MAX_CHROMA = 0.4;
+const DEFAULT_TOLERANCE = 0.0001;
+const DEFAULT_MAX_ITERATIONS = 30;
+
+export type GamutTarget = 'srgb' | 'display-p3';
+
+export interface MaxChromaAtOptions {
+  gamut?: GamutTarget;
+  /**
+   * Absolute precision for binary search stop condition.
+   * Lower values increase precision and work per call.
+   */
+  tolerance?: number;
+  /**
+   * Hard cap for binary search iterations.
+   */
+  maxIterations?: number;
+  /**
+   * Upper chroma search bound.
+   */
+  maxChroma?: number;
+  /**
+   * Alpha channel used while sampling.
+   */
+  alpha?: number;
+}
+
+export interface GamutBoundaryPoint {
+  l: number;
+  c: number;
+}
+
+export interface GamutBoundaryPathOptions extends MaxChromaAtOptions {
+  /**
+   * Number of equal lightness segments to sample.
+   * The returned path has `steps + 1` points.
+   */
+  steps?: number;
+}
+
+function isInTargetGamut(color: Color, gamut: GamutTarget): boolean {
+  return gamut === 'display-p3' ? inP3Gamut(color) : inSrgbGamut(color);
+}
+
+/**
+ * Resolve the maximum in-gamut chroma for a specific lightness + hue.
+ *
+ * This is the geometry primitive used by gamut boundary overlays and
+ * model-accurate hue/chroma gradient generation.
+ */
+export function maxChromaAt(
+  lightness: number,
+  hue: number,
+  options: MaxChromaAtOptions = {},
+): number {
+  const {
+    gamut = 'srgb',
+    tolerance = DEFAULT_TOLERANCE,
+    maxIterations = DEFAULT_MAX_ITERATIONS,
+    maxChroma = DEFAULT_MAX_CHROMA,
+    alpha = 1,
+  } = options;
+
+  const l = clamp(lightness, 0, 1);
+  if (l <= 0 || l >= 1) return 0;
+
+  const h = normalizeHue(hue);
+  const hiStart = Math.max(0, maxChroma);
+  if (hiStart === 0) return 0;
+
+  let lo = 0;
+  let hi = hiStart;
+
+  // If upper bound is already in gamut, caller supplied a hard cap.
+  const hiColor: Color = { l, c: hi, h, alpha };
+  if (isInTargetGamut(hiColor, gamut)) {
+    return hi;
+  }
+
+  const minTolerance = tolerance > 0 ? tolerance : DEFAULT_TOLERANCE;
+  const iterations =
+    Number.isFinite(maxIterations) && maxIterations > 0
+      ? Math.max(1, Math.floor(maxIterations))
+      : DEFAULT_MAX_ITERATIONS;
+
+  for (let index = 0; index < iterations; index += 1) {
+    if (hi - lo <= minTolerance) break;
+    const mid = (lo + hi) / 2;
+    const test: Color = { l, c: mid, h, alpha };
+    if (isInTargetGamut(test, gamut)) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+
+  return lo;
+}
+
+/**
+ * Sample the lightness/chroma gamut boundary for a fixed hue.
+ *
+ * Returns deterministic points usable for SVG/Canvas overlay paths.
+ */
+export function gamutBoundaryPath(
+  hue: number,
+  options: GamutBoundaryPathOptions = {},
+): GamutBoundaryPoint[] {
+  const steps = options.steps ?? 100;
+  if (!Number.isInteger(steps) || steps < 2) {
+    throw new Error('gamutBoundaryPath() requires steps >= 2');
+  }
+
+  const path: GamutBoundaryPoint[] = [];
+  for (let index = 0; index <= steps; index += 1) {
+    const l = index / steps;
+    const c = maxChromaAt(l, hue, options);
+    path.push({ l, c });
+  }
+  return path;
+}
 
 /**
  * Check if a Color is within the sRGB gamut.

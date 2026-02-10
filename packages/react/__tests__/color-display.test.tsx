@@ -16,7 +16,9 @@ describe('ColorDisplay', () => {
     const node = getByRole('img');
     expect(node.getAttribute('data-gamut')).toBe('display-p3');
     expect(node.getAttribute('data-out-of-gamut')).toBe('true');
-    expect(node.getAttribute('style')).toContain('background: color(display-p3');
+    expect(node.getAttribute('style')).toContain(
+      'background: color(display-p3',
+    );
   });
 
   it('renders without p3 background override when gamut=srgb', () => {
@@ -27,6 +29,8 @@ describe('ColorDisplay', () => {
 
     const node = getByRole('img');
     expect(node.getAttribute('data-gamut')).toBe('srgb');
-    expect(node.getAttribute('style')).not.toContain('background: color(display-p3');
+    expect(node.getAttribute('style')).not.toContain(
+      'background: color(display-p3',
+    );
   });
 });
