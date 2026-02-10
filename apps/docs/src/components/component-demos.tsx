@@ -15,7 +15,7 @@ import {
   type ColorSliderChannel,
   useColor,
 } from '@color-kit/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useOptionalDocsInspector } from './docs-inspector-context.js';
 
 const DOC_SWATCHES = [
@@ -310,12 +310,17 @@ export function ColorSliderDemo({
     defaultGamut: state?.gamut ?? 'display-p3',
   });
   const sliderGamut = state?.gamut;
-  const setSliderGamut = color.setActiveGamut;
+  const sliderGamutSetterRef = useRef(color.setActiveGamut);
+
+  useEffect(() => {
+    sliderGamutSetterRef.current = color.setActiveGamut;
+  }, [color.setActiveGamut]);
 
   useEffect(() => {
     if (!sliderGamut) return;
-    setSliderGamut(sliderGamut, 'programmatic');
-  }, [sliderGamut, setSliderGamut]);
+    if (color.activeGamut === sliderGamut) return;
+    sliderGamutSetterRef.current(sliderGamut, 'programmatic');
+  }, [sliderGamut, color.activeGamut]);
 
   return (
     <div className="ck-demo-stack">
@@ -502,19 +507,37 @@ export function ContrastBadgeDemo({
     defaultColor: toCss(preset.background, 'hex'),
   });
   const presetKey = state?.preset;
-  const setForeground = foreground.setRequested;
-  const setBackground = background.setRequested;
+  const foregroundSetterRef = useRef(foreground.setRequested);
+  const backgroundSetterRef = useRef(background.setRequested);
+
+  useEffect(() => {
+    foregroundSetterRef.current = foreground.setRequested;
+  }, [foreground.setRequested]);
+
+  useEffect(() => {
+    backgroundSetterRef.current = background.setRequested;
+  }, [background.setRequested]);
 
   useEffect(() => {
     if (!presetKey) return;
     const nextPreset = CONTRAST_PRESETS[presetKey];
-    setForeground(nextPreset.foreground, {
-      interaction: 'programmatic',
-    });
-    setBackground(nextPreset.background, {
-      interaction: 'programmatic',
-    });
-  }, [presetKey, setForeground, setBackground]);
+    const currentForeground = toCss(foreground.requested, 'hex').toLowerCase();
+    const currentBackground = toCss(background.requested, 'hex').toLowerCase();
+    const nextForeground = toCss(nextPreset.foreground, 'hex').toLowerCase();
+    const nextBackground = toCss(nextPreset.background, 'hex').toLowerCase();
+
+    if (currentForeground !== nextForeground) {
+      foregroundSetterRef.current(nextPreset.foreground, {
+        interaction: 'programmatic',
+      });
+    }
+
+    if (currentBackground !== nextBackground) {
+      backgroundSetterRef.current(nextPreset.background, {
+        interaction: 'programmatic',
+      });
+    }
+  }, [presetKey, foreground.requested, background.requested]);
 
   return (
     <div className="ck-demo-stack">
