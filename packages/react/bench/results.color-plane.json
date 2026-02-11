@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-11T19:14:12.053Z",
+  "timestamp": "2026-02-11T22:52:38.020Z",
   "targets": {
     "desktop": {
       "medianFps": ">= 90",
@@ -17,17 +17,17 @@
         "height": 512,
         "iterations": 4
       },
-      "canvas2d": {
-        "samples": [93.864, 85.795, 72.085, 68.755],
-        "medianMs": 72.085,
-        "p95Ms": 93.864,
-        "medianFps": 13.87
+      "cpu": {
+        "samples": [95.889, 87.531, 74.236, 74.84],
+        "medianMs": 74.84,
+        "p95Ms": 95.889,
+        "medianFps": 13.36
       },
-      "webglPrototype": {
-        "samples": [69.913, 72.771, 88.05, 69.361],
-        "medianMs": 69.913,
-        "p95Ms": 88.05,
-        "medianFps": 14.3
+      "gpuPrototype": {
+        "samples": [75.141, 105.494, 74.158, 73.4],
+        "medianMs": 74.158,
+        "p95Ms": 105.494,
+        "medianFps": 13.48
       }
     },
     "mobile": {
@@ -36,24 +36,24 @@
         "height": 256,
         "iterations": 6
       },
-      "canvas2d": {
-        "samples": [17.889, 17.605, 17.93, 17.59, 17.98, 17.731],
-        "medianMs": 17.731,
-        "p95Ms": 17.98,
-        "medianFps": 56.4
+      "cpu": {
+        "samples": [18.324, 18.465, 18.515, 18.167, 18.573, 18.524],
+        "medianMs": 18.465,
+        "p95Ms": 18.573,
+        "medianFps": 54.16
       },
-      "webglPrototype": {
-        "samples": [17.88, 17.766, 17.996, 17.899, 17.633, 18.527],
-        "medianMs": 17.88,
-        "p95Ms": 18.527,
-        "medianFps": 55.93
+      "gpuPrototype": {
+        "samples": [18.204, 18.535, 18.76, 18.355, 18.82, 18.536],
+        "medianMs": 18.535,
+        "p95Ms": 18.82,
+        "medianFps": 53.95
       }
     }
   },
   "decision": {
-    "selectedRenderer": "canvas2d",
-    "canvasPass": false,
-    "webglPass": false,
-    "note": "Canvas2D is selected by this benchmark gate in the current repository baseline."
+    "selectedRenderer": "gpu",
+    "cpuPass": false,
+    "gpuPass": false,
+    "note": "GPU is preferred by default with CPU fallback for unsupported contexts."
   }
 }

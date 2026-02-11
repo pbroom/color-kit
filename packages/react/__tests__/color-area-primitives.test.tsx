@@ -66,7 +66,7 @@ describe('ColorArea primitives', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('falls back to canvas2d when webgl renderer is unavailable', async () => {
+  it('falls back to cpu when gpu renderer is unavailable', async () => {
     const requested: Color = { l: 0.6, c: 0.2, h: 250, alpha: 1 };
 
     const createImageData = vi.fn((width: number, height: number) => ({
@@ -107,15 +107,68 @@ describe('ColorArea primitives', () => {
 
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane renderer="gpu" />
+      </ColorArea>,
+    );
+
+    await waitFor(() => {
+      const plane = container.querySelector('[data-color-area-plane]');
+      expect(plane?.getAttribute('data-renderer')).toBe('cpu');
+      expect(createImageData).toHaveBeenCalled();
+      expect(putImageData).toHaveBeenCalled();
+    });
+  });
+
+  it('accepts legacy renderer aliases for backward compatibility', async () => {
+    const requested: Color = { l: 0.6, c: 0.2, h: 250, alpha: 1 };
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      function getContext(this: HTMLCanvasElement, kind: string) {
+        if (kind === 'webgl') {
+          return null;
+        }
+        if (kind === '2d') {
+          return {
+            createImageData: (width: number, height: number) => ({
+              data: new Uint8ClampedArray(width * height * 4),
+              width,
+              height,
+            }),
+            putImageData: () => {},
+          } as unknown as RenderingContext;
+        }
+        return null;
+      },
+    );
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      'getBoundingClientRect',
+    ).mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
         <ColorPlane renderer="webgl" />
       </ColorArea>,
     );
 
     await waitFor(() => {
       const plane = container.querySelector('[data-color-area-plane]');
-      expect(plane?.getAttribute('data-renderer')).toBe('canvas2d');
-      expect(createImageData).toHaveBeenCalled();
-      expect(putImageData).toHaveBeenCalled();
+      expect(plane?.getAttribute('data-renderer')).toBe('cpu');
     });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[ColorPlane] renderer=\"webgl\" is deprecated; use renderer=\"gpu\".',
+    );
   });
 });

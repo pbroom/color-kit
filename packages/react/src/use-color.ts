@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import type { Observable } from '@legendapp/state';
 import { useObservable, useSelector } from '@legendapp/state/react';
 import type { Color, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
@@ -93,6 +93,15 @@ function resolveSource(
   return interaction === 'programmatic' ? 'programmatic' : 'user';
 }
 
+function colorsEqual(a: Color, b: Color, epsilon: number = 0): boolean {
+  return (
+    Math.abs(a.l - b.l) <= epsilon &&
+    Math.abs(a.c - b.c) <= epsilon &&
+    Math.abs(a.h - b.h) <= epsilon &&
+    Math.abs(a.alpha - b.alpha) <= epsilon
+  );
+}
+
 export function useColor(options: UseColorOptions = {}): UseColorReturn {
   const {
     defaultColor,
@@ -126,122 +135,158 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
       ? (subscribedState as ColorState)
       : state$.peek();
 
-  const getCurrentState = (): ColorState => {
+  const getCurrentState = useCallback((): ColorState => {
     return isControlled && controlledState ? controlledState : state$.peek();
-  };
+  }, [isControlled, controlledState, state$]);
 
-  const commitState = (
-    nextState: ColorState,
-    changedChannel: ColorChannel | undefined,
-    interaction: ColorInteraction,
-  ) => {
-    if (!isControlled) {
-      state$.set(nextState);
-    }
-    onChange?.({
-      next: nextState,
-      changedChannel,
-      interaction,
-    });
-  };
+  const commitState = useCallback(
+    (
+      nextState: ColorState,
+      changedChannel: ColorChannel | undefined,
+      interaction: ColorInteraction,
+    ) => {
+      if (!isControlled) {
+        state$.set(nextState);
+      }
+      onChange?.({
+        next: nextState,
+        changedChannel,
+        interaction,
+      });
+    },
+    [isControlled, onChange, state$],
+  );
 
-  const setRequested = (
-    requested: Color,
-    options: SetRequestedOptions = {},
-  ) => {
-    const interaction = options.interaction ?? 'programmatic';
-    const source = resolveSource(interaction, options.source);
-    const currentState = getCurrentState();
-    const nextState = createColorState(requested, {
-      activeGamut: currentState.activeGamut,
-      activeView: currentState.activeView,
-      source,
-    });
+  const setRequested = useCallback(
+    (requested: Color, options: SetRequestedOptions = {}) => {
+      const interaction = options.interaction ?? 'programmatic';
+      const source = resolveSource(interaction, options.source);
+      const currentState = getCurrentState();
 
-    commitState(nextState, options.changedChannel, interaction);
-  };
+      if (
+        colorsEqual(currentState.requested, requested, 0) &&
+        currentState.meta.source === source
+      ) {
+        return;
+      }
 
-  const setChannel = (
-    channel: ColorChannel,
-    value: number,
-    options: Omit<SetRequestedOptions, 'changedChannel'> = {},
-  ) => {
-    const currentState = getCurrentState();
-    const nextRequested: Color = {
-      ...currentState.requested,
-      [channel]: value,
-    };
-    setRequested(nextRequested, {
-      ...options,
-      changedChannel: channel,
-    });
-  };
+      const nextState = createColorState(requested, {
+        activeGamut: currentState.activeGamut,
+        activeView: currentState.activeView,
+        source,
+      });
 
-  const setFromString = (css: string, options: SetRequestedOptions = {}) => {
-    setRequested(parse(css), {
-      interaction: options.interaction ?? 'text-input',
-      source: options.source,
-      changedChannel: options.changedChannel,
-    });
-  };
+      commitState(nextState, options.changedChannel, interaction);
+    },
+    [commitState, getCurrentState],
+  );
 
-  const setFromRgb = (rgb: Rgb, options: SetRequestedOptions = {}) => {
-    setRequested(fromRgb(rgb), options);
-  };
+  const setChannel = useCallback(
+    (
+      channel: ColorChannel,
+      value: number,
+      options: Omit<SetRequestedOptions, 'changedChannel'> = {},
+    ) => {
+      const currentState = getCurrentState();
+      if (currentState.requested[channel] === value) {
+        return;
+      }
 
-  const setFromHsl = (hsl: Hsl, options: SetRequestedOptions = {}) => {
-    setRequested(fromHsl(hsl), options);
-  };
+      const nextRequested: Color = {
+        ...currentState.requested,
+        [channel]: value,
+      };
+      setRequested(nextRequested, {
+        ...options,
+        changedChannel: channel,
+      });
+    },
+    [getCurrentState, setRequested],
+  );
 
-  const setFromHsv = (hsv: Hsv, options: SetRequestedOptions = {}) => {
-    setRequested(fromHsv(hsv), options);
-  };
+  const setFromString = useCallback(
+    (css: string, options: SetRequestedOptions = {}) => {
+      setRequested(parse(css), {
+        interaction: options.interaction ?? 'text-input',
+        source: options.source,
+        changedChannel: options.changedChannel,
+      });
+    },
+    [setRequested],
+  );
 
-  const setActiveGamut = (gamut: GamutTarget, source: ColorSource = 'user') => {
-    const currentState = getCurrentState();
-    if (
-      currentState.activeGamut === gamut &&
-      currentState.meta.source === source
-    ) {
-      return;
-    }
+  const setFromRgb = useCallback(
+    (rgb: Rgb, options: SetRequestedOptions = {}) => {
+      setRequested(fromRgb(rgb), options);
+    },
+    [setRequested],
+  );
 
-    commitState(
-      {
-        ...currentState,
-        activeGamut: gamut,
-        meta: {
-          ...currentState.meta,
-          source,
+  const setFromHsl = useCallback(
+    (hsl: Hsl, options: SetRequestedOptions = {}) => {
+      setRequested(fromHsl(hsl), options);
+    },
+    [setRequested],
+  );
+
+  const setFromHsv = useCallback(
+    (hsv: Hsv, options: SetRequestedOptions = {}) => {
+      setRequested(fromHsv(hsv), options);
+    },
+    [setRequested],
+  );
+
+  const setActiveGamut = useCallback(
+    (gamut: GamutTarget, source: ColorSource = 'user') => {
+      const currentState = getCurrentState();
+      if (
+        currentState.activeGamut === gamut &&
+        currentState.meta.source === source
+      ) {
+        return;
+      }
+
+      commitState(
+        {
+          ...currentState,
+          activeGamut: gamut,
+          meta: {
+            ...currentState.meta,
+            source,
+          },
         },
-      },
-      undefined,
-      'programmatic',
-    );
-  };
+        undefined,
+        'programmatic',
+      );
+    },
+    [commitState, getCurrentState],
+  );
 
-  const setActiveView = (view: ViewModel, source: ColorSource = 'user') => {
-    const currentState = getCurrentState();
-    if (
-      currentState.activeView === view &&
-      currentState.meta.source === source
-    ) {
-      return;
-    }
+  const setActiveView = useCallback(
+    (view: ViewModel, source: ColorSource = 'user') => {
+      const currentState = getCurrentState();
+      if (
+        currentState.activeView === view &&
+        currentState.meta.source === source
+      ) {
+        return;
+      }
 
-    commitState(
-      {
-        ...currentState,
-        activeView: view,
-        meta: {
-          ...currentState.meta,
-          source,
+      commitState(
+        {
+          ...currentState,
+          activeView: view,
+          meta: {
+            ...currentState.meta,
+            source,
+          },
         },
-      },
-      undefined,
-      'programmatic',
-    );
-  };
+        undefined,
+        'programmatic',
+      );
+    },
+    [commitState, getCurrentState],
+  );
 
   const requested = state.requested;
   const displayed = getActiveDisplayedColor(state);
@@ -254,13 +299,19 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
   const hsv = toHsv(requested);
   const oklch = toOklch(requested);
 
-  const requestedCss = (format?: string) => toCss(requested, format);
+  const requestedCss = useCallback(
+    (format?: string) => toCss(requested, format),
+    [requested],
+  );
 
-  const displayedCss = (format?: string) =>
-    toCss(
-      displayed,
-      format ?? (state.activeGamut === 'display-p3' ? 'p3' : 'hex'),
-    );
+  const displayedCss = useCallback(
+    (format?: string) =>
+      toCss(
+        displayed,
+        format ?? (state.activeGamut === 'display-p3' ? 'p3' : 'hex'),
+      ),
+    [displayed, state.activeGamut],
+  );
 
   return {
     state$,

@@ -1,6 +1,11 @@
 // Context & Provider
 export { ColorContext, useColorContext } from './context.js';
 export type { ColorContextValue } from './context.js';
+export type {
+  ColorAreaInteractionFrameStats,
+  ColorAreaPerformanceProfile,
+  ColorAreaQualityLevel,
+} from './color-area-context.js';
 export { ColorProvider } from './color-provider.js';
 export type { ColorProviderProps } from './color-provider.js';
 
@@ -80,7 +85,10 @@ export type { LinePoint, LineProps } from './line.js';
 export { Point } from './point.js';
 export type { PointProps } from './point.js';
 export { GamutBoundaryLayer } from './gamut-boundary-layer.js';
-export type { GamutBoundaryLayerProps } from './gamut-boundary-layer.js';
+export type {
+  GamutBoundaryLayerProps,
+  ColorAreaLayerQuality,
+} from './gamut-boundary-layer.js';
 export { ContrastRegionLayer } from './contrast-region-layer.js';
 export type { ContrastRegionLayerProps } from './contrast-region-layer.js';
 export { FallbackPointsLayer } from './fallback-points-layer.js';

@@ -2,6 +2,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CanvasHTMLAttributes,
@@ -23,12 +24,16 @@ import { useColorAreaContext } from './color-area-context.js';
 import { useOptionalColorContext } from './context.js';
 
 export type ColorPlaneSource = 'requested' | 'displayed';
-export type ColorPlaneRenderer = 'auto' | 'canvas2d' | 'webgl';
+export type ColorPlaneRenderer = 'auto' | 'gpu' | 'cpu' | 'webgl' | 'canvas2d';
 
-type ActiveColorPlaneRenderer = 'canvas2d' | 'webgl';
+type ActiveColorPlaneRenderer = 'gpu' | 'cpu';
+type ResolvedColorPlaneRenderer = 'gpu' | 'cpu';
+
+let warnedWebglAlias = false;
+let warnedCanvasAlias = false;
 
 export const BENCHMARK_SELECTED_COLOR_PLANE_RENDERER: ActiveColorPlaneRenderer =
-  'canvas2d';
+  'gpu';
 
 export interface ColorPlaneProps extends Omit<
   CanvasHTMLAttributes<HTMLCanvasElement>,
@@ -43,12 +48,22 @@ export interface ColorPlaneProps extends Omit<
   resolutionScale?: number;
 }
 
+interface WebglUniforms {
+  seed: WebGLUniformLocation;
+  xRange: WebGLUniformLocation;
+  yRange: WebGLUniformLocation;
+  xChannel: WebGLUniformLocation;
+  yChannel: WebGLUniformLocation;
+  source: WebGLUniformLocation;
+  gamut: WebGLUniformLocation;
+}
+
 interface WebglState {
   gl: WebGLRenderingContext;
   program: WebGLProgram;
-  texture: WebGLTexture;
   buffer: WebGLBuffer;
   positionAttrib: number;
+  uniforms: WebglUniforms;
 }
 
 function planeSeedFromRequested(
@@ -109,6 +124,51 @@ function renderPixels(
   return data;
 }
 
+function destroyWebglState(state: WebglState | null): void {
+  if (!state) {
+    return;
+  }
+  const { gl, program, buffer } = state;
+  gl.deleteBuffer(buffer);
+  gl.deleteProgram(program);
+}
+
+function channelIndex(channel: 'l' | 'c' | 'h'): number {
+  if (channel === 'l') return 0;
+  if (channel === 'c') return 1;
+  return 2;
+}
+
+function resolveRenderer(
+  renderer: ColorPlaneRenderer,
+): ResolvedColorPlaneRenderer {
+  if (renderer === 'webgl') {
+    if (!warnedWebglAlias) {
+      warnedWebglAlias = true;
+      console.warn(
+        '[ColorPlane] renderer="webgl" is deprecated; use renderer="gpu".',
+      );
+    }
+    return 'gpu';
+  }
+
+  if (renderer === 'canvas2d') {
+    if (!warnedCanvasAlias) {
+      warnedCanvasAlias = true;
+      console.warn(
+        '[ColorPlane] renderer="canvas2d" is deprecated; use renderer="cpu".',
+      );
+    }
+    return 'cpu';
+  }
+
+  if (renderer === 'auto') {
+    return BENCHMARK_SELECTED_COLOR_PLANE_RENDERER;
+  }
+
+  return renderer;
+}
+
 function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
   const gl = canvas.getContext('webgl', {
     antialias: false,
@@ -124,10 +184,9 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
   const vertexShader = gl.createShader(gl.VERTEX_SHADER);
   const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
   const program = gl.createProgram();
-  const texture = gl.createTexture();
   const buffer = gl.createBuffer();
 
-  if (!vertexShader || !fragmentShader || !program || !texture || !buffer) {
+  if (!vertexShader || !fragmentShader || !program || !buffer) {
     return null;
   }
 
@@ -151,6 +210,26 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
     return null;
   }
 
+  const seed = gl.getUniformLocation(program, 'u_seed');
+  const xRange = gl.getUniformLocation(program, 'u_x_range');
+  const yRange = gl.getUniformLocation(program, 'u_y_range');
+  const xChannel = gl.getUniformLocation(program, 'u_x_channel');
+  const yChannel = gl.getUniformLocation(program, 'u_y_channel');
+  const source = gl.getUniformLocation(program, 'u_source');
+  const gamut = gl.getUniformLocation(program, 'u_gamut');
+
+  if (
+    !seed ||
+    !xRange ||
+    !yRange ||
+    !xChannel ||
+    !yChannel ||
+    !source ||
+    !gamut
+  ) {
+    return null;
+  }
+
   gl.useProgram(program);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -164,24 +243,23 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
   gl.enableVertexAttribArray(positionAttrib);
   gl.vertexAttribPointer(positionAttrib, 2, gl.FLOAT, false, 0, 0);
 
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  const textureUniform = gl.getUniformLocation(program, 'u_tex');
-  gl.uniform1i(textureUniform, 0);
-
   gl.deleteShader(vertexShader);
   gl.deleteShader(fragmentShader);
 
   return {
     gl,
     program,
-    texture,
     buffer,
     positionAttrib,
+    uniforms: {
+      seed,
+      xRange,
+      yRange,
+      xChannel,
+      yChannel,
+      source,
+      gamut,
+    },
   };
 }
 
@@ -200,25 +278,63 @@ function drawWithCanvas2d(
   return true;
 }
 
-function drawWithWebgl(state: WebglState, pixels: Uint8ClampedArray): boolean {
-  const { gl, texture } = state;
+function drawWithWebgl(
+  state: WebglState,
+  params: {
+    source: ColorPlaneSource;
+    gamut: GamutTarget;
+    axes: Parameters<typeof colorFromColorAreaPosition>[1];
+    seed: Color;
+  },
+): boolean {
+  const { gl, uniforms } = state;
+
+  gl.useProgram(state.program);
+  gl.bindBuffer(gl.ARRAY_BUFFER, state.buffer);
+  gl.enableVertexAttribArray(state.positionAttrib);
+  gl.vertexAttribPointer(state.positionAttrib, 2, gl.FLOAT, false, 0, 0);
 
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texImage2D(
-    gl.TEXTURE_2D,
-    0,
-    gl.RGBA,
-    gl.drawingBufferWidth,
-    gl.drawingBufferHeight,
-    0,
-    gl.RGBA,
-    gl.UNSIGNED_BYTE,
-    pixels,
+
+  gl.uniform4f(
+    uniforms.seed,
+    params.seed.l,
+    params.seed.c,
+    params.seed.h,
+    params.seed.alpha,
   );
+  gl.uniform2f(uniforms.xRange, params.axes.x.range[0], params.axes.x.range[1]);
+  gl.uniform2f(uniforms.yRange, params.axes.y.range[0], params.axes.y.range[1]);
+  gl.uniform1f(uniforms.xChannel, channelIndex(params.axes.x.channel));
+  gl.uniform1f(uniforms.yChannel, channelIndex(params.axes.y.channel));
+  gl.uniform1f(uniforms.source, params.source === 'requested' ? 0 : 1);
+  gl.uniform1f(uniforms.gamut, params.gamut === 'display-p3' ? 1 : 0);
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return gl.getError() === gl.NO_ERROR;
+}
+
+function resolutionMultiplier(
+  profile: 'auto' | 'quality' | 'balanced' | 'performance',
+  quality: 'high' | 'medium' | 'low',
+  isDragging: boolean,
+): number {
+  if (profile === 'quality') {
+    return isDragging ? 0.96 : 1;
+  }
+
+  if (profile === 'performance') {
+    const base = quality === 'high' ? 0.82 : quality === 'medium' ? 0.7 : 0.56;
+    return isDragging ? base * 0.92 : base;
+  }
+
+  if (profile === 'balanced') {
+    const base = quality === 'high' ? 0.94 : quality === 'medium' ? 0.8 : 0.64;
+    return isDragging ? base * 0.95 : base;
+  }
+
+  const base = quality === 'high' ? 1 : quality === 'medium' ? 0.82 : 0.66;
+  return isDragging ? base * 0.95 : base;
 }
 
 /**
@@ -236,22 +352,81 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
     },
     ref,
   ) {
-    const { requested, axes } = useColorAreaContext();
+    const { requested, axes, qualityLevel, performanceProfile, isDragging } =
+      useColorAreaContext();
     const colorContext = useOptionalColorContext();
     const contextDisplayGamut = useSelector(
       () => colorContext?.state$.activeGamut.get() ?? 'display-p3',
     );
     const displayGamut = displayGamutProp ?? contextDisplayGamut;
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const [canvasNode, setCanvasNode] = useState<HTMLCanvasElement | null>(
+      null,
+    );
     const webglStateRef = useRef<WebglState | null>(null);
+    const gpuUnavailableRef = useRef(false);
     const lastRenderKeyRef = useRef<string | null>(null);
+    const drawPlaneRef = useRef<() => void>(() => {});
+    const syncCanvasSizeRef =
+      useRef<() => { width: number; height: number } | null>(null);
     const [activeRenderer, setActiveRenderer] =
       useState<ActiveColorPlaneRenderer>(
         BENCHMARK_SELECTED_COLOR_PLANE_RENDERER,
       );
 
-    const rootRenderer =
-      renderer === 'auto' ? BENCHMARK_SELECTED_COLOR_PLANE_RENDERER : renderer;
+    const resolvedRenderer = useMemo(
+      () => resolveRenderer(renderer),
+      [renderer],
+    );
+
+    const effectiveScale = useMemo(() => {
+      const baseScale =
+        Number.isFinite(resolutionScale) && resolutionScale > 0
+          ? resolutionScale
+          : 1;
+      const profileScale = resolutionMultiplier(
+        performanceProfile,
+        qualityLevel,
+        isDragging,
+      );
+      return Math.max(0.35, Math.min(2.5, baseScale * profileScale));
+    }, [resolutionScale, performanceProfile, qualityLevel, isDragging]);
+
+    const syncCanvasSize = useCallback(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        return null;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return null;
+      }
+
+      const dpr =
+        typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+      const scaledWidth = Math.max(
+        1,
+        Math.round(rect.width * dpr * effectiveScale),
+      );
+      const scaledHeight = Math.max(
+        1,
+        Math.round(rect.height * dpr * effectiveScale),
+      );
+
+      if (canvas.width !== scaledWidth || canvas.height !== scaledHeight) {
+        canvas.width = scaledWidth;
+        canvas.height = scaledHeight;
+        lastRenderKeyRef.current = null;
+      }
+
+      return {
+        width: scaledWidth,
+        height: scaledHeight,
+      };
+    }, [effectiveScale]);
+
+    syncCanvasSizeRef.current = syncCanvasSize;
 
     const renderPlane = useCallback(() => {
       const canvas = canvasRef.current;
@@ -259,35 +434,18 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         return;
       }
 
-      const rect = canvas.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) {
+      const size = syncCanvasSize();
+      if (!size) {
         return;
       }
 
-      const dpr =
-        typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
-      const scaledWidth = Math.max(
-        1,
-        Math.round(rect.width * dpr * resolutionScale),
-      );
-      const scaledHeight = Math.max(
-        1,
-        Math.round(rect.height * dpr * resolutionScale),
-      );
-
-      if (canvas.width !== scaledWidth || canvas.height !== scaledHeight) {
-        canvas.width = scaledWidth;
-        canvas.height = scaledHeight;
-      }
-
       const planeSeed = planeSeedFromRequested(requested, axes);
-      // Skip expensive per-pixel rasterization when effective plane inputs are unchanged.
       const renderKey = [
-        scaledWidth,
-        scaledHeight,
+        size.width,
+        size.height,
         source,
         displayGamut,
-        rootRenderer,
+        resolvedRenderer,
         axes.x.channel,
         axes.x.range[0],
         axes.x.range[1],
@@ -305,52 +463,76 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       }
       lastRenderKeyRef.current = renderKey;
 
-      const pixels = renderPixels(
-        scaledWidth,
-        scaledHeight,
-        planeSeed,
-        source,
-        displayGamut,
-        axes,
-      );
-
-      if (rootRenderer === 'webgl') {
+      if (resolvedRenderer === 'gpu' && !gpuUnavailableRef.current) {
         if (!webglStateRef.current) {
           webglStateRef.current = createWebglState(canvas);
         }
 
         if (
           webglStateRef.current &&
-          drawWithWebgl(webglStateRef.current, pixels)
+          drawWithWebgl(webglStateRef.current, {
+            source,
+            gamut: displayGamut,
+            axes,
+            seed: planeSeed,
+          })
         ) {
-          setActiveRenderer('webgl');
+          setActiveRenderer('gpu');
           return;
         }
+
+        gpuUnavailableRef.current = true;
       }
+
+      const pixels = renderPixels(
+        size.width,
+        size.height,
+        planeSeed,
+        source,
+        displayGamut,
+        axes,
+      );
 
       const canvasOk = drawWithCanvas2d(canvas, pixels);
       if (canvasOk) {
-        setActiveRenderer('canvas2d');
+        setActiveRenderer('cpu');
       }
-    }, [requested, axes, source, displayGamut, rootRenderer, resolutionScale]);
+    }, [
+      axes,
+      displayGamut,
+      requested,
+      resolvedRenderer,
+      source,
+      syncCanvasSize,
+    ]);
+
+    drawPlaneRef.current = renderPlane;
 
     useEffect(() => {
       renderPlane();
+    }, [renderPlane]);
 
-      const canvas = canvasRef.current;
-      if (!canvas || typeof ResizeObserver === 'undefined') {
+    useEffect(() => {
+      if (!canvasNode || typeof ResizeObserver === 'undefined') {
         return;
       }
 
       const observer = new ResizeObserver(() => {
-        renderPlane();
+        syncCanvasSizeRef.current?.();
+        drawPlaneRef.current();
       });
-
-      observer.observe(canvas);
+      observer.observe(canvasNode);
       return () => {
         observer.disconnect();
       };
-    }, [renderPlane]);
+    }, [canvasNode]);
+
+    useEffect(() => {
+      return () => {
+        destroyWebglState(webglStateRef.current);
+        webglStateRef.current = null;
+      };
+    }, []);
 
     return (
       <canvas
@@ -358,9 +540,12 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         ref={(node) => {
           if (canvasRef.current !== node) {
             lastRenderKeyRef.current = null;
+            destroyWebglState(webglStateRef.current);
             webglStateRef.current = null;
+            gpuUnavailableRef.current = false;
           }
           canvasRef.current = node;
+          setCanvasNode(node);
           if (typeof ref === 'function') {
             ref(node);
           } else if (ref) {

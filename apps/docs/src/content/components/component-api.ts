@@ -68,6 +68,33 @@ export const componentApiDocs: ComponentApiDocs = {
       description: 'Standalone change handler when not using context.',
     },
     {
+      name: 'performanceProfile',
+      type: "'auto' | 'quality' | 'balanced' | 'performance'",
+      defaultValue: "'auto'",
+      description:
+        'Controls adaptive quality behavior and runtime prioritization during drag interactions.',
+    },
+    {
+      name: 'maxUpdateHz',
+      type: 'number',
+      defaultValue: '60',
+      description:
+        'Upper bound for pointer-driven update cadence. Lower values reduce state churn under load.',
+    },
+    {
+      name: 'dragEpsilon',
+      type: 'number',
+      defaultValue: '0.0005',
+      description:
+        'Minimum normalized movement delta required before committing another pointer update.',
+    },
+    {
+      name: 'onInteractionFrame',
+      type: '(stats: ColorAreaInteractionFrameStats) => void',
+      description:
+        'Receives per-frame interaction diagnostics (frame cost, long-task flag, adaptive quality level).',
+    },
+    {
       name: 'children',
       type: 'ReactNode',
       description:

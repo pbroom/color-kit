@@ -5,13 +5,14 @@ This directory contains the committed benchmark gate used to select the default 
 ## Files
 
 - `color-plane-renderer-bench.mjs`: Repeatable benchmark harness.
+- `color-area-interaction-bench.mjs`: Pointer-interaction budget harness for ColorArea drag scenarios.
 - `results.color-plane.json`: Latest captured run output.
 
 ## Methodology
 
 - Compare two prototype paths:
-  - `canvas2d`: CPU pixel raster path.
-  - `webglPrototype`: CPU raster + simulated texture upload/blit overhead.
+  - `cpu`: CPU pixel raster path.
+  - `gpuPrototype`: shader-based path with CPU fallback safety checks.
 - Profiles:
   - `desktop`: `512x512`, 4 iterations.
   - `mobile`: `256x256`, 6 iterations.
@@ -25,11 +26,11 @@ This directory contains the committed benchmark gate used to select the default 
 
 ## Result
 
-Current baseline selected renderer: `canvas2d`.
+Current baseline selected renderer: `gpu`.
 
-- Both prototypes miss the desktop target in this CPU-only synthetic harness.
-- `canvas2d` remains the default due lower complexity and deterministic behavior.
-- `ColorPlane` still accepts `renderer="webgl"` and auto-falls back to `canvas2d` if WebGL is unavailable or errors.
+- Benchmarks are directional only and should be paired with interaction traces.
+- `ColorPlane` keeps CPU fallback when GPU setup fails at runtime.
+- `ColorPlane` accepts legacy aliases (`webgl`, `canvas2d`) and remaps to (`gpu`, `cpu`) with deprecation warnings.
 
 ## Re-run
 

@@ -8,6 +8,8 @@ import { Thumb } from '../src/thumb.js';
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('ColorArea', () => {
@@ -69,6 +71,148 @@ describe('ColorArea', () => {
       alpha: requested.alpha,
     });
     expect(options).toEqual({ interaction: 'pointer' });
+  });
+
+  it('caches geometry across drag frames to avoid repeated layout reads', () => {
+    vi.useFakeTimers();
+
+    const onChangeRequested = vi.fn();
+    const requested: Color = { l: 0.3, c: 0.1, h: 50, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={onChangeRequested} />,
+    );
+
+    const root = container.querySelector('[data-color-area]') as HTMLDivElement;
+    const rectSpy = vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    fireEvent.pointerDown(root, { pointerId: 1, clientX: 15, clientY: 85 });
+    fireEvent.pointerMove(root, { pointerId: 1, clientX: 40, clientY: 60 });
+    fireEvent.pointerMove(root, { pointerId: 1, clientX: 70, clientY: 30 });
+    vi.runAllTimers();
+    fireEvent.pointerUp(root, { pointerId: 1, clientX: 70, clientY: 30 });
+
+    expect(onChangeRequested.mock.calls.length).toBeGreaterThan(1);
+    expect(rectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses latest coalesced pointer position and skips tiny movement by dragEpsilon', () => {
+    vi.useFakeTimers();
+
+    const onChangeRequested = vi.fn();
+    const requested: Color = { l: 0.3, c: 0.1, h: 50, alpha: 1 };
+    const { container } = render(
+      <ColorArea
+        requested={requested}
+        onChangeRequested={onChangeRequested}
+        dragEpsilon={0.1}
+      />,
+    );
+
+    const root = container.querySelector('[data-color-area]') as HTMLDivElement;
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    fireEvent.pointerDown(root, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    const PointerEventCtor =
+      typeof PointerEvent === 'function' ? PointerEvent : MouseEvent;
+
+    const tinyMove = new PointerEventCtor('pointermove', {
+      bubbles: true,
+      clientX: 51,
+      clientY: 49,
+    }) as PointerEvent;
+    Object.defineProperty(tinyMove, 'pointerId', { value: 1 });
+    Object.defineProperty(tinyMove, 'getCoalescedEvents', {
+      value: () => [{ clientX: 51, clientY: 49 }],
+    });
+    root.dispatchEvent(tinyMove);
+    vi.runAllTimers();
+
+    const largeMove = new PointerEventCtor('pointermove', {
+      bubbles: true,
+      clientX: 61,
+      clientY: 39,
+    }) as PointerEvent;
+    Object.defineProperty(largeMove, 'pointerId', { value: 1 });
+    Object.defineProperty(largeMove, 'getCoalescedEvents', {
+      value: () => [
+        { clientX: 61, clientY: 39 },
+        { clientX: 90, clientY: 10 },
+      ],
+    });
+    root.dispatchEvent(largeMove);
+    vi.runAllTimers();
+
+    expect(onChangeRequested).toHaveBeenCalledTimes(2);
+    const [, options] = onChangeRequested.mock.calls[1];
+    expect(options).toEqual({ interaction: 'pointer' });
+  });
+
+  it('publishes interaction stats and adaptive quality metadata', () => {
+    vi.useRealTimers();
+
+    const requested: Color = { l: 0.3, c: 0.1, h: 50, alpha: 1 };
+    const onInteractionFrame = vi.fn();
+    const { container } = render(
+      <ColorArea
+        requested={requested}
+        onChangeRequested={() => {
+          const start = Date.now();
+          while (Date.now() - start < 12) {
+            // Simulate work to trigger adaptive quality behavior.
+          }
+        }}
+        onInteractionFrame={onInteractionFrame}
+      />,
+    );
+
+    const root = container.querySelector('[data-color-area]') as HTMLDivElement;
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    fireEvent.pointerDown(root, { pointerId: 1, clientX: 20, clientY: 80 });
+    for (let index = 0; index < 6; index += 1) {
+      fireEvent.pointerMove(root, {
+        pointerId: 1,
+        clientX: 20 + index * 10,
+        clientY: 80 - index * 10,
+      });
+    }
+    fireEvent.pointerUp(root, { pointerId: 1, clientX: 80, clientY: 20 });
+
+    expect(onInteractionFrame).toHaveBeenCalled();
+    const latestStats = onInteractionFrame.mock.calls.at(-1)?.[0];
+    expect(latestStats).toHaveProperty('coalescedCount');
+    expect(root.getAttribute('data-quality-level')).toMatch(/high|medium|low/);
   });
 
   it('throws when multiple thumbs are provided', () => {

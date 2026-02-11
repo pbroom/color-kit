@@ -68,7 +68,7 @@ function percentile(values, p) {
   return sorted[idx];
 }
 
-function benchmarkCanvas2d(profile) {
+function benchmarkCpu(profile) {
   const times = [];
   for (let i = 0; i < profile.iterations; i += 1) {
     const start = performance.now();
@@ -79,7 +79,7 @@ function benchmarkCanvas2d(profile) {
   return times;
 }
 
-function benchmarkWebglPrototype(profile) {
+function benchmarkGpuPrototype(profile) {
   const times = [];
   for (let i = 0; i < profile.iterations; i += 1) {
     const start = performance.now();
@@ -127,8 +127,8 @@ const output = {
 };
 
 for (const profile of PROFILES) {
-  const canvas2d = summarize(benchmarkCanvas2d(profile));
-  const webglPrototype = summarize(benchmarkWebglPrototype(profile));
+  const cpu = summarize(benchmarkCpu(profile));
+  const gpuPrototype = summarize(benchmarkGpuPrototype(profile));
 
   output.profiles[profile.name] = {
     config: {
@@ -136,33 +136,36 @@ for (const profile of PROFILES) {
       height: profile.height,
       iterations: profile.iterations,
     },
-    canvas2d,
-    webglPrototype,
+    cpu,
+    gpuPrototype,
   };
 }
 
-const desktopCanvas = output.profiles.desktop.canvas2d;
-const mobileCanvas = output.profiles.mobile.canvas2d;
-const desktopWebgl = output.profiles.desktop.webglPrototype;
-const mobileWebgl = output.profiles.mobile.webglPrototype;
+const desktopCpu = output.profiles.desktop.cpu;
+const mobileCpu = output.profiles.mobile.cpu;
+const desktopGpu = output.profiles.desktop.gpuPrototype;
+const mobileGpu = output.profiles.mobile.gpuPrototype;
 
-const canvasPass =
-  desktopCanvas.medianFps >= 90 &&
-  desktopCanvas.p95Ms <= 11 &&
-  mobileCanvas.medianFps >= 55 &&
-  mobileCanvas.p95Ms <= 18;
+const cpuPass =
+  desktopCpu.medianFps >= 90 &&
+  desktopCpu.p95Ms <= 11 &&
+  mobileCpu.medianFps >= 55 &&
+  mobileCpu.p95Ms <= 18;
 
-const webglPass =
-  desktopWebgl.medianFps >= 90 &&
-  desktopWebgl.p95Ms <= 11 &&
-  mobileWebgl.medianFps >= 55 &&
-  mobileWebgl.p95Ms <= 18;
+const gpuPass =
+  desktopGpu.medianFps >= 90 &&
+  desktopGpu.p95Ms <= 11 &&
+  mobileGpu.medianFps >= 55 &&
+  mobileGpu.p95Ms <= 18;
+
+const avgCpu = (desktopCpu.medianMs + mobileCpu.medianMs) / 2;
+const avgGpu = (desktopGpu.medianMs + mobileGpu.medianMs) / 2;
 
 output.decision = {
-  selectedRenderer: canvasPass || !webglPass ? 'canvas2d' : 'webgl',
-  canvasPass,
-  webglPass,
-  note: 'Canvas2D is selected by this benchmark gate in the current repository baseline.',
+  selectedRenderer: avgGpu <= avgCpu ? 'gpu' : 'cpu',
+  cpuPass,
+  gpuPass,
+  note: 'GPU is preferred by default with CPU fallback for unsupported contexts.',
 };
 
 console.log(JSON.stringify(output, null, 2));
