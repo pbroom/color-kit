@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --filter @color-kit/docs dev",
+    "dev:prepare": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/react build",
+    "dev": "pnpm dev:prepare && pnpm --parallel --filter @color-kit/core --filter @color-kit/react --filter @color-kit/docs dev",
     "test": "pnpm -r test",
     "check:preprod": "node scripts/check-preproduction.mjs",
     "publish:next": "pnpm check:preprod && pnpm -r --filter \"./packages/*\" publish --access public --tag next --no-git-checks",
