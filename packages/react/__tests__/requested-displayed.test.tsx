@@ -90,4 +90,50 @@ describe('requested/displayed contract', () => {
     expect(probe.requested.c).toBeCloseTo(0.1, 6);
     expect(probe.requested.h).toBeCloseTo(145, 6);
   });
+
+  it('treats unchanged gamut updates as no-ops', () => {
+    let probe: UseColorReturn | null = null;
+    let renderCount = 0;
+
+    render(
+      <UseColorProbe
+        onReady={(value) => {
+          probe = value;
+          renderCount += 1;
+        }}
+      />,
+    );
+
+    if (!probe) throw new Error('Probe was not initialized');
+    const rendersBefore = renderCount;
+
+    act(() => {
+      probe?.setActiveGamut('display-p3', 'programmatic');
+    });
+
+    expect(renderCount).toBe(rendersBefore);
+  });
+
+  it('treats unchanged view updates as no-ops', () => {
+    let probe: UseColorReturn | null = null;
+    let renderCount = 0;
+
+    render(
+      <UseColorProbe
+        onReady={(value) => {
+          probe = value;
+          renderCount += 1;
+        }}
+      />,
+    );
+
+    if (!probe) throw new Error('Probe was not initialized');
+    const rendersBefore = renderCount;
+
+    act(() => {
+      probe?.setActiveView('oklch', 'programmatic');
+    });
+
+    expect(renderCount).toBe(rendersBefore);
+  });
 });

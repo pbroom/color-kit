@@ -205,6 +205,12 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
   const setActiveGamut = useCallback(
     (gamut: GamutTarget, source: ColorSource = 'user') => {
       const currentState = getCurrentState();
+      if (
+        currentState.activeGamut === gamut &&
+        currentState.meta.source === source
+      ) {
+        return;
+      }
       const nextState: ColorState = {
         ...currentState,
         activeGamut: gamut,
@@ -221,6 +227,12 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
   const setActiveView = useCallback(
     (view: ViewModel, source: ColorSource = 'user') => {
       const currentState = getCurrentState();
+      if (
+        currentState.activeView === view &&
+        currentState.meta.source === source
+      ) {
+        return;
+      }
       const nextState: ColorState = {
         ...currentState,
         activeView: view,
