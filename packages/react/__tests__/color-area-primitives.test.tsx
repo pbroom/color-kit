@@ -1,0 +1,121 @@
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, waitFor } from '@testing-library/react';
+import type { Color } from '@color-kit/core';
+import { ColorArea } from '../src/color-area.js';
+import { ColorPlane } from '../src/color-plane.js';
+import { ContrastRegionLayer } from '../src/contrast-region-layer.js';
+import { FallbackPointsLayer } from '../src/fallback-points-layer.js';
+import { GamutBoundaryLayer } from '../src/gamut-boundary-layer.js';
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+describe('ColorArea primitives', () => {
+  it('renders a default thumb when no explicit thumb child is provided', () => {
+    const requested: Color = { l: 0.4, c: 0.2, h: 200, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}} />,
+    );
+
+    expect(container.querySelectorAll('[data-color-area-thumb]')).toHaveLength(
+      1,
+    );
+  });
+
+  it('renders fallback P3 and sRGB markers', () => {
+    const requested: Color = { l: 0.8, c: 0.4, h: 145, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <FallbackPointsLayer />
+      </ColorArea>,
+    );
+
+    expect(
+      container.querySelector(
+        '[data-color-area-fallback-point][data-gamut="display-p3"]',
+      ),
+    ).toBeTruthy();
+    expect(
+      container.querySelector(
+        '[data-color-area-fallback-point][data-gamut="srgb"]',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('renders gamut and contrast wrappers as line overlays', () => {
+    const requested: Color = { l: 0.72, c: 0.24, h: 220, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <GamutBoundaryLayer gamut="srgb" />
+        <ContrastRegionLayer threshold={4.5} />
+      </ColorArea>,
+    );
+
+    expect(
+      container.querySelector('[data-color-area-gamut-boundary-layer]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-color-area-contrast-region-layer]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelectorAll('[data-color-area-line]').length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('falls back to canvas2d when webgl renderer is unavailable', async () => {
+    const requested: Color = { l: 0.6, c: 0.2, h: 250, alpha: 1 };
+
+    const createImageData = vi.fn((width: number, height: number) => ({
+      data: new Uint8ClampedArray(width * height * 4),
+      width,
+      height,
+    }));
+    const putImageData = vi.fn();
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      function getContext(this: HTMLCanvasElement, kind: string) {
+        if (kind === 'webgl') {
+          return null;
+        }
+        if (kind === '2d') {
+          return {
+            createImageData,
+            putImageData,
+          } as unknown as RenderingContext;
+        }
+        return null;
+      },
+    );
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      'getBoundingClientRect',
+    ).mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane renderer="webgl" />
+      </ColorArea>,
+    );
+
+    await waitFor(() => {
+      const plane = container.querySelector('[data-color-area-plane]');
+      expect(plane?.getAttribute('data-renderer')).toBe('canvas2d');
+      expect(createImageData).toHaveBeenCalled();
+      expect(putImageData).toHaveBeenCalled();
+    });
+  });
+});

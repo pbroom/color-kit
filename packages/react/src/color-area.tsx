@@ -1,70 +1,143 @@
 import {
-  useRef,
-  useCallback,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
+  Children,
+  cloneElement,
   forwardRef,
+  isValidElement,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
   type HTMLAttributes,
+  type PointerEvent as ReactPointerEvent,
+  type ReactElement,
+  type ReactNode,
 } from 'react';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import {
-  colorFromColorAreaKey,
+  areColorAreaAxesDistinct,
   colorFromColorAreaPosition,
-  getColorAreaThumbPosition,
-  resolveColorAreaRange,
-  type ColorAreaChannel,
+  resolveColorAreaAxes,
+  type ColorAreaAxes,
+  type ResolvedColorAreaAxes,
 } from './api/color-area.js';
+import { ColorAreaContext } from './color-area-context.js';
+import { Thumb } from './thumb.js';
 import type { SetRequestedOptions } from './use-color.js';
+
+function isProductionEnvironment(): boolean {
+  const maybeProcess = (
+    globalThis as { process?: { env?: { NODE_ENV?: string } } }
+  ).process;
+  return maybeProcess?.env?.NODE_ENV === 'production';
+}
 
 export interface ColorAreaProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
 > {
   /**
-   * Which color channels the X and Y axes control.
-   * @default { x: 'c', y: 'l' }
+   * Axis descriptors for the color plane.
+   * @default { x: { channel: 'c' }, y: { channel: 'l' } }
    */
-  channels?: {
-    x: ColorAreaChannel;
-    y: ColorAreaChannel;
-  };
-  /**
-   * Range for each axis.
-   * Defaults: l=[0,1], c=[0,0.4], h=[0,360]
-   */
-  xRange?: [number, number];
-  yRange?: [number, number];
+  axes?: ColorAreaAxes;
   /** Standalone requested color (alternative to ColorProvider) */
   requested?: Color;
   /** Standalone change handler (alternative to ColorProvider) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
+function normalizeAxesForProdFallback(
+  axes: ResolvedColorAreaAxes,
+): ResolvedColorAreaAxes {
+  if (axes.x.channel !== axes.y.channel) {
+    return axes;
+  }
+
+  const nextYChannel = axes.x.channel === 'l' ? 'c' : 'l';
+  return {
+    ...axes,
+    y: {
+      channel: nextYChannel,
+      range: axes.y.range,
+    },
+  };
+}
+
+function countThumbs(children: ReactNode): number {
+  let count = 0;
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) {
+      return;
+    }
+
+    if (child.type === Thumb) {
+      count += 1;
+      return;
+    }
+
+    const nestedChildren = (child.props as { children?: ReactNode }).children;
+    if (nestedChildren !== undefined) {
+      count += countThumbs(nestedChildren);
+    }
+  });
+
+  return count;
+}
+
+function pruneExtraThumbs(
+  children: ReactNode,
+  state: { seenThumb: boolean },
+): ReactNode {
+  return Children.map(children, (child) => {
+    if (!isValidElement(child)) {
+      return child;
+    }
+
+    if (child.type === Thumb) {
+      if (state.seenThumb) {
+        return null;
+      }
+      state.seenThumb = true;
+      return child;
+    }
+
+    const nestedChildren = (child.props as { children?: ReactNode }).children;
+    if (nestedChildren === undefined) {
+      return child;
+    }
+
+    const nextChildren = pruneExtraThumbs(nestedChildren, state);
+    if (nextChildren === nestedChildren) {
+      return child;
+    }
+
+    return cloneElement(
+      child as ReactElement<{ children?: ReactNode }>,
+      undefined,
+      nextChildren,
+    );
+  });
+}
+
 /**
- * A 2D color picker area.
+ * A bounded, interactive 2D color UI plane host.
  *
- * Renders as a plain `<div>` with a draggable thumb (`<div>`).
- * Completely unstyled -- use data attributes and CSS to style it.
- *
- * Data attributes on the root:
- * - `[data-color-area]` - always present
- * - `[data-dragging]` - present while the user is dragging
- *
- * Data attributes on the thumb (first child):
- * - `[data-color-area-thumb]` - always present
- * - `[data-x]` - normalized x position (0-1)
- * - `[data-y]` - normalized y position (0-1)
+ * ColorArea owns geometry and pointer interaction. Child primitives render visuals and semantics.
  */
 export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
   function ColorArea(
     {
-      channels = { x: 'c', y: 'l' },
-      xRange,
-      yRange,
+      axes,
       requested: requestedProp,
       onChangeRequested: onChangeRequestedProp,
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel,
+      style,
+      children,
       ...props
     },
     ref,
@@ -81,122 +154,159 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     }
 
     const areaRef = useRef<HTMLDivElement>(null);
+    const warnedMultiThumbRef = useRef(false);
+    const warnedAxesRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
 
-    const xR = resolveColorAreaRange(channels.x, xRange);
-    const yR = resolveColorAreaRange(channels.y, yRange);
+    const resolvedAxes = useMemo(() => {
+      const resolved = resolveColorAreaAxes(axes);
 
-    const { x: xNorm, y: yNorm } = getColorAreaThumbPosition(
-      requested,
-      channels,
-      xR,
-      yR,
-    );
+      if (areColorAreaAxesDistinct(resolved)) {
+        return resolved;
+      }
+
+      if (!isProductionEnvironment()) {
+        throw new Error(
+          'ColorArea requires distinct axis channels. Received the same channel for both x and y.',
+        );
+      }
+
+      if (!warnedAxesRef.current) {
+        warnedAxesRef.current = true;
+        console.warn(
+          'ColorArea received duplicate axis channels. Falling back to distinct production-safe axes.',
+        );
+      }
+
+      return normalizeAxesForProdFallback(resolved);
+    }, [axes]);
 
     const updateFromPosition = useCallback(
       (clientX: number, clientY: number) => {
         const el = areaRef.current;
-        if (!el) return;
+        if (!el) {
+          return;
+        }
 
         const rect = el.getBoundingClientRect();
-        const x = (clientX - rect.left) / rect.width;
-        const y = (clientY - rect.top) / rect.height;
+        if (rect.width <= 0 || rect.height <= 0) {
+          return;
+        }
+
+        const xNorm = (clientX - rect.left) / rect.width;
+        const yNorm = (clientY - rect.top) / rect.height;
 
         setRequested(
-          colorFromColorAreaPosition(requested, channels, x, y, xR, yR),
+          colorFromColorAreaPosition(requested, resolvedAxes, xNorm, yNorm),
           {
             interaction: 'pointer',
           },
         );
       },
-      [requested, setRequested, channels, xR, yR],
+      [requested, resolvedAxes, setRequested],
     );
 
-    const onPointerDown = useCallback(
-      (e: ReactPointerEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-        e.currentTarget.setPointerCapture(e.pointerId);
-        updateFromPosition(e.clientX, e.clientY);
-      },
-      [updateFromPosition],
-    );
-
-    const onPointerMove = useCallback(
-      (e: ReactPointerEvent) => {
-        if (!isDragging) return;
-        updateFromPosition(e.clientX, e.clientY);
-      },
-      [isDragging, updateFromPosition],
-    );
-
-    const onPointerUp = useCallback(() => {
-      setIsDragging(false);
-    }, []);
-
-    const onKeyDown = useCallback(
-      (e: ReactKeyboardEvent) => {
-        const step = e.shiftKey ? 0.1 : 0.01;
-        const newColor: Color | null = colorFromColorAreaKey(
-          requested,
-          channels,
-          e.key,
-          step,
-          xR,
-          yR,
-        );
-
-        if (newColor) {
-          e.preventDefault();
-          setRequested(newColor, {
-            interaction: 'keyboard',
-          });
+    const onRootPointerDown = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onPointerDown?.(event);
+        if (event.defaultPrevented) {
+          return;
         }
+
+        event.preventDefault();
+        setIsDragging(true);
+        if ('setPointerCapture' in event.currentTarget) {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
+        updateFromPosition(event.clientX, event.clientY);
       },
-      [requested, setRequested, channels, xR, yR],
+      [onPointerDown, updateFromPosition],
+    );
+
+    const onRootPointerMove = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onPointerMove?.(event);
+        if (event.defaultPrevented || !isDragging) {
+          return;
+        }
+
+        updateFromPosition(event.clientX, event.clientY);
+      },
+      [onPointerMove, isDragging, updateFromPosition],
+    );
+
+    const onRootPointerUp = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onPointerUp?.(event);
+        setIsDragging(false);
+      },
+      [onPointerUp],
+    );
+
+    const onRootPointerCancel = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onPointerCancel?.(event);
+        setIsDragging(false);
+      },
+      [onPointerCancel],
+    );
+
+    const explicitThumbCount = countThumbs(children);
+    let resolvedChildren: ReactNode = children;
+
+    if (explicitThumbCount > 1) {
+      if (!isProductionEnvironment()) {
+        throw new Error('ColorArea allows only one <Thumb /> child.');
+      }
+
+      if (!warnedMultiThumbRef.current) {
+        warnedMultiThumbRef.current = true;
+        console.warn(
+          'ColorArea allows one <Thumb />. Extra thumbs were ignored.',
+        );
+      }
+
+      resolvedChildren = pruneExtraThumbs(children, { seenThumb: false });
+    }
+
+    const contextValue = useMemo(
+      () => ({
+        areaRef,
+        requested,
+        setRequested,
+        axes: resolvedAxes,
+      }),
+      [requested, setRequested, resolvedAxes],
     );
 
     return (
-      <div
-        {...props}
-        ref={(node) => {
-          (areaRef as React.MutableRefObject<HTMLDivElement | null>).current =
-            node;
-          if (typeof ref === 'function') ref(node);
-          else if (ref) ref.current = node;
-        }}
-        data-color-area=""
-        data-dragging={isDragging || undefined}
-        role="slider"
-        aria-label="Color area"
-        aria-valuetext={`${channels.x}: ${requested[channels.x].toFixed(2)}, ${
-          channels.y
-        }: ${requested[channels.y].toFixed(2)}`}
-        tabIndex={0}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onKeyDown={onKeyDown}
-        style={{
-          position: 'relative',
-          touchAction: 'none',
-          ...props.style,
-        }}
-      >
+      <ColorAreaContext.Provider value={contextValue}>
         <div
-          data-color-area-thumb=""
-          data-x={xNorm.toFixed(4)}
-          data-y={yNorm.toFixed(4)}
-          style={{
-            position: 'absolute',
-            left: `${xNorm * 100}%`,
-            top: `${yNorm * 100}%`,
-            transform: 'translate(-50%, -50%)',
-            pointerEvents: 'none',
+          {...props}
+          ref={(node) => {
+            areaRef.current = node;
+            if (typeof ref === 'function') {
+              ref(node);
+            } else if (ref) {
+              ref.current = node;
+            }
           }}
-        />
-        {props.children}
-      </div>
+          data-color-area=""
+          data-dragging={isDragging || undefined}
+          onPointerDown={onRootPointerDown}
+          onPointerMove={onRootPointerMove}
+          onPointerUp={onRootPointerUp}
+          onPointerCancel={onRootPointerCancel}
+          style={{
+            position: 'relative',
+            touchAction: 'none',
+            ...style,
+          }}
+        >
+          {resolvedChildren}
+          {explicitThumbCount === 0 ? <Thumb /> : null}
+        </div>
+      </ColorAreaContext.Provider>
     );
   },
 );

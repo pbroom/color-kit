@@ -26,7 +26,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "bench:color-plane": "node bench/color-plane-renderer-bench.mjs"
   },
   "keywords": [
     "color-picker",

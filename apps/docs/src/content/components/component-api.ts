@@ -51,20 +51,11 @@ export const componentApiDocs: ComponentApiDocs = {
   ],
   colorArea: [
     {
-      name: 'channels',
-      type: "{ x: 'l' | 'c' | 'h'; y: 'l' | 'c' | 'h' }",
-      defaultValue: "{ x: 'c', y: 'l' }",
-      description: 'Maps horizontal and vertical movement to OKLCH channels.',
-    },
-    {
-      name: 'xRange',
-      type: '[number, number]',
-      description: 'Optional channel range override for the X axis.',
-    },
-    {
-      name: 'yRange',
-      type: '[number, number]',
-      description: 'Optional channel range override for the Y axis.',
+      name: 'axes',
+      type: "{ x: { channel: 'l' | 'c' | 'h'; range?: [number, number] }; y: { channel: 'l' | 'c' | 'h'; range?: [number, number] } }",
+      defaultValue: "{ x: { channel: 'c' }, y: { channel: 'l' } }",
+      description:
+        'Maps horizontal and vertical movement with explicit axis descriptors.',
     },
     {
       name: 'requested',
@@ -75,6 +66,12 @@ export const componentApiDocs: ComponentApiDocs = {
       name: 'onChangeRequested',
       type: '(requested: Color, options?: SetRequestedOptions) => void',
       description: 'Standalone change handler when not using context.',
+    },
+    {
+      name: 'children',
+      type: 'ReactNode',
+      description:
+        'Compose primitives such as Background, ColorPlane, Thumb, Layer, Line, and Point.',
     },
   ],
   colorSlider: [

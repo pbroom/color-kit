@@ -18,13 +18,27 @@ import { ColorAreaDemo } from '@/components/component-demos';
 ## Usage
 
 ```tsx
-import { ColorArea } from '@color-kit/react';
+import {
+  Background,
+  ColorArea,
+  ColorPlane,
+  ContrastRegionLayer,
+  FallbackPointsLayer,
+  GamutBoundaryLayer,
+} from '@color-kit/react';
 
-<ColorArea channels={{ x: 'c', y: 'l' }} />;
+<ColorArea axes={{ x: { channel: 'c' }, y: { channel: 'l' } }}>
+  <Background checkerboard />
+  <ColorPlane />
+  <GamutBoundaryLayer gamut="display-p3" />
+  <ContrastRegionLayer threshold={4.5} />
+  <FallbackPointsLayer />
+</ColorArea>;
 ```
 
 ## Non-UI API helpers
 
+- `ColorApi.resolveColorAreaAxes`
 - `ColorApi.resolveColorAreaRange`
 - `ColorApi.getColorAreaThumbPosition`
 - `ColorApi.colorFromColorAreaPosition`

@@ -10,6 +10,26 @@ import {
 export type ColorAreaChannel = 'l' | 'c' | 'h';
 export type ColorAreaKey = 'ArrowRight' | 'ArrowLeft' | 'ArrowUp' | 'ArrowDown';
 
+export interface ColorAreaAxis {
+  channel: ColorAreaChannel;
+  range?: [number, number];
+}
+
+export interface ColorAreaAxes {
+  x: ColorAreaAxis;
+  y: ColorAreaAxis;
+}
+
+export interface ResolvedColorAreaAxis {
+  channel: ColorAreaChannel;
+  range: [number, number];
+}
+
+export interface ResolvedColorAreaAxes {
+  x: ResolvedColorAreaAxis;
+  y: ResolvedColorAreaAxis;
+}
+
 export const COLOR_AREA_DEFAULT_RANGES: Record<
   ColorAreaChannel,
   [number, number]
@@ -17,6 +37,17 @@ export const COLOR_AREA_DEFAULT_RANGES: Record<
   l: [0, 1],
   c: [0, 0.4],
   h: [0, 360],
+};
+
+const COLOR_AREA_DEFAULT_AXES: ResolvedColorAreaAxes = {
+  x: {
+    channel: 'c',
+    range: COLOR_AREA_DEFAULT_RANGES.c,
+  },
+  y: {
+    channel: 'l',
+    range: COLOR_AREA_DEFAULT_RANGES.l,
+  },
 };
 
 export interface ColorAreaGamutBoundaryPoint {
@@ -57,61 +88,81 @@ export function resolveColorAreaRange(
   return range ?? COLOR_AREA_DEFAULT_RANGES[channel];
 }
 
+export function resolveColorAreaAxes(
+  axes?: ColorAreaAxes,
+): ResolvedColorAreaAxes {
+  const next = axes ?? COLOR_AREA_DEFAULT_AXES;
+  return {
+    x: {
+      channel: next.x.channel,
+      range: resolveColorAreaRange(next.x.channel, next.x.range),
+    },
+    y: {
+      channel: next.y.channel,
+      range: resolveColorAreaRange(next.y.channel, next.y.range),
+    },
+  };
+}
+
+export function areColorAreaAxesDistinct(axes: {
+  x: { channel: ColorAreaChannel };
+  y: { channel: ColorAreaChannel };
+}): boolean {
+  return axes.x.channel !== axes.y.channel;
+}
+
 function normalize(value: number, range: [number, number]): number {
   return clamp((value - range[0]) / (range[1] - range[0]), 0, 1);
 }
 
-function usesLightnessAndChroma(channels: {
-  x: ColorAreaChannel;
-  y: ColorAreaChannel;
+function usesLightnessAndChroma(axes: {
+  x: { channel: ColorAreaChannel };
+  y: { channel: ColorAreaChannel };
 }): boolean {
   return (
-    (channels.x === 'l' && channels.y === 'c') ||
-    (channels.x === 'c' && channels.y === 'l')
+    (axes.x.channel === 'l' && axes.y.channel === 'c') ||
+    (axes.x.channel === 'c' && axes.y.channel === 'l')
   );
 }
 
 export function getColorAreaThumbPosition(
   color: Color,
-  channels: { x: ColorAreaChannel; y: ColorAreaChannel },
-  xRange: [number, number],
-  yRange: [number, number],
+  axes: ResolvedColorAreaAxes,
 ): { x: number; y: number } {
   return {
-    x: normalize(color[channels.x], xRange),
-    y: 1 - normalize(color[channels.y], yRange),
+    x: normalize(color[axes.x.channel], axes.x.range),
+    y: 1 - normalize(color[axes.y.channel], axes.y.range),
   };
 }
 
 export function colorFromColorAreaPosition(
   color: Color,
-  channels: { x: ColorAreaChannel; y: ColorAreaChannel },
+  axes: ResolvedColorAreaAxes,
   xNorm: number,
   yNorm: number,
-  xRange: [number, number],
-  yRange: [number, number],
 ): Color {
   const x = clamp(xNorm, 0, 1);
   const y = clamp(yNorm, 0, 1);
+
+  const xRange = axes.x.range;
+  const yRange = axes.y.range;
 
   const xValue = xRange[0] + x * (xRange[1] - xRange[0]);
   const yValue = yRange[0] + (1 - y) * (yRange[1] - yRange[0]);
 
   return {
     ...color,
-    [channels.x]: xValue,
-    [channels.y]: yValue,
+    [axes.x.channel]: xValue,
+    [axes.y.channel]: yValue,
   };
 }
 
 export function getColorAreaGamutBoundaryPoints(
   hue: number,
-  channels: { x: ColorAreaChannel; y: ColorAreaChannel },
-  xRange: [number, number],
-  yRange: [number, number],
+  axes: ResolvedColorAreaAxes,
   options: ColorAreaGamutBoundaryOptions = {},
 ): ColorAreaGamutBoundaryPoint[] {
-  if (!usesLightnessAndChroma(channels)) {
+  if (!usesLightnessAndChroma(axes)) {
     return [];
   }
 
@@ -123,9 +174,7 @@ export function getColorAreaGamutBoundaryPoints(
   return boundary.map((point) => {
     const position = getColorAreaThumbPosition(
       { l: point.l, c: point.c, h: hue, alpha: 1 },
-      channels,
-      xRange,
-      yRange,
+      axes,
     );
 
     return {
@@ -140,12 +189,10 @@ export function getColorAreaGamutBoundaryPoints(
 export function getColorAreaContrastRegionPaths(
   reference: Color,
   hue: number,
-  channels: { x: ColorAreaChannel; y: ColorAreaChannel },
-  xRange: [number, number],
-  yRange: [number, number],
+  axes: ResolvedColorAreaAxes,
   options: ColorAreaContrastRegionOptions = {},
 ): ColorAreaContrastRegionPoint[][] {
-  if (!usesLightnessAndChroma(channels)) {
+  if (!usesLightnessAndChroma(axes)) {
     return [];
   }
 
@@ -165,9 +212,7 @@ export function getColorAreaContrastRegionPaths(
     path.map((point) => {
       const position = getColorAreaThumbPosition(
         { l: point.l, c: point.c, h: hue, alpha: 1 },
-        channels,
-        xRange,
-        yRange,
+        axes,
       );
 
       return {
@@ -182,12 +227,12 @@ export function getColorAreaContrastRegionPaths(
 
 export function colorFromColorAreaKey(
   color: Color,
-  channels: { x: ColorAreaChannel; y: ColorAreaChannel },
+  axes: ResolvedColorAreaAxes,
   key: string,
   stepRatio: number,
-  xRange: [number, number],
-  yRange: [number, number],
 ): Color | null {
+  const xRange = axes.x.range;
+  const yRange = axes.y.range;
   const xStep = stepRatio * (xRange[1] - xRange[0]);
   const yStep = stepRatio * (yRange[1] - yRange[0]);
 
@@ -195,22 +240,38 @@ export function colorFromColorAreaKey(
     case 'ArrowRight':
       return {
         ...color,
-        [channels.x]: clamp(color[channels.x] + xStep, xRange[0], xRange[1]),
+        [axes.x.channel]: clamp(
+          color[axes.x.channel] + xStep,
+          xRange[0],
+          xRange[1],
+        ),
       };
     case 'ArrowLeft':
       return {
         ...color,
-        [channels.x]: clamp(color[channels.x] - xStep, xRange[0], xRange[1]),
+        [axes.x.channel]: clamp(
+          color[axes.x.channel] - xStep,
+          xRange[0],
+          xRange[1],
+        ),
       };
     case 'ArrowUp':
       return {
         ...color,
-        [channels.y]: clamp(color[channels.y] + yStep, yRange[0], yRange[1]),
+        [axes.y.channel]: clamp(
+          color[axes.y.channel] + yStep,
+          yRange[0],
+          yRange[1],
+        ),
       };
     case 'ArrowDown':
       return {
         ...color,
-        [channels.y]: clamp(color[channels.y] - yStep, yRange[0], yRange[1]),
+        [axes.y.channel]: clamp(
+          color[axes.y.channel] - yStep,
+          yRange[0],
+          yRange[1],
+        ),
       };
     default:
       return null;

@@ -1,17 +1,23 @@
 import { parse, toCss } from '@color-kit/core';
 import {
   AlphaSlider,
+  Background,
   ColorApi,
   ColorArea,
+  ColorPlane,
   ColorDisplay,
   ColorInput,
   ColorProvider,
   ColorSlider,
+  ContrastRegionLayer,
   ContrastBadge,
+  FallbackPointsLayer,
+  GamutBoundaryLayer,
   HueSlider,
   Swatch,
   SwatchGroup,
   type ColorAreaChannel,
+  type ColorAreaAxes,
   type ColorSliderChannel,
   useColor,
 } from '@color-kit/react';
@@ -37,11 +43,6 @@ const ALPHA_GRADIENT =
 
 const SATURATION_GRADIENT =
   'linear-gradient(90deg, oklch(0.65 0 255), oklch(0.65 0.34 255))';
-
-const AREA_GRADIENT =
-  'linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0)), linear-gradient(to right, #ffffff, #3b82f6)';
-const CHECKERBOARD_GRADIENT =
-  'linear-gradient(45deg, rgba(13, 18, 29, 0.7) 25%, transparent 25%), linear-gradient(-45deg, rgba(13, 18, 29, 0.7) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(13, 18, 29, 0.7) 75%), linear-gradient(-45deg, transparent 75%, rgba(13, 18, 29, 0.7) 75%)';
 
 const SLIDER_GRADIENTS: Record<ColorSliderChannel, string> = {
   l: 'linear-gradient(90deg, #0f172a, #f8fafc)',
@@ -83,21 +84,6 @@ const CONTRAST_PRESETS = {
   },
 } as const;
 
-function toSvgPath(points: Array<{ x: number; y: number }>): string {
-  if (points.length < 2) return '';
-  return points
-    .map((point, index) => {
-      const x = (point.x * 100).toFixed(3);
-      const y = (point.y * 100).toFixed(3);
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-    })
-    .join(' ');
-}
-
-function channelRange(channel: ColorAreaChannel): [number, number] {
-  return ColorApi.resolveColorAreaRange(channel);
-}
-
 function normalizeChannels(
   x: ColorAreaChannel,
   y: ColorAreaChannel,
@@ -108,30 +94,14 @@ function normalizeChannels(
   return { x, y: y === 'l' ? 'c' : 'l' };
 }
 
-function getAreaBackground(channels: {
-  x: ColorAreaChannel;
-  y: ColorAreaChannel;
-}) {
-  if (
-    (channels.x === 'c' && channels.y === 'l') ||
-    (channels.x === 'l' && channels.y === 'c')
-  ) {
-    return AREA_GRADIENT;
-  }
-  if (channels.x === 'h' || channels.y === 'h') {
-    return 'linear-gradient(90deg, #ff0052 0%, #ffb347 17%, #f9f871 33%, #41d67e 50%, #36c6ff 67%, #6f7bff 83%, #ff4cb8 100%)';
-  }
-  return 'linear-gradient(135deg, #111827 0%, #0ea5e9 50%, #f97316 100%)';
-}
-
 export function ColorProviderDemo() {
   return (
     <ColorProvider defaultColor="#3b82f6">
       <div className="ck-demo-stack">
-        <ColorArea
-          className="ck-color-area"
-          style={{ background: AREA_GRADIENT }}
-        />
+        <ColorArea className="ck-color-area">
+          <Background checkerboard />
+          <ColorPlane />
+        </ColorArea>
         <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
         <AlphaSlider
           className="ck-slider"
@@ -155,9 +125,19 @@ export function ColorAreaDemo({
   const state = inspectorDriven && inspector ? inspector.colorAreaState : null;
 
   const channels = normalizeChannels(state?.xAxis ?? 'c', state?.yAxis ?? 'l');
-  const showCheckerboard = state?.showCheckerboard ?? false;
-  const xRange = channelRange(channels.x);
-  const yRange = channelRange(channels.y);
+  const axes: ColorAreaAxes = useMemo(
+    () => ({
+      x: {
+        channel: channels.x,
+        range: ColorApi.resolveColorAreaRange(channels.x),
+      },
+      y: {
+        channel: channels.y,
+        range: ColorApi.resolveColorAreaRange(channels.y),
+      },
+    }),
+    [channels],
+  );
   const color = useColor({
     defaultColor: '#2563eb',
     defaultGamut: state?.gamut ?? 'display-p3',
@@ -171,108 +151,41 @@ export function ColorAreaDemo({
     setColorAreaGamut(inspectorGamut, 'programmatic');
   }, [inspectorGamut, color.activeGamut, setColorAreaGamut]);
 
-  const hue = color.requested.h;
-  const boundarySrgb = useMemo(() => {
-    if (!state?.showSrgbBoundary) return [];
-    return ColorApi.getColorAreaGamutBoundaryPoints(
-      hue,
-      channels,
-      xRange,
-      yRange,
-      { gamut: 'srgb', steps: 48 },
-    );
-  }, [state?.showSrgbBoundary, hue, channels, xRange, yRange]);
-
-  const boundaryP3 = useMemo(() => {
-    if (!state?.showP3Boundary) return [];
-    return ColorApi.getColorAreaGamutBoundaryPoints(
-      hue,
-      channels,
-      xRange,
-      yRange,
-      { gamut: 'display-p3', steps: 48 },
-    );
-  }, [state?.showP3Boundary, hue, channels, xRange, yRange]);
-
-  const contrastPaths = useMemo(() => {
-    if (!state?.showContrastRegion) return [];
-    return ColorApi.getColorAreaContrastRegionPaths(
-      color.displayed,
-      hue,
-      channels,
-      xRange,
-      yRange,
-      {
-        gamut: state.gamut,
-        threshold: 4.5,
-        lightnessSteps: 28,
-        chromaSteps: 28,
-      },
-    );
-  }, [
-    state?.showContrastRegion,
-    state?.gamut,
-    color.displayed,
-    hue,
-    channels,
-    xRange,
-    yRange,
-  ]);
-
-  const p3Path = useMemo(() => toSvgPath(boundaryP3), [boundaryP3]);
-  const srgbPath = useMemo(() => toSvgPath(boundarySrgb), [boundarySrgb]);
-  const contrastPathData = useMemo(
-    () => contrastPaths.map((path) => toSvgPath(path)).filter(Boolean),
-    [contrastPaths],
-  );
-  const areaBackground = useMemo(() => {
-    const baseBackground = getAreaBackground(channels);
-    if (!showCheckerboard) {
-      return {
-        backgroundImage: baseBackground,
-      };
-    }
-    return {
-      backgroundImage: `${CHECKERBOARD_GRADIENT}, ${baseBackground}`,
-      backgroundSize: '16px 16px, 16px 16px, 16px 16px, 16px 16px, auto',
-      backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0, 0 0',
-    };
-  }, [channels, showCheckerboard]);
-
   return (
     <div className="ck-demo-stack">
       <ColorArea
         className="ck-color-area"
         requested={color.requested}
         onChangeRequested={color.setRequested}
-        channels={channels}
-        xRange={xRange}
-        yRange={yRange}
-        style={areaBackground}
+        axes={axes}
       >
-        {(state?.showContrastRegion ?? false) && (
-          <svg
-            className="ck-color-area-overlay"
-            viewBox="0 0 100 100"
-            aria-hidden="true"
-          >
-            {contrastPathData.map((d, index) => (
-              <path
-                key={`contrast-${index}`}
-                d={d}
-                className="ck-overlay-contrast"
-              />
-            ))}
-          </svg>
+        <Background checkerboard={state?.showCheckerboard ?? false} />
+        <ColorPlane source="requested" />
+        {(state?.showP3Boundary ?? false) && (
+          <GamutBoundaryLayer
+            gamut="display-p3"
+            steps={48}
+            pathProps={{ className: 'ck-overlay-p3' }}
+          />
         )}
-        <svg
-          className="ck-color-area-overlay"
-          viewBox="0 0 100 100"
-          aria-hidden="true"
-        >
-          {p3Path ? <path d={p3Path} className="ck-overlay-p3" /> : null}
-          {srgbPath ? <path d={srgbPath} className="ck-overlay-srgb" /> : null}
-        </svg>
+        {(state?.showSrgbBoundary ?? false) && (
+          <GamutBoundaryLayer
+            gamut="srgb"
+            steps={48}
+            pathProps={{ className: 'ck-overlay-srgb' }}
+          />
+        )}
+        {(state?.showContrastRegion ?? false) && (
+          <ContrastRegionLayer
+            reference={color.displayed}
+            gamut={state?.gamut}
+            threshold={4.5}
+            lightnessSteps={28}
+            chromaSteps={28}
+            pathProps={{ className: 'ck-overlay-contrast' }}
+          />
+        )}
+        <FallbackPointsLayer />
       </ColorArea>
       <HueSlider
         className="ck-slider"

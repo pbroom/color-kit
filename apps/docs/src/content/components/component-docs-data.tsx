@@ -20,7 +20,7 @@ export interface ComponentDocData {
   summary: string;
   description: string;
   registryName: string;
-  demo: ComponentType<any>;
+  demo: ComponentType;
   usage: string;
   helperApis: string[];
   features: string[];
@@ -70,13 +70,27 @@ export function Picker() {
     title: 'Color Area',
     summary: 'Two-dimensional channel plane for advanced color selection.',
     description:
-      'ColorArea maps pointer and keyboard input to two channels while keeping thumb geometry tied to requested values.',
+      'ColorArea defines a composable 2D plane where pointer interactions map to requested color intent and child primitives render layers, paths, and markers.',
     registryName: 'color-area',
     demo: ColorAreaDemo,
-    usage: `import { ColorArea } from '@color-kit/react';
+    usage: `import {
+  Background,
+  ColorArea,
+  ColorPlane,
+  ContrastRegionLayer,
+  FallbackPointsLayer,
+  GamutBoundaryLayer,
+} from '@color-kit/react';
 
-<ColorArea channels={{ x: 'c', y: 'l' }} />;`,
+<ColorArea axes={{ x: { channel: 'c' }, y: { channel: 'l' } }}>
+  <Background checkerboard />
+  <ColorPlane />
+  <GamutBoundaryLayer gamut="display-p3" />
+  <ContrastRegionLayer threshold={4.5} />
+  <FallbackPointsLayer />
+</ColorArea>;`,
     helperApis: [
+      'ColorApi.resolveColorAreaAxes',
       'ColorApi.resolveColorAreaRange',
       'ColorApi.getColorAreaThumbPosition',
       'ColorApi.colorFromColorAreaPosition',
@@ -85,16 +99,16 @@ export function Picker() {
       'ColorApi.getColorAreaContrastRegionPaths',
     ],
     features: [
-      'Configurable X and Y channel pairing (`l`, `c`, or `h`).',
-      'Requested-vs-displayed behavior with deterministic mapping support.',
-      'Supports overlaying gamut and contrast paths through ColorApi helpers.',
+      'Composable primitive model: ColorArea + ColorPlane + Layer wrappers + Thumb.',
+      'UI-plane interaction allows out-of-gamut intent while preserving explicit realized fallbacks.',
+      'Built-in wrappers for gamut boundaries, contrast regions, and fallback markers.',
     ],
     accessibility: [
-      'Implements slider semantics for keyboard and assistive technology compatibility.',
-      'Includes expressive `aria-valuetext` to represent current channel coordinates.',
+      'Thumb owns slider semantics and keyboard channel movement.',
+      'Layer primitives are non-interactive by default so overlays do not intercept input.',
     ],
     props: componentApiDocs.colorArea,
-    anatomy: `<ColorArea>\n  <div data-color-area-thumb />\n</ColorArea>`,
+    anatomy: `<ColorArea>\n  <Background />\n  <ColorPlane />\n  <Thumb />\n</ColorArea>`,
     supportsPropertiesPanel: true,
   },
   'color-slider': {

@@ -882,6 +882,22 @@ a {
   stroke-dasharray: 0.95 0.95;
 }
 
+.ck-color-area [data-color-area-fallback-point] {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.62);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.52);
+}
+
+.ck-color-area [data-color-area-fallback-point][data-gamut='display-p3'] {
+  background: #40f5d2;
+}
+
+.ck-color-area [data-color-area-fallback-point][data-gamut='srgb'] {
+  background: #ffd447;
+}
+
 .ck-slider {
   width: 100%;
   min-height: 44px;
