@@ -219,13 +219,13 @@ Most of this lines up with what I'm thinking. Going down the list...
 9. I like this.
 10. I'm down to name it better. It might be safe to name it Gamut or ChannelGradient, but I'm open to better options.
 
-*[GPT-5.2 responded at this point with more feedback that included naming discussion. User responded.]*
+_[GPT-5.2 responded at this point with more feedback that included naming discussion. User responded.]_
 
 ## Prompt: ColorPlane and Layer naming
 
 How about \<ColorPlane /> in place of \<Field />? I feel like field can mean a lot of things in the context of a color area/color picker. ColorPlane says, "I'm for rendering color, I'm 2D, and I potentially exist in the context of other planes or layers." Also, I see you nesting \<Point /> and \<Line /> within \<Overlay />. That feels smart, especially if it's optional and you could just drop the line and point elements in color area as their own layers. It kind of makes me want to redefine \<Overlay /> as \<Layer /> (one of your suggestions) and then have that be the primitive. That kind of makes me want to remove the \<Background /> element and replace it with a \<Layer /> element, or create the \<Background /> element out of a wrapped \<Layer /> element with some nice background-specific defaults.
 
-*[GPT-5.2 responded in agreement, and summarized.]*
+_[GPT-5.2 responded in agreement, and summarized.]_
 
 ## Prompt: Compact component summary
 

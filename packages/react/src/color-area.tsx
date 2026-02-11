@@ -163,9 +163,10 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const warnedAxesRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
     const rafRef = useRef<number | null>(null);
-    const pendingPositionRef = useRef<{ clientX: number; clientY: number } | null>(
-      null,
-    );
+    const pendingPositionRef = useRef<{
+      clientX: number;
+      clientY: number;
+    } | null>(null);
 
     const resolvedAxes = useMemo(() => {
       const resolved = resolveColorAreaAxes(axes);
