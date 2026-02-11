@@ -4,6 +4,7 @@ import {
   forwardRef,
   isValidElement,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -161,6 +162,10 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const warnedMultiThumbRef = useRef(false);
     const warnedAxesRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
+    const rafRef = useRef<number | null>(null);
+    const pendingPositionRef = useRef<{ clientX: number; clientY: number } | null>(
+      null,
+    );
 
     const resolvedAxes = useMemo(() => {
       const resolved = resolveColorAreaAxes(axes);
@@ -210,6 +215,30 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       [requested, resolvedAxes, setRequested],
     );
 
+    const updateFromPositionRef = useRef(updateFromPosition);
+    updateFromPositionRef.current = updateFromPosition;
+
+    const flushPendingPosition = useCallback(() => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      const pending = pendingPositionRef.current;
+      if (pending) {
+        pendingPositionRef.current = null;
+        updateFromPositionRef.current(pending.clientX, pending.clientY);
+      }
+    }, []);
+
+    useEffect(
+      () => () => {
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+        }
+      },
+      [],
+    );
+
     const onRootPointerDown = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerDown?.(event);
@@ -234,25 +263,36 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           return;
         }
 
-        updateFromPosition(event.clientX, event.clientY);
+        pendingPositionRef.current = {
+          clientX: event.clientX,
+          clientY: event.clientY,
+        };
+        if (rafRef.current === null) {
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = null;
+            flushPendingPosition();
+          });
+        }
       },
-      [onPointerMove, isDragging, updateFromPosition],
+      [onPointerMove, isDragging, flushPendingPosition],
     );
 
     const onRootPointerUp = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerUp?.(event);
         setIsDragging(false);
+        flushPendingPosition();
       },
-      [onPointerUp],
+      [onPointerUp, flushPendingPosition],
     );
 
     const onRootPointerCancel = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerCancel?.(event);
         setIsDragging(false);
+        flushPendingPosition();
       },
-      [onPointerCancel],
+      [onPointerCancel, flushPendingPosition],
     );
 
     const explicitThumbCount = countThumbs(children);

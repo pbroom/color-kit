@@ -99,10 +99,10 @@ function renderPixels(
       const rgb = toRgb(color);
 
       const offset = (y * width + x) * 4;
-      data[offset] = Math.round(rgb.r * 255);
-      data[offset + 1] = Math.round(rgb.g * 255);
-      data[offset + 2] = Math.round(rgb.b * 255);
-      data[offset + 3] = Math.round(color.alpha * 255);
+      data[offset] = Math.round(rgb.r);
+      data[offset + 1] = Math.round(rgb.g);
+      data[offset + 2] = Math.round(rgb.b);
+      data[offset + 3] = Math.round((rgb.alpha ?? color.alpha) * 255);
     }
   }
 

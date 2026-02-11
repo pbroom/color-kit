@@ -46,10 +46,10 @@ function renderPixels(width, height, source, gamut) {
       const color = sampleColor(BASE, xNorm, yNorm, source, gamut);
       const rgb = toRgb(color);
       const index = (y * width + x) * 4;
-      data[index] = Math.round(rgb.r * 255);
-      data[index + 1] = Math.round(rgb.g * 255);
-      data[index + 2] = Math.round(rgb.b * 255);
-      data[index + 3] = Math.round(color.alpha * 255);
+      data[index] = Math.round(rgb.r);
+      data[index + 1] = Math.round(rgb.g);
+      data[index + 2] = Math.round(rgb.b);
+      data[index + 3] = Math.round((rgb.alpha ?? color.alpha) * 255);
     }
   }
 
