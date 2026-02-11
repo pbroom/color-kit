@@ -79,6 +79,12 @@ function clamp01(value: number): number {
   return value;
 }
 
+const UPDATE_RATE_SLOP_MS = 1;
+
+function asFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 function lowerQuality(level: ColorAreaQualityLevel): ColorAreaQualityLevel {
   if (level === 'high') return 'medium';
   if (level === 'medium') return 'low';
@@ -334,13 +340,23 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         clientY: number,
         options: { force?: boolean; coalescedCount?: number } = {},
       ) => {
+        if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) {
+          return;
+        }
+
         const rect = rectRef.current ?? refreshRect();
         if (!rect || rect.width <= 0 || rect.height <= 0) {
           return;
         }
 
-        const xNorm = clamp01((clientX - rect.left) / rect.width);
-        const yNorm = clamp01((clientY - rect.top) / rect.height);
+        const xNormRaw = (clientX - rect.left) / rect.width;
+        const yNormRaw = (clientY - rect.top) / rect.height;
+        if (!Number.isFinite(xNormRaw) || !Number.isFinite(yNormRaw)) {
+          return;
+        }
+
+        const xNorm = clamp01(xNormRaw);
+        const yNorm = clamp01(yNormRaw);
         const previousNorm = lastNormRef.current;
         const epsilon = dragEpsilon >= 0 ? dragEpsilon : 0.0005;
 
@@ -362,7 +378,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         if (
           !options.force &&
           lastCommitTsRef.current > 0 &&
-          now - lastCommitTsRef.current < minDeltaMs
+          now + UPDATE_RATE_SLOP_MS < lastCommitTsRef.current + minDeltaMs
         ) {
           return;
         }
@@ -489,6 +505,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         }
 
         event.preventDefault();
+        isDraggingRef.current = true;
         setIsDragging(true);
         rollingUpdateMsRef.current = [];
         rollingFrameMsRef.current = [];
@@ -499,7 +516,13 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         if ('setPointerCapture' in event.currentTarget) {
           event.currentTarget.setPointerCapture(event.pointerId);
         }
-        commitFromPosition(event.clientX, event.clientY, { force: true });
+        const native = event.nativeEvent as Partial<PointerEvent>;
+        const clientX =
+          asFiniteNumber(event.clientX) ?? asFiniteNumber(native.clientX) ?? 0;
+        const clientY =
+          asFiniteNumber(event.clientY) ?? asFiniteNumber(native.clientY) ?? 0;
+
+        commitFromPosition(clientX, clientY, { force: true });
       },
       [commitFromPosition, onPointerDown, refreshRect],
     );
@@ -507,7 +530,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const onRootPointerMove = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerMove?.(event);
-        if (event.defaultPrevented || !isDragging) {
+        if (event.defaultPrevented || !isDraggingRef.current) {
           return;
         }
 
@@ -518,9 +541,14 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
             : [];
         const latest =
           coalesced.length > 0 ? coalesced[coalesced.length - 1] : native;
+        const clientX =
+          asFiniteNumber(latest.clientX) ?? asFiniteNumber(native.clientX) ?? 0;
+        const clientY =
+          asFiniteNumber(latest.clientY) ?? asFiniteNumber(native.clientY) ?? 0;
+
         pendingPositionRef.current = {
-          clientX: latest.clientX,
-          clientY: latest.clientY,
+          clientX,
+          clientY,
           coalescedCount: Math.max(1, coalesced.length),
         };
         if (rafRef.current === null) {
@@ -530,12 +558,13 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           });
         }
       },
-      [onPointerMove, isDragging, flushPendingPosition],
+      [onPointerMove, flushPendingPosition],
     );
 
     const onRootPointerUp = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerUp?.(event);
+        isDraggingRef.current = false;
         setIsDragging(false);
         flushPendingPosition(true);
       },
@@ -545,6 +574,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const onRootPointerCancel = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerCancel?.(event);
+        isDraggingRef.current = false;
         setIsDragging(false);
         flushPendingPosition(true);
       },
