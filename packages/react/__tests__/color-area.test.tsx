@@ -12,6 +12,32 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function dispatchPointer(
+  target: Element,
+  type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
+  options: {
+    pointerId?: number;
+    clientX: number;
+    clientY: number;
+    coalesced?: Array<{ clientX: number; clientY: number }>;
+  },
+) {
+  const PointerEventCtor =
+    typeof PointerEvent === 'function' ? PointerEvent : MouseEvent;
+  const event = new PointerEventCtor(type, {
+    bubbles: true,
+    clientX: options.clientX,
+    clientY: options.clientY,
+  }) as PointerEvent;
+  Object.defineProperty(event, 'pointerId', { value: options.pointerId ?? 1 });
+  if (options.coalesced) {
+    Object.defineProperty(event, 'getCoalescedEvents', {
+      value: () => options.coalesced ?? [],
+    });
+  }
+  target.dispatchEvent(event);
+}
+
 describe('ColorArea', () => {
   it('keeps thumb coordinates bound to requested values', () => {
     const requested: Color = { l: 0.75, c: 0.4, h: 210, alpha: 1 };
@@ -73,6 +99,47 @@ describe('ColorArea', () => {
     expect(options).toEqual({ interaction: 'pointer' });
   });
 
+  it('keeps drag updates flowing at default maxUpdateHz on 60hz cadence', () => {
+    vi.useFakeTimers();
+
+    let now = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+
+    const onChangeRequested = vi.fn();
+    const requested: Color = { l: 0.3, c: 0.1, h: 50, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={onChangeRequested} />,
+    );
+
+    const root = container.querySelector('[data-color-area]') as HTMLDivElement;
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    dispatchPointer(root, 'pointerdown', {
+      clientX: 40,
+      clientY: 60,
+    });
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+
+    now = 1_016;
+    dispatchPointer(root, 'pointermove', {
+      clientX: 60,
+      clientY: 40,
+    });
+    vi.runOnlyPendingTimers();
+
+    expect(onChangeRequested).toHaveBeenCalledTimes(2);
+  });
+
   it('caches geometry across drag frames to avoid repeated layout reads', () => {
     vi.useFakeTimers();
 
@@ -95,11 +162,11 @@ describe('ColorArea', () => {
       toJSON: () => '',
     } as DOMRect);
 
-    fireEvent.pointerDown(root, { pointerId: 1, clientX: 15, clientY: 85 });
-    fireEvent.pointerMove(root, { pointerId: 1, clientX: 40, clientY: 60 });
-    fireEvent.pointerMove(root, { pointerId: 1, clientX: 70, clientY: 30 });
+    dispatchPointer(root, 'pointerdown', { clientX: 15, clientY: 85 });
+    dispatchPointer(root, 'pointermove', { clientX: 40, clientY: 60 });
+    dispatchPointer(root, 'pointermove', { clientX: 70, clientY: 30 });
     vi.runAllTimers();
-    fireEvent.pointerUp(root, { pointerId: 1, clientX: 70, clientY: 30 });
+    dispatchPointer(root, 'pointerup', { clientX: 70, clientY: 30 });
 
     expect(onChangeRequested.mock.calls.length).toBeGreaterThan(1);
     expect(rectSpy).toHaveBeenCalledTimes(1);
@@ -131,36 +198,23 @@ describe('ColorArea', () => {
       toJSON: () => '',
     } as DOMRect);
 
-    fireEvent.pointerDown(root, { pointerId: 1, clientX: 50, clientY: 50 });
+    dispatchPointer(root, 'pointerdown', { clientX: 50, clientY: 50 });
 
-    const PointerEventCtor =
-      typeof PointerEvent === 'function' ? PointerEvent : MouseEvent;
-
-    const tinyMove = new PointerEventCtor('pointermove', {
-      bubbles: true,
+    dispatchPointer(root, 'pointermove', {
       clientX: 51,
       clientY: 49,
-    }) as PointerEvent;
-    Object.defineProperty(tinyMove, 'pointerId', { value: 1 });
-    Object.defineProperty(tinyMove, 'getCoalescedEvents', {
-      value: () => [{ clientX: 51, clientY: 49 }],
+      coalesced: [{ clientX: 51, clientY: 49 }],
     });
-    root.dispatchEvent(tinyMove);
     vi.runAllTimers();
 
-    const largeMove = new PointerEventCtor('pointermove', {
-      bubbles: true,
+    dispatchPointer(root, 'pointermove', {
       clientX: 61,
       clientY: 39,
-    }) as PointerEvent;
-    Object.defineProperty(largeMove, 'pointerId', { value: 1 });
-    Object.defineProperty(largeMove, 'getCoalescedEvents', {
-      value: () => [
+      coalesced: [
         { clientX: 61, clientY: 39 },
         { clientX: 90, clientY: 10 },
       ],
     });
-    root.dispatchEvent(largeMove);
     vi.runAllTimers();
 
     expect(onChangeRequested).toHaveBeenCalledTimes(2);
