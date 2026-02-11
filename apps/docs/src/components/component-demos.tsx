@@ -167,8 +167,9 @@ export function ColorAreaDemo({
 
   useEffect(() => {
     if (!inspectorGamut) return;
+    if (color.activeGamut === inspectorGamut) return;
     setColorAreaGamut(inspectorGamut, 'programmatic');
-  }, [inspectorGamut, setColorAreaGamut]);
+  }, [inspectorGamut, color.activeGamut, setColorAreaGamut]);
 
   const hue = color.requested.h;
   const boundarySrgb = useMemo(() => {
