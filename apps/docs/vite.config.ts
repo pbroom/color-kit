@@ -8,7 +8,12 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [
     { enforce: 'pre', ...mdx({ remarkPlugins: [remarkGfm] }) },
-    react({ include: /\.(tsx|ts|jsx|js|mdx|md)$/ }),
+    react({
+      include: /\.(tsx|ts|jsx|js|mdx|md)$/,
+      babel: {
+        plugins: ['babel-plugin-react-compiler'],
+      },
+    }),
     tailwindcss(),
   ],
   resolve: {

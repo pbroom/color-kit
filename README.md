@@ -20,6 +20,12 @@ This project is intentionally in a pre-production phase:
 - `npm` publishes use the `next` dist-tag until `1.0.0` readiness.
 - CI blocks accidental `>=1.0.0` workspace package versions.
 
+## React Baseline
+
+- `@color-kit/react` targets React `19+`.
+- Workspace defaults pin React and React DOM to the latest `19.x`.
+- Docs builds run the React Compiler (`babel-plugin-react-compiler`) by default.
+
 ## Install
 
 ```bash
