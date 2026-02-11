@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -236,7 +237,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
     const rootRenderer =
       renderer === 'auto' ? BENCHMARK_SELECTED_COLOR_PLANE_RENDERER : renderer;
 
-    const renderPlane = () => {
+    const renderPlane = useCallback(() => {
       const canvas = canvasRef.current;
       if (!canvas) {
         return;
@@ -296,7 +297,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       if (canvasOk) {
         setActiveRenderer('canvas2d');
       }
-    };
+    }, [requested, axes, source, displayGamut, rootRenderer, resolutionScale]);
 
     useEffect(() => {
       renderPlane();
@@ -314,7 +315,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       return () => {
         observer.disconnect();
       };
-    }, [requested, axes, source, displayGamut, rootRenderer, resolutionScale]);
+    }, [renderPlane]);
 
     return (
       <canvas
