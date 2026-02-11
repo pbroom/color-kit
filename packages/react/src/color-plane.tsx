@@ -51,6 +51,21 @@ interface WebglState {
   positionAttrib: number;
 }
 
+function planeSeedFromRequested(
+  requested: Color,
+  axes: Parameters<typeof colorFromColorAreaPosition>[1],
+): Color {
+  const xChannel = axes.x.channel;
+  const yChannel = axes.y.channel;
+
+  return {
+    l: xChannel === 'l' || yChannel === 'l' ? 0 : requested.l,
+    c: xChannel === 'c' || yChannel === 'c' ? 0 : requested.c,
+    h: xChannel === 'h' || yChannel === 'h' ? 0 : requested.h,
+    alpha: requested.alpha,
+  };
+}
+
 function sampleColor(
   base: Color,
   xNorm: number,
@@ -229,6 +244,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
     const displayGamut = displayGamutProp ?? contextDisplayGamut;
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const webglStateRef = useRef<WebglState | null>(null);
+    const lastRenderKeyRef = useRef<string | null>(null);
     const [activeRenderer, setActiveRenderer] =
       useState<ActiveColorPlaneRenderer>(
         BENCHMARK_SELECTED_COLOR_PLANE_RENDERER,
@@ -264,11 +280,30 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         canvas.height = scaledHeight;
       }
 
-      const planeSeed: Color = {
-        ...requested,
-      };
-      planeSeed[axes.x.channel] = 0;
-      planeSeed[axes.y.channel] = 0;
+      const planeSeed = planeSeedFromRequested(requested, axes);
+      // Skip expensive per-pixel rasterization when effective plane inputs are unchanged.
+      const renderKey = [
+        scaledWidth,
+        scaledHeight,
+        source,
+        displayGamut,
+        rootRenderer,
+        axes.x.channel,
+        axes.x.range[0],
+        axes.x.range[1],
+        axes.y.channel,
+        axes.y.range[0],
+        axes.y.range[1],
+        planeSeed.l,
+        planeSeed.c,
+        planeSeed.h,
+        planeSeed.alpha,
+      ].join('|');
+
+      if (lastRenderKeyRef.current === renderKey) {
+        return;
+      }
+      lastRenderKeyRef.current = renderKey;
 
       const pixels = renderPixels(
         scaledWidth,
@@ -321,6 +356,10 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       <canvas
         {...props}
         ref={(node) => {
+          if (canvasRef.current !== node) {
+            lastRenderKeyRef.current = null;
+            webglStateRef.current = null;
+          }
           canvasRef.current = node;
           if (typeof ref === 'function') {
             ref(node);
