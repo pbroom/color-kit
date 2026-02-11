@@ -16,12 +16,14 @@ import {
   HueSlider,
   Swatch,
   SwatchGroup,
+  useColorContext,
   type ColorAreaChannel,
   type ColorAreaAxes,
+  type ColorAreaInteractionFrameStats,
   type ColorSliderChannel,
   useColor,
 } from '@color-kit/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOptionalDocsInspector } from './docs-inspector-context.js';
 
 const DOC_SWATCHES = [
@@ -138,73 +140,108 @@ export function ColorAreaDemo({
     }),
     [channels],
   );
-  const color = useColor({
-    defaultColor: '#2563eb',
-    defaultGamut: state?.gamut ?? 'display-p3',
-  });
-  const inspectorGamut = state?.gamut;
-  const setColorAreaGamut = color.setActiveGamut;
+  const [perfFrame, setPerfFrame] =
+    useState<ColorAreaInteractionFrameStats | null>(null);
+  const perfUiUpdateTsRef = useRef(0);
+  const handleInteractionFrame = useCallback(
+    (stats: ColorAreaInteractionFrameStats) => {
+      const now = Date.now();
+      if (now - perfUiUpdateTsRef.current >= 120) {
+        perfUiUpdateTsRef.current = now;
+        setPerfFrame(stats);
+      }
 
-  useEffect(() => {
-    if (!inspectorGamut) return;
-    if (color.activeGamut === inspectorGamut) return;
-    setColorAreaGamut(inspectorGamut, 'programmatic');
-  }, [inspectorGamut, color.activeGamut, setColorAreaGamut]);
+      if (typeof window !== 'undefined') {
+        const target = window as Window & {
+          __ckPerfFrames?: Array<
+            ColorAreaInteractionFrameStats & { ts: number }
+          >;
+        };
+        if (!target.__ckPerfFrames) {
+          target.__ckPerfFrames = [];
+        }
+        target.__ckPerfFrames.push({
+          ...stats,
+          ts: now,
+        });
+        if (target.__ckPerfFrames.length > 2400) {
+          target.__ckPerfFrames.shift();
+        }
+      }
+    },
+    [],
+  );
+
+  function ColorAreaDemoScene() {
+    const color = useColorContext();
+    const inspectorGamut = state?.gamut;
+
+    useEffect(() => {
+      if (!inspectorGamut) return;
+      if (color.state$.activeGamut.peek() === inspectorGamut) return;
+      color.setActiveGamut(inspectorGamut, 'programmatic');
+    }, [color, inspectorGamut]);
+
+    return (
+      <>
+        <ColorArea
+          className="ck-color-area"
+          axes={axes}
+          performanceProfile="auto"
+          onInteractionFrame={handleInteractionFrame}
+        >
+          <Background checkerboard={state?.showCheckerboard ?? false} />
+          <ColorPlane renderer="auto" />
+          {(state?.showP3Boundary ?? false) && (
+            <GamutBoundaryLayer
+              gamut="display-p3"
+              steps={48}
+              quality="auto"
+              pathProps={{ className: 'ck-overlay-p3' }}
+            />
+          )}
+          {(state?.showSrgbBoundary ?? false) && (
+            <GamutBoundaryLayer
+              gamut="srgb"
+              steps={48}
+              quality="auto"
+              pathProps={{ className: 'ck-overlay-srgb' }}
+            />
+          )}
+          {(state?.showContrastRegion ?? false) && (
+            <ContrastRegionLayer
+              gamut={inspectorGamut}
+              threshold={4.5}
+              lightnessSteps={28}
+              chromaSteps={28}
+              quality="auto"
+              pathProps={{ className: 'ck-overlay-contrast' }}
+            />
+          )}
+          <FallbackPointsLayer />
+        </ColorArea>
+        <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
+        <div className="ck-row">
+          <ColorInput className="ck-input" format="oklch" />
+          <ColorDisplay className="ck-color-display" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="ck-demo-stack">
-      <ColorArea
-        className="ck-color-area"
-        requested={color.requested}
-        onChangeRequested={color.setRequested}
-        axes={axes}
+      <ColorProvider
+        defaultColor="#2563eb"
+        defaultGamut={state?.gamut ?? 'display-p3'}
       >
-        <Background checkerboard={state?.showCheckerboard ?? false} />
-        <ColorPlane displayGamut={color.activeGamut} />
-        {(state?.showP3Boundary ?? false) && (
-          <GamutBoundaryLayer
-            gamut="display-p3"
-            steps={48}
-            pathProps={{ className: 'ck-overlay-p3' }}
-          />
-        )}
-        {(state?.showSrgbBoundary ?? false) && (
-          <GamutBoundaryLayer
-            gamut="srgb"
-            steps={48}
-            pathProps={{ className: 'ck-overlay-srgb' }}
-          />
-        )}
-        {(state?.showContrastRegion ?? false) && (
-          <ContrastRegionLayer
-            reference={color.displayed}
-            gamut={state?.gamut}
-            threshold={4.5}
-            lightnessSteps={28}
-            chromaSteps={28}
-            pathProps={{ className: 'ck-overlay-contrast' }}
-          />
-        )}
-        <FallbackPointsLayer />
-      </ColorArea>
-      <HueSlider
-        className="ck-slider"
-        requested={color.requested}
-        onChangeRequested={color.setRequested}
-        style={{ background: HUE_GRADIENT }}
-      />
-      <div className="ck-row">
-        <ColorInput
-          className="ck-input"
-          format="oklch"
-          requested={color.requested}
-          onChangeRequested={color.setRequested}
-        />
-        <ColorDisplay
-          className="ck-color-display"
-          requested={color.requested}
-          gamut={color.activeGamut}
-        />
+        <ColorAreaDemoScene />
+      </ColorProvider>
+      <div className="ck-caption">
+        Perf profile: auto · quality: {perfFrame?.qualityLevel ?? 'high'} ·
+        frame {perfFrame ? `${perfFrame.frameTimeMs.toFixed(2)}ms` : '--'} ·
+        update {perfFrame ? `${perfFrame.updateDurationMs.toFixed(2)}ms` : '--'}{' '}
+        · coalesced {perfFrame?.coalescedCount ?? 0}
       </div>
     </div>
   );

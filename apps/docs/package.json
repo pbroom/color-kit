@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "profile:color-area": "node scripts/profile-color-area.mjs"
   },
   "dependencies": {
     "@color-kit/core": "workspace:*",
