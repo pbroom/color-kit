@@ -2,7 +2,6 @@ import {
   forwardRef,
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
-  useCallback,
 } from 'react';
 import type { ColorAreaChannel } from './api/color-area.js';
 import {
@@ -58,34 +57,6 @@ export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
 
   const { x: xNorm, y: yNorm } = getColorAreaThumbPosition(requested, axes);
 
-  const onThumbKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      onKeyDown?.(event);
-      if (event.defaultPrevented) {
-        return;
-      }
-
-      const ratio = event.shiftKey ? shiftStepRatio : stepRatio;
-      const next = colorFromColorAreaKey(requested, axes, event.key, ratio);
-      if (!next) {
-        return;
-      }
-
-      event.preventDefault();
-      const changedChannel = getChangedChannel(
-        event.key,
-        axes.x.channel,
-        axes.y.channel,
-      );
-
-      setRequested(next, {
-        interaction: 'keyboard',
-        changedChannel: changedChannel ?? undefined,
-      });
-    },
-    [onKeyDown, requested, axes, setRequested, shiftStepRatio, stepRatio],
-  );
-
   return (
     <div
       {...props}
@@ -102,7 +73,30 @@ export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
         ].toFixed(4)}`
       }
       tabIndex={props.tabIndex ?? 0}
-      onKeyDown={onThumbKeyDown}
+      onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
+        onKeyDown?.(event);
+        if (event.defaultPrevented) {
+          return;
+        }
+
+        const ratio = event.shiftKey ? shiftStepRatio : stepRatio;
+        const next = colorFromColorAreaKey(requested, axes, event.key, ratio);
+        if (!next) {
+          return;
+        }
+
+        event.preventDefault();
+        const changedChannel = getChangedChannel(
+          event.key,
+          axes.x.channel,
+          axes.y.channel,
+        );
+
+        setRequested(next, {
+          interaction: 'keyboard',
+          changedChannel: changedChannel ?? undefined,
+        });
+      }}
       style={{
         position: 'absolute',
         left: `${xNorm * 100}%`,

@@ -1,13 +1,11 @@
 import {
   forwardRef,
-  useCallback,
   useEffect,
-  useImperativeHandle,
-  useMemo,
   useRef,
   useState,
   type CanvasHTMLAttributes,
 } from 'react';
+import { useSelector } from '@legendapp/state/react';
 import {
   toRgb,
   toP3Gamut,
@@ -16,7 +14,12 @@ import {
   type GamutTarget,
 } from '@color-kit/core';
 import { colorFromColorAreaPosition } from './api/color-area.js';
+import {
+  COLOR_PLANE_FRAGMENT_SHADER_SOURCE,
+  COLOR_PLANE_VERTEX_SHADER_SOURCE,
+} from './color-plane-shaders.js';
 import { useColorAreaContext } from './color-area-context.js';
+import { useOptionalColorContext } from './context.js';
 
 export type ColorPlaneSource = 'requested' | 'displayed';
 export type ColorPlaneRenderer = 'auto' | 'canvas2d' | 'webgl';
@@ -102,24 +105,6 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
     return null;
   }
 
-  const vertSource = `
-    attribute vec2 a_position;
-    varying vec2 v_uv;
-    void main() {
-      v_uv = (a_position + 1.0) * 0.5;
-      gl_Position = vec4(a_position, 0.0, 1.0);
-    }
-  `;
-
-  const fragSource = `
-    precision mediump float;
-    varying vec2 v_uv;
-    uniform sampler2D u_tex;
-    void main() {
-      gl_FragColor = texture2D(u_tex, vec2(v_uv.x, 1.0 - v_uv.y));
-    }
-  `;
-
   const vertexShader = gl.createShader(gl.VERTEX_SHADER);
   const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
   const program = gl.createProgram();
@@ -130,8 +115,8 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
     return null;
   }
 
-  gl.shaderSource(vertexShader, vertSource);
-  gl.shaderSource(fragmentShader, fragSource);
+  gl.shaderSource(vertexShader, COLOR_PLANE_VERTEX_SHADER_SOURCE);
+  gl.shaderSource(fragmentShader, COLOR_PLANE_FRAGMENT_SHADER_SOURCE);
   gl.compileShader(vertexShader);
   gl.compileShader(fragmentShader);
 
@@ -226,8 +211,8 @@ function drawWithWebgl(state: WebglState, pixels: Uint8ClampedArray): boolean {
 export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
   function ColorPlane(
     {
-      source = 'requested',
-      displayGamut = 'display-p3',
+      source = 'displayed',
+      displayGamut: displayGamutProp,
       renderer = 'auto',
       resolutionScale = 1,
       style,
@@ -236,6 +221,11 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
     ref,
   ) {
     const { requested, axes } = useColorAreaContext();
+    const colorContext = useOptionalColorContext();
+    const contextDisplayGamut = useSelector(
+      () => colorContext?.state$.activeGamut.get() ?? 'display-p3',
+    );
+    const displayGamut = displayGamutProp ?? contextDisplayGamut;
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const webglStateRef = useRef<WebglState | null>(null);
     const [activeRenderer, setActiveRenderer] =
@@ -246,18 +236,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
     const rootRenderer =
       renderer === 'auto' ? BENCHMARK_SELECTED_COLOR_PLANE_RENDERER : renderer;
 
-    const planeSeed = useMemo(() => {
-      const next: Color = {
-        ...requested,
-      };
-      next[axes.x.channel] = 0;
-      next[axes.y.channel] = 0;
-      return next;
-    }, [requested, axes.x.channel, axes.y.channel]);
-
-    useImperativeHandle(ref, () => canvasRef.current as HTMLCanvasElement, []);
-
-    const renderPlane = useCallback(() => {
+    const renderPlane = () => {
       const canvas = canvasRef.current;
       if (!canvas) {
         return;
@@ -283,6 +262,12 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         canvas.width = scaledWidth;
         canvas.height = scaledHeight;
       }
+
+      const planeSeed: Color = {
+        ...requested,
+      };
+      planeSeed[axes.x.channel] = 0;
+      planeSeed[axes.y.channel] = 0;
 
       const pixels = renderPixels(
         scaledWidth,
@@ -311,7 +296,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       if (canvasOk) {
         setActiveRenderer('canvas2d');
       }
-    }, [axes, displayGamut, planeSeed, resolutionScale, rootRenderer, source]);
+    };
 
     useEffect(() => {
       renderPlane();
@@ -329,13 +314,18 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       return () => {
         observer.disconnect();
       };
-    }, [renderPlane]);
+    }, [requested, axes, source, displayGamut, rootRenderer, resolutionScale]);
 
     return (
       <canvas
         {...props}
         ref={(node) => {
           canvasRef.current = node;
+          if (typeof ref === 'function') {
+            ref(node);
+          } else if (ref) {
+            ref.current = node;
+          }
         }}
         data-color-area-plane=""
         data-source={source}

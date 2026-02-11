@@ -124,7 +124,7 @@ export function ColorAreaDemo({
   const inspector = useOptionalDocsInspector();
   const state = inspectorDriven && inspector ? inspector.colorAreaState : null;
 
-  const channels = normalizeChannels(state?.xAxis ?? 'c', state?.yAxis ?? 'l');
+  const channels = normalizeChannels(state?.xAxis ?? 'l', state?.yAxis ?? 'c');
   const axes: ColorAreaAxes = useMemo(
     () => ({
       x: {
@@ -160,7 +160,7 @@ export function ColorAreaDemo({
         axes={axes}
       >
         <Background checkerboard={state?.showCheckerboard ?? false} />
-        <ColorPlane source="requested" />
+        <ColorPlane displayGamut={color.activeGamut} />
         {(state?.showP3Boundary ?? false) && (
           <GamutBoundaryLayer
             gamut="display-p3"

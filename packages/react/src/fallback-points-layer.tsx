@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { HTMLAttributes } from 'react';
 import { toP3Gamut, toSrgbGamut } from '@color-kit/core';
 import { getColorAreaThumbPosition } from './api/color-area.js';
@@ -25,8 +24,8 @@ export function FallbackPointsLayer({
 }: FallbackPointsLayerProps) {
   const { requested, axes } = useColorAreaContext();
 
-  const srgb = useMemo(() => toSrgbGamut(requested), [requested]);
-  const p3 = useMemo(() => toP3Gamut(requested), [requested]);
+  const srgb = toSrgbGamut(requested);
+  const p3 = toP3Gamut(requested);
 
   const srgbPos = getColorAreaThumbPosition(srgb, axes);
   const p3Pos = getColorAreaThumbPosition(p3, axes);

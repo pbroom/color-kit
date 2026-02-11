@@ -82,7 +82,7 @@ export function Picker() {
   GamutBoundaryLayer,
 } from '@color-kit/react';
 
-<ColorArea axes={{ x: { channel: 'c' }, y: { channel: 'l' } }}>
+<ColorArea axes={{ x: { channel: 'l' }, y: { channel: 'c' } }}>
   <Background checkerboard />
   <ColorPlane />
   <GamutBoundaryLayer gamut="display-p3" />

@@ -18,8 +18,8 @@ describe('ColorArea', () => {
     );
 
     const thumb = container.querySelector('[data-color-area-thumb]');
-    expect(thumb?.getAttribute('data-x')).toBe('1.0000');
-    expect(thumb?.getAttribute('data-y')).toBe('0.2500');
+    expect(thumb?.getAttribute('data-x')).toBe('0.7500');
+    expect(thumb?.getAttribute('data-y')).toBe('0.0000');
   });
 
   it('emits keyboard updates as requested changes', () => {
@@ -33,9 +33,9 @@ describe('ColorArea', () => {
 
     expect(onChangeRequested).toHaveBeenCalledTimes(1);
     const [next, options] = onChangeRequested.mock.calls[0];
-    expect(next.c).toBeGreaterThan(requested.c);
+    expect(next.l).toBeGreaterThan(requested.l);
     expect(options).toEqual({
-      changedChannel: 'c',
+      changedChannel: 'l',
       interaction: 'keyboard',
     });
   });

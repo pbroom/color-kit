@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { SVGAttributes } from 'react';
 import type { Color, GamutTarget } from '@color-kit/core';
 import {
@@ -43,30 +42,11 @@ export function ContrastRegionLayer({
   ...props
 }: ContrastRegionLayerProps) {
   const { requested, axes } = useColorAreaContext();
-
-  const paths = useMemo(
-    () =>
-      getColorAreaContrastRegionPaths(
-        reference ?? requested,
-        hue ?? requested.h,
-        axes,
-        {
-          gamut,
-          threshold,
-          level,
-          lightnessSteps,
-          chromaSteps,
-          maxChroma,
-          tolerance,
-          maxIterations,
-          alpha,
-        },
-      ),
-    [
-      reference,
-      requested,
-      hue,
-      axes,
+  const paths = getColorAreaContrastRegionPaths(
+    reference ?? requested,
+    hue ?? requested.h,
+    axes,
+    {
       gamut,
       threshold,
       level,
@@ -76,7 +56,7 @@ export function ContrastRegionLayer({
       tolerance,
       maxIterations,
       alpha,
-    ],
+    },
   );
 
   return (

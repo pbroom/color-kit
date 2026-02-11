@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { SVGAttributes } from 'react';
 import type { GamutTarget } from '@color-kit/core';
 import { getColorAreaGamutBoundaryPoints } from './api/color-area.js';
@@ -24,15 +23,10 @@ export function GamutBoundaryLayer({
   ...props
 }: GamutBoundaryLayerProps) {
   const { requested, axes } = useColorAreaContext();
-
-  const points = useMemo(
-    () =>
-      getColorAreaGamutBoundaryPoints(hue ?? requested.h, axes, {
-        gamut,
-        steps,
-      }),
-    [hue, requested.h, axes, gamut, steps],
-  );
+  const points = getColorAreaGamutBoundaryPoints(hue ?? requested.h, axes, {
+    gamut,
+    steps,
+  });
 
   return (
     <Layer

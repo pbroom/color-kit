@@ -63,8 +63,8 @@ const DEFAULT_RANGES: Record<ColorAreaChannel, [number, number]> = {
 };
 
 const DEFAULT_AXES: ResolvedColorAreaAxes = {
-  x: { channel: 'c', range: DEFAULT_RANGES.c },
-  y: { channel: 'l', range: DEFAULT_RANGES.l },
+  x: { channel: 'l', range: DEFAULT_RANGES.l },
+  y: { channel: 'c', range: DEFAULT_RANGES.c },
 };
 
 function resolveAxes(axes?: ColorAreaAxes): ResolvedColorAreaAxes {
@@ -647,10 +647,13 @@ export interface ColorPlaneProps extends Omit<
 
 export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
   function ColorPlane(
-    { source = 'requested', displayGamut = 'display-p3', style, ...props },
+    { source = 'displayed', displayGamut: displayGamutProp, style, ...props },
     ref,
   ) {
     const { requested, axes } = useAreaContext();
+    const colorContext = useOptionalColorContext();
+    const displayGamut =
+      displayGamutProp ?? colorContext?.activeGamut ?? 'display-p3';
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     const base = useMemo(() => {

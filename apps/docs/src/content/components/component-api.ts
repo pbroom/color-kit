@@ -53,7 +53,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'axes',
       type: "{ x: { channel: 'l' | 'c' | 'h'; range?: [number, number] }; y: { channel: 'l' | 'c' | 'h'; range?: [number, number] } }",
-      defaultValue: "{ x: { channel: 'c' }, y: { channel: 'l' } }",
+      defaultValue: "{ x: { channel: 'l' }, y: { channel: 'c' } }",
       description:
         'Maps horizontal and vertical movement with explicit axis descriptors.',
     },

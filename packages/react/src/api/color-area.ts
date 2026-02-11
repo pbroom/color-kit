@@ -41,12 +41,12 @@ export const COLOR_AREA_DEFAULT_RANGES: Record<
 
 const COLOR_AREA_DEFAULT_AXES: ResolvedColorAreaAxes = {
   x: {
-    channel: 'c',
-    range: COLOR_AREA_DEFAULT_RANGES.c,
-  },
-  y: {
     channel: 'l',
     range: COLOR_AREA_DEFAULT_RANGES.l,
+  },
+  y: {
+    channel: 'c',
+    range: COLOR_AREA_DEFAULT_RANGES.c,
   },
 };
 

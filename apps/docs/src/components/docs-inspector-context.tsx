@@ -55,8 +55,8 @@ const COLOR_AREA_DEMOS: Array<{ id: ColorAreaDemoId; label: string }> = [
 const DEFAULT_COLOR_AREA_STATE: ColorAreaInspectorState = {
   selectedDemo: 'requested',
   gamut: 'display-p3',
-  xAxis: 'c',
-  yAxis: 'l',
+  xAxis: 'l',
+  yAxis: 'c',
   showCheckerboard: true,
   showP3Boundary: false,
   showSrgbBoundary: false,

@@ -12,6 +12,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { useSelector } from '@legendapp/state/react';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import {
@@ -38,7 +39,7 @@ export interface ColorAreaProps extends Omit<
 > {
   /**
    * Axis descriptors for the color plane.
-   * @default { x: { channel: 'c' }, y: { channel: 'l' } }
+   * @default { x: { channel: 'l' }, y: { channel: 'c' } }
    */
   axes?: ColorAreaAxes;
   /** Standalone requested color (alternative to ColorProvider) */
@@ -143,8 +144,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     ref,
   ) {
     const context = useOptionalColorContext();
+    const contextRequested = useSelector(
+      () => context?.state$.requested.get() ?? null,
+    );
 
-    const requested = requestedProp ?? context?.requested;
+    const requested = requestedProp ?? contextRequested;
     const setRequested = onChangeRequestedProp ?? context?.setRequested;
 
     if (!requested || !setRequested) {

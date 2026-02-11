@@ -134,10 +134,10 @@ describe('shared component contracts', () => {
     expect(sliderNext.h).toBeGreaterThan(requested.h);
 
     const [areaNext] = onAreaChange.mock.calls[0] as [Color];
-    expect(areaNext.l).toBeCloseTo(requested.l, 6);
+    expect(areaNext.l).toBeGreaterThan(requested.l);
     expect(areaNext.h).toBeCloseTo(requested.h, 6);
     expect(areaNext.alpha).toBeCloseTo(requested.alpha, 6);
-    expect(areaNext.c).toBeGreaterThan(requested.c);
+    expect(areaNext.c).toBeCloseTo(requested.c, 6);
   });
 
   it('captures pointer interaction on slider root even when pointer starts on child content', () => {
