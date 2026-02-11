@@ -11,6 +11,10 @@ This archive is the source of truth for reusable agent learnings in this reposit
 
 ## Entries
 
+- **2026-02-11 — Cache geometry outside pointer hot path**: In drag loops, cache `getBoundingClientRect()` on pointer start and refresh via resize/scroll observers instead of reading layout every move; repeated rect reads can force sync layout and tank INP.
+- **2026-02-11 — RAF + coalesced events tame pointer pressure**: For high-frequency pointer input, batch updates to one commit per animation frame, consume the latest coalesced event, and skip no-op updates with a small epsilon to avoid redundant React/state churn.
+- **2026-02-11 — Keep WebGL paths shader-native**: GPU renderers should synthesize pixels in fragment shaders from uniforms/UV coordinates rather than uploading CPU-rendered textures each frame; texture-blit “GPU” paths still pay CPU raster costs.
+- **2026-02-11 — Profile harnesses need sample-count guards**: Automated interaction profiling should fail or flag runs with too few frame samples (for example `samples < 30`) so unrealistically “perfect” results from under-sampling do not mask regressions.
 - **2026-02-11 — toRgb returns 0-255, not 0-1**: When writing to ImageData or canvas pixels, use `rgb.r`, `rgb.g`, `rgb.b` directly; `toRgb()` returns Rgb with channels in 0-255 range. Multiplying by 255 again produces blocky/wrong colors (values clamp to 255).
 - **2026-02-08 — Align eslint majors**: Keep `eslint` and `@eslint/js` on the same major version to avoid peer dependency warnings when adding linting to the workspace root.
 - **2026-02-08 — Gamut check must use unclamped values**: `inSrgbGamut`/`inP3Gamut` must bypass clamping functions (`linearToSrgb`, `linearP3ToP3`) and check raw linear channel values directly. Clamped conversion pipelines silently mask out-of-gamut colors.
