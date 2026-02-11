@@ -7,6 +7,7 @@ import {
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { useSelector } from '@legendapp/state/react';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import {
@@ -55,8 +56,11 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     ref,
   ) {
     const context = useOptionalColorContext();
+    const contextRequested = useSelector(
+      () => context?.state$.requested.get() ?? null,
+    );
 
-    const requested = requestedProp ?? context?.requested;
+    const requested = requestedProp ?? contextRequested;
     const setRequested = onChangeRequestedProp ?? context?.setRequested;
 
     if (!requested || !setRequested) {

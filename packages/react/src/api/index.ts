@@ -1,19 +1,25 @@
 export {
+  areColorAreaAxesDistinct,
   COLOR_AREA_DEFAULT_RANGES,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
   getColorAreaThumbPosition,
+  resolveColorAreaAxes,
   resolveColorAreaRange,
 } from './color-area.js';
 export type {
+  ColorAreaAxes,
+  ColorAreaAxis,
   ColorAreaChannel,
   ColorAreaContrastRegionOptions,
   ColorAreaContrastRegionPoint,
   ColorAreaGamutBoundaryOptions,
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,
+  ResolvedColorAreaAxes,
+  ResolvedColorAreaAxis,
 } from './color-area.js';
 
 export {

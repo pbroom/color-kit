@@ -22,7 +22,11 @@ export function ColorProvider({
   children,
   ...colorOptions
 }: ColorProviderProps) {
-  const colorState = useColor(colorOptions);
+  // Provider stays stable while children subscribe to state$ slices.
+  const colorState = useColor({
+    ...colorOptions,
+    reactive: false,
+  } as UseColorOptions & { reactive: false });
 
   return (
     <ColorContext.Provider value={colorState}>{children}</ColorContext.Provider>

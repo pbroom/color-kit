@@ -1,4 +1,5 @@
 import { forwardRef, useMemo, type HTMLAttributes } from 'react';
+import { useSelector } from '@legendapp/state/react';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import {
@@ -34,10 +35,11 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
     ref,
   ) {
     const context = useOptionalColorContext();
+    const contextState = useSelector(() => context?.state$.get() ?? null);
 
     const state = useMemo(() => {
       if (context) {
-        return context.state;
+        return contextState;
       }
       if (!requestedProp) {
         return null;
@@ -46,7 +48,7 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
         activeGamut: gamut,
         source: 'programmatic',
       });
-    }, [context, requestedProp, gamut]);
+    }, [context, contextState, requestedProp, gamut]);
 
     if (!state) {
       throw new Error(

@@ -99,6 +99,9 @@ importers:
       '@color-kit/core':
         specifier: workspace:*
         version: link:../core
+      '@legendapp/state':
+        specifier: ^2.1.15
+        version: 2.1.15(react@19.2.4)
     devDependencies:
       '@testing-library/dom':
         specifier: ^10.4.1
@@ -922,6 +925,17 @@ packages:
       {
         integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==,
       }
+
+  '@legendapp/state@2.1.15':
+    resolution:
+      {
+        integrity: sha512-7/8Rgg7m38eznupr36QJeSkrtbhVxaRtQvRMjdBigSm+HW3ZIFgMtUX1DqZ2hJxbPqqAJamw5s+TLs8dRstUNw==,
+      }
+    peerDependencies:
+      react: ^19.2.4
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   '@mdx-js/mdx@3.1.1':
     resolution:
@@ -4506,6 +4520,14 @@ packages:
         integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==,
       }
 
+  use-sync-external-store@1.6.0:
+    resolution:
+      {
+        integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==,
+      }
+    peerDependencies:
+      react: ^19.2.4
+
   vfile-message@4.0.3:
     resolution:
       {
@@ -5123,6 +5145,12 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@legendapp/state@2.1.15(react@19.2.4)':
+    dependencies:
+      use-sync-external-store: 1.6.0(react@19.2.4)
+    optionalDependencies:
+      react: 19.2.4
 
   '@mdx-js/mdx@3.1.1':
     dependencies:
@@ -7795,6 +7823,10 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
+
+  use-sync-external-store@1.6.0(react@19.2.4):
+    dependencies:
+      react: 19.2.4
 
   vfile-message@4.0.3:
     dependencies:

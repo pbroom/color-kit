@@ -36,12 +36,16 @@ export type {
 } from './color-state.js';
 export * as ColorApi from './api/index.js';
 export type {
+  ColorAreaAxes,
+  ColorAreaAxis,
   ColorAreaChannel,
   ColorAreaContrastRegionOptions,
   ColorAreaContrastRegionPoint,
   ColorAreaGamutBoundaryOptions,
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,
+  ResolvedColorAreaAxes,
+  ResolvedColorAreaAxis,
   ColorInputFormat,
   ColorSliderChannel,
   ColorSliderKey,
@@ -52,6 +56,35 @@ export type {
 // Primitives
 export { ColorArea } from './color-area.js';
 export type { ColorAreaProps } from './color-area.js';
+export { Thumb } from './thumb.js';
+export type { ThumbProps } from './thumb.js';
+export {
+  ColorPlane,
+  BENCHMARK_SELECTED_COLOR_PLANE_RENDERER,
+} from './color-plane.js';
+export type {
+  ColorPlaneProps,
+  ColorPlaneRenderer,
+  ColorPlaneSource,
+} from './color-plane.js';
+export {
+  COLOR_PLANE_FRAGMENT_SHADER_SOURCE,
+  COLOR_PLANE_VERTEX_SHADER_SOURCE,
+} from './color-plane-shaders.js';
+export { Layer } from './layer.js';
+export type { LayerKind, LayerProps } from './layer.js';
+export { Background } from './background.js';
+export type { BackgroundProps } from './background.js';
+export { Line } from './line.js';
+export type { LinePoint, LineProps } from './line.js';
+export { Point } from './point.js';
+export type { PointProps } from './point.js';
+export { GamutBoundaryLayer } from './gamut-boundary-layer.js';
+export type { GamutBoundaryLayerProps } from './gamut-boundary-layer.js';
+export { ContrastRegionLayer } from './contrast-region-layer.js';
+export type { ContrastRegionLayerProps } from './contrast-region-layer.js';
+export { FallbackPointsLayer } from './fallback-points-layer.js';
+export type { FallbackPointsLayerProps } from './fallback-points-layer.js';
 
 export { ColorSlider } from './color-slider.js';
 export type { ColorSliderProps } from './color-slider.js';

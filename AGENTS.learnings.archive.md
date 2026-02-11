@@ -11,6 +11,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 
 ## Entries
 
+- **2026-02-11 — toRgb returns 0-255, not 0-1**: When writing to ImageData or canvas pixels, use `rgb.r`, `rgb.g`, `rgb.b` directly; `toRgb()` returns Rgb with channels in 0-255 range. Multiplying by 255 again produces blocky/wrong colors (values clamp to 255).
 - **2026-02-08 — Align eslint majors**: Keep `eslint` and `@eslint/js` on the same major version to avoid peer dependency warnings when adding linting to the workspace root.
 - **2026-02-08 — Gamut check must use unclamped values**: `inSrgbGamut`/`inP3Gamut` must bypass clamping functions (`linearToSrgb`, `linearP3ToP3`) and check raw linear channel values directly. Clamped conversion pipelines silently mask out-of-gamut colors.
 - **2026-02-08 — TypeScript strict mode catches unused imports in DTS**: `tsup` DTS builds fail on unused imports that esbuild silently ignores. Fix unused imports before assuming a build is clean - run the full build (including DTS) not just the ESM/CJS step.

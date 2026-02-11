@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, type HTMLAttributes } from 'react';
+import { useSelector } from '@legendapp/state/react';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import { colorsEqual } from './api/swatch-group.js';
@@ -40,6 +41,12 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
     ref,
   ) {
     const context = useOptionalColorContext();
+    const contextRequested = useSelector(
+      () => context?.state$.requested.get() ?? null,
+    );
+    const contextActiveGamut = useSelector(
+      () => context?.state$.activeGamut.get() ?? 'display-p3',
+    );
 
     const handleSelect = useCallback(
       (color: Color) => {
@@ -56,7 +63,7 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
     );
 
     const hasHandler = !!(onChange || context?.setRequested);
-    const selectedColor = value ?? context?.requested;
+    const selectedColor = value ?? contextRequested;
 
     return (
       <div
@@ -81,7 +88,7 @@ export const SwatchGroup = forwardRef<HTMLDivElement, SwatchGroupProps>(
             <div key={index} role="option" aria-selected={selected}>
               <Swatch
                 color={color}
-                gamut={context?.activeGamut}
+                gamut={contextActiveGamut}
                 isSelected={selected}
                 onSelect={hasHandler ? handleSelect : undefined}
               />

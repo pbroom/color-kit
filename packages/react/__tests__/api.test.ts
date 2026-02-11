@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parse } from '@color-kit/core';
 import {
+  areColorAreaAxesDistinct,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
   colorFromColorSliderKey,
@@ -12,33 +13,32 @@ import {
   getContrastBadgeSummary,
   isColorInputValueValid,
   parseColorInputValue,
+  resolveColorAreaAxes,
 } from '../src/api/index.js';
 
 describe('Color API helpers', () => {
   it('maps color area pointer positions into channel values', () => {
     const base = parse('#3b82f6');
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'c', range: [0, 0.4] },
+      y: { channel: 'l', range: [0, 1] },
+    });
 
-    const next = colorFromColorAreaPosition(
-      base,
-      { x: 'c', y: 'l' },
-      0.5,
-      0.25,
-      [0, 0.4],
-      [0, 1],
-    );
+    const next = colorFromColorAreaPosition(base, axes, 0.5, 0.25);
 
     expect(next.c).toBeCloseTo(0.2, 6);
     expect(next.l).toBeCloseTo(0.75, 6);
   });
 
   it('returns normalized color area gamut boundary points for l/c areas', () => {
-    const boundary = getColorAreaGamutBoundaryPoints(
-      145,
-      { x: 'c', y: 'l' },
-      [0, 0.4],
-      [0, 1],
-      { gamut: 'srgb', steps: 8 },
-    );
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'c', range: [0, 0.4] },
+      y: { channel: 'l', range: [0, 1] },
+    });
+    const boundary = getColorAreaGamutBoundaryPoints(145, axes, {
+      gamut: 'srgb',
+      steps: 8,
+    });
 
     expect(boundary).toHaveLength(9);
     expect(boundary[0].x).toBeCloseTo(0, 6);
@@ -55,25 +55,24 @@ describe('Color API helpers', () => {
   });
 
   it('returns an empty boundary when the color area is not l/c based', () => {
-    const boundary = getColorAreaGamutBoundaryPoints(
-      145,
-      { x: 'h', y: 'l' },
-      [0, 360],
-      [0, 1],
-      { steps: 8 },
-    );
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'h', range: [0, 360] },
+      y: { channel: 'l', range: [0, 1] },
+    });
+    const boundary = getColorAreaGamutBoundaryPoints(145, axes, { steps: 8 });
     expect(boundary).toEqual([]);
   });
 
   it('returns normalized contrast-region paths for l/c areas', () => {
-    const paths = getColorAreaContrastRegionPaths(
-      parse('#ffffff'),
-      220,
-      { x: 'c', y: 'l' },
-      [0, 0.4],
-      [0, 1],
-      { level: 'AA', lightnessSteps: 16, chromaSteps: 16 },
-    );
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'c', range: [0, 0.4] },
+      y: { channel: 'l', range: [0, 1] },
+    });
+    const paths = getColorAreaContrastRegionPaths(parse('#ffffff'), 220, axes, {
+      level: 'AA',
+      lightnessSteps: 16,
+      chromaSteps: 16,
+    });
 
     expect(paths.length).toBeGreaterThan(0);
     for (const path of paths) {
@@ -88,31 +87,44 @@ describe('Color API helpers', () => {
   });
 
   it('returns no contrast-region paths for non l/c color areas', () => {
-    const paths = getColorAreaContrastRegionPaths(
-      parse('#ffffff'),
-      220,
-      { x: 'h', y: 'l' },
-      [0, 360],
-      [0, 1],
-      { level: 'AA', lightnessSteps: 12, chromaSteps: 12 },
-    );
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'h', range: [0, 360] },
+      y: { channel: 'l', range: [0, 1] },
+    });
+    const paths = getColorAreaContrastRegionPaths(parse('#ffffff'), 220, axes, {
+      level: 'AA',
+      lightnessSteps: 12,
+      chromaSteps: 12,
+    });
 
     expect(paths).toEqual([]);
   });
 
   it('updates color area channels from keyboard input', () => {
     const base = { l: 0.5, c: 0.2, h: 120, alpha: 1 };
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'c', range: [0, 0.4] },
+      y: { channel: 'l', range: [0, 1] },
+    });
 
-    const next = colorFromColorAreaKey(
-      base,
-      { x: 'c', y: 'l' },
-      'ArrowRight',
-      0.1,
-      [0, 0.4],
-      [0, 1],
-    );
+    const next = colorFromColorAreaKey(base, axes, 'ArrowRight', 0.1);
 
     expect(next?.c).toBeCloseTo(0.24, 6);
+  });
+
+  it('detects whether color area axes are distinct', () => {
+    expect(
+      areColorAreaAxesDistinct({
+        x: { channel: 'c', range: [0, 0.4] },
+        y: { channel: 'l', range: [0, 1] },
+      }),
+    ).toBe(true);
+    expect(
+      areColorAreaAxesDistinct({
+        x: { channel: 'l', range: [0, 1] },
+        y: { channel: 'l', range: [0, 1] },
+      }),
+    ).toBe(false);
   });
 
   it('maps slider math for pointer and keyboard updates', () => {
