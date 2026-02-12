@@ -112,8 +112,8 @@ export function ContrastRegionLayer({
   regionFillColor = '#c0e1ff',
   regionFillOpacity = 0.22,
   regionDotOpacity = 0,
-  regionDotSize = 2,
-  regionDotGap = 2,
+  regionDotSize = 1,
+  regionDotGap = 4,
   pathProps,
   ...props
 }: ContrastRegionLayerProps) {
