@@ -245,21 +245,51 @@ function ColorSliderPropertiesPanel() {
 
 function ColorInputPropertiesPanel() {
   const { colorInputState, setColorInputState } = useDocsInspector();
+  const channelOptions =
+    colorInputState.model === 'rgb'
+      ? [
+          { value: 'r', label: 'R' },
+          { value: 'g', label: 'G' },
+          { value: 'b', label: 'B' },
+          { value: 'alpha', label: 'A' },
+        ]
+      : colorInputState.model === 'hsl'
+        ? [
+            { value: 'h', label: 'H' },
+            { value: 's', label: 'S' },
+            { value: 'l', label: 'L' },
+            { value: 'alpha', label: 'A' },
+          ]
+        : [
+            { value: 'l', label: 'L' },
+            { value: 'c', label: 'C' },
+            { value: 'h', label: 'H' },
+            { value: 'alpha', label: 'A' },
+          ];
 
   return (
     <div className="docs-properties-panel">
       <section className="docs-properties-group">
-        <h4>Input format</h4>
+        <h4>Input model</h4>
         <SegmentedOptions
-          value={colorInputState.format}
-          onChange={(format) => setColorInputState({ format })}
+          value={colorInputState.model}
+          onChange={(model) => setColorInputState({ model })}
           options={[
-            { value: 'hex', label: 'hex' },
+            { value: 'oklch', label: 'oklch' },
             { value: 'rgb', label: 'rgb' },
             { value: 'hsl', label: 'hsl' },
-            { value: 'oklch', label: 'oklch' },
           ]}
-          label="Color input format"
+          label="Color input model"
+        />
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Input channel</h4>
+        <SegmentedOptions
+          value={colorInputState.channel}
+          onChange={(channel) => setColorInputState({ channel })}
+          options={channelOptions}
+          label="Color input channel"
         />
       </section>
 

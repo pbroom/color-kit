@@ -6,6 +6,7 @@ import {
   ColorDialDemo,
   ColorDisplayDemo,
   ColorInputDemo,
+  ColorStringInputDemo,
   ColorProviderDemo,
   ColorSliderDemo,
   ColorWheelDemo,
@@ -51,7 +52,7 @@ export function Picker() {
     <ColorProvider defaultColor="#3b82f6">
       <ColorArea />
       <HueSlider />
-      <ColorInput />
+      <ColorInput model="oklch" channel="h" />
     </ColorProvider>
   );
 }`,
@@ -335,30 +336,60 @@ export function Picker() {
   'color-input': {
     slug: 'color-input',
     title: 'Color Input',
-    summary: 'Text input bridge for typed color formats.',
+    summary: 'Channel-aware value input with scrub and expression support.',
     description:
-      'ColorInput maps typed values (hex/rgb/hsl/oklch) to requested state while preserving intent metadata.',
+      'ColorInput edits a single channel in oklch/rgb/hsl using typed math expressions, keyboard stepping, and left-edge scrubbing.',
     registryName: 'color-input',
     demo: ColorInputDemo,
     usage: `import { ColorInput } from '@color-kit/react';
 
-<ColorInput format="oklch" />;`,
+<ColorInput model="oklch" channel="h" />;`,
     helperApis: [
-      'ColorApi.formatColorInputValue',
-      'ColorApi.parseColorInputValue',
+      'ColorApi.resolveColorInputRange',
+      'ColorApi.resolveColorInputSteps',
+      'ColorApi.parseColorInputExpression',
+      'ColorApi.colorFromColorInputKey',
     ],
     features: [
-      'Supports multiple formats with deterministic parsing.',
-      'Works standalone or via ColorProvider context.',
-      'Great for precision entry and copy-paste workflows.',
+      'Model + channel contract for oklch, rgb, and hsl value editing.',
+      'Expression parsing (`+10`, `*1.1`, parentheses, `%`) with soft-invalid drafts.',
+      'Left-edge scrub dragging with fine/coarse keyboard modifiers.',
     ],
     accessibility: [
-      'Native text input semantics with full keyboard behavior.',
-      'Supports explicit labeling for screen-reader clarity.',
+      'Spinbutton semantics with `aria-valuemin/max/now` and readable labels.',
+      'Keyboard-first stepping (arrows, page keys, Home/End) and select-all on focus.',
     ],
     props: componentApiDocs.colorInput,
-    anatomy: `<ColorInput />`,
+    anatomy: `<ColorInput>\n  <div data-color-input-scrub-handle />\n  <input role="spinbutton" />\n</ColorInput>`,
     supportsPropertiesPanel: true,
+  },
+  'color-string-input': {
+    slug: 'color-string-input',
+    title: 'Color String Input',
+    summary: 'Legacy free-form string entry for full color values.',
+    description:
+      'ColorStringInput preserves the original hex/rgb/hsl/oklch text parsing workflow while ColorInput focuses on channel editing.',
+    registryName: 'color-string-input',
+    demo: ColorStringInputDemo,
+    usage: `import { ColorStringInput } from '@color-kit/react';
+
+<ColorStringInput format="oklch" />;`,
+    helperApis: [
+      'ColorApi.formatColorStringInputValue',
+      'ColorApi.parseColorStringInputValue',
+      'ColorApi.isColorStringInputValueValid',
+    ],
+    features: [
+      'Format-aware string entry (`hex`, `rgb`, `hsl`, `oklch`).',
+      'Soft-invalid commit handling via `onInvalidCommit`.',
+      'Works standalone or with ColorProvider context.',
+    ],
+    accessibility: [
+      'Native textbox semantics with explicit labels.',
+      'Escape cancels edits and Enter commits parsed values.',
+    ],
+    props: componentApiDocs.colorStringInput,
+    anatomy: `<ColorStringInput>\n  <input type="text" />\n</ColorStringInput>`,
   },
   'color-display': {
     slug: 'color-display',

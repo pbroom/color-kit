@@ -82,11 +82,39 @@ export type {
 } from './slider-gradient.js';
 
 export {
-  formatColorInputValue,
-  isColorInputValueValid,
-  parseColorInputValue,
+  COLOR_INPUT_DEFAULT_RANGES,
+  colorFromColorInputChannelValue,
+  colorFromColorInputKey,
+  formatColorInputChannelValue,
+  getColorInputChangedChannel,
+  getColorInputChannelValue,
+  getColorInputLabel,
+  getColorInputPrecisionFromStep,
+  normalizeColorInputValue,
+  parseColorInputExpression,
+  resolveColorInputDraftValue,
+  resolveColorInputRange,
+  resolveColorInputSteps,
+  resolveColorInputWrap,
 } from './color-input.js';
-export type { ColorInputFormat } from './color-input.js';
+export type {
+  ColorInputModel,
+  ColorInputChannel,
+  OklchColorInputChannel,
+  RgbColorInputChannel,
+  HslColorInputChannel,
+  ColorInputStepConfig,
+  ResolveColorInputStepsOptions,
+  ParseColorInputExpressionOptions,
+  ResolveColorInputDraftValueOptions,
+} from './color-input.js';
+
+export {
+  formatColorStringInputValue,
+  isColorStringInputValueValid,
+  parseColorStringInputValue,
+} from './color-string-input.js';
+export type { ColorStringInputFormat } from './color-string-input.js';
 
 export { getColorDisplayHex, getColorDisplayStyles } from './color-display.js';
 export type { ColorDisplayStyles } from './color-display.js';

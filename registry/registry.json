@@ -141,11 +141,25 @@
       "name": "color-input",
       "type": "registry:component",
       "title": "Color Input",
-      "description": "A text input for requested color values with format support (hex, rgb, hsl, oklch).",
+      "description": "A channel-based value input with expression parsing and left-edge scrubbing.",
       "dependencies": ["@color-kit/core"],
       "files": [
         {
           "path": "registry/components/color-input.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
+      "name": "color-string-input",
+      "type": "registry:component",
+      "title": "Color String Input",
+      "description": "Legacy free-form text input for full color strings (hex, rgb, hsl, oklch).",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/color-string-input.tsx",
           "type": "registry:component"
         }
       ],

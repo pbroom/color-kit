@@ -12,6 +12,7 @@ interface ComponentApiDocs {
   swatch: ApiTableRow[];
   swatchGroup: ApiTableRow[];
   colorInput: ApiTableRow[];
+  colorStringInput: ApiTableRow[];
   colorDisplay: ApiTableRow[];
   contrastBadge: ApiTableRow[];
 }
@@ -375,10 +376,82 @@ export const componentApiDocs: ComponentApiDocs = {
   ],
   colorInput: [
     {
+      name: 'model',
+      type: "'oklch' | 'rgb' | 'hsl'",
+      description: 'Required channel model for numeric editing.',
+    },
+    {
+      name: 'channel',
+      type: "'l' | 'c' | 'h' | 'alpha' | 'r' | 'g' | 'b' | 's'",
+      description: 'Required model channel edited by the input.',
+    },
+    {
+      name: 'range',
+      type: '[number, number]',
+      description: 'Optional channel range override.',
+    },
+    {
+      name: 'wrap',
+      type: 'boolean',
+      defaultValue: "model hue channels default to 'true'",
+      description: 'Wraps channel values across range boundaries.',
+    },
+    {
+      name: 'step / fineStep / coarseStep / pageStep',
+      type: 'number',
+      description:
+        'Keyboard and scrub step controls for default, Option/Alt, Shift, and Page keys.',
+    },
+    {
+      name: 'allowExpressions',
+      type: 'boolean',
+      defaultValue: 'true',
+      description:
+        'Enables Figma-style expression parsing (for example +10, *1.1).',
+    },
+    {
+      name: 'commitOnBlur',
+      type: 'boolean',
+      defaultValue: 'true',
+      description: 'Commits the current draft on blur when valid.',
+    },
+    {
+      name: 'scrubEdgeWidth / scrubPixelsPerStep / maxScrubRate',
+      type: 'number',
+      description: 'Controls left-edge scrubbing geometry and update cadence.',
+    },
+    {
+      name: 'precision',
+      type: 'number',
+      description: 'Optional formatted output precision override.',
+    },
+    {
+      name: 'onInvalidCommit',
+      type: '(draft: string) => void',
+      description: 'Called when Enter/blur commit fails validation.',
+    },
+    {
+      name: 'requested',
+      type: 'Color',
+      description: 'Standalone value when not using ColorProvider context.',
+    },
+    {
+      name: 'onChangeRequested',
+      type: '(requested: Color, options?: SetRequestedOptions) => void',
+      description: 'Standalone change handler when not using context.',
+    },
+  ],
+  colorStringInput: [
+    {
       name: 'format',
       type: "'hex' | 'rgb' | 'hsl' | 'oklch'",
       defaultValue: "'hex'",
       description: 'String format used for display and parsing.',
+    },
+    {
+      name: 'onInvalidCommit',
+      type: '(draft: string) => void',
+      description: 'Called when Enter/blur commit receives invalid text.',
     },
     {
       name: 'requested',

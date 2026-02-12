@@ -52,6 +52,7 @@ const componentPages = [
   { title: 'Swatch', path: 'components/swatch' },
   { title: 'Swatch Group', path: 'components/swatch-group' },
   { title: 'Color Input', path: 'components/color-input' },
+  { title: 'Color String Input', path: 'components/color-string-input' },
   { title: 'Color Display', path: 'components/color-display' },
   { title: 'Contrast Badge', path: 'components/contrast-badge' },
 ] as const;

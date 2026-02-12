@@ -1,0 +1,36 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ApiTable } from '@/components/api-table';
+import { componentApiDocs } from './component-api';
+import { ColorStringInputDemo } from '@/components/component-demos';
+
+# Color String Input
+
+`ColorStringInput` is the legacy free-form text input for complete color strings (`hex`, `rgb`, `hsl`, `oklch`).
+
+<ComponentPreview>
+  <ColorStringInputDemo />
+</ComponentPreview>
+
+## API
+
+<ApiTable rows={componentApiDocs.colorStringInput} />
+
+## Usage
+
+```tsx
+import { ColorStringInput, useColor } from '@color-kit/react';
+
+const color = useColor({ defaultColor: '#6366f1' });
+
+<ColorStringInput
+  requested={color.requested}
+  onChangeRequested={color.setRequested}
+  format="oklch"
+/>;
+```
+
+## Non-UI API helpers
+
+- `ColorApi.formatColorStringInputValue`
+- `ColorApi.parseColorStringInputValue`
+- `ColorApi.isColorStringInputValueValid`
