@@ -558,6 +558,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         style={{
           position: 'absolute',
           inset: 0,
+          borderRadius: 'inherit',
           width: '100%',
           height: '100%',
           pointerEvents: 'none',

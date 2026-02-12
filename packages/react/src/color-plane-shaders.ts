@@ -109,7 +109,7 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
 
   void main() {
     float xValue = mix(u_x_range.x, u_x_range.y, v_uv.x);
-    float yValue = mix(u_y_range.x, u_y_range.y, 1.0 - v_uv.y);
+    float yValue = mix(u_y_range.x, u_y_range.y, v_uv.y);
 
     float l = applyAxisValue(u_seed.x, u_x_channel, 0.0, xValue);
     l = applyAxisValue(l, u_y_channel, 0.0, yValue);

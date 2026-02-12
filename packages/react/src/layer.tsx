@@ -39,6 +39,7 @@ export const Layer = forwardRef<HTMLDivElement, LayerProps>(function Layer(
       style={{
         position: 'absolute',
         inset: 0,
+        borderRadius: 'inherit',
         zIndex,
         pointerEvents: interactive ? 'auto' : 'none',
         ...style,

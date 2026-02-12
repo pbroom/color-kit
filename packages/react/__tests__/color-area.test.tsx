@@ -50,6 +50,26 @@ describe('ColorArea', () => {
     expect(thumb?.getAttribute('data-y')).toBe('0.0000');
   });
 
+  it('hoists an explicit thumb to the root and keeps it top-most', () => {
+    const requested: Color = { l: 0.75, c: 0.4, h: 210, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <div data-wrapper="">
+          <Thumb />
+        </div>
+        <div data-overlay="" />
+      </ColorArea>,
+    );
+
+    const root = container.querySelector('[data-color-area]');
+    const thumb = root?.querySelector('[data-color-area-thumb]');
+    expect(thumb).toBeTruthy();
+    expect(thumb?.parentElement).toBe(root);
+    expect(root?.lastElementChild).toBe(thumb);
+    expect(thumb?.style.zIndex).toBe('2147483647');
+    expect(root?.style.overflow).toBe('visible');
+  });
+
   it('emits keyboard updates as requested changes', () => {
     const onChangeRequested = vi.fn();
     const requested: Color = { l: 0.5, c: 0.2, h: 120, alpha: 1 };

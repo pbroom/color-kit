@@ -4,8 +4,7 @@ import type { GamutTarget } from '../color-state.js';
 
 export interface ColorDisplayStyles {
   backgroundColor: string;
-  background?: string;
-  backgroundImage?: string;
+  background: string;
 }
 
 export function getColorDisplayHex(color: Color): string {
@@ -29,8 +28,10 @@ export function getColorDisplayStyles(
     };
   }
 
+  const srgbColor =
+    displayed.alpha < 1 ? toCss(displayed, 'rgb') : toHex(displayed);
   return {
-    backgroundColor:
-      displayed.alpha < 1 ? toCss(displayed, 'rgb') : toHex(displayed),
+    backgroundColor: srgbColor,
+    background: srgbColor,
   };
 }

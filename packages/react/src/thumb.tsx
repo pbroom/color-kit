@@ -1,14 +1,19 @@
 import {
   forwardRef,
+  useMemo,
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { useSelector } from '@legendapp/state/react';
 import type { ColorAreaChannel } from './api/color-area.js';
+import { getColorDisplayStyles } from './api/color-display.js';
 import {
   colorFromColorAreaKey,
   getColorAreaThumbPosition,
 } from './api/color-area.js';
 import { useColorAreaContext } from './color-area-context.js';
+import { createColorState, getActiveDisplayedColor } from './color-state.js';
+import { useOptionalColorContext } from './context.js';
 
 export interface ThumbProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -54,14 +59,34 @@ export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
   ref,
 ) {
   const { requested, setRequested, axes } = useColorAreaContext();
+  const colorContext = useOptionalColorContext();
+  const contextState = useSelector(() => colorContext?.state$.get() ?? null);
 
   const { x: xNorm, y: yNorm } = getColorAreaThumbPosition(requested, axes);
+  const state = useMemo(
+    () =>
+      contextState ??
+      createColorState(requested, {
+        activeGamut: 'display-p3',
+        source: 'programmatic',
+      }),
+    [contextState, requested],
+  );
+  const displayed = useMemo(() => getActiveDisplayedColor(state), [state]);
+  const displayStyles = useMemo(
+    () =>
+      getColorDisplayStyles(displayed, state.displayed.srgb, state.activeGamut),
+    [displayed, state.activeGamut, state.displayed.srgb],
+  );
+  const activeGamutKey = state.activeGamut === 'display-p3' ? 'p3' : 'srgb';
 
   return (
     <div
       {...props}
       ref={ref}
       data-color-area-thumb=""
+      data-gamut={state.activeGamut}
+      data-out-of-gamut={state.meta.outOfGamut[activeGamutKey] || undefined}
       data-x={xNorm.toFixed(4)}
       data-y={yNorm.toFixed(4)}
       role={props.role ?? 'slider'}
@@ -102,7 +127,9 @@ export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
         left: `${xNorm * 100}%`,
         top: `${yNorm * 100}%`,
         transform: 'translate(-50%, -50%)',
+        zIndex: 2147483647,
         touchAction: 'none',
+        ...displayStyles,
         ...style,
       }}
     >
