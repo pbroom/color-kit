@@ -335,7 +335,7 @@ function buildColorAreaPreset(demo: ColorAreaDemoId): ColorAreaInspectorState {
 }
 
 const DEFAULT_COLOR_AREA_STATE: ColorAreaInspectorState =
-  createRequestedPresetState();
+  createAnalysisPresetState();
 
 const DEFAULT_COLOR_SLIDER_STATE: ColorSliderInspectorState = {
   channel: 'c',
@@ -420,7 +420,7 @@ const DocsInspectorContext = createContext<DocsInspectorContextValue | null>(
 );
 
 export function DocsInspectorProvider({ children }: { children: ReactNode }) {
-  const [activeTab, setActiveTab] = useState<DocsInspectorTab>('outline');
+  const [activeTab, setActiveTab] = useState<DocsInspectorTab>('properties');
   const [colorAreaState, setColorAreaStateInternal] = useState(
     DEFAULT_COLOR_AREA_STATE,
   );

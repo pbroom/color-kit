@@ -340,26 +340,41 @@ function renderPixels(
       const rawLinear = oklchToLinearSrgb(sampled.l, sampled.c, sampled.h);
       const outOfP3 = !inP3Linear(rawLinear);
       const outOfSrgb = !outOfP3 && !inSrgbLinear(rawLinear);
+      const clipOutOfGamut =
+        source === 'displayed' &&
+        !outOfGamut.repeatEdgePixels &&
+        (outOfP3 || outOfSrgb);
 
       const renderLinear =
         source === 'displayed' && outOfGamut.repeatEdgePixels
           ? mapToGamutLinear(sampled.l, sampled.c, sampled.h, gamut)
           : rawLinear;
 
-      let r = transferLinearToSrgbChannel(renderLinear.r);
-      let g = transferLinearToSrgbChannel(renderLinear.g);
-      let b = transferLinearToSrgbChannel(renderLinear.b);
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let alpha = sampled.alpha;
+
+      if (!clipOutOfGamut) {
+        r = transferLinearToSrgbChannel(renderLinear.r);
+        g = transferLinearToSrgbChannel(renderLinear.g);
+        b = transferLinearToSrgbChannel(renderLinear.b);
+      } else {
+        alpha = 0;
+      }
 
       if (outOfP3 && outOfGamut.outOfP3Fill.a > 0) {
         r = blend(r, outOfGamut.outOfP3Fill.r, outOfGamut.outOfP3Fill.a);
         g = blend(g, outOfGamut.outOfP3Fill.g, outOfGamut.outOfP3Fill.a);
         b = blend(b, outOfGamut.outOfP3Fill.b, outOfGamut.outOfP3Fill.a);
+        alpha = Math.max(alpha, sampled.alpha * outOfGamut.outOfP3Fill.a);
       }
 
       if (outOfSrgb && outOfGamut.outOfSrgbFill.a > 0) {
         r = blend(r, outOfGamut.outOfSrgbFill.r, outOfGamut.outOfSrgbFill.a);
         g = blend(g, outOfGamut.outOfSrgbFill.g, outOfGamut.outOfSrgbFill.a);
         b = blend(b, outOfGamut.outOfSrgbFill.b, outOfGamut.outOfSrgbFill.a);
+        alpha = Math.max(alpha, sampled.alpha * outOfGamut.outOfSrgbFill.a);
       }
 
       if (
@@ -376,6 +391,10 @@ function renderPixels(
           r = blend(r, 1, outOfGamut.dotPattern.opacity);
           g = blend(g, 1, outOfGamut.dotPattern.opacity);
           b = blend(b, 1, outOfGamut.dotPattern.opacity);
+          alpha = Math.max(
+            alpha,
+            sampled.alpha * outOfGamut.dotPattern.opacity,
+          );
         }
       }
 
@@ -383,7 +402,7 @@ function renderPixels(
       data[offset] = Math.round(clamp01(r) * 255);
       data[offset + 1] = Math.round(clamp01(g) * 255);
       data[offset + 2] = Math.round(clamp01(b) * 255);
-      data[offset + 3] = Math.round(clamp01(sampled.alpha) * 255);
+      data[offset + 3] = Math.round(clamp01(alpha) * 255);
     }
   }
 

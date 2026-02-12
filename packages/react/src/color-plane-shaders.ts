@@ -111,15 +111,24 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
     return current;
   }
 
-  vec3 applyOutOfGamutOverlays(vec3 color, bool outP3, bool outSrgb) {
-    vec3 next = color;
+  void applyOutOfGamutOverlays(
+    inout vec3 color,
+    inout float alpha,
+    bool outP3,
+    bool outSrgb
+  ) {
+    float seedAlpha = clamp(u_seed.w, 0.0, 1.0);
 
     if (outP3 && u_out_p3_fill.a > 0.0) {
-      next = mix(next, u_out_p3_fill.rgb, clamp(u_out_p3_fill.a, 0.0, 1.0));
+      float fillAlpha = clamp(u_out_p3_fill.a, 0.0, 1.0);
+      color = mix(color, u_out_p3_fill.rgb, fillAlpha);
+      alpha = max(alpha, fillAlpha * seedAlpha);
     }
 
     if (outSrgb && u_out_srgb_fill.a > 0.0) {
-      next = mix(next, u_out_srgb_fill.rgb, clamp(u_out_srgb_fill.a, 0.0, 1.0));
+      float fillAlpha = clamp(u_out_srgb_fill.a, 0.0, 1.0);
+      color = mix(color, u_out_srgb_fill.rgb, fillAlpha);
+      alpha = max(alpha, fillAlpha * seedAlpha);
     }
 
     bool anyOut = outP3 || outSrgb;
@@ -133,10 +142,10 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
       float inDotX = 1.0 - step(dotSize, localX);
       float inDotY = 1.0 - step(dotSize, localY);
       float dotMask = inDotX * inDotY;
-      next = mix(next, vec3(1.0), dotMask * opacity);
+      float dotOpacity = dotMask * opacity;
+      color = mix(color, vec3(1.0), dotOpacity);
+      alpha = max(alpha, dotOpacity * seedAlpha);
     }
-
-    return next;
   }
 
   void main() {
@@ -166,9 +175,16 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
       transferLinearToSrgb(renderLinear.g),
       transferLinearToSrgb(renderLinear.b)
     );
+    float alpha = clamp(u_seed.w, 0.0, 1.0);
 
-    vec3 color = applyOutOfGamutOverlays(baseColor, outP3, outSrgb);
+    bool clipOutOfGamut = u_source >= 0.5 && u_repeat_edge_pixels < 0.5 && (outP3 || outSrgb);
+    if (clipOutOfGamut) {
+      baseColor = vec3(0.0);
+      alpha = 0.0;
+    }
 
-    gl_FragColor = vec4(color, clamp(u_seed.w, 0.0, 1.0));
+    applyOutOfGamutOverlays(baseColor, alpha, outP3, outSrgb);
+
+    gl_FragColor = vec4(baseColor, alpha);
   }
 `;

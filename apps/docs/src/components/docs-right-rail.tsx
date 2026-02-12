@@ -270,31 +270,46 @@ function StrokeStylePills({
   onChange: (next: ColorAreaStrokeControl) => void;
 }) {
   return (
-    <div className="docs-style-pills" role="group" aria-label="Style controls">
-      <div className="docs-style-pill-group" role="group" aria-label="Style">
-        {STYLE_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={value.style === option.value ? 'is-active' : undefined}
-            onClick={() => onChange({ ...value, style: option.value })}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      <div className="docs-style-pill-group" role="group" aria-label="Width">
-        {WIDTH_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={value.width === option.value ? 'is-active' : undefined}
-            onClick={() => onChange({ ...value, width: option.value })}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+    <div className="docs-select-pair" role="group" aria-label="Style controls">
+      <label
+        className={`docs-select-field docs-select-field-style docs-style-${value.style}`}
+      >
+        <span className="docs-select-field-icon" aria-hidden="true" />
+        <select
+          value={value.style}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              style: event.target.value as ColorAreaStrokeControl['style'],
+            })
+          }
+          aria-label="Stroke style"
+        >
+          {STYLE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="docs-select-field docs-select-field-width">
+        <select
+          value={String(value.width)}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              width: Number(event.target.value) as ColorAreaLineWidth,
+            })
+          }
+          aria-label="Stroke width"
+        >
+          {WIDTH_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -307,17 +322,15 @@ function DotOpacityPills({
   onChange: (opacityPercent: number) => void;
 }) {
   return (
-    <div className="docs-style-pills" role="group" aria-label="Dot controls">
-      <div
-        className="docs-style-pill-group"
-        role="group"
-        aria-label="Pattern style"
+    <div className="docs-select-pair" role="group" aria-label="Dot controls">
+      <label className="docs-select-field docs-select-field-style docs-style-dots is-readonly">
+        <span className="docs-select-field-icon" aria-hidden="true" />
+        <span className="docs-select-field-static">Dots</span>
+      </label>
+      <label
+        className="docs-percent-field"
+        aria-label="Pattern opacity percent"
       >
-        <button type="button" className="is-active">
-          Dots
-        </button>
-      </div>
-      <label className="docs-percent-pill" aria-label="Pattern opacity percent">
         <input
           type="number"
           min={0}
@@ -327,7 +340,7 @@ function DotOpacityPills({
             onChange(clamp(Number(event.target.value) || 0, 0, 100))
           }
         />
-        <span>%</span>
+        <span aria-hidden="true">%</span>
       </label>
     </div>
   );
@@ -469,22 +482,15 @@ function ColorAreaPropertiesPanel() {
   return (
     <div className="docs-properties-panel docs-properties-panel-color-area">
       <div className="docs-properties-demo-row">
-        <select
-          value={colorAreaState.selectedDemo}
-          onChange={(event) =>
-            setColorAreaState({
-              selectedDemo: event.target
-                .value as (typeof colorAreaDemos)[number]['id'],
-            })
-          }
-          aria-label="Select color area demo scenario"
+        <button
+          type="button"
+          className="docs-demo-title-button"
+          onClick={() => cycleColorAreaDemo(1)}
+          aria-label="Cycle color area demo scenario"
         >
-          {colorAreaDemos.map((demo) => (
-            <option key={demo.id} value={demo.id}>
-              {demo.label}
-            </option>
-          ))}
-        </select>
+          <span>Color Area Configuration</span>
+          <span aria-hidden="true">⌄</span>
+        </button>
         <div className="docs-demo-pagination">
           <button
             type="button"
@@ -643,23 +649,32 @@ function ColorAreaPropertiesPanel() {
         <div className="docs-inline-control-row">
           <span>Out of OKLCH</span>
           <div className="docs-inline-control-value">
-            <input
-              type="text"
-              value={colorAreaState.background.outOfP3.color}
-              onChange={(event) =>
-                setColorAreaState({
-                  background: {
-                    ...colorAreaState.background,
-                    outOfP3: {
-                      ...colorAreaState.background.outOfP3,
-                      color: event.target.value,
+            <label className="docs-color-field">
+              <span
+                className="docs-color-field-chip"
+                style={{
+                  backgroundColor: colorAreaState.background.outOfP3.color,
+                }}
+                aria-hidden="true"
+              />
+              <input
+                type="text"
+                value={colorAreaState.background.outOfP3.color}
+                onChange={(event) =>
+                  setColorAreaState({
+                    background: {
+                      ...colorAreaState.background,
+                      outOfP3: {
+                        ...colorAreaState.background.outOfP3,
+                        color: event.target.value,
+                      },
                     },
-                  },
-                })
-              }
-              aria-label="Out of OKLCH background color"
-            />
-            <label>
+                  })
+                }
+                aria-label="Out of OKLCH background color"
+              />
+            </label>
+            <label className="docs-percent-field">
               <input
                 type="number"
                 min={0}
@@ -682,7 +697,7 @@ function ColorAreaPropertiesPanel() {
                 }
                 aria-label="Out of OKLCH opacity"
               />
-              <span>%</span>
+              <span aria-hidden="true">%</span>
             </label>
           </div>
         </div>
@@ -690,23 +705,32 @@ function ColorAreaPropertiesPanel() {
         <div className="docs-inline-control-row">
           <span>Out of sRGB</span>
           <div className="docs-inline-control-value">
-            <input
-              type="text"
-              value={colorAreaState.background.outOfSrgb.color}
-              onChange={(event) =>
-                setColorAreaState({
-                  background: {
-                    ...colorAreaState.background,
-                    outOfSrgb: {
-                      ...colorAreaState.background.outOfSrgb,
-                      color: event.target.value,
+            <label className="docs-color-field">
+              <span
+                className="docs-color-field-chip"
+                style={{
+                  backgroundColor: colorAreaState.background.outOfSrgb.color,
+                }}
+                aria-hidden="true"
+              />
+              <input
+                type="text"
+                value={colorAreaState.background.outOfSrgb.color}
+                onChange={(event) =>
+                  setColorAreaState({
+                    background: {
+                      ...colorAreaState.background,
+                      outOfSrgb: {
+                        ...colorAreaState.background.outOfSrgb,
+                        color: event.target.value,
+                      },
                     },
-                  },
-                })
-              }
-              aria-label="Out of sRGB background color"
-            />
-            <label>
+                  })
+                }
+                aria-label="Out of sRGB background color"
+              />
+            </label>
+            <label className="docs-percent-field">
               <input
                 type="number"
                 min={0}
@@ -729,7 +753,7 @@ function ColorAreaPropertiesPanel() {
                 }
                 aria-label="Out of sRGB opacity"
               />
-              <span>%</span>
+              <span aria-hidden="true">%</span>
             </label>
           </div>
         </div>

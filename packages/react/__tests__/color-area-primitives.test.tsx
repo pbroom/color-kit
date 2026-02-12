@@ -175,6 +175,85 @@ describe('ColorArea primitives', () => {
     });
   });
 
+  it('clips out-of-gamut pixels when repeat edge pixels is disabled', async () => {
+    const requested: Color = { l: 0.72, c: 0.36, h: 293, alpha: 1 };
+
+    const createImageData = vi.fn((width: number, height: number) => ({
+      data: new Uint8ClampedArray(width * height * 4),
+      width,
+      height,
+    }));
+    const putImageData = vi.fn();
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      function getContext(this: HTMLCanvasElement, kind: string) {
+        if (kind === '2d') {
+          return {
+            createImageData,
+            putImageData,
+          } as unknown as RenderingContext;
+        }
+        return null;
+      },
+    );
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      'getBoundingClientRect',
+    ).mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 120,
+      height: 120,
+      right: 120,
+      bottom: 120,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane
+          renderer="cpu"
+          outOfGamut={{
+            repeatEdgePixels: false,
+            outOfP3FillOpacity: 0,
+            outOfSrgbFillOpacity: 0,
+            dotPatternOpacity: 0,
+          }}
+        />
+      </ColorArea>,
+    );
+
+    await waitFor(() => {
+      expect(putImageData).toHaveBeenCalled();
+    });
+
+    const latestCall = putImageData.mock.calls.at(-1);
+    const imageData = latestCall?.[0] as ImageData | undefined;
+    expect(imageData).toBeTruthy();
+
+    const pixels = imageData?.data ?? new Uint8ClampedArray();
+    let hasTransparentPixel = false;
+    let hasOpaquePixel = false;
+
+    for (let index = 3; index < pixels.length; index += 4) {
+      const alpha = pixels[index];
+      if (alpha === 0) {
+        hasTransparentPixel = true;
+      }
+      if (alpha === 255) {
+        hasOpaquePixel = true;
+      }
+      if (hasTransparentPixel && hasOpaquePixel) {
+        break;
+      }
+    }
+
+    expect(hasTransparentPixel).toBe(true);
+    expect(hasOpaquePixel).toBe(true);
+  });
+
   it('accepts legacy renderer aliases for backward compatibility', async () => {
     const requested: Color = { l: 0.6, c: 0.2, h: 250, alpha: 1 };
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
