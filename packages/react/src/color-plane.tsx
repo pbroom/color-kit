@@ -340,10 +340,12 @@ function renderPixels(
       const rawLinear = oklchToLinearSrgb(sampled.l, sampled.c, sampled.h);
       const outOfP3 = !inP3Linear(rawLinear);
       const outOfSrgb = !outOfP3 && !inSrgbLinear(rawLinear);
+      const targetOutOfGamut =
+        gamut === 'display-p3' ? outOfP3 : outOfP3 || outOfSrgb;
       const clipOutOfGamut =
         source === 'displayed' &&
         !outOfGamut.repeatEdgePixels &&
-        (outOfP3 || outOfSrgb);
+        targetOutOfGamut;
 
       const renderLinear =
         source === 'displayed' && outOfGamut.repeatEdgePixels

@@ -177,7 +177,8 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
     );
     float alpha = clamp(u_seed.w, 0.0, 1.0);
 
-    bool clipOutOfGamut = u_source >= 0.5 && u_repeat_edge_pixels < 0.5 && (outP3 || outSrgb);
+    bool targetOut = u_gamut < 0.5 ? (outP3 || outSrgb) : outP3;
+    bool clipOutOfGamut = u_source >= 0.5 && u_repeat_edge_pixels < 0.5 && targetOut;
     if (clipOutOfGamut) {
       baseColor = vec3(0.0);
       alpha = 0.0;
