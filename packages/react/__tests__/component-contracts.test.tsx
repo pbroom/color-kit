@@ -8,6 +8,7 @@ import { ColorArea } from '../src/color-area.js';
 import { ColorInput } from '../src/color-input.js';
 import { ColorProvider } from '../src/color-provider.js';
 import { ColorSlider } from '../src/color-slider.js';
+import { ColorWheel } from '../src/color-wheel.js';
 import { HueSlider } from '../src/hue-slider.js';
 import { useColorContext } from '../src/context.js';
 
@@ -48,6 +49,9 @@ describe('shared component contracts', () => {
     expect(() => render(<AlphaSlider />)).toThrowError(
       /ColorSlider requires either/,
     );
+    expect(() => render(<ColorWheel />)).toThrowError(
+      /ColorWheel requires either/,
+    );
   });
 
   it('renders context-driven primitives from ColorProvider without standalone props', () => {
@@ -55,13 +59,14 @@ describe('shared component contracts', () => {
       <ColorProvider defaultColor={OUT_OF_GAMUT_REQUESTED}>
         <ColorArea />
         <ColorSlider channel="c" />
+        <ColorWheel />
         <HueSlider />
         <AlphaSlider />
         <ColorInput />
       </ColorProvider>,
     );
 
-    expect(screen.getAllByRole('slider')).toHaveLength(4);
+    expect(screen.getAllByRole('slider')).toHaveLength(5);
     expect(screen.getByLabelText('Color value')).toBeTruthy();
   });
 
@@ -105,6 +110,30 @@ describe('shared component contracts', () => {
 
     const after = thumb?.getAttribute('data-value');
     expect(after).toBe(before);
+  });
+
+  it('keeps ColorWheel thumb coordinates stable across active gamut switches', () => {
+    const { container } = render(
+      <ColorProvider defaultColor={OUT_OF_GAMUT_REQUESTED}>
+        <ColorWheel />
+        <GamutToggle />
+      </ColorProvider>,
+    );
+
+    const thumb = container.querySelector('[data-color-wheel-thumb]');
+    expect(thumb).toBeTruthy();
+    const before = {
+      x: thumb?.getAttribute('data-x'),
+      y: thumb?.getAttribute('data-y'),
+    };
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle gamut' }));
+
+    const after = {
+      x: thumb?.getAttribute('data-x'),
+      y: thumb?.getAttribute('data-y'),
+    };
+    expect(after).toEqual(before);
   });
 
   it('preserves untouched channels during keyboard channel edits', () => {

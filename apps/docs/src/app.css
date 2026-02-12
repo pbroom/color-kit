@@ -901,6 +901,27 @@ a {
   outline: 1px solid #ffd447;
 }
 
+.ck-wheel {
+  width: min(100%, 280px);
+  aspect-ratio: 1 / 1;
+  justify-self: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.ck-wheel [data-color-wheel-thumb] {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid #f7fcff;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(1px);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
 .ck-slider {
   width: 100%;
   min-height: 44px;

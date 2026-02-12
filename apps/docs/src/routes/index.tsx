@@ -6,6 +6,7 @@ import {
   ColorInputDemo,
   ColorProviderDemo,
   ColorSliderDemo,
+  ColorWheelDemo,
   ContrastBadgeDemo,
   SwatchGroupDemo,
 } from '../components/component-demos.js';
@@ -32,6 +33,12 @@ const cards: ShowcaseCard[] = [
     description: 'Shared canonical state for coordinated primitives.',
     href: '/docs/components/color-provider',
     demo: <ColorProviderDemo />,
+  },
+  {
+    title: 'Color Wheel',
+    description: 'Circular hue/chroma control with requested intent semantics.',
+    href: '/docs/components/color-wheel',
+    demo: <ColorWheelDemo />,
   },
   {
     title: 'Color Slider',

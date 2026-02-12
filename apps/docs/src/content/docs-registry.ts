@@ -43,6 +43,7 @@ export const docsPages: Record<
 const componentPages = [
   { title: 'Color Provider', path: 'components/color-provider' },
   { title: 'Color Area', path: 'components/color-area' },
+  { title: 'Color Wheel', path: 'components/color-wheel' },
   { title: 'Color Slider', path: 'components/color-slider' },
   { title: 'Hue Slider', path: 'components/hue-slider' },
   { title: 'Alpha Slider', path: 'components/alpha-slider' },

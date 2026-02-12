@@ -49,6 +49,8 @@ export type {
   ColorAreaGamutBoundaryOptions,
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,
+  ColorWheelKey,
+  ColorWheelThumbPosition,
   ResolvedColorAreaAxes,
   ResolvedColorAreaAxis,
   ColorInputFormat,
@@ -102,6 +104,9 @@ export type { HueSliderProps } from './hue-slider.js';
 
 export { AlphaSlider } from './alpha-slider.js';
 export type { AlphaSliderProps } from './alpha-slider.js';
+
+export { ColorWheel } from './color-wheel.js';
+export type { ColorWheelProps } from './color-wheel.js';
 
 export { Swatch } from './swatch.js';
 export type { SwatchProps } from './swatch.js';

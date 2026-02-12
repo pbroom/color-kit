@@ -4,15 +4,20 @@ import {
   areColorAreaAxesDistinct,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
+  colorFromColorWheelKey,
+  colorFromColorWheelPosition,
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
   colorsEqual,
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
+  getColorWheelThumbPosition,
   getColorDisplayStyles,
   getContrastBadgeSummary,
   isColorInputValueValid,
+  normalizeColorWheelPointer,
   parseColorInputValue,
+  resolveColorWheelChromaRange,
   resolveColorAreaAxes,
 } from '../src/api/index.js';
 
@@ -141,6 +146,84 @@ describe('Color API helpers', () => {
       [0, 1],
     );
     expect(keyed?.alpha).toBeCloseTo(0.5, 6);
+  });
+
+  it('maps wheel pointer positions into hue/chroma values', () => {
+    const base = parse('#3b82f6');
+    const next = colorFromColorWheelPosition(base, 1, 0.5, [0, 0.4]);
+
+    expect(next.c).toBeCloseTo(0.4, 6);
+    expect(next.h).toBeCloseTo(0, 6);
+    expect(next.l).toBeCloseTo(base.l, 6);
+    expect(next.alpha).toBeCloseTo(base.alpha, 6);
+  });
+
+  it('preserves hue when wheel pointer lands at center', () => {
+    const base = {
+      l: 0.6,
+      c: 0.28,
+      h: 287,
+      alpha: 1,
+    };
+
+    const centered = colorFromColorWheelPosition(base, 0.5, 0.5, [0, 0.4]);
+    expect(centered.c).toBeCloseTo(0, 6);
+    expect(centered.h).toBeCloseTo(287, 6);
+  });
+
+  it('normalizes wheel pointer positions within a circular boundary', () => {
+    const normalized = normalizeColorWheelPointer(200, 50, 0, 0, 100, 100);
+    expect(normalized.x).toBeCloseTo(1, 6);
+    expect(normalized.y).toBeCloseTo(0.5, 6);
+  });
+
+  it('updates wheel channels from keyboard input', () => {
+    const base = {
+      l: 0.5,
+      c: 0.2,
+      h: 120,
+      alpha: 1,
+    };
+
+    const hueNext = colorFromColorWheelKey(
+      base,
+      'ArrowRight',
+      2,
+      0.01,
+      [0, 0.4],
+    );
+    expect(hueNext?.h).toBeCloseTo(122, 6);
+    expect(hueNext?.c).toBeCloseTo(base.c, 6);
+
+    const chromaNext = colorFromColorWheelKey(
+      base,
+      'ArrowUp',
+      2,
+      0.1,
+      [0, 0.4],
+    );
+    expect(chromaNext?.c).toBeCloseTo(0.24, 6);
+    expect(chromaNext?.h).toBeCloseTo(base.h, 6);
+  });
+
+  it('resolves wheel thumb position from hue/chroma state', () => {
+    const color = {
+      l: 0.5,
+      c: 0.2,
+      h: 180,
+      alpha: 1,
+    };
+    const thumb = getColorWheelThumbPosition(color, [0, 0.4]);
+    expect(thumb.radius).toBeCloseTo(0.5, 6);
+    expect(thumb.x).toBeCloseTo(0.25, 6);
+    expect(thumb.y).toBeCloseTo(0.5, 6);
+  });
+
+  it('falls back to default chroma range for invalid ranges', () => {
+    expect(resolveColorWheelChromaRange([1, 0.2])).toEqual([0, 0.4]);
+    expect(
+      resolveColorWheelChromaRange([NaN, 0.2] as [number, number]),
+    ).toEqual([0, 0.4]);
   });
 
   it('parses and validates color input values', () => {

@@ -9,6 +9,7 @@ import {
   ColorInput,
   ColorProvider,
   ColorSlider,
+  ColorWheel,
   ContrastRegionLayer,
   ContrastBadge,
   FallbackPointsLayer,
@@ -42,6 +43,9 @@ const HUE_GRADIENT =
 
 const ALPHA_GRADIENT =
   'linear-gradient(90deg, rgba(59, 130, 246, 0), rgba(59, 130, 246, 1))';
+
+const WHEEL_GRADIENT =
+  'radial-gradient(circle at center, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.92) 12%, rgba(255, 255, 255, 0) 68%), conic-gradient(from 0deg, #ff304f 0deg, #ff912a 48deg, #efe034 96deg, #2ddb70 144deg, #00d9d9 192deg, #2d8fff 240deg, #845bff 288deg, #ff3cc2 336deg, #ff304f 360deg)';
 
 const SATURATION_GRADIENT =
   'linear-gradient(90deg, oklch(0.65 0 255), oklch(0.65 0.34 255))';
@@ -317,6 +321,23 @@ export function ColorSliderDemo({
         gamut={color.activeGamut}
       />
     </div>
+  );
+}
+
+export function ColorWheelDemo() {
+  return (
+    <ColorProvider defaultColor="oklch(0.62 0.26 220)">
+      <div className="ck-demo-stack">
+        <ColorWheel
+          className="ck-wheel"
+          style={{ background: WHEEL_GRADIENT }}
+        />
+        <div className="ck-row">
+          <ColorInput format="oklch" className="ck-input" />
+          <ColorDisplay className="ck-color-display" />
+        </div>
+      </div>
+    </ColorProvider>
   );
 }
 
