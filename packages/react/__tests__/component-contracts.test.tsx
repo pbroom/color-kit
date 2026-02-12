@@ -10,6 +10,7 @@ import { ColorProvider } from '../src/color-provider.js';
 import { ColorSlider } from '../src/color-slider.js';
 import { ColorWheel } from '../src/color-wheel.js';
 import { HueSlider } from '../src/hue-slider.js';
+import { SliderMarker } from '../src/slider-marker.js';
 import { useColorContext } from '../src/context.js';
 
 afterEach(() => {
@@ -199,5 +200,40 @@ describe('shared component contracts', () => {
 
     expect(sliderCapture).toHaveBeenCalledTimes(1);
     expect(childCapture).not.toHaveBeenCalled();
+  });
+
+  it('captures pointer interaction on slider root when marker primitives are present', () => {
+    const requested: Color = { l: 0.6, c: 0.2, h: 210, alpha: 1 };
+    const { getByRole, container } = render(
+      <ColorSlider
+        channel="c"
+        requested={requested}
+        onChangeRequested={() => {}}
+      >
+        <SliderMarker value={0.1} />
+      </ColorSlider>,
+    );
+
+    const slider = getByRole('slider') as HTMLDivElement;
+    const marker = container.querySelector(
+      '[data-color-slider-marker]',
+    ) as HTMLDivElement;
+    const sliderCapture = vi.fn();
+    const markerCapture = vi.fn();
+
+    slider.setPointerCapture = sliderCapture;
+    marker.setPointerCapture = markerCapture;
+    slider.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 100,
+        height: 10,
+      }) as DOMRect;
+
+    fireEvent.pointerDown(marker, { pointerId: 7, clientX: 50, clientY: 5 });
+
+    expect(sliderCapture).toHaveBeenCalledTimes(1);
+    expect(markerCapture).not.toHaveBeenCalled();
   });
 });

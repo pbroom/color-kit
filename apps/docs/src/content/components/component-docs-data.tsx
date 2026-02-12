@@ -155,22 +155,27 @@ export function Picker() {
 <ColorSlider channel="h" />;`,
     helperApis: [
       'ColorApi.resolveColorSliderRange',
+      'ColorApi.getColorSliderNormFromValue',
       'ColorApi.getColorSliderThumbPosition',
       'ColorApi.normalizeColorSliderPointer',
       'ColorApi.colorFromColorSliderPosition',
       'ColorApi.colorFromColorSliderKey',
+      'ColorApi.sampleSliderGradient',
+      'ColorApi.getSliderGradientStyles',
     ],
     features: [
       'Orientation-aware keyboard and pointer interactions.',
       'Shared requested state contract with ColorProvider or standalone props.',
       'Customizable channel ranges for bounded workflows.',
+      'Optional child marker primitives for annotated rails.',
+      'Model-accurate rail backgrounds via non-UI ColorApi helpers.',
     ],
     accessibility: [
       'Uses `role="slider"` with keyboard arrow support.',
       'Exposes current channel value through ARIA attributes.',
     ],
     props: componentApiDocs.colorSlider,
-    anatomy: `<ColorSlider>\n  <div data-color-slider-thumb />\n</ColorSlider>`,
+    anatomy: `<ColorSlider>\n  <div data-color-slider-thumb />\n  <SliderMarker />\n  <ChromaMarkers />\n</ColorSlider>`,
     supportsPropertiesPanel: true,
   },
   'hue-slider': {

@@ -9,6 +9,7 @@ import {
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
   colorsEqual,
+  getColorSliderNormFromValue,
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
   getColorWheelThumbPosition,
@@ -146,6 +147,11 @@ describe('Color API helpers', () => {
       [0, 1],
     );
     expect(keyed?.alpha).toBeCloseTo(0.5, 6);
+  });
+
+  it('normalizes slider values into channel coordinates', () => {
+    const norm = getColorSliderNormFromValue(0.2, [0, 0.4]);
+    expect(norm).toBeCloseTo(0.5, 6);
   });
 
   it('maps wheel pointer positions into hue/chroma values', () => {

@@ -192,6 +192,20 @@ export const componentApiDocs: ComponentApiDocs = {
       description: 'Slider direction and keyboard semantics.',
     },
     {
+      name: 'dragEpsilon',
+      type: 'number',
+      defaultValue: '0.0005',
+      description:
+        'Minimum normalized movement required before another pointer update is committed.',
+    },
+    {
+      name: 'maxPointerRate',
+      type: 'number',
+      defaultValue: '60',
+      description:
+        'Upper bound for pointer update frequency while dragging (updates/second).',
+    },
+    {
       name: 'requested',
       type: 'Color',
       description: 'Standalone value when not using ColorProvider context.',

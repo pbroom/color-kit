@@ -42,7 +42,18 @@ export function getColorSliderThumbPosition(
   channel: ColorSliderChannel,
   range: [number, number],
 ): number {
-  return clamp((color[channel] - range[0]) / (range[1] - range[0]), 0, 1);
+  return getColorSliderNormFromValue(color[channel], range);
+}
+
+export function getColorSliderNormFromValue(
+  value: number,
+  range: [number, number],
+): number {
+  const span = range[1] - range[0];
+  if (span === 0) {
+    return 0;
+  }
+  return clamp((value - range[0]) / span, 0, 1);
 }
 
 export function colorFromColorSliderPosition(
@@ -52,7 +63,8 @@ export function colorFromColorSliderPosition(
   range: [number, number],
 ): Color {
   const t = clamp(norm, 0, 1);
-  const value = range[0] + t * (range[1] - range[0]);
+  const span = range[1] - range[0];
+  const value = span === 0 ? range[0] : range[0] + t * span;
 
   return {
     ...color,
@@ -66,6 +78,9 @@ export function normalizeColorSliderPointer(
   start: number,
   size: number,
 ): number {
+  if (size <= 0) {
+    return 0;
+  }
   if (orientation === 'horizontal') {
     return clamp((pointer - start) / size, 0, 1);
   }

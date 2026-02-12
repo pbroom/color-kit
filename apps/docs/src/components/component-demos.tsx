@@ -2,6 +2,7 @@ import { parse, toCss } from '@color-kit/core';
 import {
   AlphaSlider,
   Background,
+  ChromaMarkers,
   ColorApi,
   ColorArea,
   ColorPlane,
@@ -24,7 +25,14 @@ import {
   type ColorSliderChannel,
   useColor,
 } from '@color-kit/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { useOptionalDocsInspector } from './docs-inspector-context.js';
 
 const DOC_SWATCHES = [
@@ -38,25 +46,8 @@ const DOC_SWATCHES = [
   '#d946ef',
 ].map((value) => parse(value));
 
-const HUE_GRADIENT =
-  'linear-gradient(90deg, #ff0040 0%, #ffa500 16%, #f7f700 33%, #00c950 50%, #00b7ff 66%, #364dff 82%, #ff00b7 100%)';
-
-const ALPHA_GRADIENT =
-  'linear-gradient(90deg, rgba(59, 130, 246, 0), rgba(59, 130, 246, 1))';
-
 const WHEEL_GRADIENT =
   'radial-gradient(circle at center, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.92) 12%, rgba(255, 255, 255, 0) 68%), conic-gradient(from 0deg, #ff304f 0deg, #ff912a 48deg, #efe034 96deg, #2ddb70 144deg, #00d9d9 192deg, #2d8fff 240deg, #845bff 288deg, #ff3cc2 336deg, #ff304f 360deg)';
-
-const SATURATION_GRADIENT =
-  'linear-gradient(90deg, oklch(0.65 0 255), oklch(0.65 0.34 255))';
-
-const SLIDER_GRADIENTS: Record<ColorSliderChannel, string> = {
-  l: 'linear-gradient(90deg, #0f172a, #f8fafc)',
-  c: SATURATION_GRADIENT,
-  h: HUE_GRADIENT,
-  alpha: ALPHA_GRADIENT,
-};
-
 const SWATCH_GROUP_PALETTES = {
   spectrum: DOC_SWATCHES,
   nature: [
@@ -100,6 +91,35 @@ function normalizeChannels(
   return { x, y: y === 'l' ? 'c' : 'l' };
 }
 
+type SliderRailStyle = CSSProperties & {
+  '--ck-slider-gradient-active': string;
+  '--ck-slider-gradient-srgb': string;
+  '--ck-slider-fallback-color': string;
+};
+
+function getOklchSliderRail(
+  channel: ColorSliderChannel,
+  requested: ReturnType<typeof parse>,
+  gamut: 'display-p3' | 'srgb',
+): { colorSpace: 'display-p3' | 'srgb'; style: SliderRailStyle } {
+  const gradient = ColorApi.getSliderGradientStyles({
+    model: 'oklch',
+    channel,
+    range: ColorApi.resolveColorSliderRange(channel),
+    baseColor: requested,
+    colorSpace: gamut,
+  });
+
+  return {
+    colorSpace: gradient.colorSpace,
+    style: {
+      '--ck-slider-gradient-active': gradient.activeBackgroundImage,
+      '--ck-slider-gradient-srgb': gradient.srgbBackgroundImage,
+      '--ck-slider-fallback-color': gradient.srgbBackgroundColor,
+    },
+  };
+}
+
 function ColorAreaDemoScene({
   axes,
   inspectorGamut,
@@ -124,6 +144,11 @@ function ColorAreaDemoScene({
     if (color.state$.activeGamut.peek() === inspectorGamut) return;
     color.setActiveGamut(inspectorGamut, 'programmatic');
   }, [color, inspectorGamut]);
+
+  const hueRail = useMemo(
+    () => getOklchSliderRail('h', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
 
   return (
     <>
@@ -163,7 +188,11 @@ function ColorAreaDemoScene({
         )}
         <FallbackPointsLayer />
       </ColorArea>
-      <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
+      <HueSlider
+        className="ck-slider ck-slider-v2"
+        data-color-space={hueRail.colorSpace}
+        style={hueRail.style}
+      />
       <div className="ck-row">
         <ColorInput className="ck-input" format="oklch" />
         <ColorDisplay className="ck-color-display" />
@@ -172,24 +201,45 @@ function ColorAreaDemoScene({
   );
 }
 
+function ColorProviderDemoContent() {
+  const color = useColorContext();
+  const hueRail = useMemo(
+    () => getOklchSliderRail('h', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
+  const alphaRail = useMemo(
+    () => getOklchSliderRail('alpha', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
+
+  return (
+    <div className="ck-demo-stack">
+      <ColorArea className="ck-color-area">
+        <Background checkerboard />
+        <ColorPlane />
+      </ColorArea>
+      <HueSlider
+        className="ck-slider ck-slider-v2"
+        data-color-space={hueRail.colorSpace}
+        style={hueRail.style}
+      />
+      <AlphaSlider
+        className="ck-slider ck-slider-v2"
+        data-color-space={alphaRail.colorSpace}
+        style={alphaRail.style}
+      />
+      <div className="ck-row">
+        <ColorInput className="ck-input" />
+        <ColorDisplay className="ck-color-display" />
+      </div>
+    </div>
+  );
+}
+
 export function ColorProviderDemo() {
   return (
     <ColorProvider defaultColor="#3b82f6">
-      <div className="ck-demo-stack">
-        <ColorArea className="ck-color-area">
-          <Background checkerboard />
-          <ColorPlane />
-        </ColorArea>
-        <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
-        <AlphaSlider
-          className="ck-slider"
-          style={{ background: ALPHA_GRADIENT }}
-        />
-        <div className="ck-row">
-          <ColorInput className="ck-input" />
-          <ColorDisplay className="ck-color-display" />
-        </div>
-      </div>
+      <ColorProviderDemoContent />
     </ColorProvider>
   );
 }
@@ -300,15 +350,23 @@ export function ColorSliderDemo({
     sliderGamutSetterRef.current(sliderGamut, 'programmatic');
   }, [sliderGamut, color.activeGamut]);
 
+  const sliderRail = useMemo(
+    () => getOklchSliderRail(channel, color.requested, color.activeGamut),
+    [channel, color.activeGamut, color.requested],
+  );
+
   return (
     <div className="ck-demo-stack">
       <ColorSlider
         channel={channel}
-        className="ck-slider"
+        className="ck-slider ck-slider-v2"
+        data-color-space={sliderRail.colorSpace}
         requested={color.requested}
         onChangeRequested={color.setRequested}
-        style={{ background: SLIDER_GRADIENTS[channel] }}
-      />
+        style={sliderRail.style}
+      >
+        {channel === 'c' ? <ChromaMarkers /> : null}
+      </ColorSlider>
       <ColorInput
         format="oklch"
         className="ck-input"
@@ -341,31 +399,60 @@ export function ColorWheelDemo() {
   );
 }
 
+function HueSliderDemoContent() {
+  const color = useColorContext();
+  const hueRail = useMemo(
+    () => getOklchSliderRail('h', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
+
+  return (
+    <div className="ck-demo-stack">
+      <HueSlider
+        className="ck-slider ck-slider-v2"
+        data-color-space={hueRail.colorSpace}
+        style={hueRail.style}
+      />
+      <div className="ck-row">
+        <ColorDisplay className="ck-color-display" />
+        <ColorInput className="ck-input" />
+      </div>
+    </div>
+  );
+}
+
 export function HueSliderDemo() {
   return (
     <ColorProvider defaultColor="#ef4444">
-      <div className="ck-demo-stack">
-        <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
-        <div className="ck-row">
-          <ColorDisplay className="ck-color-display" />
-          <ColorInput className="ck-input" />
-        </div>
-      </div>
+      <HueSliderDemoContent />
     </ColorProvider>
+  );
+}
+
+function AlphaSliderDemoContent() {
+  const color = useColorContext();
+  const alphaRail = useMemo(
+    () => getOklchSliderRail('alpha', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
+
+  return (
+    <div className="ck-demo-stack">
+      <ColorDisplay className="ck-color-display ck-checker" />
+      <AlphaSlider
+        className="ck-slider ck-slider-v2"
+        data-color-space={alphaRail.colorSpace}
+        style={alphaRail.style}
+      />
+      <ColorInput format="rgb" className="ck-input" />
+    </div>
   );
 }
 
 export function AlphaSliderDemo() {
   return (
     <ColorProvider defaultColor="oklch(0.72 0.2 220 / 0.65)">
-      <div className="ck-demo-stack">
-        <ColorDisplay className="ck-color-display ck-checker" />
-        <AlphaSlider
-          className="ck-slider"
-          style={{ background: ALPHA_GRADIENT }}
-        />
-        <ColorInput format="rgb" className="ck-input" />
-      </div>
+      <AlphaSliderDemoContent />
     </ColorProvider>
   );
 }
@@ -471,17 +558,38 @@ export function ColorInputDemo({
   );
 }
 
+function ColorDisplayDemoContent() {
+  const color = useColorContext();
+  const hueRail = useMemo(
+    () => getOklchSliderRail('h', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
+  const alphaRail = useMemo(
+    () => getOklchSliderRail('alpha', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
+
+  return (
+    <div className="ck-demo-stack">
+      <ColorDisplay className="ck-color-display" />
+      <HueSlider
+        className="ck-slider ck-slider-v2"
+        data-color-space={hueRail.colorSpace}
+        style={hueRail.style}
+      />
+      <AlphaSlider
+        className="ck-slider ck-slider-v2"
+        data-color-space={alphaRail.colorSpace}
+        style={alphaRail.style}
+      />
+    </div>
+  );
+}
+
 export function ColorDisplayDemo() {
   return (
     <ColorProvider defaultColor="#10b981">
-      <div className="ck-demo-stack">
-        <ColorDisplay className="ck-color-display" />
-        <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
-        <AlphaSlider
-          className="ck-slider"
-          style={{ background: ALPHA_GRADIENT }}
-        />
-      </div>
+      <ColorDisplayDemoContent />
     </ColorProvider>
   );
 }
