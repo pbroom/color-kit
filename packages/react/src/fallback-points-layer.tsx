@@ -53,9 +53,8 @@ export function FallbackPointsLayer({
             width: 10,
             height: 10,
             borderRadius: 999,
-            border: '1px solid rgba(0,0,0,0.6)',
-            boxShadow:
-              '0 0 0 1px rgba(255,255,255,0.55), 0 0 0 2px rgba(64,245,210,0.85)',
+            border: '2px solid #ffffff',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
             pointerEvents: 'none',
             ...p3Styles,
             ...p3PointProps?.style,
@@ -74,9 +73,8 @@ export function FallbackPointsLayer({
             width: 10,
             height: 10,
             borderRadius: 999,
-            border: '1px solid rgba(0,0,0,0.65)',
-            boxShadow:
-              '0 0 0 1px rgba(255,255,255,0.55), 0 0 0 2px rgba(255,212,71,0.9)',
+            border: '2px solid #ffffff',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
             pointerEvents: 'none',
             ...srgbStyles,
             ...srgbPointProps?.style,
