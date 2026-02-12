@@ -157,6 +157,8 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     const isHorizontal = orientation === 'horizontal';
     const defaultLabel = `${CHANNEL_LABELS[channel] ?? channel} slider`;
+    const sliderPositionInset = 'var(--ck-slider-position-inset, 0px)';
+    const sliderPositionSpan = `calc(100% - (${sliderPositionInset} * 2))`;
 
     return (
       <div
@@ -195,13 +197,13 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
             position: 'absolute',
             ...(isHorizontal
               ? {
-                  left: `${norm * 100}%`,
+                  left: `calc(${sliderPositionInset} + (${sliderPositionSpan} * ${norm}))`,
                   top: '50%',
                   transform: 'translate(-50%, -50%)',
                 }
               : {
                   left: '50%',
-                  top: `${(1 - norm) * 100}%`,
+                  top: `calc(${sliderPositionInset} + (${sliderPositionSpan} * ${1 - norm}))`,
                   transform: 'translate(-50%, -50%)',
                 }),
             pointerEvents: 'none',

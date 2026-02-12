@@ -27,7 +27,10 @@ describe('SliderMarker', () => {
 
     expect(marker?.getAttribute('data-norm')).toBe('0.2500');
     expect(marker?.getAttribute('aria-hidden')).toBe('true');
-    expect((marker as HTMLDivElement).style.left).toBe('25%');
+    expect((marker as HTMLDivElement).style.left).toContain(
+      '--ck-slider-position-inset',
+    );
+    expect((marker as HTMLDivElement).style.left).toContain('* 0.25');
   });
 
   it('prioritizes explicit normalized coordinates over value', () => {
@@ -44,7 +47,10 @@ describe('SliderMarker', () => {
 
     const marker = container.querySelector('[data-color-slider-marker]');
     expect(marker?.getAttribute('data-norm')).toBe('0.2000');
-    expect((marker as HTMLDivElement).style.left).toBe('20%');
+    expect((marker as HTMLDivElement).style.left).toContain(
+      '--ck-slider-position-inset',
+    );
+    expect((marker as HTMLDivElement).style.left).toContain('* 0.2');
   });
 
   it('handles vertical orientation positioning', () => {
@@ -61,6 +67,9 @@ describe('SliderMarker', () => {
     );
 
     const marker = container.querySelector('[data-color-slider-marker]');
-    expect((marker as HTMLDivElement).style.top).toBe('75%');
+    expect((marker as HTMLDivElement).style.top).toContain(
+      '--ck-slider-position-inset',
+    );
+    expect((marker as HTMLDivElement).style.top).toContain('* 0.75');
   });
 });
