@@ -79,36 +79,6 @@
       "categories": ["color"]
     },
     {
-      "name": "hue-slider",
-      "type": "registry:component",
-      "title": "Hue Slider",
-      "description": "A convenience hue slider pre-configured for the hue channel. Wraps ColorSlider.",
-      "dependencies": ["@color-kit/core"],
-      "registryDependencies": ["color-slider"],
-      "files": [
-        {
-          "path": "registry/components/hue-slider.tsx",
-          "type": "registry:component"
-        }
-      ],
-      "categories": ["color"]
-    },
-    {
-      "name": "alpha-slider",
-      "type": "registry:component",
-      "title": "Alpha Slider",
-      "description": "A convenience alpha/opacity slider pre-configured for the alpha channel. Wraps ColorSlider.",
-      "dependencies": ["@color-kit/core"],
-      "registryDependencies": ["color-slider"],
-      "files": [
-        {
-          "path": "registry/components/alpha-slider.tsx",
-          "type": "registry:component"
-        }
-      ],
-      "categories": ["color"]
-    },
-    {
       "name": "swatch",
       "type": "registry:component",
       "title": "Swatch",

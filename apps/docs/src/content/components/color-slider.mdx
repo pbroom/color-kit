@@ -1,7 +1,11 @@
 import { ComponentPreview } from '@/components/component-preview';
 import { ApiTable } from '@/components/api-table';
 import { componentApiDocs } from './component-api';
-import { ColorSliderDemo } from '@/components/component-demos';
+import {
+  ColorSliderAlphaDemo,
+  ColorSliderDemo,
+  ColorSliderHueDemo,
+} from '@/components/component-demos';
 
 # Color Slider
 
@@ -9,6 +13,18 @@ import { ColorSliderDemo } from '@/components/component-demos';
 
 <ComponentPreview>
   <ColorSliderDemo />
+</ComponentPreview>
+
+## Hue and Alpha Instances
+
+Use `ColorSlider` directly for hue and alpha workflows by selecting the right channel.
+
+<ComponentPreview>
+  <ColorSliderHueDemo />
+</ComponentPreview>
+
+<ComponentPreview>
+  <ColorSliderAlphaDemo />
 </ComponentPreview>
 
 ## API

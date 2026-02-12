@@ -7,8 +7,6 @@ interface ComponentApiDocs {
   colorDial: ApiTableRow[];
   colorSlider: ApiTableRow[];
   hueDial: ApiTableRow[];
-  hueSlider: ApiTableRow[];
-  alphaSlider: ApiTableRow[];
   swatch: ApiTableRow[];
   swatchGroup: ApiTableRow[];
   colorInput: ApiTableRow[];
@@ -316,42 +314,6 @@ export const componentApiDocs: ComponentApiDocs = {
       name: 'onChangeRequested',
       type: '(requested: Color, options?: SetRequestedOptions) => void',
       description: 'Standalone hue change handler when not using context.',
-    },
-  ],
-  hueSlider: [
-    {
-      name: 'orientation',
-      type: "'horizontal' | 'vertical'",
-      defaultValue: "'horizontal'",
-      description: 'Direction for the hue track.',
-    },
-    {
-      name: 'requested',
-      type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
-    },
-    {
-      name: 'onChangeRequested',
-      type: '(requested: Color, options?: SetRequestedOptions) => void',
-      description: 'Standalone hue change handler when not using context.',
-    },
-  ],
-  alphaSlider: [
-    {
-      name: 'orientation',
-      type: "'horizontal' | 'vertical'",
-      defaultValue: "'horizontal'",
-      description: 'Direction for the alpha track.',
-    },
-    {
-      name: 'requested',
-      type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
-    },
-    {
-      name: 'onChangeRequested',
-      type: '(requested: Color, options?: SetRequestedOptions) => void',
-      description: 'Standalone opacity change handler when not using context.',
     },
   ],
   swatch: [

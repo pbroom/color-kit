@@ -13,7 +13,7 @@ export interface ColorProviderProps extends UseColorOptions {
  * ```tsx
  * <ColorProvider defaultColor="#ff6600">
  *   <ColorArea />
- *   <HueSlider />
+ *   <ColorSlider channel="h" />
  *   <ColorInput model="oklch" channel="h" />
  *   <ColorStringInput format="oklch" />
  * </ColorProvider>
