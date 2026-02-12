@@ -241,9 +241,21 @@ function ColorAreaDemoScene({
         aa7: { enabled: false, style: 'dashed', width: 0.25 as const },
       },
       regions: {
-        aa3: { enabled: false, style: 'dots', opacityPercent: 20 },
-        aa45: { enabled: false, style: 'dots', opacityPercent: 20 },
-        aa7: { enabled: false, style: 'dots', opacityPercent: 20 },
+        aa3: {
+          enabled: false,
+          style: 'dots',
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+        },
+        aa45: {
+          enabled: false,
+          style: 'dots',
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+        },
+        aa7: {
+          enabled: false,
+          style: 'dots',
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+        },
       },
     },
   };

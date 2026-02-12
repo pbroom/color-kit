@@ -222,17 +222,17 @@ function createRequestedPresetState(): ColorAreaInspectorState {
         aa3: {
           enabled: false,
           style: 'dots',
-          opacityPercent: 20,
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
         },
         aa45: {
           enabled: false,
           style: 'dots',
-          opacityPercent: 20,
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
         },
         aa7: {
           enabled: false,
           style: 'dots',
-          opacityPercent: 20,
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
         },
       },
     },
@@ -316,17 +316,17 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
         aa3: {
           enabled: false,
           style: 'dots',
-          opacityPercent: 20,
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
         },
         aa45: {
           enabled: true,
           style: 'dots',
-          opacityPercent: 20,
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
         },
         aa7: {
           enabled: false,
           style: 'dots',
-          opacityPercent: 20,
+          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
         },
       },
     },
