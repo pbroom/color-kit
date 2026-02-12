@@ -94,7 +94,7 @@ export function Picker() {
       outOfP3FillOpacity: 0.2,
       dotPatternOpacity: 0.2,
       dotPatternSize: 2,
-      dotPatternGap: 2,
+      dotPatternGap: 3,
     }}
   />
   <ChromaBandLayer mode="closest" gamut="srgb" />
