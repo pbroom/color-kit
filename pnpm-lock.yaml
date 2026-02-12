@@ -86,6 +86,10 @@ importers:
         version: 6.4.1(jiti@2.6.1)(lightningcss@1.30.2)
 
   packages/core:
+    dependencies:
+      '@material/material-color-utilities':
+        specifier: ^0.3.0
+        version: 0.3.0
     devDependencies:
       tsup:
         specifier: ^8.0.0
@@ -939,6 +943,12 @@ packages:
     peerDependenciesMeta:
       react:
         optional: true
+
+  '@material/material-color-utilities@0.3.0':
+    resolution:
+      {
+        integrity: sha512-ztmtTd6xwnuh2/xu+Vb01btgV8SQWYCaK56CkRK8gEkWe5TuDyBcYJ0wgkMRn+2VcE9KUmhvkz+N9GHrqw/C0g==,
+      }
 
   '@mdx-js/mdx@3.1.1':
     resolution:
@@ -5199,6 +5209,8 @@ snapshots:
       use-sync-external-store: 1.6.0(react@19.2.4)
     optionalDependencies:
       react: 19.2.4
+
+  '@material/material-color-utilities@0.3.0': {}
 
   '@mdx-js/mdx@3.1.1':
     dependencies:

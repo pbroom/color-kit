@@ -7,7 +7,17 @@
  *   Color (OKLCH) -> OKLAB -> Linear sRGB -> sRGB -> Any format
  */
 
-import type { Color, Rgb, Hsl, Hsv, Oklab, Oklch, P3 } from '../types.js';
+import { Hct as MaterialHct, argbFromRgb } from '@material/material-color-utilities';
+import type {
+  Color,
+  Rgb,
+  Hsl,
+  Hsv,
+  Hct,
+  Oklab,
+  Oklch,
+  P3,
+} from '../types.js';
 import { round, clamp } from '../utils/index.js';
 
 import { srgbToLinear, linearToSrgb, rgbToHex, hexToRgb } from './srgb.js';
@@ -85,6 +95,19 @@ export function fromHsl(hsl: Hsl): Color {
 /** Convert a Color to HSV */
 export function toHsv(color: Color): Hsv {
   return rgbToHsv(toRgb(color));
+}
+
+/** Convert a Color to HCT (Material hue/chroma/tone model) */
+export function toHct(color: Color): Hct {
+  const rgb = toRgb(color);
+  const argb = argbFromRgb(rgb.r, rgb.g, rgb.b);
+  const hct = MaterialHct.fromInt(argb);
+  return {
+    h: hct.hue,
+    c: hct.chroma,
+    t: hct.tone,
+    alpha: color.alpha,
+  };
 }
 
 /** Convert HSV to a Color */

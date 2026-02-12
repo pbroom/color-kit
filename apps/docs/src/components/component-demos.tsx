@@ -2,6 +2,7 @@ import { parse, toCss } from '@color-kit/core';
 import {
   AlphaSlider,
   Background,
+  ChromaBandLayer,
   ChromaMarkers,
   ColorApi,
   ColorArea,
@@ -33,7 +34,10 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
-import { useOptionalDocsInspector } from './docs-inspector-context.js';
+import {
+  useOptionalDocsInspector,
+  type ColorAreaInspectorState,
+} from './docs-inspector-context.js';
 
 const DOC_SWATCHES = [
   '#fb7185',
@@ -120,35 +124,93 @@ function getOklchSliderRail(
   };
 }
 
+function strokeDasharray(style: 'solid' | 'dashed' | 'dots'): string | undefined {
+  if (style === 'solid') return undefined;
+  if (style === 'dashed') return '1.35 1.05';
+  return '0.15 1';
+}
+
+function strokePathProps(
+  control: { style: 'solid' | 'dashed' | 'dots'; width: 0.5 | 1 },
+  stroke: string,
+) {
+  return {
+    fill: 'none' as const,
+    stroke,
+    strokeWidth: control.width,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    strokeDasharray: strokeDasharray(control.style),
+  };
+}
+
 function ColorAreaDemoScene({
+  inspectorState,
   axes,
-  inspectorGamut,
-  showCheckerboard,
-  showP3Boundary,
-  showSrgbBoundary,
-  showContrastRegion,
   onInteractionFrame,
 }: {
+  inspectorState: ColorAreaInspectorState | null;
   axes: ColorAreaAxes;
-  inspectorGamut: 'display-p3' | 'srgb' | undefined;
-  showCheckerboard: boolean;
-  showP3Boundary: boolean;
-  showSrgbBoundary: boolean;
-  showContrastRegion: boolean;
   onInteractionFrame: (stats: ColorAreaInteractionFrameStats) => void;
 }) {
   const color = useColorContext();
-
-  useEffect(() => {
-    if (!inspectorGamut) return;
-    if (color.state$.activeGamut.peek() === inspectorGamut) return;
-    color.setActiveGamut(inspectorGamut, 'programmatic');
-  }, [color, inspectorGamut]);
 
   const hueRail = useMemo(
     () => getOklchSliderRail('h', color.requested, color.activeGamut),
     [color.activeGamut, color.requested],
   );
+  const scene = inspectorState ?? {
+    gamut: color.activeGamut,
+    repeatEdgePixels: true,
+    background: {
+      checkerboard: true,
+      outOfP3: { color: '#1f1f1f', opacityPercent: 0 },
+      outOfSrgb: { color: '#1f1f1f', opacityPercent: 0 },
+    },
+    visualize: {
+      p3Fallback: true,
+      srgbFallback: true,
+      p3Boundary: { enabled: false, style: 'solid', width: 0.5 as const },
+      srgbBoundary: { enabled: false, style: 'dashed', width: 1 as const },
+      patternOverlay: {
+        enabled: false,
+        style: 'dots',
+        opacityPercent: 20,
+        dotSize: 2,
+        dotGap: 2,
+      },
+    },
+    chromaBand: {
+      mode: 'closest' as const,
+      p3: { enabled: false, style: 'solid', width: 0.5 as const },
+      srgb: { enabled: false, style: 'dashed', width: 0.5 as const },
+    },
+    contrast: {
+      lines: {
+        aa3: { enabled: false, style: 'solid', width: 0.5 as const },
+        aa45: { enabled: false, style: 'dashed', width: 1 as const },
+        aa7: { enabled: false, style: 'dashed', width: 1 as const },
+      },
+      regions: {
+        aa3: { enabled: false, style: 'dots', opacityPercent: 20 },
+        aa45: { enabled: false, style: 'dots', opacityPercent: 20 },
+        aa7: { enabled: false, style: 'dots', opacityPercent: 20 },
+      },
+    },
+  };
+
+  const colorPlaneOutOfGamut = {
+    repeatEdgePixels: scene.repeatEdgePixels,
+    outOfP3FillColor: scene.background.outOfP3.color,
+    outOfP3FillOpacity: scene.background.outOfP3.opacityPercent / 100,
+    outOfSrgbFillColor: scene.background.outOfSrgb.color,
+    outOfSrgbFillOpacity: scene.background.outOfSrgb.opacityPercent / 100,
+    dotPatternOpacity: scene.visualize.patternOverlay.enabled
+      ? scene.visualize.patternOverlay.opacityPercent / 100
+      : 0,
+    dotPatternSize: scene.visualize.patternOverlay.dotSize,
+    dotPatternGap: scene.visualize.patternOverlay.dotGap,
+  };
 
   return (
     <>
@@ -158,35 +220,125 @@ function ColorAreaDemoScene({
         performanceProfile="auto"
         onInteractionFrame={onInteractionFrame}
       >
-        <Background checkerboard={showCheckerboard} />
-        <ColorPlane renderer="auto" />
-        {showP3Boundary && (
+        <Background checkerboard={scene.background.checkerboard} />
+        <ColorPlane renderer="auto" outOfGamut={colorPlaneOutOfGamut} />
+
+        {scene.visualize.p3Boundary.enabled && (
           <GamutBoundaryLayer
             gamut="display-p3"
             steps={48}
             quality="auto"
-            pathProps={{ className: 'ck-overlay-p3' }}
+            pathProps={strokePathProps(scene.visualize.p3Boundary, '#40f5d2')}
           />
         )}
-        {showSrgbBoundary && (
+        {scene.visualize.srgbBoundary.enabled && (
           <GamutBoundaryLayer
             gamut="srgb"
             steps={48}
             quality="auto"
-            pathProps={{ className: 'ck-overlay-srgb' }}
+            pathProps={strokePathProps(scene.visualize.srgbBoundary, '#ffd447')}
           />
         )}
-        {showContrastRegion && (
+
+        {scene.chromaBand.p3.enabled && (
+          <ChromaBandLayer
+            gamut="display-p3"
+            mode={scene.chromaBand.mode}
+            steps={48}
+            quality="auto"
+            pathProps={strokePathProps(scene.chromaBand.p3, '#9e8cff')}
+          />
+        )}
+        {scene.chromaBand.srgb.enabled && (
+          <ChromaBandLayer
+            gamut="srgb"
+            mode={scene.chromaBand.mode}
+            steps={48}
+            quality="auto"
+            pathProps={strokePathProps(scene.chromaBand.srgb, '#ffe06b')}
+          />
+        )}
+
+        {scene.contrast.lines.aa3.enabled && (
           <ContrastRegionLayer
-            gamut={inspectorGamut}
+            gamut={scene.gamut}
+            threshold={3}
+            lightnessSteps={28}
+            chromaSteps={28}
+            quality="auto"
+            pathProps={strokePathProps(scene.contrast.lines.aa3, '#bcd6ff')}
+          />
+        )}
+        {scene.contrast.lines.aa45.enabled && (
+          <ContrastRegionLayer
+            gamut={scene.gamut}
             threshold={4.5}
             lightnessSteps={28}
             chromaSteps={28}
             quality="auto"
-            pathProps={{ className: 'ck-overlay-contrast' }}
+            pathProps={strokePathProps(scene.contrast.lines.aa45, '#c0e1ff')}
           />
         )}
-        <FallbackPointsLayer />
+        {scene.contrast.lines.aa7.enabled && (
+          <ContrastRegionLayer
+            gamut={scene.gamut}
+            threshold={7}
+            lightnessSteps={28}
+            chromaSteps={28}
+            quality="auto"
+            pathProps={strokePathProps(scene.contrast.lines.aa7, '#d5e7ff')}
+          />
+        )}
+
+        {scene.contrast.regions.aa3.enabled && (
+          <ContrastRegionLayer
+            gamut={scene.gamut}
+            threshold={3}
+            renderMode="region"
+            lightnessSteps={28}
+            chromaSteps={28}
+            quality="auto"
+            regionFillColor="#7ca4ff"
+            regionFillOpacity={0.12}
+            regionDotOpacity={scene.contrast.regions.aa3.opacityPercent / 100}
+            regionDotSize={2}
+            regionDotGap={2}
+          />
+        )}
+        {scene.contrast.regions.aa45.enabled && (
+          <ContrastRegionLayer
+            gamut={scene.gamut}
+            threshold={4.5}
+            renderMode="region"
+            lightnessSteps={28}
+            chromaSteps={28}
+            quality="auto"
+            regionFillColor="#c0e1ff"
+            regionFillOpacity={0.14}
+            regionDotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
+            regionDotSize={2}
+            regionDotGap={2}
+          />
+        )}
+        {scene.contrast.regions.aa7.enabled && (
+          <ContrastRegionLayer
+            gamut={scene.gamut}
+            threshold={7}
+            renderMode="region"
+            lightnessSteps={28}
+            chromaSteps={28}
+            quality="auto"
+            regionFillColor="#dceaff"
+            regionFillOpacity={0.16}
+            regionDotOpacity={scene.contrast.regions.aa7.opacityPercent / 100}
+            regionDotSize={2}
+            regionDotGap={2}
+          />
+        )}
+        <FallbackPointsLayer
+          showP3={scene.visualize.p3Fallback}
+          showSrgb={scene.visualize.srgbFallback}
+        />
       </ColorArea>
       <HueSlider
         className="ck-slider ck-slider-v2"
@@ -251,6 +403,8 @@ export function ColorAreaDemo({
 }) {
   const inspector = useOptionalDocsInspector();
   const state = inspectorDriven && inspector ? inspector.colorAreaState : null;
+  const setColorAreaColorState =
+    inspectorDriven && inspector ? inspector.setColorAreaColorState : null;
 
   const channels = normalizeChannels(state?.xAxis ?? 'l', state?.yAxis ?? 'c');
   const axes: ColorAreaAxes = useMemo(
@@ -300,20 +454,26 @@ export function ColorAreaDemo({
 
   return (
     <div className="ck-demo-stack">
-      <ColorProvider
-        defaultColor="#2563eb"
-        defaultGamut={state?.gamut ?? 'display-p3'}
-      >
-        <ColorAreaDemoScene
-          axes={axes}
-          inspectorGamut={state?.gamut}
-          showCheckerboard={state?.showCheckerboard ?? false}
-          showP3Boundary={state?.showP3Boundary ?? false}
-          showSrgbBoundary={state?.showSrgbBoundary ?? false}
-          showContrastRegion={state?.showContrastRegion ?? false}
-          onInteractionFrame={handleInteractionFrame}
-        />
-      </ColorProvider>
+      {state && setColorAreaColorState ? (
+        <ColorProvider
+          state={state.colorState}
+          onChange={(event) => setColorAreaColorState(event.next)}
+        >
+          <ColorAreaDemoScene
+            axes={axes}
+            inspectorState={state}
+            onInteractionFrame={handleInteractionFrame}
+          />
+        </ColorProvider>
+      ) : (
+        <ColorProvider defaultColor="#2563eb" defaultGamut="display-p3">
+          <ColorAreaDemoScene
+            axes={axes}
+            inspectorState={null}
+            onInteractionFrame={handleInteractionFrame}
+          />
+        </ColorProvider>
+      )}
       <div className="ck-caption">
         Perf profile: auto · quality: {perfFrame?.qualityLevel ?? 'high'} ·
         frame {perfFrame ? `${perfFrame.frameTimeMs.toFixed(2)}ms` : '--'} ·

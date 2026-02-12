@@ -99,7 +99,27 @@ export const componentApiDocs: ComponentApiDocs = {
       name: 'children',
       type: 'ReactNode',
       description:
-        'Compose primitives such as Background, ColorPlane, Thumb, Layer, Line, and Point.',
+        'Compose primitives such as Background, ColorPlane, ChromaBandLayer, GamutBoundaryLayer, ContrastRegionLayer, Thumb, Layer, Line, and Point.',
+    },
+    {
+      name: 'ColorPlane.outOfGamut',
+      type: '{ repeatEdgePixels?: boolean; outOfP3FillColor?: string; outOfP3FillOpacity?: number; outOfSrgbFillColor?: string; outOfSrgbFillOpacity?: number; dotPatternOpacity?: number; dotPatternSize?: number; dotPatternGap?: number }',
+      description:
+        'Optional visualization config for out-of-P3/out-of-sRGB fills, dot overlay pattern, and gamut edge repeat behavior.',
+    },
+    {
+      name: 'ChromaBandLayer.mode',
+      type: "'closest' | 'percentage'",
+      defaultValue: "'closest'",
+      description:
+        'Band interpolation strategy. `closest` maps to clamped chroma and `percentage` maps to proportional chroma.',
+    },
+    {
+      name: 'ContrastRegionLayer.renderMode',
+      type: "'line' | 'region'",
+      defaultValue: "'line'",
+      description:
+        'Switches between contour rendering and filled region rendering with optional dotted pattern controls.',
     },
   ],
   colorWheel: [

@@ -52,6 +52,17 @@ export interface Hsv {
   alpha: number;
 }
 
+/** HCT/Material color model */
+export interface Hct {
+  /** Hue: 0-360 */
+  h: number;
+  /** Chroma: >= 0 (material hct units) */
+  c: number;
+  /** Tone: 0-100 */
+  t: number;
+  alpha: number;
+}
+
 /** OKLAB color (perceptually uniform) */
 export interface Oklab {
   /** Lightness: 0-1 */

@@ -43,6 +43,7 @@ export * as ColorApi from './api/index.js';
 export type {
   ColorAreaAxes,
   ColorAreaAxis,
+  ColorAreaChromaBandOptions,
   ColorAreaChannel,
   ColorAreaContrastRegionOptions,
   ColorAreaContrastRegionPoint,
@@ -77,6 +78,7 @@ export {
 } from './color-plane.js';
 export type {
   ColorPlaneProps,
+  ColorPlaneOutOfGamutConfig,
   ColorPlaneRenderer,
   ColorPlaneSource,
 } from './color-plane.js';
@@ -97,8 +99,16 @@ export type {
   GamutBoundaryLayerProps,
   ColorAreaLayerQuality,
 } from './gamut-boundary-layer.js';
+export { ChromaBandLayer } from './chroma-band-layer.js';
+export type {
+  ChromaBandLayerMode,
+  ChromaBandLayerProps,
+} from './chroma-band-layer.js';
 export { ContrastRegionLayer } from './contrast-region-layer.js';
-export type { ContrastRegionLayerProps } from './contrast-region-layer.js';
+export type {
+  ContrastRegionRenderMode,
+  ContrastRegionLayerProps,
+} from './contrast-region-layer.js';
 export { FallbackPointsLayer } from './fallback-points-layer.js';
 export type { FallbackPointsLayerProps } from './fallback-points-layer.js';
 

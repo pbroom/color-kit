@@ -1,8 +1,10 @@
 import type { Color } from '@color-kit/core';
 import {
+  chromaBand,
   clamp,
   contrastRegionPaths,
   gamutBoundaryPath,
+  type ChromaBandMode,
   type ContrastRegionLevel,
   type GamutTarget,
 } from '@color-kit/core';
@@ -75,6 +77,17 @@ export interface ColorAreaContrastRegionOptions {
   threshold?: number;
   lightnessSteps?: number;
   chromaSteps?: number;
+  maxChroma?: number;
+  tolerance?: number;
+  maxIterations?: number;
+  alpha?: number;
+}
+
+export interface ColorAreaChromaBandOptions {
+  gamut?: GamutTarget;
+  mode?: ChromaBandMode;
+  steps?: number;
+  selectedLightness?: number;
   maxChroma?: number;
   tolerance?: number;
   maxIterations?: number;
@@ -223,6 +236,38 @@ export function getColorAreaContrastRegionPaths(
       };
     }),
   );
+}
+
+export function getColorAreaChromaBandPoints(
+  reference: Color,
+  hue: number,
+  axes: ResolvedColorAreaAxes,
+  options: ColorAreaChromaBandOptions = {},
+): ColorAreaGamutBoundaryPoint[] {
+  if (!usesLightnessAndChroma(axes)) {
+    return [];
+  }
+
+  const colors = chromaBand(hue, reference.c, {
+    gamut: options.gamut ?? 'srgb',
+    mode: options.mode ?? 'clamped',
+    steps: options.steps,
+    selectedLightness: options.selectedLightness ?? reference.l,
+    maxChroma: options.maxChroma,
+    tolerance: options.tolerance,
+    maxIterations: options.maxIterations,
+    alpha: options.alpha ?? reference.alpha,
+  });
+
+  return colors.map((sample) => {
+    const position = getColorAreaThumbPosition(sample, axes);
+    return {
+      l: sample.l,
+      c: sample.c,
+      x: position.x,
+      y: position.y,
+    };
+  });
 }
 
 export function colorFromColorAreaKey(

@@ -4,6 +4,7 @@ import {
   toHex,
   toRgb,
   toHsl,
+  toHct,
   toCss,
   fromHex,
   fromHsl,
@@ -134,5 +135,24 @@ describe('HSL conversion', () => {
     const restored = fromHsl(hsl);
     const hex = toHex(restored);
     expect(hex).toBe('#3388cc');
+  });
+});
+
+describe('HCT conversion', () => {
+  it('should convert sRGB red to expected hue/tone ranges', () => {
+    const color = fromHex('#ff0000');
+    const hct = toHct(color);
+    expect(hct.h).toBeGreaterThanOrEqual(20);
+    expect(hct.h).toBeLessThanOrEqual(40);
+    expect(hct.c).toBeGreaterThan(90);
+    expect(hct.t).toBeGreaterThan(50);
+    expect(hct.t).toBeLessThan(60);
+    expect(hct.alpha).toBe(1);
+  });
+
+  it('should preserve alpha from the source color', () => {
+    const color = parse('rgb(0 128 255 / 0.35)');
+    const hct = toHct(color);
+    expect(hct.alpha).toBeCloseTo(0.35, 6);
   });
 });

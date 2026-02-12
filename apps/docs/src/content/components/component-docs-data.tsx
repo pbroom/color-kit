@@ -76,6 +76,7 @@ export function Picker() {
     demo: ColorAreaDemo,
     usage: `import {
   Background,
+  ChromaBandLayer,
   ColorArea,
   ColorPlane,
   ContrastRegionLayer,
@@ -85,9 +86,20 @@ export function Picker() {
 
 <ColorArea axes={{ x: { channel: 'l' }, y: { channel: 'c' } }}>
   <Background checkerboard />
-  <ColorPlane />
+  <ColorPlane
+    outOfGamut={{
+      repeatEdgePixels: true,
+      outOfP3FillColor: '#1f1f1f',
+      outOfP3FillOpacity: 0.2,
+      dotPatternOpacity: 0.2,
+      dotPatternSize: 2,
+      dotPatternGap: 2,
+    }}
+  />
+  <ChromaBandLayer mode="closest" gamut="srgb" />
   <GamutBoundaryLayer gamut="display-p3" />
-  <ContrastRegionLayer threshold={4.5} />
+  <ContrastRegionLayer threshold={4.5} renderMode="line" />
+  <ContrastRegionLayer threshold={4.5} renderMode="region" regionDotOpacity={0.2} />
   <FallbackPointsLayer />
 </ColorArea>;`,
     helperApis: [
@@ -96,13 +108,14 @@ export function Picker() {
       'ColorApi.getColorAreaThumbPosition',
       'ColorApi.colorFromColorAreaPosition',
       'ColorApi.colorFromColorAreaKey',
+      'ColorApi.getColorAreaChromaBandPoints',
       'ColorApi.getColorAreaGamutBoundaryPoints',
       'ColorApi.getColorAreaContrastRegionPaths',
     ],
     features: [
       'Composable primitive model: ColorArea + ColorPlane + Layer wrappers + Thumb.',
       'UI-plane interaction allows out-of-gamut intent while preserving explicit realized fallbacks.',
-      'Built-in wrappers for gamut boundaries, contrast regions, and fallback markers.',
+      'Built-in wrappers for chroma bands, gamut boundaries, contrast regions, and fallback markers.',
     ],
     accessibility: [
       'Thumb owns slider semantics and keyboard channel movement.',
