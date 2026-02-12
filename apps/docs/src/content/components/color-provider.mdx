@@ -24,7 +24,7 @@ import { ColorProviderDemo } from '@/components/component-demos';
 import {
   ColorProvider,
   ColorArea,
-  HueSlider,
+  ColorSlider,
   ColorInput,
   ColorStringInput,
 } from '@color-kit/react';
@@ -33,7 +33,7 @@ export function Picker() {
   return (
     <ColorProvider defaultColor="#3b82f6">
       <ColorArea />
-      <HueSlider />
+      <ColorSlider channel="h" />
       <ColorInput model="oklch" channel="h" />
       <ColorStringInput format="oklch" />
     </ColorProvider>

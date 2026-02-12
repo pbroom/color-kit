@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react';
 import type { ApiTableRow } from '@/components/api-table';
 import {
-  AlphaSliderDemo,
   ColorAreaDemo,
   ColorDialDemo,
   ColorDisplayDemo,
@@ -12,7 +11,6 @@ import {
   ColorWheelDemo,
   ContrastBadgeDemo,
   HueDialDemo,
-  HueSliderDemo,
   SwatchDemo,
   SwatchGroupDemo,
 } from '@/components/component-demos';
@@ -45,13 +43,13 @@ const docs: ComponentDocRegistry = {
       'Use ColorProvider to coordinate ColorArea, sliders, input fields, and swatches around one canonical requested color state.',
     registryName: 'color-provider',
     demo: ColorProviderDemo,
-    usage: `import { ColorProvider, ColorArea, HueSlider, ColorInput } from '@color-kit/react';
+    usage: `import { ColorProvider, ColorArea, ColorSlider, ColorInput } from '@color-kit/react';
 
 export function Picker() {
   return (
     <ColorProvider defaultColor="#3b82f6">
       <ColorArea />
-      <HueSlider />
+      <ColorSlider channel="h" />
       <ColorInput model="oklch" channel="h" />
     </ColorProvider>
   );
@@ -168,7 +166,10 @@ export function Picker() {
     demo: ColorSliderDemo,
     usage: `import { ColorSlider } from '@color-kit/react';
 
-<ColorSlider channel="h" />;`,
+<>
+  <ColorSlider channel="h" />
+  <ColorSlider channel="alpha" />
+</>;`,
     helperApis: [
       'ColorApi.resolveColorSliderRange',
       'ColorApi.getColorSliderNormFromValue',
@@ -182,6 +183,7 @@ export function Picker() {
     features: [
       'Orientation-aware keyboard and pointer interactions.',
       'Shared requested state contract with ColorProvider or standalone props.',
+      'Use `channel="h"` and `channel="alpha"` for hue/opacity workflows.',
       'Customizable channel ranges for bounded workflows.',
       'Optional child marker primitives for annotated rails.',
       'Model-accurate rail backgrounds via non-UI ColorApi helpers.',
@@ -248,54 +250,6 @@ export function Picker() {
     ],
     props: componentApiDocs.hueDial,
     anatomy: `<HueDial>\n  <div data-color-dial-thumb />\n</HueDial>`,
-  },
-  'hue-slider': {
-    slug: 'hue-slider',
-    title: 'Hue Slider',
-    summary: 'Specialized hue channel primitive built on ColorSlider.',
-    description:
-      'HueSlider wraps ColorSlider with hue defaults so teams can drop in hue control quickly.',
-    registryName: 'hue-slider',
-    demo: HueSliderDemo,
-    usage: `import { HueSlider } from '@color-kit/react';
-
-<HueSlider />;`,
-    helperApis: ['ColorApi.colorFromColorSliderPosition'],
-    features: [
-      'Thin wrapper around ColorSlider tuned for hue workflows.',
-      'Works in standalone mode or within ColorProvider.',
-      'Orientation support for compact and vertical layouts.',
-    ],
-    accessibility: [
-      'Keyboard and pointer behavior inherited from ColorSlider.',
-      'Consistent slider semantics for assistive technologies.',
-    ],
-    props: componentApiDocs.hueSlider,
-    anatomy: `<HueSlider>\n  <div data-color-slider-thumb />\n</HueSlider>`,
-  },
-  'alpha-slider': {
-    slug: 'alpha-slider',
-    title: 'Alpha Slider',
-    summary: 'Opacity channel primitive for transparent color workflows.',
-    description:
-      'AlphaSlider wraps ColorSlider for alpha control while preserving requested color intent.',
-    registryName: 'alpha-slider',
-    demo: AlphaSliderDemo,
-    usage: `import { AlphaSlider } from '@color-kit/react';
-
-<AlphaSlider />;`,
-    helperApis: ['ColorApi.colorFromColorSliderPosition'],
-    features: [
-      'Dedicated alpha channel abstraction for readability.',
-      'Composes with ColorDisplay and checkerboard surfaces.',
-      'Supports horizontal and vertical layouts.',
-    ],
-    accessibility: [
-      'Slider semantics with keyboard control inherited from ColorSlider.',
-      'Clear ARIA values for opacity adjustments.',
-    ],
-    props: componentApiDocs.alphaSlider,
-    anatomy: `<AlphaSlider>\n  <div data-color-slider-thumb />\n</AlphaSlider>`,
   },
   swatch: {
     slug: 'swatch',

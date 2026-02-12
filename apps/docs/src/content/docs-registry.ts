@@ -47,8 +47,6 @@ const componentPages = [
   { title: 'Color Slider', path: 'components/color-slider' },
   { title: 'Color Dial', path: 'components/color-dial' },
   { title: 'Hue Dial', path: 'components/hue-dial' },
-  { title: 'Hue Slider', path: 'components/hue-slider' },
-  { title: 'Alpha Slider', path: 'components/alpha-slider' },
   { title: 'Swatch', path: 'components/swatch' },
   { title: 'Swatch Group', path: 'components/swatch-group' },
   { title: 'Color Input', path: 'components/color-input' },

@@ -134,14 +134,8 @@ export type { ChromaMarkersProps } from './chroma-markers.js';
 export { ColorDial } from './color-dial.js';
 export type { ColorDialProps } from './color-dial.js';
 
-export { HueSlider } from './hue-slider.js';
-export type { HueSliderProps } from './hue-slider.js';
-
 export { HueDial } from './hue-dial.js';
 export type { HueDialProps } from './hue-dial.js';
-
-export { AlphaSlider } from './alpha-slider.js';
-export type { AlphaSliderProps } from './alpha-slider.js';
 
 export { ColorWheel } from './color-wheel.js';
 export type { ColorWheelProps } from './color-wheel.js';

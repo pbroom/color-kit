@@ -1,6 +1,5 @@
 import { parse, toCss, toP3Gamut, toSrgbGamut } from '@color-kit/core';
 import {
-  AlphaSlider,
   Background,
   ChromaBandLayer,
   ChromaMarkers,
@@ -19,7 +18,6 @@ import {
   FallbackPointsLayer,
   GamutBoundaryLayer,
   HueDial,
-  HueSlider,
   Swatch,
   SwatchGroup,
   useColorContext,
@@ -383,7 +381,8 @@ function ColorAreaDemoScene({
           showSrgb={scene.visualize.srgbFallback}
         />
       </ColorArea>
-      <HueSlider
+      <ColorSlider
+        channel="h"
         className="ck-slider ck-slider-v2"
         data-color-space={hueRail.colorSpace}
         style={hueRail.style}
@@ -413,12 +412,14 @@ function ColorProviderDemoContent() {
         <Background checkerboard />
         <ColorPlane />
       </ColorArea>
-      <HueSlider
+      <ColorSlider
+        channel="h"
         className="ck-slider ck-slider-v2"
         data-color-space={hueRail.colorSpace}
         style={hueRail.style}
       />
-      <AlphaSlider
+      <ColorSlider
+        channel="alpha"
         className="ck-slider ck-slider-v2"
         data-color-space={alphaRail.colorSpace}
         style={alphaRail.style}
@@ -557,6 +558,14 @@ export function ColorSliderDemo({
     () => getOklchSliderRail(channel, color.requested, color.activeGamut),
     [channel, color.activeGamut, color.requested],
   );
+  const hueRail = useMemo(
+    () => getOklchSliderRail('h', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
+  const alphaRail = useMemo(
+    () => getOklchSliderRail('alpha', color.requested, color.activeGamut),
+    [color.activeGamut, color.requested],
+  );
 
   return (
     <div className="ck-demo-stack">
@@ -582,6 +591,26 @@ export function ColorSliderDemo({
         requested={color.requested}
         gamut={color.activeGamut}
       />
+      {inspectorDriven ? (
+        <>
+          <ColorSlider
+            channel="h"
+            className="ck-slider ck-slider-v2"
+            data-color-space={hueRail.colorSpace}
+            requested={color.requested}
+            onChangeRequested={color.setRequested}
+            style={hueRail.style}
+          />
+          <ColorSlider
+            channel="alpha"
+            className="ck-slider ck-slider-v2"
+            data-color-space={alphaRail.colorSpace}
+            requested={color.requested}
+            onChangeRequested={color.setRequested}
+            style={alphaRail.style}
+          />
+        </>
+      ) : null}
     </div>
   );
 }
@@ -638,7 +667,7 @@ export function ColorWheelDemo() {
   );
 }
 
-function HueSliderDemoContent() {
+function ColorSliderHueDemoContent() {
   const color = useColorContext();
   const hueRail = useMemo(
     () => getOklchSliderRail('h', color.requested, color.activeGamut),
@@ -647,7 +676,8 @@ function HueSliderDemoContent() {
 
   return (
     <div className="ck-demo-stack">
-      <HueSlider
+      <ColorSlider
+        channel="h"
         className="ck-slider ck-slider-v2"
         data-color-space={hueRail.colorSpace}
         style={hueRail.style}
@@ -660,15 +690,15 @@ function HueSliderDemoContent() {
   );
 }
 
-export function HueSliderDemo() {
+export function ColorSliderHueDemo() {
   return (
     <ColorProvider defaultColor="#ef4444">
-      <HueSliderDemoContent />
+      <ColorSliderHueDemoContent />
     </ColorProvider>
   );
 }
 
-function AlphaSliderDemoContent() {
+function ColorSliderAlphaDemoContent() {
   const color = useColorContext();
   const alphaRail = useMemo(
     () => getOklchSliderRail('alpha', color.requested, color.activeGamut),
@@ -678,7 +708,8 @@ function AlphaSliderDemoContent() {
   return (
     <div className="ck-demo-stack">
       <ColorDisplay className="ck-color-display ck-checker" />
-      <AlphaSlider
+      <ColorSlider
+        channel="alpha"
         className="ck-slider ck-slider-v2"
         data-color-space={alphaRail.colorSpace}
         style={alphaRail.style}
@@ -688,10 +719,10 @@ function AlphaSliderDemoContent() {
   );
 }
 
-export function AlphaSliderDemo() {
+export function ColorSliderAlphaDemo() {
   return (
     <ColorProvider defaultColor="oklch(0.72 0.2 220 / 0.65)">
-      <AlphaSliderDemoContent />
+      <ColorSliderAlphaDemoContent />
     </ColorProvider>
   );
 }
@@ -886,12 +917,14 @@ function ColorDisplayDemoContent() {
   return (
     <div className="ck-demo-stack">
       <ColorDisplay className="ck-color-display" />
-      <HueSlider
+      <ColorSlider
+        channel="h"
         className="ck-slider ck-slider-v2"
         data-color-space={hueRail.colorSpace}
         style={hueRail.style}
       />
-      <AlphaSlider
+      <ColorSlider
+        channel="alpha"
         className="ck-slider ck-slider-v2"
         data-color-space={alphaRail.colorSpace}
         style={alphaRail.style}
