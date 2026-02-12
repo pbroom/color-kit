@@ -235,6 +235,7 @@ describe('Color API helpers', () => {
     expect(
       resolveColorWheelChromaRange([NaN, 0.2] as [number, number]),
     ).toEqual([0, 0.4]);
+  });
 
   it('maps dial math for pointer and keyboard updates', () => {
     const base = parse('#22c55e');
