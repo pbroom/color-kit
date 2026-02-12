@@ -1,4 +1,4 @@
-/* global console */
+/* global console, fetch, process, setTimeout, URL */
 
 import { spawn } from 'node:child_process';
 import net from 'node:net';
@@ -114,7 +114,6 @@ async function main() {
         },
       );
       devServer.on('error', (error) => {
-        // eslint-disable-next-line no-console
         console.error(`Failed to launch docs dev server: ${String(error)}`);
       });
       await waitForUrl(url);

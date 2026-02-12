@@ -3,6 +3,7 @@ export {
   COLOR_AREA_DEFAULT_RANGES,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
+  getColorAreaChromaBandPoints,
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
   getColorAreaThumbPosition,
@@ -12,6 +13,7 @@ export {
 export type {
   ColorAreaAxes,
   ColorAreaAxis,
+  ColorAreaChromaBandOptions,
   ColorAreaChannel,
   ColorAreaContrastRegionOptions,
   ColorAreaContrastRegionPoint,

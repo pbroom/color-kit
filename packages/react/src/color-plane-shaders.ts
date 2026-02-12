@@ -18,6 +18,10 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
   uniform float u_y_channel;
   uniform float u_source;
   uniform float u_gamut;
+  uniform float u_repeat_edge_pixels;
+  uniform vec4 u_out_p3_fill;
+  uniform vec4 u_out_srgb_fill;
+  uniform vec3 u_dot_pattern;
 
   const float PI = 3.14159265359;
   const float EPSILON = 0.000075;
@@ -107,6 +111,34 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
     return current;
   }
 
+  vec3 applyOutOfGamutOverlays(vec3 color, bool outP3, bool outSrgb) {
+    vec3 next = color;
+
+    if (outP3 && u_out_p3_fill.a > 0.0) {
+      next = mix(next, u_out_p3_fill.rgb, clamp(u_out_p3_fill.a, 0.0, 1.0));
+    }
+
+    if (outSrgb && u_out_srgb_fill.a > 0.0) {
+      next = mix(next, u_out_srgb_fill.rgb, clamp(u_out_srgb_fill.a, 0.0, 1.0));
+    }
+
+    bool anyOut = outP3 || outSrgb;
+    if (anyOut && u_dot_pattern.x > 0.0 && u_dot_pattern.y > 0.0) {
+      float opacity = clamp(u_dot_pattern.x, 0.0, 1.0);
+      float dotSize = max(1.0, u_dot_pattern.y);
+      float dotGap = max(0.0, u_dot_pattern.z);
+      float cell = dotSize + dotGap;
+      float localX = mod(gl_FragCoord.x - 0.5, cell);
+      float localY = mod(gl_FragCoord.y - 0.5, cell);
+      float inDotX = 1.0 - step(dotSize, localX);
+      float inDotY = 1.0 - step(dotSize, localY);
+      float dotMask = inDotX * inDotY;
+      next = mix(next, vec3(1.0), dotMask * opacity);
+    }
+
+    return next;
+  }
+
   void main() {
     float xValue = mix(u_x_range.x, u_x_range.y, v_uv.x);
     float yValue = mix(u_y_range.x, u_y_range.y, v_uv.y);
@@ -120,15 +152,23 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
     float h = applyAxisValue(u_seed.z, u_x_channel, 2.0, xValue);
     h = applyAxisValue(h, u_y_channel, 2.0, yValue);
 
-    vec3 linearSrgb = u_source < 0.5
-      ? oklchToLinearSrgb(l, c, h)
-      : mapToGamut(l, c, h);
+    vec3 rawLinear = oklchToLinearSrgb(l, c, h);
+    bool outP3 = !inP3Gamut(rawLinear);
+    bool outSrgb = !outP3 && !inSrgbGamut(rawLinear);
 
-    gl_FragColor = vec4(
-      transferLinearToSrgb(linearSrgb.r),
-      transferLinearToSrgb(linearSrgb.g),
-      transferLinearToSrgb(linearSrgb.b),
-      clamp(u_seed.w, 0.0, 1.0)
+    vec3 renderLinear = rawLinear;
+    if (u_source >= 0.5 && u_repeat_edge_pixels >= 0.5) {
+      renderLinear = mapToGamut(l, c, h);
+    }
+
+    vec3 baseColor = vec3(
+      transferLinearToSrgb(renderLinear.r),
+      transferLinearToSrgb(renderLinear.g),
+      transferLinearToSrgb(renderLinear.b)
     );
+
+    vec3 color = applyOutOfGamutOverlays(baseColor, outP3, outSrgb);
+
+    gl_FragColor = vec4(color, clamp(u_seed.w, 0.0, 1.0));
   }
 `;

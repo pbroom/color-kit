@@ -8,4 +8,6 @@ export default defineConfig({
   sourcemap: true,
   treeshake: true,
   minify: false,
+  // Bundle ESM-only deps so the CJS export remains require()-compatible.
+  noExternal: ['@material/material-color-utilities'],
 });

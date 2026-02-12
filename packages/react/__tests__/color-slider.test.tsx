@@ -10,12 +10,15 @@ afterEach(() => {
 });
 
 async function flushAnimationFrames(count: number = 1): Promise<void> {
-  for (let index = 0; index < count; index += 1) {
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve());
-    });
+  if (count <= 0) {
+    return;
   }
+
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+
+  await flushAnimationFrames(count - 1);
 }
 
 describe('ColorSlider', () => {
