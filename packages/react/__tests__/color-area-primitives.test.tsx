@@ -56,7 +56,9 @@ describe('ColorArea primitives', () => {
       </ColorArea>,
     );
 
-    expect(container.querySelector('[data-color-area-chroma-band-layer]')).toBeTruthy();
+    expect(
+      container.querySelector('[data-color-area-chroma-band-layer]'),
+    ).toBeTruthy();
     expect(container.querySelector('[data-color-area-line]')).toBeTruthy();
   });
 
@@ -70,7 +72,9 @@ describe('ColorArea primitives', () => {
       </ColorArea>,
     );
 
-    expect(container.querySelector('[data-color-area-chroma-band-layer]')).toBeTruthy();
+    expect(
+      container.querySelector('[data-color-area-chroma-band-layer]'),
+    ).toBeTruthy();
     expect(
       container.querySelector('[data-color-area-gamut-boundary-layer]'),
     ).toBeTruthy();
@@ -146,21 +150,21 @@ describe('ColorArea primitives', () => {
     } as DOMRect);
 
     const { container } = render(
-        <ColorArea requested={requested} onChangeRequested={() => {}}>
-          <ColorPlane
-            renderer="gpu"
-            outOfGamut={{
-              repeatEdgePixels: false,
-              outOfP3FillColor: '#1f1f1f',
-              outOfP3FillOpacity: 0.45,
-              outOfSrgbFillColor: '#0a0a0a',
-              outOfSrgbFillOpacity: 0.35,
-              dotPatternOpacity: 0.2,
-              dotPatternSize: 2,
-              dotPatternGap: 2,
-            }}
-          />
-        </ColorArea>,
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane
+          renderer="gpu"
+          outOfGamut={{
+            repeatEdgePixels: false,
+            outOfP3FillColor: '#1f1f1f',
+            outOfP3FillOpacity: 0.45,
+            outOfSrgbFillColor: '#0a0a0a',
+            outOfSrgbFillOpacity: 0.35,
+            dotPatternOpacity: 0.2,
+            dotPatternSize: 2,
+            dotPatternGap: 2,
+          }}
+        />
+      </ColorArea>,
     );
 
     await waitFor(() => {

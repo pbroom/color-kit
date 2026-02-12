@@ -308,7 +308,11 @@ function DotOpacityPills({
 }) {
   return (
     <div className="docs-style-pills" role="group" aria-label="Dot controls">
-      <div className="docs-style-pill-group" role="group" aria-label="Pattern style">
+      <div
+        className="docs-style-pill-group"
+        role="group"
+        aria-label="Pattern style"
+      >
         <button type="button" className="is-active">
           Dots
         </button>
@@ -352,14 +356,20 @@ function ColorAreaPropertiesPanel() {
     () => formatValues(activeRow, requestedColor),
     [activeRow, requestedColor],
   );
-  const [activeDraftValues, setActiveDraftValues] = useState(activeFormattedValues);
+  const [activeDraftValues, setActiveDraftValues] = useState(
+    activeFormattedValues,
+  );
 
   useEffect(() => {
     setActiveDraftValues(activeFormattedValues);
   }, [activeFormattedValues]);
 
   const commitActiveFormatDraft = () => {
-    const parsed = parseEditableRow(activeRow, activeDraftValues, requestedColor);
+    const parsed = parseEditableRow(
+      activeRow,
+      activeDraftValues,
+      requestedColor,
+    );
     if (!parsed) {
       setActiveDraftValues(activeFormattedValues);
       return;
@@ -370,7 +380,14 @@ function ColorAreaPropertiesPanel() {
 
   const setStroke = (
     updater: (current: ColorAreaStrokeControl) => ColorAreaStrokeControl,
-    path: 'visualize.p3Boundary' | 'visualize.srgbBoundary' | 'chromaBand.p3' | 'chromaBand.srgb' | 'contrast.lines.aa3' | 'contrast.lines.aa45' | 'contrast.lines.aa7',
+    path:
+      | 'visualize.p3Boundary'
+      | 'visualize.srgbBoundary'
+      | 'chromaBand.p3'
+      | 'chromaBand.srgb'
+      | 'contrast.lines.aa3'
+      | 'contrast.lines.aa45'
+      | 'contrast.lines.aa7',
   ) => {
     if (path === 'visualize.p3Boundary') {
       setColorAreaState({
@@ -492,7 +509,11 @@ function ColorAreaPropertiesPanel() {
       <section className="docs-properties-group">
         <h4>Gamut</h4>
 
-        <div className="docs-format-matrix" role="group" aria-label="Color format matrix">
+        <div
+          className="docs-format-matrix"
+          role="group"
+          aria-label="Color format matrix"
+        >
           {FORMAT_ROWS.map((row) => {
             const rowValues =
               row.id === activeRow
@@ -565,7 +586,10 @@ function ColorAreaPropertiesPanel() {
                         {showPercent ? <span>%</span> : null}
                       </label>
                     ) : (
-                      <div key={`${row.id}-${valueIndex}`} className="docs-format-cell">
+                      <div
+                        key={`${row.id}-${valueIndex}`}
+                        className="docs-format-cell"
+                      >
                         <span>{value}</span>
                         {showPercent ? <span>%</span> : null}
                       </div>
@@ -778,9 +802,7 @@ function ColorAreaPropertiesPanel() {
           </label>
           <StrokeStylePills
             value={colorAreaState.visualize.p3Boundary}
-            onChange={(next) =>
-              setStroke(() => next, 'visualize.p3Boundary')
-            }
+            onChange={(next) => setStroke(() => next, 'visualize.p3Boundary')}
           />
         </div>
 
@@ -800,9 +822,7 @@ function ColorAreaPropertiesPanel() {
           </label>
           <StrokeStylePills
             value={colorAreaState.visualize.srgbBoundary}
-            onChange={(next) =>
-              setStroke(() => next, 'visualize.srgbBoundary')
-            }
+            onChange={(next) => setStroke(() => next, 'visualize.srgbBoundary')}
           />
         </div>
 
@@ -826,7 +846,9 @@ function ColorAreaPropertiesPanel() {
             Pattern overlay
           </label>
           <DotOpacityPills
-            opacityPercent={colorAreaState.visualize.patternOverlay.opacityPercent}
+            opacityPercent={
+              colorAreaState.visualize.patternOverlay.opacityPercent
+            }
             onChange={(opacityPercent) =>
               setColorAreaState({
                 visualize: {

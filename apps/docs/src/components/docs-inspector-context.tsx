@@ -13,7 +13,13 @@ export type DocsInspectorTab = 'outline' | 'properties';
 export type DocsInspectorGamut = 'display-p3' | 'srgb';
 export type ColorAreaAxis = 'l' | 'c' | 'h';
 export type ColorAreaDemoId = 'requested' | 'analysis';
-export type ColorAreaFormatRow = 'oklch' | 'hct' | 'hsl' | 'hsb' | 'rgb' | 'hex';
+export type ColorAreaFormatRow =
+  | 'oklch'
+  | 'hct'
+  | 'hsl'
+  | 'hsb'
+  | 'rgb'
+  | 'hex';
 export type EditableColorAreaFormatRow = Exclude<ColorAreaFormatRow, 'hct'>;
 export type ColorAreaStylePill = 'solid' | 'dashed' | 'dots';
 export type ColorAreaLineWidth = 0.5 | 1;

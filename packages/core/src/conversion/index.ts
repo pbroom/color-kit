@@ -7,17 +7,11 @@
  *   Color (OKLCH) -> OKLAB -> Linear sRGB -> sRGB -> Any format
  */
 
-import { Hct as MaterialHct, argbFromRgb } from '@material/material-color-utilities';
-import type {
-  Color,
-  Rgb,
-  Hsl,
-  Hsv,
-  Hct,
-  Oklab,
-  Oklch,
-  P3,
-} from '../types.js';
+import {
+  Hct as MaterialHct,
+  argbFromRgb,
+} from '@material/material-color-utilities';
+import type { Color, Rgb, Hsl, Hsv, Hct, Oklab, Oklch, P3 } from '../types.js';
 import { round, clamp } from '../utils/index.js';
 
 import { srgbToLinear, linearToSrgb, rgbToHex, hexToRgb } from './srgb.js';

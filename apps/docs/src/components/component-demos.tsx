@@ -124,7 +124,9 @@ function getOklchSliderRail(
   };
 }
 
-function strokeDasharray(style: 'solid' | 'dashed' | 'dots'): string | undefined {
+function strokeDasharray(
+  style: 'solid' | 'dashed' | 'dots',
+): string | undefined {
   if (style === 'solid') return undefined;
   if (style === 'dashed') return '1.35 1.05';
   return '0.15 1';

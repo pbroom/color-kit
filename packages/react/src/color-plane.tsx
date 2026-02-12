@@ -8,12 +8,7 @@ import {
   type CanvasHTMLAttributes,
 } from 'react';
 import { useSelector } from '@legendapp/state/react';
-import {
-  parse,
-  toRgb,
-  type Color,
-  type GamutTarget,
-} from '@color-kit/core';
+import { parse, toRgb, type Color, type GamutTarget } from '@color-kit/core';
 import { colorFromColorAreaPosition } from './api/color-area.js';
 import {
   COLOR_PLANE_FRAGMENT_SHADER_SOURCE,
@@ -173,7 +168,11 @@ function transferLinearToSrgbChannel(value: number): number {
   return clamp01(Math.sign(value) * srgb);
 }
 
-function oklchToLinearSrgb(lightness: number, chroma: number, hue: number): LinearSrgb {
+function oklchToLinearSrgb(
+  lightness: number,
+  chroma: number,
+  hue: number,
+): LinearSrgb {
   const hueRad = (((hue % 360) + 360) % 360) * (Math.PI / 180);
   const a = chroma * Math.cos(hueRad);
   const b = chroma * Math.sin(hueRad);
@@ -228,7 +227,9 @@ function inP3Linear(linearSrgb: LinearSrgb): boolean {
 }
 
 function inTargetGamut(linearSrgb: LinearSrgb, gamut: GamutTarget): boolean {
-  return gamut === 'display-p3' ? inP3Linear(linearSrgb) : inSrgbLinear(linearSrgb);
+  return gamut === 'display-p3'
+    ? inP3Linear(linearSrgb)
+    : inSrgbLinear(linearSrgb);
 }
 
 function mapToGamutLinear(
@@ -264,7 +265,10 @@ function blend(base: number, overlay: number, opacity: number): number {
   return base * (1 - opacity) + overlay * opacity;
 }
 
-function parseColorToRgba(color: string | undefined, fallback: NormalizedRgba): NormalizedRgba {
+function parseColorToRgba(
+  color: string | undefined,
+  fallback: NormalizedRgba,
+): NormalizedRgba {
   if (!color) {
     return fallback;
   }
@@ -479,7 +483,10 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
   const yChannel = gl.getUniformLocation(program, 'u_y_channel');
   const source = gl.getUniformLocation(program, 'u_source');
   const gamut = gl.getUniformLocation(program, 'u_gamut');
-  const repeatEdgePixels = gl.getUniformLocation(program, 'u_repeat_edge_pixels');
+  const repeatEdgePixels = gl.getUniformLocation(
+    program,
+    'u_repeat_edge_pixels',
+  );
   const outP3Fill = gl.getUniformLocation(program, 'u_out_p3_fill');
   const outSrgbFill = gl.getUniformLocation(program, 'u_out_srgb_fill');
   const dotPattern = gl.getUniformLocation(program, 'u_dot_pattern');

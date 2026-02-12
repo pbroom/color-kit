@@ -71,7 +71,10 @@ function clamp01(value: number): number {
   return value;
 }
 
-function toPath(points: ColorAreaContrastRegionPoint[], closeLoop: boolean): string {
+function toPath(
+  points: ColorAreaContrastRegionPoint[],
+  closeLoop: boolean,
+): string {
   if (points.length < 2) {
     return '';
   }
