@@ -23,6 +23,22 @@ export type {
 } from './color-area.js';
 
 export {
+  COLOR_DIAL_DEFAULT_RANGES,
+  colorFromColorDialKey,
+  colorFromColorDialPosition,
+  getColorDialLabel,
+  getColorDialThumbPosition,
+  normalizeColorDialPointer,
+  resolveColorDialAngles,
+  resolveColorDialRange,
+} from './color-dial.js';
+export type {
+  ColorDialChannel,
+  ColorDialKey,
+  ResolvedColorDialAngles,
+} from './color-dial.js';
+
+export {
   COLOR_SLIDER_DEFAULT_RANGES,
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
