@@ -56,6 +56,11 @@ const WHEEL_GRADIENT =
 
 const DIAL_RING_BACKGROUND =
   'conic-gradient(from 0deg, #ff0040, #ffa500, #f7f700, #00c950, #00b7ff, #364dff, #ff00b7, #ff0040)';
+const FIGMA_DOT_PATTERN = {
+  opacityPercent: 14,
+  dotSize: 1,
+  dotGap: 4,
+} as const;
 const SWATCH_GROUP_PALETTES = {
   spectrum: DOC_SWATCHES,
   nature: [
@@ -216,9 +221,9 @@ function ColorAreaDemoScene({
       patternOverlay: {
         enabled: false,
         style: 'dots',
-        opacityPercent: 20,
-        dotSize: 2,
-        dotGap: 2,
+        opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+        dotSize: FIGMA_DOT_PATTERN.dotSize,
+        dotGap: FIGMA_DOT_PATTERN.dotGap,
       },
     },
     chromaBand: {
@@ -342,8 +347,8 @@ function ColorAreaDemoScene({
             regionFillColor="#7ca4ff"
             regionFillOpacity={0.12}
             regionDotOpacity={scene.contrast.regions.aa3.opacityPercent / 100}
-            regionDotSize={2}
-            regionDotGap={2}
+            regionDotSize={FIGMA_DOT_PATTERN.dotSize}
+            regionDotGap={FIGMA_DOT_PATTERN.dotGap}
           />
         )}
         {scene.contrast.regions.aa45.enabled && (
@@ -357,8 +362,8 @@ function ColorAreaDemoScene({
             regionFillColor="#c0e1ff"
             regionFillOpacity={0.14}
             regionDotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
-            regionDotSize={2}
-            regionDotGap={2}
+            regionDotSize={FIGMA_DOT_PATTERN.dotSize}
+            regionDotGap={FIGMA_DOT_PATTERN.dotGap}
           />
         )}
         {scene.contrast.regions.aa7.enabled && (
@@ -372,8 +377,8 @@ function ColorAreaDemoScene({
             regionFillColor="#dceaff"
             regionFillOpacity={0.16}
             regionDotOpacity={scene.contrast.regions.aa7.opacityPercent / 100}
-            regionDotSize={2}
-            regionDotGap={2}
+            regionDotSize={FIGMA_DOT_PATTERN.dotSize}
+            regionDotGap={FIGMA_DOT_PATTERN.dotGap}
           />
         )}
         <FallbackPointsLayer
