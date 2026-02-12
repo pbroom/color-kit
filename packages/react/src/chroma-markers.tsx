@@ -36,16 +36,19 @@ export function ChromaMarkers({
     () => colorContext?.state$.activeGamut.get() ?? null,
   );
 
-  if (slider.channel !== 'c') {
-    return null;
-  }
-
   const resolvedGamut = gamut ?? activeGamut ?? 'display-p3';
   const maxRangeChroma = Math.max(0, slider.range[0], slider.range[1]);
 
   const normalizedHueSteps = Math.max(2, Math.round(hueMaxSteps));
 
   const { currentMaxChroma, hueWideMaxChroma } = useMemo(() => {
+    if (slider.channel !== 'c') {
+      return {
+        currentMaxChroma: 0,
+        hueWideMaxChroma: 0,
+      };
+    }
+
     const current = maxChromaAt(slider.requested.l, slider.requested.h, {
       gamut: resolvedGamut,
       maxChroma: maxRangeChroma,
@@ -71,9 +74,14 @@ export function ChromaMarkers({
     maxRangeChroma,
     normalizedHueSteps,
     resolvedGamut,
+    slider.channel,
     slider.requested.h,
     slider.requested.l,
   ]);
+
+  if (slider.channel !== 'c') {
+    return null;
+  }
 
   const showFallbackThumb =
     slider.requested.c > currentMaxChroma + FALLBACK_EPSILON;

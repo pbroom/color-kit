@@ -220,7 +220,7 @@ describe('ColorArea primitives', () => {
     });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      '[ColorPlane] renderer=\"webgl\" is deprecated; use renderer=\"gpu\".',
+      '[ColorPlane] renderer="webgl" is deprecated; use renderer="gpu".',
     );
   });
 });

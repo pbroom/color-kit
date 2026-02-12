@@ -1,4 +1,4 @@
-/* global console */
+/* global console, process */
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -41,7 +41,7 @@ async function loadPlaywright() {
 
 async function collectScenario(page, scenarioName) {
   await page.evaluate(() => {
-    window.__ckPerfFrames = [];
+    globalThis.__ckPerfFrames = [];
   });
 
   const area = page.locator('[data-color-area]').first();
@@ -70,7 +70,7 @@ async function collectScenario(page, scenarioName) {
   await page.waitForTimeout(80);
 
   const frames = await page.evaluate(() => {
-    return window.__ckPerfFrames ?? [];
+    return globalThis.__ckPerfFrames ?? [];
   });
 
   return {
