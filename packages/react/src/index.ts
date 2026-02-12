@@ -52,7 +52,10 @@ export type {
   ResolvedColorAreaAxes,
   ResolvedColorAreaAxis,
   ColorInputFormat,
+  ColorDialChannel,
+  ColorDialKey,
   ColorSliderChannel,
+  ResolvedColorDialAngles,
   ColorSliderKey,
   ColorSliderOrientation,
   ContrastBadgeSummary,
@@ -97,8 +100,14 @@ export type { FallbackPointsLayerProps } from './fallback-points-layer.js';
 export { ColorSlider } from './color-slider.js';
 export type { ColorSliderProps } from './color-slider.js';
 
+export { ColorDial } from './color-dial.js';
+export type { ColorDialProps } from './color-dial.js';
+
 export { HueSlider } from './hue-slider.js';
 export type { HueSliderProps } from './hue-slider.js';
+
+export { HueDial } from './hue-dial.js';
+export type { HueDialProps } from './hue-dial.js';
 
 export { AlphaSlider } from './alpha-slider.js';
 export type { AlphaSliderProps } from './alpha-slider.js';

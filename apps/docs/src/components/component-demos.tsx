@@ -4,6 +4,7 @@ import {
   Background,
   ColorApi,
   ColorArea,
+  ColorDial,
   ColorPlane,
   ColorDisplay,
   ColorInput,
@@ -13,6 +14,7 @@ import {
   ContrastBadge,
   FallbackPointsLayer,
   GamutBoundaryLayer,
+  HueDial,
   HueSlider,
   Swatch,
   SwatchGroup,
@@ -52,6 +54,9 @@ const SLIDER_GRADIENTS: Record<ColorSliderChannel, string> = {
   h: HUE_GRADIENT,
   alpha: ALPHA_GRADIENT,
 };
+
+const DIAL_RING_BACKGROUND =
+  'conic-gradient(from 0deg, #ff0040, #ffa500, #f7f700, #00c950, #00b7ff, #364dff, #ff00b7, #ff0040)';
 
 const SWATCH_GROUP_PALETTES = {
   spectrum: DOC_SWATCHES,
@@ -317,6 +322,34 @@ export function ColorSliderDemo({
         gamut={color.activeGamut}
       />
     </div>
+  );
+}
+
+export function ColorDialDemo() {
+  return (
+    <ColorProvider defaultColor="#8b5cf6">
+      <div className="ck-demo-stack">
+        <ColorDial channel="h" className="ck-dial" style={{ background: DIAL_RING_BACKGROUND }} />
+        <div className="ck-row">
+          <ColorDisplay className="ck-color-display" />
+          <ColorInput className="ck-input" format="oklch" />
+        </div>
+      </div>
+    </ColorProvider>
+  );
+}
+
+export function HueDialDemo() {
+  return (
+    <ColorProvider defaultColor="#ef4444">
+      <div className="ck-demo-stack">
+        <HueDial className="ck-dial" style={{ background: DIAL_RING_BACKGROUND }} />
+        <div className="ck-row">
+          <ColorDisplay className="ck-color-display" />
+          <ColorInput className="ck-input" />
+        </div>
+      </div>
+    </ColorProvider>
   );
 }
 

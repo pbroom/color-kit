@@ -3,11 +3,13 @@ import type { ApiTableRow } from '@/components/api-table';
 import {
   AlphaSliderDemo,
   ColorAreaDemo,
+  ColorDialDemo,
   ColorDisplayDemo,
   ColorInputDemo,
   ColorProviderDemo,
   ColorSliderDemo,
   ContrastBadgeDemo,
+  HueDialDemo,
   HueSliderDemo,
   SwatchDemo,
   SwatchGroupDemo,
@@ -141,6 +143,61 @@ export function Picker() {
     props: componentApiDocs.colorSlider,
     anatomy: `<ColorSlider>\n  <div data-color-slider-thumb />\n</ColorSlider>`,
     supportsPropertiesPanel: true,
+  },
+  'color-dial': {
+    slug: 'color-dial',
+    title: 'Color Dial',
+    summary: 'Radial channel control for `l`, `c`, `h`, and `alpha`.',
+    description:
+      'ColorDial is a headless radial primitive that maps pointer angle and keyboard steps into requested channel updates.',
+    registryName: 'color-dial',
+    demo: ColorDialDemo,
+    usage: `import { ColorDial } from '@color-kit/react';
+
+<ColorDial channel="h" />;`,
+    helperApis: [
+      'ColorApi.resolveColorDialRange',
+      'ColorApi.resolveColorDialAngles',
+      'ColorApi.getColorDialThumbPosition',
+      'ColorApi.normalizeColorDialPointer',
+      'ColorApi.colorFromColorDialPosition',
+      'ColorApi.colorFromColorDialKey',
+    ],
+    features: [
+      'Pointer and keyboard interactions map deterministically into requested channel updates.',
+      'Configurable arcs via start/end angles with optional wrap-around keyboard behavior.',
+      'Supports provider context or standalone requested/onChangeRequested mode.',
+    ],
+    accessibility: [
+      'Uses `role="slider"` with keyboard arrow, PageUp/PageDown, Home, and End support.',
+      'Exposes current value through ARIA min/max/now/value text attributes.',
+    ],
+    props: componentApiDocs.colorDial,
+    anatomy: `<ColorDial>\n  <div data-color-dial-thumb />\n</ColorDial>`,
+  },
+  'hue-dial': {
+    slug: 'hue-dial',
+    title: 'Hue Dial',
+    summary: 'Specialized circular hue primitive built on ColorDial.',
+    description:
+      'HueDial wraps ColorDial with hue defaults (full-circle arc + wrap) for compact rotational hue controls.',
+    registryName: 'hue-dial',
+    demo: HueDialDemo,
+    usage: `import { HueDial } from '@color-kit/react';
+
+<HueDial />;`,
+    helperApis: ['ColorApi.colorFromColorDialPosition'],
+    features: [
+      'Thin wrapper around ColorDial tuned for circular hue workflows.',
+      'Works in standalone mode or within ColorProvider.',
+      'Arc angles can be overridden for partial dial variants.',
+    ],
+    accessibility: [
+      'Keyboard and pointer behavior inherited from ColorDial.',
+      'Slider semantics stay consistent for assistive technologies.',
+    ],
+    props: componentApiDocs.hueDial,
+    anatomy: `<HueDial>\n  <div data-color-dial-thumb />\n</HueDial>`,
   },
   'hue-slider': {
     slug: 'hue-slider',

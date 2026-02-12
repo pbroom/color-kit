@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '@color-kit/core';
 import {
   areColorAreaAxesDistinct,
+  colorFromColorDialKey,
+  colorFromColorDialPosition,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
   colorFromColorSliderKey,
@@ -9,10 +11,13 @@ import {
   colorsEqual,
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
+  getColorDialThumbPosition,
   getColorDisplayStyles,
   getContrastBadgeSummary,
   isColorInputValueValid,
+  normalizeColorDialPointer,
   parseColorInputValue,
+  resolveColorDialAngles,
   resolveColorAreaAxes,
 } from '../src/api/index.js';
 
@@ -141,6 +146,26 @@ describe('Color API helpers', () => {
       [0, 1],
     );
     expect(keyed?.alpha).toBeCloseTo(0.5, 6);
+  });
+
+  it('maps dial math for pointer and keyboard updates', () => {
+    const base = parse('#22c55e');
+    const angles = resolveColorDialAngles(0, 360);
+
+    const positioned = colorFromColorDialPosition(base, 'h', 0.5, [0, 360]);
+    expect(positioned.h).toBeCloseTo(180, 6);
+
+    const thumb = getColorDialThumbPosition(positioned, 'h', [0, 360], angles);
+    expect(thumb.norm).toBeCloseTo(0.5, 6);
+    expect(thumb.angle).toBeCloseTo(180, 6);
+
+    const norm = normalizeColorDialPointer(100, 50, 50, 50, angles);
+    expect(norm).toBeCloseTo(0, 6);
+
+    const keyed = colorFromColorDialKey(base, 'h', 'PageUp', 0.1, [0, 360], {
+      wrap: true,
+    });
+    expect(keyed?.h).toBeGreaterThan(base.h);
   });
 
   it('parses and validates color input values', () => {
