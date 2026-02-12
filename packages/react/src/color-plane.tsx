@@ -386,10 +386,13 @@ function renderPixels(
       ) {
         const localX = x % dotCell;
         const localY = y % dotCell;
-        if (
-          localX < outOfGamut.dotPattern.size &&
-          localY < outOfGamut.dotPattern.size
-        ) {
+        const dotRadius = outOfGamut.dotPattern.size * 0.5;
+        const sampleX = localX + 0.5;
+        const sampleY = localY + 0.5;
+        const distanceSq =
+          (sampleX - dotRadius) * (sampleX - dotRadius) +
+          (sampleY - dotRadius) * (sampleY - dotRadius);
+        if (distanceSq <= dotRadius * dotRadius) {
           r = blend(r, 1, outOfGamut.dotPattern.opacity);
           g = blend(g, 1, outOfGamut.dotPattern.opacity);
           b = blend(b, 1, outOfGamut.dotPattern.opacity);

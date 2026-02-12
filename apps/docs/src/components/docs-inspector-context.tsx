@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { parse, type Color } from '@color-kit/core';
 import { createColorState, type ColorState } from '@color-kit/react';
+import { COLOR_AREA_DOT_PATTERN } from './color-area-dot-pattern.js';
 
 export type DocsInspectorTab = 'outline' | 'properties';
 export type DocsInspectorGamut = 'display-p3' | 'srgb';
@@ -128,11 +129,6 @@ const COLOR_AREA_DEMOS: Array<{ id: ColorAreaDemoId; label: string }> = [
 
 const REQUESTED_PRESET_COLOR = parse('#2563eb');
 const ANALYSIS_PRESET_COLOR = parse('#8b5cf6');
-const FIGMA_DOT_PATTERN = {
-  opacityPercent: 14,
-  dotSize: 1,
-  dotGap: 4,
-} as const;
 
 function createControlledColorState(
   color: Color,
@@ -182,9 +178,9 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       patternOverlay: {
         enabled: false,
         style: 'dots',
-        opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
-        dotSize: FIGMA_DOT_PATTERN.dotSize,
-        dotGap: FIGMA_DOT_PATTERN.dotGap,
+        opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
+        dotSize: COLOR_AREA_DOT_PATTERN.dotSize,
+        dotGap: COLOR_AREA_DOT_PATTERN.dotGap,
       },
     },
     chromaBand: {
@@ -222,17 +218,17 @@ function createRequestedPresetState(): ColorAreaInspectorState {
         aa3: {
           enabled: false,
           style: 'dots',
-          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+          opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
         aa45: {
           enabled: false,
           style: 'dots',
-          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+          opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
         aa7: {
           enabled: false,
           style: 'dots',
-          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+          opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
       },
     },
@@ -276,9 +272,9 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       patternOverlay: {
         enabled: true,
         style: 'dots',
-        opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
-        dotSize: FIGMA_DOT_PATTERN.dotSize,
-        dotGap: FIGMA_DOT_PATTERN.dotGap,
+        opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
+        dotSize: COLOR_AREA_DOT_PATTERN.dotSize,
+        dotGap: COLOR_AREA_DOT_PATTERN.dotGap,
       },
     },
     chromaBand: {
@@ -316,17 +312,17 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
         aa3: {
           enabled: false,
           style: 'dots',
-          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+          opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
         aa45: {
           enabled: true,
           style: 'dots',
-          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+          opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
         aa7: {
           enabled: false,
           style: 'dots',
-          opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+          opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
       },
     },
