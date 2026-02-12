@@ -7,6 +7,7 @@ import {
   ColorInputDemo,
   ColorProviderDemo,
   ColorSliderDemo,
+  ColorWheelDemo,
   ContrastBadgeDemo,
   HueSliderDemo,
   SwatchDemo,
@@ -110,6 +111,36 @@ export function Picker() {
     props: componentApiDocs.colorArea,
     anatomy: `<ColorArea>\n  <Background />\n  <ColorPlane />\n  <Thumb />\n</ColorArea>`,
     supportsPropertiesPanel: true,
+  },
+  'color-wheel': {
+    slug: 'color-wheel',
+    title: 'Color Wheel',
+    summary: 'Circular hue/chroma control with requested-value geometry.',
+    description:
+      'ColorWheel maps angle to hue and radius to chroma while preserving requested intent and exposing displayed-gamut metadata for rendering.',
+    registryName: 'color-wheel',
+    demo: ColorWheelDemo,
+    usage: `import { ColorWheel } from '@color-kit/react';
+
+<ColorWheel />;`,
+    helperApis: [
+      'ColorApi.resolveColorWheelChromaRange',
+      'ColorApi.getColorWheelThumbPosition',
+      'ColorApi.normalizeColorWheelPointer',
+      'ColorApi.colorFromColorWheelPosition',
+      'ColorApi.colorFromColorWheelKey',
+    ],
+    features: [
+      'Angle-driven hue and radius-driven chroma editing in one primitive.',
+      'Requested geometry remains stable across gamut target changes.',
+      'Standalone mode and ColorProvider context mode share the same behavior.',
+    ],
+    accessibility: [
+      'Uses slider semantics with keyboard support for hue and chroma edits.',
+      'Exposes hue/chroma state via `aria-valuetext` for assistive technologies.',
+    ],
+    props: componentApiDocs.colorWheel,
+    anatomy: `<ColorWheel>\n  <div data-color-wheel-thumb />\n</ColorWheel>`,
   },
   'color-slider': {
     slug: 'color-slider',

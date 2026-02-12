@@ -32,6 +32,20 @@
       "categories": ["color"]
     },
     {
+      "name": "color-wheel",
+      "type": "registry:component",
+      "title": "Color Wheel",
+      "description": "A circular hue/chroma control. Headless, accessible, and composable with ColorProvider.",
+      "dependencies": ["@color-kit/core"],
+      "files": [
+        {
+          "path": "registry/components/color-wheel.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "categories": ["color"]
+    },
+    {
       "name": "color-provider",
       "type": "registry:component",
       "title": "Color Provider",

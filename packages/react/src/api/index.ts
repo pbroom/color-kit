@@ -38,6 +38,16 @@ export type {
 } from './color-slider.js';
 
 export {
+  COLOR_WHEEL_DEFAULT_CHROMA_RANGE,
+  colorFromColorWheelKey,
+  colorFromColorWheelPosition,
+  getColorWheelThumbPosition,
+  normalizeColorWheelPointer,
+  resolveColorWheelChromaRange,
+} from './color-wheel.js';
+export type { ColorWheelKey, ColorWheelThumbPosition } from './color-wheel.js';
+
+export {
   formatColorInputValue,
   isColorInputValueValid,
   parseColorInputValue,

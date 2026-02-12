@@ -3,6 +3,7 @@ import type { ApiTableRow } from '@/components/api-table';
 interface ComponentApiDocs {
   colorProvider: ApiTableRow[];
   colorArea: ApiTableRow[];
+  colorWheel: ApiTableRow[];
   colorSlider: ApiTableRow[];
   hueSlider: ApiTableRow[];
   alphaSlider: ApiTableRow[];
@@ -99,6 +100,78 @@ export const componentApiDocs: ComponentApiDocs = {
       type: 'ReactNode',
       description:
         'Compose primitives such as Background, ColorPlane, Thumb, Layer, Line, and Point.',
+    },
+  ],
+  colorWheel: [
+    {
+      name: 'chromaRange',
+      type: '[number, number]',
+      defaultValue: '[0, 0.4]',
+      description:
+        'Radial chroma range, where center maps to min and outer edge maps to max.',
+    },
+    {
+      name: 'requested',
+      type: 'Color',
+      description: 'Standalone value when not using ColorProvider context.',
+    },
+    {
+      name: 'onChangeRequested',
+      type: '(requested: Color, options?: SetRequestedOptions) => void',
+      description: 'Standalone change handler when not using context.',
+    },
+    {
+      name: 'source',
+      type: "'requested' | 'displayed'",
+      defaultValue: "'displayed'",
+      description:
+        'Visual metadata source. Geometry always follows requested state.',
+    },
+    {
+      name: 'displayGamut',
+      type: "'srgb' | 'display-p3'",
+      description:
+        'Display target for displayed-source metadata. Falls back to provider gamut.',
+    },
+    {
+      name: 'maxUpdateHz',
+      type: 'number',
+      defaultValue: '60',
+      description:
+        'Upper bound for pointer-driven update cadence. Lower values reduce update churn.',
+    },
+    {
+      name: 'dragEpsilon',
+      type: 'number',
+      defaultValue: '0.0005',
+      description:
+        'Minimum normalized pointer delta required before another update commits.',
+    },
+    {
+      name: 'hueStep',
+      type: 'number',
+      defaultValue: '1',
+      description: 'Keyboard hue step in degrees for left/right arrows.',
+    },
+    {
+      name: 'shiftHueStep',
+      type: 'number',
+      defaultValue: '10',
+      description: 'Keyboard hue step in degrees while Shift is held.',
+    },
+    {
+      name: 'chromaStepRatio',
+      type: 'number',
+      defaultValue: '0.01',
+      description:
+        'Keyboard chroma step ratio (range span multiplier) for up/down arrows.',
+    },
+    {
+      name: 'shiftChromaStepRatio',
+      type: 'number',
+      defaultValue: '0.1',
+      description:
+        'Keyboard chroma step ratio while Shift is held for larger jumps.',
     },
   ],
   colorSlider: [
