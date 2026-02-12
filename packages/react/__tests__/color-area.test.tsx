@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 function dispatchPointer(
-  target: Element,
+  target: Pick<EventTarget, 'dispatchEvent'>,
   type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
   options: {
     pointerId?: number;
@@ -136,6 +136,48 @@ describe('ColorArea', () => {
       clientY: 40,
     });
     vi.runOnlyPendingTimers();
+
+    expect(onChangeRequested).toHaveBeenCalledTimes(2);
+  });
+
+  it('continues drag updates when move/up occur on window', () => {
+    vi.useFakeTimers();
+
+    const onChangeRequested = vi.fn();
+    const requested: Color = { l: 0.3, c: 0.1, h: 50, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={onChangeRequested} />,
+    );
+
+    const root = container.querySelector('[data-color-area]') as HTMLDivElement;
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    dispatchPointer(root, 'pointerdown', {
+      pointerId: 7,
+      clientX: 20,
+      clientY: 80,
+    });
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 7,
+      clientX: 80,
+      clientY: 20,
+    });
+    vi.runAllTimers();
+    dispatchPointer(window, 'pointerup', {
+      pointerId: 7,
+      clientX: 80,
+      clientY: 20,
+    });
 
     expect(onChangeRequested).toHaveBeenCalledTimes(2);
   });

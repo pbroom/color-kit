@@ -233,6 +233,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       clientY: number;
       coalescedCount: number;
     } | null>(null);
+    const activePointerIdRef = useRef<number | null>(null);
+    const queuePointerPositionRef = useRef<
+      (clientX: number, clientY: number, coalescedCount: number) => void
+    >(() => {});
+    const flushPendingPositionRef = useRef<(force?: boolean) => void>(() => {});
     const rectRef = useRef<DOMRect | null>(null);
     const lastNormRef = useRef<{ x: number; y: number } | null>(null);
     const lastCommitTsRef = useRef(0);
@@ -443,6 +448,31 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       [commitFromPosition],
     );
 
+    const queuePointerPosition = useCallback(
+      (clientX: number, clientY: number, coalescedCount: number) => {
+        pendingPositionRef.current = {
+          clientX,
+          clientY,
+          coalescedCount: Math.max(1, coalescedCount),
+        };
+        if (rafRef.current === null) {
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = null;
+            flushPendingPosition(false);
+          });
+        }
+      },
+      [flushPendingPosition],
+    );
+
+    useEffect(() => {
+      queuePointerPositionRef.current = queuePointerPosition;
+    }, [queuePointerPosition]);
+
+    useEffect(() => {
+      flushPendingPositionRef.current = flushPendingPosition;
+    }, [flushPendingPosition]);
+
     useEffect(
       () => () => {
         if (rafRef.current !== null) {
@@ -497,6 +527,89 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       };
     }, [refreshRect]);
 
+    useEffect(() => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const onWindowPointerMove = (event: PointerEvent) => {
+        if (!isDraggingRef.current) {
+          return;
+        }
+        const activePointerId = activePointerIdRef.current;
+        if (
+          activePointerId !== null &&
+          Number.isFinite(event.pointerId) &&
+          event.pointerId !== activePointerId
+        ) {
+          return;
+        }
+
+        const area = areaRef.current;
+        if (
+          area &&
+          event.target instanceof Node &&
+          area.contains(event.target)
+        ) {
+          return;
+        }
+
+        const coalesced =
+          typeof event.getCoalescedEvents === 'function'
+            ? event.getCoalescedEvents()
+            : [];
+        const latest =
+          coalesced.length > 0 ? coalesced[coalesced.length - 1] : event;
+        const clientX =
+          asFiniteNumber(latest.clientX) ?? asFiniteNumber(event.clientX) ?? 0;
+        const clientY =
+          asFiniteNumber(latest.clientY) ?? asFiniteNumber(event.clientY) ?? 0;
+
+        queuePointerPositionRef.current(clientX, clientY, coalesced.length);
+      };
+
+      const endWindowDrag = (event: PointerEvent) => {
+        const activePointerId = activePointerIdRef.current;
+        if (
+          activePointerId !== null &&
+          Number.isFinite(event.pointerId) &&
+          event.pointerId !== activePointerId
+        ) {
+          return;
+        }
+
+        const area = areaRef.current;
+        if (
+          area &&
+          event.target instanceof Node &&
+          area.contains(event.target)
+        ) {
+          return;
+        }
+
+        activePointerIdRef.current = null;
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        flushPendingPositionRef.current(true);
+      };
+
+      window.addEventListener('pointermove', onWindowPointerMove, {
+        passive: true,
+      });
+      window.addEventListener('pointerup', endWindowDrag, {
+        passive: true,
+      });
+      window.addEventListener('pointercancel', endWindowDrag, {
+        passive: true,
+      });
+
+      return () => {
+        window.removeEventListener('pointermove', onWindowPointerMove);
+        window.removeEventListener('pointerup', endWindowDrag);
+        window.removeEventListener('pointercancel', endWindowDrag);
+      };
+    }, []);
+
     const onRootPointerDown = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerDown?.(event);
@@ -507,6 +620,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         event.preventDefault();
         isDraggingRef.current = true;
         setIsDragging(true);
+        activePointerIdRef.current = event.pointerId;
         rollingUpdateMsRef.current = [];
         rollingFrameMsRef.current = [];
         lastFrameTsRef.current = 0;
@@ -530,7 +644,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const onRootPointerMove = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerMove?.(event);
-        if (event.defaultPrevented || !isDraggingRef.current) {
+        if (
+          event.defaultPrevented ||
+          !isDraggingRef.current ||
+          event.pointerId !== activePointerIdRef.current
+        ) {
           return;
         }
 
@@ -546,24 +664,18 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         const clientY =
           asFiniteNumber(latest.clientY) ?? asFiniteNumber(native.clientY) ?? 0;
 
-        pendingPositionRef.current = {
-          clientX,
-          clientY,
-          coalescedCount: Math.max(1, coalesced.length),
-        };
-        if (rafRef.current === null) {
-          rafRef.current = requestAnimationFrame(() => {
-            rafRef.current = null;
-            flushPendingPosition(false);
-          });
-        }
+        queuePointerPosition(clientX, clientY, coalesced.length);
       },
-      [onPointerMove, flushPendingPosition],
+      [onPointerMove, queuePointerPosition],
     );
 
     const onRootPointerUp = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerUp?.(event);
+        if (event.pointerId !== activePointerIdRef.current) {
+          return;
+        }
+        activePointerIdRef.current = null;
         isDraggingRef.current = false;
         setIsDragging(false);
         flushPendingPosition(true);
@@ -574,6 +686,10 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const onRootPointerCancel = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerCancel?.(event);
+        if (event.pointerId !== activePointerIdRef.current) {
+          return;
+        }
+        activePointerIdRef.current = null;
         isDraggingRef.current = false;
         setIsDragging(false);
         flushPendingPosition(true);
