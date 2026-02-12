@@ -1,4 +1,4 @@
-import { parse, toCss } from '@color-kit/core';
+import { parse, toCss, toP3Gamut, toSrgbGamut } from '@color-kit/core';
 import {
   AlphaSlider,
   Background,
@@ -105,6 +105,12 @@ type SliderRailStyle = CSSProperties & {
   '--ck-slider-gradient-active': string;
   '--ck-slider-gradient-srgb': string;
   '--ck-slider-fallback-color': string;
+  '--ck-slider-rail-start-active': string;
+  '--ck-slider-rail-start-srgb': string;
+  '--ck-slider-rail-end-active': string;
+  '--ck-slider-rail-end-srgb': string;
+  '--ck-slider-thumb-fill-active': string;
+  '--ck-slider-thumb-fill-srgb': string;
 };
 
 function getOklchSliderRail(
@@ -112,13 +118,36 @@ function getOklchSliderRail(
   requested: ReturnType<typeof parse>,
   gamut: 'display-p3' | 'srgb',
 ): { colorSpace: 'display-p3' | 'srgb'; style: SliderRailStyle } {
+  const range = ColorApi.resolveColorSliderRange(channel);
   const gradient = ColorApi.getSliderGradientStyles({
     model: 'oklch',
     channel,
-    range: ColorApi.resolveColorSliderRange(channel),
+    range,
     baseColor: requested,
     colorSpace: gamut,
   });
+  const startStop = gradient.stops[0];
+  const endStop = gradient.stops[gradient.stops.length - 1] ?? startStop;
+  const thumbNorm = ColorApi.getColorSliderThumbPosition(
+    requested,
+    channel,
+    range,
+  );
+  const thumbColor = ColorApi.colorFromColorSliderPosition(
+    requested,
+    channel,
+    thumbNorm,
+    range,
+  );
+  const thumbFillSrgb = toCss(toSrgbGamut(thumbColor), 'rgb');
+  const thumbFillActive =
+    gradient.colorSpace === 'display-p3'
+      ? toCss(toP3Gamut(thumbColor), 'p3')
+      : thumbFillSrgb;
+  const railStartSrgb = startStop?.srgbCss ?? gradient.srgbBackgroundColor;
+  const railEndSrgb = endStop?.srgbCss ?? railStartSrgb;
+  const railStartActive = startStop?.activeCss ?? railStartSrgb;
+  const railEndActive = endStop?.activeCss ?? railEndSrgb;
 
   return {
     colorSpace: gradient.colorSpace,
@@ -126,6 +155,12 @@ function getOklchSliderRail(
       '--ck-slider-gradient-active': gradient.activeBackgroundImage,
       '--ck-slider-gradient-srgb': gradient.srgbBackgroundImage,
       '--ck-slider-fallback-color': gradient.srgbBackgroundColor,
+      '--ck-slider-rail-start-active': railStartActive,
+      '--ck-slider-rail-start-srgb': railStartSrgb,
+      '--ck-slider-rail-end-active': railEndActive,
+      '--ck-slider-rail-end-srgb': railEndSrgb,
+      '--ck-slider-thumb-fill-active': thumbFillActive,
+      '--ck-slider-thumb-fill-srgb': thumbFillSrgb,
     },
   };
 }
