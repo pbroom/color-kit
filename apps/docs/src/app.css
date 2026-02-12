@@ -1002,6 +1002,33 @@ a {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
+.ck-dial {
+  width: min(100%, 220px);
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  margin-inline: auto;
+  position: relative;
+}
+
+.ck-dial::before {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 999px;
+  background: rgba(7, 12, 22, 0.88);
+  pointer-events: none;
+}
+
+.ck-dial [data-color-dial-thumb] {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #f6fdff;
+  border: 2px solid rgba(0, 0, 0, 0.32);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 .ck-input input[type='text'] {
   width: 100%;
   min-height: 44px;
