@@ -52,9 +52,7 @@ describe('shared component contracts', () => {
     expect(() => render(<HueSlider />)).toThrowError(
       /ColorSlider requires either/,
     );
-    expect(() => render(<HueDial />)).toThrowError(
-      /ColorDial requires either/,
-    );
+    expect(() => render(<HueDial />)).toThrowError(/ColorDial requires either/);
     expect(() => render(<AlphaSlider />)).toThrowError(
       /ColorSlider requires either/,
     );

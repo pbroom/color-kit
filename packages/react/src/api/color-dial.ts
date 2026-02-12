@@ -12,7 +12,10 @@ export type ColorDialKey =
   | 'Home'
   | 'End';
 
-export const COLOR_DIAL_DEFAULT_RANGES: Record<ColorDialChannel, [number, number]> = {
+export const COLOR_DIAL_DEFAULT_RANGES: Record<
+  ColorDialChannel,
+  [number, number]
+> = {
   l: [0, 1],
   c: [0, 0.4],
   h: [0, 360],
@@ -48,7 +51,7 @@ function wrapInRange(value: number, range: [number, number]): number {
   if (span <= 0) {
     return range[0];
   }
-  return ((value - range[0]) % span + span) % span + range[0];
+  return ((((value - range[0]) % span) + span) % span) + range[0];
 }
 
 export function resolveColorDialRange(
@@ -101,8 +104,7 @@ export function getColorDialThumbPosition(
   angles: ResolvedColorDialAngles,
 ): { norm: number; angle: number } {
   const span = range[1] - range[0];
-  const norm =
-    span <= 0 ? 0 : clamp((color[channel] - range[0]) / span, 0, 1);
+  const norm = span <= 0 ? 0 : clamp((color[channel] - range[0]) / span, 0, 1);
   const angle = normalizeHue(angles.start + norm * angles.sweep);
 
   return {

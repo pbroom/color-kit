@@ -245,7 +245,8 @@ export const componentApiDocs: ComponentApiDocs = {
       name: 'wrap',
       type: 'boolean',
       defaultValue: "channel === 'h'",
-      description: 'Wraps values across range boundaries during keyboard edits.',
+      description:
+        'Wraps values across range boundaries during keyboard edits.',
     },
     {
       name: 'maxUpdateHz',

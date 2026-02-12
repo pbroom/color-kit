@@ -28,13 +28,7 @@ export interface HueDialProps extends Omit<
  */
 export const HueDial = forwardRef<HTMLDivElement, HueDialProps>(
   function HueDial(
-    {
-      startAngle = 0,
-      endAngle = 360,
-      requested,
-      onChangeRequested,
-      ...props
-    },
+    { startAngle = 0, endAngle = 360, requested, onChangeRequested, ...props },
     ref,
   ) {
     return (

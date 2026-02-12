@@ -14,7 +14,11 @@ describe('ColorDial', () => {
   it('uses requested values for aria and thumb position', () => {
     const requested: Color = { l: 0.5, c: 0.2, h: 180, alpha: 1 };
     const { container, getByRole } = render(
-      <ColorDial channel="h" requested={requested} onChangeRequested={() => {}} />,
+      <ColorDial
+        channel="h"
+        requested={requested}
+        onChangeRequested={() => {}}
+      />,
     );
 
     expect(getByRole('slider').getAttribute('aria-valuenow')).toBe('180');

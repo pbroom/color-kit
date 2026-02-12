@@ -391,7 +391,11 @@ export function ColorDialDemo() {
   return (
     <ColorProvider defaultColor="#8b5cf6">
       <div className="ck-demo-stack">
-        <ColorDial channel="h" className="ck-dial" style={{ background: DIAL_RING_BACKGROUND }} />
+        <ColorDial
+          channel="h"
+          className="ck-dial"
+          style={{ background: DIAL_RING_BACKGROUND }}
+        />
         <div className="ck-row">
           <ColorDisplay className="ck-color-display" />
           <ColorInput className="ck-input" format="oklch" />
@@ -405,7 +409,10 @@ export function HueDialDemo() {
   return (
     <ColorProvider defaultColor="#ef4444">
       <div className="ck-demo-stack">
-        <HueDial className="ck-dial" style={{ background: DIAL_RING_BACKGROUND }} />
+        <HueDial
+          className="ck-dial"
+          style={{ background: DIAL_RING_BACKGROUND }}
+        />
         <div className="ck-row">
           <ColorDisplay className="ck-color-display" />
           <ColorInput className="ck-input" />
