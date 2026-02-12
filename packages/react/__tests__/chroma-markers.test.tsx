@@ -63,7 +63,9 @@ describe('ChromaMarkers', () => {
     );
 
     expect(
-      container.querySelector('[data-color-slider-marker-kind="fallback-thumb"]'),
+      container.querySelector(
+        '[data-color-slider-marker-kind="fallback-thumb"]',
+      ),
     ).toBeNull();
   });
 

@@ -105,7 +105,10 @@ export type { FallbackPointsLayerProps } from './fallback-points-layer.js';
 export { ColorSlider } from './color-slider.js';
 export type { ColorSliderProps } from './color-slider.js';
 export { SliderMarker } from './slider-marker.js';
-export type { SliderMarkerProps, SliderMarkerVariant } from './slider-marker.js';
+export type {
+  SliderMarkerProps,
+  SliderMarkerVariant,
+} from './slider-marker.js';
 export { ChromaMarkers } from './chroma-markers.js';
 export type { ChromaMarkersProps } from './chroma-markers.js';
 

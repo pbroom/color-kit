@@ -197,7 +197,9 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           frameTime >= lastPointerCommitTsRef.current &&
           frameTime - lastPointerCommitTsRef.current < minFrameDelta
         ) {
-          pointerFrameRef.current = requestAnimationFrame(processPendingPointer);
+          pointerFrameRef.current = requestAnimationFrame(
+            processPendingPointer,
+          );
           return;
         }
 
@@ -215,7 +217,9 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         }
 
         if (pendingPointerRef.current) {
-          pointerFrameRef.current = requestAnimationFrame(processPendingPointer);
+          pointerFrameRef.current = requestAnimationFrame(
+            processPendingPointer,
+          );
         }
       },
       [commitNorm, dragEpsilon, maxPointerRate, resolvePointerNorm],
@@ -225,7 +229,9 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       (clientX: number, clientY: number) => {
         pendingPointerRef.current = { clientX, clientY };
         if (pointerFrameRef.current === null) {
-          pointerFrameRef.current = requestAnimationFrame(processPendingPointer);
+          pointerFrameRef.current = requestAnimationFrame(
+            processPendingPointer,
+          );
         }
       },
       [processPendingPointer],

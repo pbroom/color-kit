@@ -13,8 +13,9 @@ export interface ColorSliderContextValue {
   thumbNorm: number;
 }
 
-export const ColorSliderContext =
-  createContext<ColorSliderContextValue | null>(null);
+export const ColorSliderContext = createContext<ColorSliderContextValue | null>(
+  null,
+);
 
 export function useColorSliderContext(): ColorSliderContextValue {
   const context = useContext(ColorSliderContext);
