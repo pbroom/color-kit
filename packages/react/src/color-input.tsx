@@ -104,6 +104,8 @@ function resolveModifiedStep(
   return steps.step;
 }
 
+const COMMIT_NOOP_EPSILON = 1e-9;
+
 /**
  * A headless value input that edits one channel in oklch/rgb/hsl.
  *
@@ -203,6 +205,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     const scrubFrameRef = useRef<number | null>(null);
 
     const focusStartValueRef = useRef<number | null>(null);
+    const lastCommittedValueRef = useRef<number | null>(null);
     const skipBlurCommitRef = useRef(false);
 
     const currentValue = isEditing ? draftValue : displayValue;
@@ -256,6 +259,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           interaction,
           ...(changedChannel ? { changedChannel } : {}),
         });
+        lastCommittedValueRef.current = normalized;
         syncDraftFromValue(normalized);
       },
       [
@@ -278,6 +282,15 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         return false;
       }
 
+      if (
+        lastCommittedValueRef.current !== null &&
+        Math.abs(parsedDraftValue - lastCommittedValueRef.current) <=
+          COMMIT_NOOP_EPSILON
+      ) {
+        setIsEditing(false);
+        return true;
+      }
+
       commitChannelValue(parsedDraftValue, 'text-input');
       setIsEditing(false);
       return true;
@@ -293,6 +306,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       setIsEditing(true);
       setDraftValue(displayValue);
       focusStartValueRef.current = channelValue;
+      lastCommittedValueRef.current = channelValue;
 
       if (!selectAllOnFocus) {
         return;
@@ -362,6 +376,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
             interaction: 'keyboard',
             ...(changedChannel ? { changedChannel } : {}),
           });
+          lastCommittedValueRef.current = keyed.value;
           syncDraftFromValue(keyed.value);
           setIsEditing(true);
           return;
@@ -448,6 +463,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           ...(changedChannel ? { changedChannel } : {}),
         });
         lastScrubValueRef.current = nextValue;
+        lastCommittedValueRef.current = nextValue;
         syncDraftFromValue(nextValue);
         setIsEditing(true);
       },
@@ -547,6 +563,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         lastScrubValueRef.current = channelValue;
         lastScrubCommitTsRef.current = 0;
         focusStartValueRef.current = channelValue;
+        lastCommittedValueRef.current = channelValue;
         setIsEditing(true);
         setDraftValue(displayValue);
         pendingScrubRef.current = null;

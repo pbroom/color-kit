@@ -341,9 +341,21 @@ describe('Color API helpers', () => {
       range: [0, 0.4],
       wrap: false,
     });
+    const hueHome = colorFromColorInputKey(base, 'oklch', 'h', 'Home', {
+      step: 1,
+      range: [0, 360],
+      wrap: true,
+    });
+    const hueEnd = colorFromColorInputKey(base, 'oklch', 'h', 'End', {
+      step: 1,
+      range: [0, 360],
+      wrap: true,
+    });
 
     expect(home?.value).toBeCloseTo(0, 6);
     expect(end?.value).toBeCloseTo(0.4, 6);
+    expect(hueHome?.value).toBeCloseTo(0, 6);
+    expect(hueEnd?.value).toBeCloseTo(360, 6);
   });
 
   it('parses legacy color-string input values', () => {

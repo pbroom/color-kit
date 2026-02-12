@@ -572,6 +572,8 @@ function resolveModifiedStep(
   return steps.step;
 }
 
+const COMMIT_NOOP_EPSILON = 1e-9;
+
 export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
   function ColorInput(
     {
@@ -643,6 +645,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     const [isScrubbing, setIsScrubbing] = useState(false);
     const skipBlurCommitRef = useRef(false);
     const focusStartValueRef = useRef<number | null>(null);
+    const lastCommittedValueRef = useRef<number | null>(null);
 
     const activePointerIdRef = useRef<number | null>(null);
     const isScrubbingRef = useRef(false);
@@ -690,17 +693,19 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       (
         nextValue: number,
         interaction: 'pointer' | 'keyboard' | 'text-input',
+        wrapOverride: boolean = resolvedWrap,
       ) => {
         const normalized = normalizeValue(
           nextValue,
           resolvedRange,
-          resolvedWrap,
+          wrapOverride,
         );
         const nextColor = setValue(requested, model, channel, normalized);
         setRequested(nextColor, {
           interaction,
           ...(changedChannel ? { changedChannel } : {}),
         });
+        lastCommittedValueRef.current = normalized;
         syncDraftFromValue(normalized);
       },
       [
@@ -723,6 +728,15 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         return false;
       }
 
+      if (
+        lastCommittedValueRef.current !== null &&
+        Math.abs(parsedDraftValue - lastCommittedValueRef.current) <=
+          COMMIT_NOOP_EPSILON
+      ) {
+        setIsEditing(false);
+        return true;
+      }
+
       commitChannelValue(parsedDraftValue, 'text-input');
       setIsEditing(false);
       return true;
@@ -738,6 +752,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       setIsEditing(true);
       setDraftValue(displayValue);
       focusStartValueRef.current = channelValue;
+      lastCommittedValueRef.current = channelValue;
 
       if (!selectAllOnFocus) {
         return;
@@ -817,7 +832,11 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           }
 
           event.preventDefault();
-          commitChannelValue(nextValue, 'keyboard');
+          commitChannelValue(
+            nextValue,
+            'keyboard',
+            event.key === 'Home' || event.key === 'End' ? false : resolvedWrap,
+          );
           setIsEditing(true);
           return;
         }
@@ -844,6 +863,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         commitDraft,
         displayValue,
         resolvedRange,
+        resolvedWrap,
         resolvedSteps,
       ],
     );
@@ -889,6 +909,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           ...(changedChannel ? { changedChannel } : {}),
         });
         lastScrubValueRef.current = nextValue;
+        lastCommittedValueRef.current = nextValue;
         syncDraftFromValue(nextValue);
         setIsEditing(true);
       },
@@ -984,6 +1005,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         lastScrubValueRef.current = channelValue;
         lastScrubCommitTsRef.current = 0;
         focusStartValueRef.current = channelValue;
+        lastCommittedValueRef.current = channelValue;
         setIsEditing(true);
         setDraftValue(displayValue);
         pendingScrubRef.current = null;

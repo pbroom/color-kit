@@ -28,6 +28,23 @@ describe('ColorStringInput', () => {
     expect(onChangeRequested).toHaveBeenCalledTimes(1);
   });
 
+  it('does not commit when focus/blur occurs without edits', () => {
+    const onChangeRequested = vi.fn();
+
+    render(
+      <ColorStringInput
+        requested={parse('#ff0000')}
+        onChangeRequested={onChangeRequested}
+      />,
+    );
+
+    const input = screen.getByRole('textbox');
+    fireEvent.focus(input);
+    fireEvent.blur(input);
+
+    expect(onChangeRequested).not.toHaveBeenCalled();
+  });
+
   it('does not commit when pressing Escape', () => {
     const onChangeRequested = vi.fn();
 

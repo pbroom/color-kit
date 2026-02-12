@@ -650,7 +650,12 @@ export function colorFromColorInputKey(
       return null;
   }
 
-  const normalized = normalizeColorInputValue(nextValue, options.range, wrap);
+  const shouldWrap = wrap && key !== 'Home' && key !== 'End';
+  const normalized = normalizeColorInputValue(
+    nextValue,
+    options.range,
+    shouldWrap,
+  );
   return {
     value: normalized,
     color: colorFromColorInputChannelValue(color, model, channel, normalized),
