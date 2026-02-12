@@ -8,6 +8,7 @@ import { ColorArea } from '../src/color-area.js';
 import { ColorDial } from '../src/color-dial.js';
 import { ColorInput } from '../src/color-input.js';
 import { ColorProvider } from '../src/color-provider.js';
+import { ColorStringInput } from '../src/color-string-input.js';
 import { ColorSlider } from '../src/color-slider.js';
 import { ColorWheel } from '../src/color-wheel.js';
 import { HueDial } from '../src/hue-dial.js';
@@ -43,8 +44,11 @@ describe('shared component contracts', () => {
     expect(() => render(<ColorSlider channel="c" />)).toThrowError(
       /ColorSlider requires either/,
     );
-    expect(() => render(<ColorInput />)).toThrowError(
+    expect(() => render(<ColorInput model="oklch" channel="h" />)).toThrowError(
       /ColorInput requires either/,
+    );
+    expect(() => render(<ColorStringInput />)).toThrowError(
+      /ColorStringInput requires either/,
     );
     expect(() => render(<ColorDial channel="h" />)).toThrowError(
       /ColorDial requires either/,
@@ -72,12 +76,14 @@ describe('shared component contracts', () => {
         <HueSlider />
         <HueDial />
         <AlphaSlider />
-        <ColorInput />
+        <ColorInput model="oklch" channel="h" />
+        <ColorStringInput />
       </ColorProvider>,
     );
 
     expect(screen.getAllByRole('slider')).toHaveLength(8);
-    expect(screen.getByLabelText('Color value')).toBeTruthy();
+    expect(screen.getByRole('spinbutton')).toBeTruthy();
+    expect(screen.getByRole('textbox')).toBeTruthy();
   });
 
   it('keeps ColorArea thumb coordinates stable across active gamut switches', () => {

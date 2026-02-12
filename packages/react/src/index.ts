@@ -53,7 +53,13 @@ export type {
   ColorWheelThumbPosition,
   ResolvedColorAreaAxes,
   ResolvedColorAreaAxis,
-  ColorInputFormat,
+  ColorInputModel,
+  ColorInputChannel,
+  OklchColorInputChannel,
+  RgbColorInputChannel,
+  HslColorInputChannel,
+  ColorInputStepConfig,
+  ColorStringInputFormat,
   ColorDialChannel,
   ColorDialKey,
   ColorSliderChannel,
@@ -138,6 +144,8 @@ export type { SwatchGroupProps } from './swatch-group.js';
 
 export { ColorInput } from './color-input.js';
 export type { ColorInputProps } from './color-input.js';
+export { ColorStringInput } from './color-string-input.js';
+export type { ColorStringInputProps } from './color-string-input.js';
 
 export { ColorDisplay } from './color-display.js';
 export type { ColorDisplayProps } from './color-display.js';

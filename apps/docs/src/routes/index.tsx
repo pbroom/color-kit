@@ -54,7 +54,7 @@ const cards: ShowcaseCard[] = [
   },
   {
     title: 'Color Input',
-    description: 'Typed entry for hex, RGB, HSL, and OKLCH.',
+    description: 'Channel-aware numeric editing with scrub and math parsing.',
     href: '/docs/components/color-input',
     demo: <ColorInputDemo />,
   },

@@ -5,7 +5,7 @@ import { ColorInputDemo } from '@/components/component-demos';
 
 # Color Input
 
-`ColorInput` parses and formats editable color strings in `hex`, `rgb`, `hsl`, and `oklch`.
+`ColorInput` edits one numeric channel in `oklch`, `rgb`, or `hsl` with keyboard stepping, scrubbing, and expression parsing.
 
 <ComponentPreview>
   <ColorInputDemo />
@@ -23,14 +23,16 @@ import { ColorInput, useColor } from '@color-kit/react';
 const color = useColor({ defaultColor: '#6366f1' });
 
 <ColorInput
+  model="oklch"
+  channel="h"
   requested={color.requested}
   onChangeRequested={color.setRequested}
-  format="oklch"
 />;
 ```
 
 ## Non-UI API helpers
 
-- `ColorApi.formatColorInputValue`
-- `ColorApi.parseColorInputValue`
-- `ColorApi.isColorInputValueValid`
+- `ColorApi.resolveColorInputRange`
+- `ColorApi.resolveColorInputSteps`
+- `ColorApi.parseColorInputExpression`
+- `ColorApi.colorFromColorInputKey`

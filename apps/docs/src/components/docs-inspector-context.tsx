@@ -12,7 +12,16 @@ export type DocsInspectorGamut = 'display-p3' | 'srgb';
 export type ColorAreaAxis = 'l' | 'c' | 'h';
 export type ColorAreaDemoId = 'requested' | 'analysis';
 export type ColorSliderDemoChannel = 'l' | 'c' | 'h' | 'alpha';
-export type ColorInputDemoFormat = 'hex' | 'rgb' | 'hsl' | 'oklch';
+export type ColorInputDemoModel = 'oklch' | 'rgb' | 'hsl';
+export type ColorInputDemoChannel =
+  | 'l'
+  | 'c'
+  | 'h'
+  | 'alpha'
+  | 'r'
+  | 'g'
+  | 'b'
+  | 's';
 export type SwatchGroupDemoPalette = 'spectrum' | 'nature' | 'neon';
 export type ContrastBadgeDemoPreset = 'interface' | 'editorial' | 'alert';
 
@@ -33,7 +42,8 @@ export interface ColorSliderInspectorState {
 }
 
 export interface ColorInputInspectorState {
-  format: ColorInputDemoFormat;
+  model: ColorInputDemoModel;
+  channel: ColorInputDemoChannel;
   gamut: DocsInspectorGamut;
 }
 
@@ -69,8 +79,18 @@ const DEFAULT_COLOR_SLIDER_STATE: ColorSliderInspectorState = {
 };
 
 const DEFAULT_COLOR_INPUT_STATE: ColorInputInspectorState = {
-  format: 'hex',
+  model: 'oklch',
+  channel: 'h',
   gamut: 'display-p3',
+};
+
+const COLOR_INPUT_CHANNELS: Record<
+  ColorInputDemoModel,
+  ColorInputDemoChannel[]
+> = {
+  oklch: ['l', 'c', 'h', 'alpha'],
+  rgb: ['r', 'g', 'b', 'alpha'],
+  hsl: ['h', 's', 'l', 'alpha'],
 };
 
 const DEFAULT_SWATCH_GROUP_STATE: SwatchGroupInspectorState = {
@@ -115,6 +135,19 @@ function normalizeColorAreaState(
     next.yAxis = next.yAxis === 'l' ? 'c' : 'l';
   }
   return next;
+}
+
+function normalizeColorInputState(
+  state: ColorInputInspectorState,
+): ColorInputInspectorState {
+  const channels = COLOR_INPUT_CHANNELS[state.model];
+  if (!channels.includes(state.channel)) {
+    return {
+      ...state,
+      channel: channels[0],
+    };
+  }
+  return state;
 }
 
 interface DocsInspectorContextValue {
@@ -194,7 +227,9 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
 
   const setColorInputState = useCallback(
     (patch: Partial<ColorInputInspectorState>) => {
-      setColorInputStateInternal((current) => ({ ...current, ...patch }));
+      setColorInputStateInternal((current) =>
+        normalizeColorInputState({ ...current, ...patch }),
+      );
     },
     [],
   );

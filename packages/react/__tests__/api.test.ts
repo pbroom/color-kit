@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '@color-kit/core';
 import {
   areColorAreaAxesDistinct,
+  colorFromColorInputChannelValue,
+  colorFromColorInputKey,
   colorFromColorDialKey,
   colorFromColorDialPosition,
   colorFromColorAreaKey,
@@ -18,10 +20,12 @@ import {
   getColorDialThumbPosition,
   getColorDisplayStyles,
   getContrastBadgeSummary,
-  isColorInputValueValid,
+  getColorInputChannelValue,
   normalizeColorDialPointer,
   normalizeColorWheelPointer,
-  parseColorInputValue,
+  parseColorInputExpression,
+  parseColorStringInputValue,
+  resolveColorInputDraftValue,
   resolveColorDialAngles,
   resolveColorWheelChromaRange,
   resolveColorAreaAxes,
@@ -257,9 +261,94 @@ describe('Color API helpers', () => {
     expect(keyed?.h).toBeGreaterThan(base.h);
   });
 
-  it('parses and validates color input values', () => {
-    expect(isColorInputValueValid('#2563eb')).toBe(true);
-    expect(parseColorInputValue('not-a-color')).toBeNull();
+  it('maps channel values for color input models', () => {
+    const base = parse('#2563eb');
+    const rgbBlue = getColorInputChannelValue(base, 'rgb', 'b');
+    expect(rgbBlue).toBeGreaterThan(200);
+
+    const fromRgb = colorFromColorInputChannelValue(base, 'rgb', 'r', 10);
+    expect(getColorInputChannelValue(fromRgb, 'rgb', 'r')).toBeCloseTo(10, 3);
+
+    const hslSat = getColorInputChannelValue(base, 'hsl', 's');
+    expect(hslSat).toBeGreaterThan(60);
+
+    const fromHsl = colorFromColorInputChannelValue(base, 'hsl', 'h', 180);
+    expect(getColorInputChannelValue(fromHsl, 'hsl', 'h')).toBeCloseTo(180, 1);
+  });
+
+  it('parses color input expressions with relative math and precedence', () => {
+    expect(
+      parseColorInputExpression('10 + 5 * 2', {
+        currentValue: 0,
+        range: [0, 100],
+        allowExpressions: true,
+      }),
+    ).toBeCloseTo(20, 6);
+
+    expect(
+      parseColorInputExpression('+10', {
+        currentValue: 25,
+        range: [0, 100],
+        allowExpressions: true,
+      }),
+    ).toBeCloseTo(35, 6);
+
+    expect(
+      parseColorInputExpression('50%', {
+        currentValue: 25,
+        range: [0, 200],
+        allowExpressions: true,
+      }),
+    ).toBeCloseTo(100, 6);
+  });
+
+  it('resolves color input draft values with clamping and wrapping', () => {
+    expect(
+      resolveColorInputDraftValue('500', {
+        currentValue: 0,
+        range: [0, 255],
+        wrap: false,
+        allowExpressions: true,
+      }),
+    ).toBe(255);
+
+    expect(
+      resolveColorInputDraftValue('370', {
+        currentValue: 0,
+        range: [0, 360],
+        wrap: true,
+        allowExpressions: true,
+      }),
+    ).toBeCloseTo(10, 6);
+  });
+
+  it('handles keyboard-derived color input updates including Home/End', () => {
+    const base = parse('#2563eb');
+    const stepped = colorFromColorInputKey(base, 'oklch', 'h', 'ArrowUp', {
+      step: 5,
+      range: [0, 360],
+      wrap: true,
+    });
+    expect(stepped?.value).toBeGreaterThan(0);
+
+    const home = colorFromColorInputKey(base, 'oklch', 'c', 'Home', {
+      step: 0.01,
+      range: [0, 0.4],
+      wrap: false,
+    });
+    const end = colorFromColorInputKey(base, 'oklch', 'c', 'End', {
+      step: 0.01,
+      range: [0, 0.4],
+      wrap: false,
+    });
+
+    expect(home?.value).toBeCloseTo(0, 6);
+    expect(end?.value).toBeCloseTo(0.4, 6);
+  });
+
+  it('parses legacy color-string input values', () => {
+    expect(parseColorStringInputValue('#2563eb')).not.toBeNull();
+    expect(parseColorStringInputValue('not-a-color')).toBeNull();
   });
 
   it('builds contrast summaries with pass/fail metadata', () => {

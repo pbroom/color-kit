@@ -9,6 +9,7 @@ import {
   ColorPlane,
   ColorDisplay,
   ColorInput,
+  ColorStringInput,
   ColorProvider,
   ColorSlider,
   ColorWheel,
@@ -199,7 +200,7 @@ function ColorAreaDemoScene({
         style={hueRail.style}
       />
       <div className="ck-row">
-        <ColorInput className="ck-input" format="oklch" />
+        <ColorStringInput className="ck-input" format="oklch" />
         <ColorDisplay className="ck-color-display" />
       </div>
     </>
@@ -234,7 +235,7 @@ function ColorProviderDemoContent() {
         style={alphaRail.style}
       />
       <div className="ck-row">
-        <ColorInput className="ck-input" />
+        <ColorStringInput className="ck-input" />
         <ColorDisplay className="ck-color-display" />
       </div>
     </div>
@@ -373,7 +374,8 @@ export function ColorSliderDemo({
         {channel === 'c' ? <ChromaMarkers /> : null}
       </ColorSlider>
       <ColorInput
-        format="oklch"
+        model="oklch"
+        channel={channel}
         className="ck-input"
         requested={color.requested}
         onChangeRequested={color.setRequested}
@@ -398,7 +400,7 @@ export function ColorDialDemo() {
         />
         <div className="ck-row">
           <ColorDisplay className="ck-color-display" />
-          <ColorInput className="ck-input" format="oklch" />
+          <ColorInput model="oklch" channel="h" className="ck-input" />
         </div>
       </div>
     </ColorProvider>
@@ -415,7 +417,7 @@ export function HueDialDemo() {
         />
         <div className="ck-row">
           <ColorDisplay className="ck-color-display" />
-          <ColorInput className="ck-input" />
+          <ColorInput model="oklch" channel="h" className="ck-input" />
         </div>
       </div>
     </ColorProvider>
@@ -431,7 +433,7 @@ export function ColorWheelDemo() {
           style={{ background: WHEEL_GRADIENT }}
         />
         <div className="ck-row">
-          <ColorInput format="oklch" className="ck-input" />
+          <ColorStringInput format="oklch" className="ck-input" />
           <ColorDisplay className="ck-color-display" />
         </div>
       </div>
@@ -455,7 +457,7 @@ function HueSliderDemoContent() {
       />
       <div className="ck-row">
         <ColorDisplay className="ck-color-display" />
-        <ColorInput className="ck-input" />
+        <ColorStringInput className="ck-input" />
       </div>
     </div>
   );
@@ -484,7 +486,7 @@ function AlphaSliderDemoContent() {
         data-color-space={alphaRail.colorSpace}
         style={alphaRail.style}
       />
-      <ColorInput format="rgb" className="ck-input" />
+      <ColorInput model="oklch" channel="alpha" className="ck-input" />
     </div>
   );
 }
@@ -548,7 +550,7 @@ export function SwatchGroupDemo({
         onChange={setSelected}
         className="ck-swatch-grid"
       />
-      <ColorInput
+      <ColorStringInput
         className="ck-input"
         requested={selected}
         onChangeRequested={setSelected}
@@ -565,6 +567,8 @@ export function ColorInputDemo({
   const inspector = useOptionalDocsInspector();
   const state = inspectorDriven && inspector ? inspector.colorInputState : null;
   const colorState = useColor({ defaultColor: '#6366f1' });
+  const inputModel = state?.model ?? 'oklch';
+  const inputChannel = state?.channel ?? 'h';
   const inputGamut = state?.gamut;
   const setInputGamut = colorState.setActiveGamut;
 
@@ -573,26 +577,99 @@ export function ColorInputDemo({
     setInputGamut(inputGamut, 'programmatic');
   }, [inputGamut, setInputGamut]);
 
-  return (
-    <div className="ck-demo-stack">
+  const primaryInput =
+    inputModel === 'rgb' ? (
       <ColorInput
         className="ck-input"
-        format={state?.format ?? 'hex'}
+        model="rgb"
+        channel={
+          inputChannel === 'r' ||
+          inputChannel === 'g' ||
+          inputChannel === 'b' ||
+          inputChannel === 'alpha'
+            ? inputChannel
+            : 'r'
+        }
         requested={colorState.requested}
         onChangeRequested={colorState.setRequested}
-        aria-label="Primary color input"
+        aria-label="Primary channel input"
       />
+    ) : inputModel === 'hsl' ? (
       <ColorInput
+        className="ck-input"
+        model="hsl"
+        channel={
+          inputChannel === 'h' ||
+          inputChannel === 's' ||
+          inputChannel === 'l' ||
+          inputChannel === 'alpha'
+            ? inputChannel
+            : 'h'
+        }
+        requested={colorState.requested}
+        onChangeRequested={colorState.setRequested}
+        aria-label="Primary channel input"
+      />
+    ) : (
+      <ColorInput
+        className="ck-input"
+        model="oklch"
+        channel={
+          inputChannel === 'l' ||
+          inputChannel === 'c' ||
+          inputChannel === 'h' ||
+          inputChannel === 'alpha'
+            ? inputChannel
+            : 'h'
+        }
+        requested={colorState.requested}
+        onChangeRequested={colorState.setRequested}
+        aria-label="Primary channel input"
+      />
+    );
+
+  return (
+    <div className="ck-demo-stack">
+      {primaryInput}
+      <ColorStringInput
         className="ck-input"
         format="oklch"
         requested={colorState.requested}
         onChangeRequested={colorState.setRequested}
-        aria-label="OKLCH reference input"
+        aria-label="Legacy string input"
       />
       <ColorDisplay
         className="ck-color-display"
         requested={colorState.requested}
         gamut={state?.gamut ?? 'display-p3'}
+      />
+    </div>
+  );
+}
+
+export function ColorStringInputDemo() {
+  const colorState = useColor({ defaultColor: '#6366f1' });
+
+  return (
+    <div className="ck-demo-stack">
+      <ColorStringInput
+        className="ck-input"
+        format="hex"
+        requested={colorState.requested}
+        onChangeRequested={colorState.setRequested}
+        aria-label="Hex string input"
+      />
+      <ColorStringInput
+        className="ck-input"
+        format="oklch"
+        requested={colorState.requested}
+        onChangeRequested={colorState.setRequested}
+        aria-label="OKLCH string input"
+      />
+      <ColorDisplay
+        className="ck-color-display"
+        requested={colorState.requested}
+        gamut={colorState.activeGamut}
       />
     </div>
   );
@@ -685,14 +762,14 @@ export function ContrastBadgeDemo({
   return (
     <div className="ck-demo-stack">
       <div className="ck-row">
-        <ColorInput
+        <ColorStringInput
           className="ck-input"
           format="hex"
           requested={foreground.requested}
           onChangeRequested={foreground.setRequested}
           aria-label="Foreground color"
         />
-        <ColorInput
+        <ColorStringInput
           className="ck-input"
           format="hex"
           requested={background.requested}

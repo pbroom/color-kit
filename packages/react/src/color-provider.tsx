@@ -14,7 +14,8 @@ export interface ColorProviderProps extends UseColorOptions {
  * <ColorProvider defaultColor="#ff6600">
  *   <ColorArea />
  *   <HueSlider />
- *   <ColorInput />
+ *   <ColorInput model="oklch" channel="h" />
+ *   <ColorStringInput format="oklch" />
  * </ColorProvider>
  * ```
  */
