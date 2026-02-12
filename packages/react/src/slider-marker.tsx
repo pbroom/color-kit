@@ -41,6 +41,8 @@ export const SliderMarker = forwardRef<HTMLDivElement, SliderMarkerProps>(
     }
 
     const isHorizontal = slider.orientation === 'horizontal';
+    const sliderPositionInset = 'var(--ck-slider-position-inset, 0px)';
+    const sliderPositionSpan = `calc(100% - (${sliderPositionInset} * 2))`;
 
     return (
       <div
@@ -55,13 +57,13 @@ export const SliderMarker = forwardRef<HTMLDivElement, SliderMarkerProps>(
           position: 'absolute',
           ...(isHorizontal
             ? {
-                left: `${normalized * 100}%`,
+                left: `calc(${sliderPositionInset} + (${sliderPositionSpan} * ${normalized}))`,
                 top: '50%',
                 transform: 'translate(-50%, -50%)',
               }
             : {
                 left: '50%',
-                top: `${(1 - normalized) * 100}%`,
+                top: `calc(${sliderPositionInset} + (${sliderPositionSpan} * ${1 - normalized}))`,
                 transform: 'translate(-50%, -50%)',
               }),
           pointerEvents: 'none',
