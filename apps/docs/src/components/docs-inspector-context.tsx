@@ -128,6 +128,11 @@ const COLOR_AREA_DEMOS: Array<{ id: ColorAreaDemoId; label: string }> = [
 
 const REQUESTED_PRESET_COLOR = parse('#2563eb');
 const ANALYSIS_PRESET_COLOR = parse('#8b5cf6');
+const FIGMA_DOT_PATTERN = {
+  opacityPercent: 14,
+  dotSize: 1,
+  dotGap: 4,
+} as const;
 
 function createControlledColorState(
   color: Color,
@@ -177,9 +182,9 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       patternOverlay: {
         enabled: false,
         style: 'dots',
-        opacityPercent: 20,
-        dotSize: 2,
-        dotGap: 2,
+        opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+        dotSize: FIGMA_DOT_PATTERN.dotSize,
+        dotGap: FIGMA_DOT_PATTERN.dotGap,
       },
     },
     chromaBand: {
@@ -271,9 +276,9 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       patternOverlay: {
         enabled: true,
         style: 'dots',
-        opacityPercent: 20,
-        dotSize: 2,
-        dotGap: 2,
+        opacityPercent: FIGMA_DOT_PATTERN.opacityPercent,
+        dotSize: FIGMA_DOT_PATTERN.dotSize,
+        dotGap: FIGMA_DOT_PATTERN.dotGap,
       },
     },
     chromaBand: {
