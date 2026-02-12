@@ -112,8 +112,8 @@ export function ContrastRegionLayer({
   regionFillColor = '#c0e1ff',
   regionFillOpacity = 0.22,
   regionDotOpacity = 0,
-  regionDotSize = 1,
-  regionDotGap = 4,
+  regionDotSize = 2,
+  regionDotGap = 3,
   pathProps,
   ...props
 }: ContrastRegionLayerProps) {
@@ -171,6 +171,11 @@ export function ContrastRegionLayer({
   const [paths, setPaths] = useState(() => syncPaths ?? []);
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
+  const regionFillSvgRef = useRef<SVGSVGElement | null>(null);
+  const [regionFillSize, setRegionFillSize] = useState({
+    width: 100,
+    height: 100,
+  });
 
   useEffect(() => {
     if (!canUseWorkerOffload()) {
@@ -267,6 +272,76 @@ export function ContrastRegionLayer({
   const dotSize = Math.max(1, regionDotSize);
   const dotGap = Math.max(0, regionDotGap);
   const dotCell = dotSize + dotGap;
+  const dotCellX = (dotCell * 100) / Math.max(1, regionFillSize.width);
+  const dotCellY = (dotCell * 100) / Math.max(1, regionFillSize.height);
+  const dotSizeX = (dotSize * 100) / Math.max(1, regionFillSize.width);
+  const dotSizeY = (dotSize * 100) / Math.max(1, regionFillSize.height);
+
+  useEffect(() => {
+    if (
+      renderMode !== 'region' ||
+      dotOpacity <= 0 ||
+      typeof window === 'undefined'
+    ) {
+      return;
+    }
+
+    const svg = regionFillSvgRef.current;
+    if (!svg) {
+      return;
+    }
+
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const rect = svg.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return;
+      }
+      setRegionFillSize((current) => {
+        if (
+          Math.abs(current.width - rect.width) < 0.5 &&
+          Math.abs(current.height - rect.height) < 0.5
+        ) {
+          return current;
+        }
+        return {
+          width: rect.width,
+          height: rect.height,
+        };
+      });
+    };
+
+    const schedule = () => {
+      if (frame !== 0) {
+        return;
+      }
+      frame = window.requestAnimationFrame(measure);
+    };
+
+    schedule();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => {
+        schedule();
+      });
+      observer.observe(svg);
+      return () => {
+        observer.disconnect();
+        if (frame !== 0) {
+          window.cancelAnimationFrame(frame);
+        }
+      };
+    }
+
+    window.addEventListener('resize', schedule);
+    return () => {
+      window.removeEventListener('resize', schedule);
+      if (frame !== 0) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, [dotOpacity, regionPathData, renderMode]);
 
   return (
     <Layer
@@ -293,6 +368,7 @@ export function ContrastRegionLayer({
 
       {renderMode === 'region' && regionPathData ? (
         <svg
+          ref={regionFillSvgRef}
           data-color-area-contrast-region-fill=""
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -307,14 +383,14 @@ export function ContrastRegionLayer({
               <pattern
                 id={patternId}
                 patternUnits="userSpaceOnUse"
-                width={dotCell}
-                height={dotCell}
+                width={dotCellX}
+                height={dotCellY}
               >
-                <rect
-                  x={0}
-                  y={0}
-                  width={dotSize}
-                  height={dotSize}
+                <ellipse
+                  cx={dotSizeX * 0.5}
+                  cy={dotSizeY * 0.5}
+                  rx={dotSizeX * 0.5}
+                  ry={dotSizeY * 0.5}
                   fill={`rgba(255,255,255,${dotOpacity})`}
                 />
               </pattern>
