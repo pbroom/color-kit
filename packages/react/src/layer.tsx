@@ -29,6 +29,9 @@ export const Layer = forwardRef<HTMLDivElement, LayerProps>(function Layer(
   { kind = 'overlay', zIndex, interactive = false, style, ...props },
   ref,
 ) {
+  const shouldClipToArea =
+    kind === 'background' || kind === 'plane' || kind === 'overlay';
+
   return (
     <div
       {...props}
@@ -43,6 +46,7 @@ export const Layer = forwardRef<HTMLDivElement, LayerProps>(function Layer(
         zIndex,
         pointerEvents: interactive ? 'auto' : 'none',
         ...style,
+        overflow: shouldClipToArea ? 'hidden' : 'visible',
       }}
     />
   );

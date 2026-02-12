@@ -22,7 +22,7 @@ export type ColorAreaFormatRow =
   | 'hex';
 export type EditableColorAreaFormatRow = Exclude<ColorAreaFormatRow, 'hct'>;
 export type ColorAreaStylePill = 'solid' | 'dashed' | 'dots';
-export type ColorAreaLineWidth = 0.5 | 1;
+export type ColorAreaLineWidth = 0.25 | 0.5 | 1;
 export type ColorSliderDemoChannel = 'l' | 'c' | 'h' | 'alpha';
 export type ColorInputDemoModel = 'oklch' | 'rgb' | 'hsl';
 export type ColorInputDemoChannel =
@@ -172,12 +172,12 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       p3Boundary: {
         enabled: false,
         style: 'solid',
-        width: 0.5,
+        width: 0.25,
       },
       srgbBoundary: {
         enabled: false,
         style: 'dashed',
-        width: 1,
+        width: 0.25,
       },
       patternOverlay: {
         enabled: false,
@@ -192,12 +192,12 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       p3: {
         enabled: false,
         style: 'solid',
-        width: 0.5,
+        width: 0.25,
       },
       srgb: {
         enabled: false,
         style: 'dashed',
-        width: 0.5,
+        width: 0.25,
       },
     },
     contrast: {
@@ -205,17 +205,17 @@ function createRequestedPresetState(): ColorAreaInspectorState {
         aa3: {
           enabled: false,
           style: 'solid',
-          width: 0.5,
+          width: 0.25,
         },
         aa45: {
           enabled: false,
           style: 'dashed',
-          width: 1,
+          width: 0.25,
         },
         aa7: {
           enabled: false,
           style: 'dashed',
-          width: 1,
+          width: 0.25,
         },
       },
       regions: {
@@ -266,12 +266,12 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       p3Boundary: {
         enabled: true,
         style: 'solid',
-        width: 0.5,
+        width: 0.25,
       },
       srgbBoundary: {
         enabled: true,
         style: 'dashed',
-        width: 1,
+        width: 0.25,
       },
       patternOverlay: {
         enabled: true,
@@ -286,12 +286,12 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       p3: {
         enabled: false,
         style: 'solid',
-        width: 0.5,
+        width: 0.25,
       },
       srgb: {
         enabled: true,
         style: 'dashed',
-        width: 0.5,
+        width: 0.25,
       },
     },
     contrast: {
@@ -299,17 +299,17 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
         aa3: {
           enabled: false,
           style: 'solid',
-          width: 0.5,
+          width: 0.25,
         },
         aa45: {
           enabled: true,
           style: 'dashed',
-          width: 1,
+          width: 0.25,
         },
         aa7: {
           enabled: false,
           style: 'dashed',
-          width: 1,
+          width: 0.25,
         },
       },
       regions: {

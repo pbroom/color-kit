@@ -177,7 +177,7 @@ function strokeDasharray(
 }
 
 function strokePathProps(
-  control: { style: 'solid' | 'dashed' | 'dots'; width: 0.5 | 1 },
+  control: { style: 'solid' | 'dashed' | 'dots'; width: 0.25 | 0.5 | 1 },
   stroke: string,
 ) {
   return {
@@ -189,6 +189,9 @@ function strokePathProps(
     strokeDasharray: strokeDasharray(control.style),
   };
 }
+
+const COLOR_AREA_LINE_STEPS = 128;
+const COLOR_AREA_CONTRAST_STEPS = 72;
 
 function ColorAreaDemoScene({
   inspectorState,
@@ -216,8 +219,8 @@ function ColorAreaDemoScene({
     visualize: {
       p3Fallback: true,
       srgbFallback: true,
-      p3Boundary: { enabled: false, style: 'solid', width: 0.5 as const },
-      srgbBoundary: { enabled: false, style: 'dashed', width: 1 as const },
+      p3Boundary: { enabled: false, style: 'solid', width: 0.25 as const },
+      srgbBoundary: { enabled: false, style: 'dashed', width: 0.25 as const },
       patternOverlay: {
         enabled: false,
         style: 'dots',
@@ -228,14 +231,14 @@ function ColorAreaDemoScene({
     },
     chromaBand: {
       mode: 'closest' as const,
-      p3: { enabled: false, style: 'solid', width: 0.5 as const },
-      srgb: { enabled: false, style: 'dashed', width: 0.5 as const },
+      p3: { enabled: false, style: 'solid', width: 0.25 as const },
+      srgb: { enabled: false, style: 'dashed', width: 0.25 as const },
     },
     contrast: {
       lines: {
-        aa3: { enabled: false, style: 'solid', width: 0.5 as const },
-        aa45: { enabled: false, style: 'dashed', width: 1 as const },
-        aa7: { enabled: false, style: 'dashed', width: 1 as const },
+        aa3: { enabled: false, style: 'solid', width: 0.25 as const },
+        aa45: { enabled: false, style: 'dashed', width: 0.25 as const },
+        aa7: { enabled: false, style: 'dashed', width: 0.25 as const },
       },
       regions: {
         aa3: { enabled: false, style: 'dots', opacityPercent: 20 },
@@ -272,7 +275,7 @@ function ColorAreaDemoScene({
         {scene.visualize.p3Boundary.enabled && (
           <GamutBoundaryLayer
             gamut="display-p3"
-            steps={48}
+            steps={COLOR_AREA_LINE_STEPS}
             quality="auto"
             pathProps={strokePathProps(scene.visualize.p3Boundary, '#40f5d2')}
           />
@@ -280,7 +283,7 @@ function ColorAreaDemoScene({
         {scene.visualize.srgbBoundary.enabled && (
           <GamutBoundaryLayer
             gamut="srgb"
-            steps={48}
+            steps={COLOR_AREA_LINE_STEPS}
             quality="auto"
             pathProps={strokePathProps(scene.visualize.srgbBoundary, '#ffd447')}
           />
@@ -290,7 +293,7 @@ function ColorAreaDemoScene({
           <ChromaBandLayer
             gamut="display-p3"
             mode={scene.chromaBand.mode}
-            steps={48}
+            steps={COLOR_AREA_LINE_STEPS}
             quality="auto"
             pathProps={strokePathProps(scene.chromaBand.p3, '#9e8cff')}
           />
@@ -299,7 +302,7 @@ function ColorAreaDemoScene({
           <ChromaBandLayer
             gamut="srgb"
             mode={scene.chromaBand.mode}
-            steps={48}
+            steps={COLOR_AREA_LINE_STEPS}
             quality="auto"
             pathProps={strokePathProps(scene.chromaBand.srgb, '#ffe06b')}
           />
@@ -309,8 +312,8 @@ function ColorAreaDemoScene({
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={3}
-            lightnessSteps={28}
-            chromaSteps={28}
+            lightnessSteps={COLOR_AREA_CONTRAST_STEPS}
+            chromaSteps={COLOR_AREA_CONTRAST_STEPS}
             quality="auto"
             pathProps={strokePathProps(scene.contrast.lines.aa3, '#bcd6ff')}
           />
@@ -319,8 +322,8 @@ function ColorAreaDemoScene({
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={4.5}
-            lightnessSteps={28}
-            chromaSteps={28}
+            lightnessSteps={COLOR_AREA_CONTRAST_STEPS}
+            chromaSteps={COLOR_AREA_CONTRAST_STEPS}
             quality="auto"
             pathProps={strokePathProps(scene.contrast.lines.aa45, '#c0e1ff')}
           />
@@ -329,8 +332,8 @@ function ColorAreaDemoScene({
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={7}
-            lightnessSteps={28}
-            chromaSteps={28}
+            lightnessSteps={COLOR_AREA_CONTRAST_STEPS}
+            chromaSteps={COLOR_AREA_CONTRAST_STEPS}
             quality="auto"
             pathProps={strokePathProps(scene.contrast.lines.aa7, '#d5e7ff')}
           />
