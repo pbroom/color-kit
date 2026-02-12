@@ -41,6 +41,47 @@ describe('ColorInput', () => {
     expect(options).toEqual({ changedChannel: 'c', interaction: 'text-input' });
   });
 
+  it('does not commit when focus/blur occurs without draft changes', () => {
+    const onChangeRequested = vi.fn();
+
+    render(
+      <ColorInput
+        model="oklch"
+        channel="h"
+        requested={parse('oklch(0.6 0.2 100)')}
+        onChangeRequested={onChangeRequested}
+      />,
+    );
+
+    const input = screen.getByRole('spinbutton');
+    fireEvent.focus(input);
+    fireEvent.blur(input);
+
+    expect(onChangeRequested).not.toHaveBeenCalled();
+  });
+
+  it('does not double-commit after keyboard stepping followed by blur', () => {
+    const onChangeRequested = vi.fn();
+
+    render(
+      <ColorInput
+        model="oklch"
+        channel="h"
+        requested={parse('oklch(0.6 0.2 100)')}
+        onChangeRequested={onChangeRequested}
+      />,
+    );
+
+    const input = screen.getByRole('spinbutton');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    fireEvent.blur(input);
+
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+    const [, options] = onChangeRequested.mock.calls[0];
+    expect(options).toEqual({ changedChannel: 'h', interaction: 'keyboard' });
+  });
+
   it('reverts invalid commits without mutating requested state', () => {
     const onChangeRequested = vi.fn();
     const onInvalidCommit = vi.fn();
