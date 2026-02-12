@@ -1160,11 +1160,11 @@ a {
 
 .ck-slider-v2 {
   --ck-slider-rail-height: 16px;
-  --ck-slider-hit-height: 44px;
+  --ck-slider-hit-height: 32px;
   --ck-slider-thumb-size: 16px;
   --ck-slider-thumb-radius: calc(var(--ck-slider-thumb-size) / 2);
   --ck-slider-thumb-fill-srgb: #0f38ee;
-  min-height: var(--ck-slider-rail-height);
+  min-height: var(--ck-slider-hit-height);
   border: none;
   border-radius: 0;
   background: none;
@@ -1173,7 +1173,7 @@ a {
 
 @media (hover: none), (pointer: coarse) {
   .ck-slider-v2 {
-    min-height: var(--ck-slider-hit-height);
+    --ck-slider-hit-height: 44px;
   }
 }
 
