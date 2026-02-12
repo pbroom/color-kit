@@ -67,9 +67,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState<ThemePreference>(() =>
     readStoredPreference(),
   );
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
-    return resolveTheme(readStoredPreference(), getSystemPrefersDark());
-  });
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
+    getSystemPrefersDark(),
+  );
 
   useEffect(() => {
     try {
@@ -80,31 +80,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [preference]);
 
   useEffect(() => {
-    if (preference !== 'system') {
-      setResolvedTheme(preference);
-      return;
-    }
-
     if (typeof window.matchMedia !== 'function') {
-      setResolvedTheme('light');
       return;
     }
 
     const media = window.matchMedia(PREFERS_DARK_QUERY);
-    const syncTheme = () => {
-      setResolvedTheme(resolveTheme('system', media.matches));
+    const onChange = (
+      event: MediaQueryListEvent | MediaQueryList,
+    ) => {
+      setSystemPrefersDark(event.matches);
     };
 
-    syncTheme();
-
     if (typeof media.addEventListener === 'function') {
-      media.addEventListener('change', syncTheme);
-      return () => media.removeEventListener('change', syncTheme);
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
     }
 
-    media.addListener(syncTheme);
-    return () => media.removeListener(syncTheme);
-  }, [preference]);
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
+
+  const resolvedTheme = useMemo(
+    () => resolveTheme(preference, systemPrefersDark),
+    [preference, systemPrefersDark],
+  );
 
   useEffect(() => {
     const root = document.documentElement;

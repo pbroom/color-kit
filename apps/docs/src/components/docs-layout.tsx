@@ -18,8 +18,16 @@ function slugifyHeading(title: string): string {
 
 function DocsLayoutInner() {
   const location = useLocation();
-  const [headings, setHeadings] = useState<DocsHeading[]>([]);
+  const [headingsState, setHeadingsState] = useState<{
+    pathname: string;
+    items: DocsHeading[];
+  }>({
+    pathname: location.pathname,
+    items: [],
+  });
   const { setActiveTab } = useDocsInspector();
+  const headings =
+    headingsState.pathname === location.pathname ? headingsState.items : [];
 
   useEffect(() => {
     setActiveTab('outline');
@@ -50,7 +58,10 @@ function DocsLayoutInner() {
       });
 
       if (!cancelled) {
-        setHeadings(next);
+        setHeadingsState({
+          pathname: location.pathname,
+          items: next,
+        });
       }
     };
 
@@ -72,7 +83,6 @@ function DocsLayoutInner() {
       return true;
     };
 
-    setHeadings([]);
     if (!connectToRoot()) {
       rootObserver = new MutationObserver(() => {
         if (connectToRoot()) {

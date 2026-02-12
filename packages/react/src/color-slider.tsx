@@ -112,19 +112,18 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     }
 
     const sliderRef = useRef<HTMLDivElement>(null);
-    const requestedRef = useRef(requested);
-    requestedRef.current = requested;
 
     const [isDragging, setIsDragging] = useState(false);
     const isDraggingRef = useRef(false);
 
     const pointerFrameRef = useRef<number | null>(null);
     const pendingPointerRef = useRef<PointerSnapshot | null>(null);
+    const processPendingPointerRef = useRef<(frameTime: number) => void>(
+      () => {},
+    );
     const lastPointerCommitTsRef = useRef(0);
 
     const r = resolveColorSliderRange(channel, range);
-    const rangeRef = useRef(r);
-    rangeRef.current = r;
 
     const norm = getColorSliderThumbPosition(requested, channel, r);
     const lastCommittedNormRef = useRef(norm);
@@ -153,10 +152,10 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     const commitNorm = useCallback(
       (nextNorm: number, interaction: 'pointer' | 'keyboard') => {
         const nextColor = colorFromColorSliderPosition(
-          requestedRef.current,
+          requested,
           channel,
           nextNorm,
-          rangeRef.current,
+          r,
         );
 
         setRequested(nextColor, {
@@ -164,7 +163,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           interaction,
         });
       },
-      [channel, setRequested],
+      [channel, requested, r, setRequested],
     );
 
     const stopPointerFrame = useCallback(() => {
@@ -173,6 +172,12 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         pointerFrameRef.current = null;
       }
       pendingPointerRef.current = null;
+    }, []);
+
+    const schedulePendingPointerFrame = useCallback(() => {
+      pointerFrameRef.current = requestAnimationFrame((frameTime: number) => {
+        processPendingPointerRef.current(frameTime);
+      });
     }, []);
 
     const processPendingPointer = useCallback(
@@ -197,9 +202,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           frameTime >= lastPointerCommitTsRef.current &&
           frameTime - lastPointerCommitTsRef.current < minFrameDelta
         ) {
-          pointerFrameRef.current = requestAnimationFrame(
-            processPendingPointer,
-          );
+          schedulePendingPointerFrame();
           return;
         }
 
@@ -217,24 +220,30 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         }
 
         if (pendingPointerRef.current) {
-          pointerFrameRef.current = requestAnimationFrame(
-            processPendingPointer,
-          );
+          schedulePendingPointerFrame();
         }
       },
-      [commitNorm, dragEpsilon, maxPointerRate, resolvePointerNorm],
+      [
+        commitNorm,
+        dragEpsilon,
+        maxPointerRate,
+        resolvePointerNorm,
+        schedulePendingPointerFrame,
+      ],
     );
+
+    useEffect(() => {
+      processPendingPointerRef.current = processPendingPointer;
+    }, [processPendingPointer]);
 
     const queuePointerUpdate = useCallback(
       (clientX: number, clientY: number) => {
         pendingPointerRef.current = { clientX, clientY };
         if (pointerFrameRef.current === null) {
-          pointerFrameRef.current = requestAnimationFrame(
-            processPendingPointer,
-          );
+          schedulePendingPointerFrame();
         }
       },
-      [processPendingPointer],
+      [schedulePendingPointerFrame],
     );
 
     const beginDragging = useCallback(() => {
@@ -279,11 +288,11 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       (event: ReactKeyboardEvent) => {
         const step = event.shiftKey ? 0.1 : 0.01;
         const newColor: Color | null = colorFromColorSliderKey(
-          requestedRef.current,
+          requested,
           channel,
           event.key,
           step,
-          rangeRef.current,
+          r,
         );
 
         if (newColor) {
@@ -294,7 +303,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           });
         }
       },
-      [channel, setRequested],
+      [channel, requested, r, setRequested],
     );
 
     const setRootRef = useCallback(

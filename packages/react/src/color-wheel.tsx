@@ -169,7 +169,13 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
       );
     }
 
-    const resolvedChromaRange = resolveColorWheelChromaRange(chromaRange);
+    const { minChroma, maxChroma } = useMemo(() => {
+      const [min, max] = resolveColorWheelChromaRange(chromaRange);
+      return {
+        minChroma: min,
+        maxChroma: max,
+      };
+    }, [chromaRange]);
     const wheelRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const activePointerIdRef = useRef<number | null>(null);
@@ -208,7 +214,7 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
       x: xNorm,
       y: yNorm,
       radius,
-    } = getColorWheelThumbPosition(requested, resolvedChromaRange);
+    } = getColorWheelThumbPosition(requested, [minChroma, maxChroma]);
 
     const updateFromPointer = useCallback(
       (clientX: number, clientY: number, force: boolean) => {
@@ -254,14 +260,14 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
             requested,
             normalized.x,
             normalized.y,
-            resolvedChromaRange,
+            [minChroma, maxChroma],
           ),
           {
             interaction: 'pointer',
           },
         );
       },
-      [dragEpsilon, maxUpdateHz, requested, resolvedChromaRange, setRequested],
+      [dragEpsilon, maxUpdateHz, maxChroma, minChroma, requested, setRequested],
     );
 
     const handlePointerDown = useCallback(
@@ -343,7 +349,7 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
           event.key,
           event.shiftKey ? shiftHueStep : hueStep,
           event.shiftKey ? shiftChromaStepRatio : chromaStepRatio,
-          resolvedChromaRange,
+          [minChroma, maxChroma],
         );
 
         if (!next) {
@@ -360,9 +366,10 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
       [
         chromaStepRatio,
         hueStep,
+        maxChroma,
+        minChroma,
         onKeyDown,
         requested,
-        resolvedChromaRange,
         setRequested,
         shiftChromaStepRatio,
         shiftHueStep,
@@ -394,8 +401,8 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
         data-out-of-gamut={outOfGamut || undefined}
         role="slider"
         aria-label={props['aria-label'] ?? 'Color wheel'}
-        aria-valuemin={resolvedChromaRange[0]}
-        aria-valuemax={resolvedChromaRange[1]}
+        aria-valuemin={minChroma}
+        aria-valuemax={maxChroma}
         aria-valuenow={requested.c}
         aria-valuetext={
           props['aria-valuetext'] ??
