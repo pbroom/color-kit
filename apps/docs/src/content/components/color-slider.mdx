@@ -18,15 +18,46 @@ import { ColorSliderDemo } from '@/components/component-demos';
 ## Usage
 
 ```tsx
-import { ColorSlider } from '@color-kit/react';
+import { ChromaMarkers, ColorApi, ColorSlider } from '@color-kit/react';
 
-<ColorSlider channel="h" />;
+const rail = ColorApi.getSliderGradientStyles({
+  model: 'oklch',
+  channel: 'c',
+  range: ColorApi.resolveColorSliderRange('c'),
+  baseColor: requested,
+  colorSpace: activeGamut,
+});
+
+<ColorSlider
+  channel="c"
+  className="ck-slider ck-slider-v2"
+  data-color-space={rail.colorSpace}
+  style={{
+    '--ck-slider-gradient-active': rail.activeBackgroundImage,
+    '--ck-slider-gradient-srgb': rail.srgbBackgroundImage,
+    '--ck-slider-fallback-color': rail.srgbBackgroundColor,
+  }}
+>
+  <ChromaMarkers />
+</ColorSlider>;
 ```
 
 ## Non-UI API helpers
 
 - `ColorApi.resolveColorSliderRange`
+- `ColorApi.getColorSliderNormFromValue`
 - `ColorApi.getColorSliderThumbPosition`
 - `ColorApi.normalizeColorSliderPointer`
 - `ColorApi.colorFromColorSliderPosition`
 - `ColorApi.colorFromColorSliderKey`
+- `ColorApi.sampleSliderGradient`
+- `ColorApi.getSliderGradientStyles`
+
+## Rail Background Recipe
+
+Use `ColorApi.getSliderGradientStyles` when rail visuals need to represent an exact color model/channel/range.
+
+- Set `model` to the source model you want the rail to represent (`oklch`, `hsl`, `hsv`, `rgb`).
+- Set `channel` + `range` to match the controlled slider axis.
+- Use the active gamut for `colorSpace`.
+- Apply `activeBackgroundImage` in P3-supporting contexts and keep `srgbBackgroundImage` + `srgbBackgroundColor` as deterministic fallback.

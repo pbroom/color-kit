@@ -27,6 +27,7 @@ export {
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
   getColorSliderLabel,
+  getColorSliderNormFromValue,
   getColorSliderThumbPosition,
   normalizeColorSliderPointer,
   resolveColorSliderRange,
@@ -46,6 +47,23 @@ export {
   resolveColorWheelChromaRange,
 } from './color-wheel.js';
 export type { ColorWheelKey, ColorWheelThumbPosition } from './color-wheel.js';
+
+export {
+  getSliderGradientStyles,
+  sampleSliderGradient,
+} from './slider-gradient.js';
+export type {
+  SliderColorModel,
+  SliderColorSpace,
+  SliderGradientStop,
+  SliderGradientStyles,
+  SliderModelChannel,
+  SampleSliderGradientOptions,
+  OklchSliderModelChannel,
+  HslSliderModelChannel,
+  HsvSliderModelChannel,
+  RgbSliderModelChannel,
+} from './slider-gradient.js';
 
 export {
   formatColorInputValue,
