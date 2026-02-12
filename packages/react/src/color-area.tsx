@@ -143,21 +143,37 @@ function countThumbs(children: ReactNode): number {
   return count;
 }
 
-function pruneExtraThumbs(
-  children: ReactNode,
-  state: { seenThumb: boolean },
-): ReactNode {
+function findFirstThumb(children: ReactNode): ReactElement | null {
+  const nodes = Children.toArray(children);
+  for (const node of nodes) {
+    if (!isValidElement(node)) {
+      continue;
+    }
+
+    if (node.type === Thumb) {
+      return node;
+    }
+
+    const nestedChildren = (node.props as { children?: ReactNode }).children;
+    if (nestedChildren !== undefined) {
+      const nestedThumb = findFirstThumb(nestedChildren);
+      if (nestedThumb) {
+        return nestedThumb;
+      }
+    }
+  }
+
+  return null;
+}
+
+function pruneAllThumbs(children: ReactNode): ReactNode {
   return Children.map(children, (child) => {
     if (!isValidElement(child)) {
       return child;
     }
 
     if (child.type === Thumb) {
-      if (state.seenThumb) {
-        return null;
-      }
-      state.seenThumb = true;
-      return child;
+      return null;
     }
 
     const nestedChildren = (child.props as { children?: ReactNode }).children;
@@ -165,7 +181,7 @@ function pruneExtraThumbs(
       return child;
     }
 
-    const nextChildren = pruneExtraThumbs(nestedChildren, state);
+    const nextChildren = pruneAllThumbs(nestedChildren);
     if (nextChildren === nestedChildren) {
       return child;
     }
@@ -697,30 +713,32 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       [onPointerCancel, flushPendingPosition],
     );
 
-    const { explicitThumbCount, resolvedChildren } = useMemo(() => {
-      const thumbCount = countThumbs(children);
-      let nextChildren = children;
+    const { explicitThumbCount, explicitThumb, resolvedChildren } =
+      useMemo(() => {
+        const thumbCount = countThumbs(children);
+        const firstThumb = findFirstThumb(children);
+        const nextChildren =
+          thumbCount > 0 ? pruneAllThumbs(children) : children;
 
-      if (thumbCount > 1) {
-        if (!isProductionEnvironment()) {
-          throw new Error('ColorArea allows only one <Thumb /> child.');
+        if (thumbCount > 1) {
+          if (!isProductionEnvironment()) {
+            throw new Error('ColorArea allows only one <Thumb /> child.');
+          }
+
+          if (!warnedMultiThumbRef.current) {
+            warnedMultiThumbRef.current = true;
+            console.warn(
+              'ColorArea allows one <Thumb />. Extra thumbs were ignored.',
+            );
+          }
         }
 
-        if (!warnedMultiThumbRef.current) {
-          warnedMultiThumbRef.current = true;
-          console.warn(
-            'ColorArea allows one <Thumb />. Extra thumbs were ignored.',
-          );
-        }
-
-        nextChildren = pruneExtraThumbs(children, { seenThumb: false });
-      }
-
-      return {
-        explicitThumbCount: thumbCount,
-        resolvedChildren: nextChildren,
-      };
-    }, [children]);
+        return {
+          explicitThumbCount: thumbCount,
+          explicitThumb: firstThumb,
+          resolvedChildren: nextChildren,
+        };
+      }, [children]);
 
     const contextValue = useMemo(
       () => ({
@@ -766,11 +784,13 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           style={{
             position: 'relative',
             touchAction: 'none',
+            overflow: 'visible',
+            isolation: 'isolate',
             ...style,
           }}
         >
           {resolvedChildren}
-          {explicitThumbCount === 0 ? <Thumb /> : null}
+          {explicitThumbCount === 0 ? <Thumb /> : explicitThumb}
         </div>
       </ColorAreaContext.Provider>
     );

@@ -837,8 +837,9 @@ a {
   aspect-ratio: 1 / 1;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  overflow: hidden;
+  overflow: visible;
   position: relative;
+  isolation: isolate;
 }
 
 .ck-color-area [data-color-area-thumb] {
@@ -846,6 +847,7 @@ a {
   height: 20px;
   border-radius: 999px;
   border: 2px solid #f7fcff;
+  z-index: 2147483647;
   box-shadow:
     0 2px 7px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(0, 0, 0, 0.4);
@@ -886,16 +888,17 @@ a {
   width: 10px;
   height: 10px;
   border-radius: 999px;
+  z-index: 40;
   border: 1px solid rgba(0, 0, 0, 0.62);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.52);
 }
 
 .ck-color-area [data-color-area-fallback-point][data-gamut='display-p3'] {
-  background: #40f5d2;
+  outline: 1px solid #40f5d2;
 }
 
 .ck-color-area [data-color-area-fallback-point][data-gamut='srgb'] {
-  background: #ffd447;
+  outline: 1px solid #ffd447;
 }
 
 .ck-slider {

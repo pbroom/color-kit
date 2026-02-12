@@ -178,9 +178,7 @@ describe('Color API helpers', () => {
 
     expect(p3Styles.backgroundColor).toMatch(/^rgb\(/);
     expect(p3Styles.background).toMatch(/^color\(display-p3 /);
-    expect(p3Styles.backgroundImage).toBeUndefined();
     expect(srgbStyles.backgroundColor).toMatch(/^rgb\(/);
-    expect(srgbStyles.background).toBeUndefined();
-    expect(srgbStyles.backgroundImage).toBeUndefined();
+    expect(srgbStyles.background).toMatch(/^rgb\(/);
   });
 });

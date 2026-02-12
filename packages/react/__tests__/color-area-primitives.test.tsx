@@ -34,16 +34,17 @@ describe('ColorArea primitives', () => {
       </ColorArea>,
     );
 
-    expect(
-      container.querySelector(
-        '[data-color-area-fallback-point][data-gamut="display-p3"]',
-      ),
-    ).toBeTruthy();
-    expect(
-      container.querySelector(
-        '[data-color-area-fallback-point][data-gamut="srgb"]',
-      ),
-    ).toBeTruthy();
+    const p3Point = container.querySelector(
+      '[data-color-area-fallback-point][data-gamut="display-p3"]',
+    );
+    const srgbPoint = container.querySelector(
+      '[data-color-area-fallback-point][data-gamut="srgb"]',
+    );
+
+    expect(p3Point).toBeTruthy();
+    expect(srgbPoint).toBeTruthy();
+    expect(p3Point?.getAttribute('data-color')).toMatch(/^#/);
+    expect(srgbPoint?.getAttribute('data-color')).toMatch(/^#/);
   });
 
   it('renders gamut and contrast wrappers as line overlays', () => {
