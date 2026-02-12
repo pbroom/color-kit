@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "profile:color-area": "node scripts/profile-color-area.mjs"
+    "profile:color-area": "node scripts/profile-color-area.mjs",
+    "test:color-area-drag": "node scripts/test-color-area-drag.mjs"
   },
   "dependencies": {
     "@color-kit/core": "workspace:*",

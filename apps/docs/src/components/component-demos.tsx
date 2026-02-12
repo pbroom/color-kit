@@ -96,6 +96,78 @@ function normalizeChannels(
   return { x, y: y === 'l' ? 'c' : 'l' };
 }
 
+function ColorAreaDemoScene({
+  axes,
+  inspectorGamut,
+  showCheckerboard,
+  showP3Boundary,
+  showSrgbBoundary,
+  showContrastRegion,
+  onInteractionFrame,
+}: {
+  axes: ColorAreaAxes;
+  inspectorGamut: 'display-p3' | 'srgb' | undefined;
+  showCheckerboard: boolean;
+  showP3Boundary: boolean;
+  showSrgbBoundary: boolean;
+  showContrastRegion: boolean;
+  onInteractionFrame: (stats: ColorAreaInteractionFrameStats) => void;
+}) {
+  const color = useColorContext();
+
+  useEffect(() => {
+    if (!inspectorGamut) return;
+    if (color.state$.activeGamut.peek() === inspectorGamut) return;
+    color.setActiveGamut(inspectorGamut, 'programmatic');
+  }, [color, inspectorGamut]);
+
+  return (
+    <>
+      <ColorArea
+        className="ck-color-area"
+        axes={axes}
+        performanceProfile="auto"
+        onInteractionFrame={onInteractionFrame}
+      >
+        <Background checkerboard={showCheckerboard} />
+        <ColorPlane renderer="auto" />
+        {showP3Boundary && (
+          <GamutBoundaryLayer
+            gamut="display-p3"
+            steps={48}
+            quality="auto"
+            pathProps={{ className: 'ck-overlay-p3' }}
+          />
+        )}
+        {showSrgbBoundary && (
+          <GamutBoundaryLayer
+            gamut="srgb"
+            steps={48}
+            quality="auto"
+            pathProps={{ className: 'ck-overlay-srgb' }}
+          />
+        )}
+        {showContrastRegion && (
+          <ContrastRegionLayer
+            gamut={inspectorGamut}
+            threshold={4.5}
+            lightnessSteps={28}
+            chromaSteps={28}
+            quality="auto"
+            pathProps={{ className: 'ck-overlay-contrast' }}
+          />
+        )}
+        <FallbackPointsLayer />
+      </ColorArea>
+      <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
+      <div className="ck-row">
+        <ColorInput className="ck-input" format="oklch" />
+        <ColorDisplay className="ck-color-display" />
+      </div>
+    </>
+  );
+}
+
 export function ColorProviderDemo() {
   return (
     <ColorProvider defaultColor="#3b82f6">
@@ -172,70 +244,21 @@ export function ColorAreaDemo({
     [],
   );
 
-  function ColorAreaDemoScene() {
-    const color = useColorContext();
-    const inspectorGamut = state?.gamut;
-
-    useEffect(() => {
-      if (!inspectorGamut) return;
-      if (color.state$.activeGamut.peek() === inspectorGamut) return;
-      color.setActiveGamut(inspectorGamut, 'programmatic');
-    }, [color, inspectorGamut]);
-
-    return (
-      <>
-        <ColorArea
-          className="ck-color-area"
-          axes={axes}
-          performanceProfile="auto"
-          onInteractionFrame={handleInteractionFrame}
-        >
-          <Background checkerboard={state?.showCheckerboard ?? false} />
-          <ColorPlane renderer="auto" />
-          {(state?.showP3Boundary ?? false) && (
-            <GamutBoundaryLayer
-              gamut="display-p3"
-              steps={48}
-              quality="auto"
-              pathProps={{ className: 'ck-overlay-p3' }}
-            />
-          )}
-          {(state?.showSrgbBoundary ?? false) && (
-            <GamutBoundaryLayer
-              gamut="srgb"
-              steps={48}
-              quality="auto"
-              pathProps={{ className: 'ck-overlay-srgb' }}
-            />
-          )}
-          {(state?.showContrastRegion ?? false) && (
-            <ContrastRegionLayer
-              gamut={inspectorGamut}
-              threshold={4.5}
-              lightnessSteps={28}
-              chromaSteps={28}
-              quality="auto"
-              pathProps={{ className: 'ck-overlay-contrast' }}
-            />
-          )}
-          <FallbackPointsLayer />
-        </ColorArea>
-        <HueSlider className="ck-slider" style={{ background: HUE_GRADIENT }} />
-        <div className="ck-row">
-          <ColorInput className="ck-input" format="oklch" />
-          <ColorDisplay className="ck-color-display" />
-        </div>
-      </>
-    );
-  }
-
   return (
     <div className="ck-demo-stack">
       <ColorProvider
         defaultColor="#2563eb"
         defaultGamut={state?.gamut ?? 'display-p3'}
       >
-        <ColorAreaDemoScene />
+        <ColorAreaDemoScene
+          axes={axes}
+          inspectorGamut={state?.gamut}
+          showCheckerboard={state?.showCheckerboard ?? false}
+          showP3Boundary={state?.showP3Boundary ?? false}
+          showSrgbBoundary={state?.showSrgbBoundary ?? false}
+          showContrastRegion={state?.showContrastRegion ?? false}
+          onInteractionFrame={handleInteractionFrame}
+        />
       </ColorProvider>
       <div className="ck-caption">
         Perf profile: auto · quality: {perfFrame?.qualityLevel ?? 'high'} ·
