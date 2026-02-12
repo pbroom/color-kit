@@ -4,7 +4,9 @@ interface ComponentApiDocs {
   colorProvider: ApiTableRow[];
   colorArea: ApiTableRow[];
   colorWheel: ApiTableRow[];
+  colorDial: ApiTableRow[];
   colorSlider: ApiTableRow[];
+  hueDial: ApiTableRow[];
   hueSlider: ApiTableRow[];
   alphaSlider: ApiTableRow[];
   swatch: ApiTableRow[];
@@ -214,6 +216,85 @@ export const componentApiDocs: ComponentApiDocs = {
       name: 'onChangeRequested',
       type: '(requested: Color, options?: SetRequestedOptions) => void',
       description: 'Standalone change handler when not using context.',
+    },
+  ],
+  colorDial: [
+    {
+      name: 'channel',
+      type: "'l' | 'c' | 'h' | 'alpha'",
+      description: 'Required channel controlled by the radial dial.',
+    },
+    {
+      name: 'range',
+      type: '[number, number]',
+      description: 'Optional channel range override.',
+    },
+    {
+      name: 'startAngle',
+      type: 'number',
+      defaultValue: '-135',
+      description: 'Arc start angle in degrees.',
+    },
+    {
+      name: 'endAngle',
+      type: 'number',
+      defaultValue: '135',
+      description: 'Arc end angle in degrees.',
+    },
+    {
+      name: 'wrap',
+      type: 'boolean',
+      defaultValue: "channel === 'h'",
+      description:
+        'Wraps values across range boundaries during keyboard edits.',
+    },
+    {
+      name: 'maxUpdateHz',
+      type: 'number',
+      defaultValue: '60',
+      description:
+        'Upper bound for pointer-driven update cadence to reduce churn under load.',
+    },
+    {
+      name: 'dragEpsilon',
+      type: 'number',
+      defaultValue: '0.0005',
+      description:
+        'Minimum normalized pointer delta required before committing another update.',
+    },
+    {
+      name: 'requested',
+      type: 'Color',
+      description: 'Standalone value when not using ColorProvider context.',
+    },
+    {
+      name: 'onChangeRequested',
+      type: '(requested: Color, options?: SetRequestedOptions) => void',
+      description: 'Standalone change handler when not using context.',
+    },
+  ],
+  hueDial: [
+    {
+      name: 'startAngle',
+      type: 'number',
+      defaultValue: '0',
+      description: 'Arc start angle in degrees.',
+    },
+    {
+      name: 'endAngle',
+      type: 'number',
+      defaultValue: '360',
+      description: 'Arc end angle in degrees.',
+    },
+    {
+      name: 'requested',
+      type: 'Color',
+      description: 'Standalone value when not using ColorProvider context.',
+    },
+    {
+      name: 'onChangeRequested',
+      type: '(requested: Color, options?: SetRequestedOptions) => void',
+      description: 'Standalone hue change handler when not using context.',
     },
   ],
   hueSlider: [

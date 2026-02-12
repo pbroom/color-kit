@@ -5,10 +5,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { Color } from '@color-kit/core';
 import { AlphaSlider } from '../src/alpha-slider.js';
 import { ColorArea } from '../src/color-area.js';
+import { ColorDial } from '../src/color-dial.js';
 import { ColorInput } from '../src/color-input.js';
 import { ColorProvider } from '../src/color-provider.js';
 import { ColorSlider } from '../src/color-slider.js';
 import { ColorWheel } from '../src/color-wheel.js';
+import { HueDial } from '../src/hue-dial.js';
 import { HueSlider } from '../src/hue-slider.js';
 import { SliderMarker } from '../src/slider-marker.js';
 import { useColorContext } from '../src/context.js';
@@ -44,9 +46,13 @@ describe('shared component contracts', () => {
     expect(() => render(<ColorInput />)).toThrowError(
       /ColorInput requires either/,
     );
+    expect(() => render(<ColorDial channel="h" />)).toThrowError(
+      /ColorDial requires either/,
+    );
     expect(() => render(<HueSlider />)).toThrowError(
       /ColorSlider requires either/,
     );
+    expect(() => render(<HueDial />)).toThrowError(/ColorDial requires either/);
     expect(() => render(<AlphaSlider />)).toThrowError(
       /ColorSlider requires either/,
     );
@@ -61,13 +67,16 @@ describe('shared component contracts', () => {
         <ColorArea />
         <ColorSlider channel="c" />
         <ColorWheel />
+        <ColorDial channel="h" />
+        <ColorWheel />
         <HueSlider />
+        <HueDial />
         <AlphaSlider />
         <ColorInput />
       </ColorProvider>,
     );
 
-    expect(screen.getAllByRole('slider')).toHaveLength(5);
+    expect(screen.getAllByRole('slider')).toHaveLength(8);
     expect(screen.getByLabelText('Color value')).toBeTruthy();
   });
 
