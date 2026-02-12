@@ -47,6 +47,11 @@ export const Line = forwardRef<SVGSVGElement, LineProps>(function Line(
   ref,
 ) {
   const pathData = d ?? (points ? toPath(points) : '');
+  const resolvedPathProps: SVGAttributes<SVGPathElement> = {
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    ...pathProps,
+  };
 
   if (!pathData) {
     return null;
@@ -66,7 +71,7 @@ export const Line = forwardRef<SVGSVGElement, LineProps>(function Line(
         ...style,
       }}
     >
-      <path d={pathData} {...pathProps} />
+      <path d={pathData} {...resolvedPathProps} />
     </svg>
   );
 });

@@ -1338,18 +1338,18 @@ a {
 
 .ck-overlay-p3 {
   stroke: #40f5d2;
-  stroke-width: 0.55;
+  stroke-width: 0.25;
 }
 
 .ck-overlay-srgb {
   stroke: #ffd447;
-  stroke-width: 0.55;
+  stroke-width: 0.25;
   stroke-dasharray: 1.45 1.1;
 }
 
 .ck-overlay-contrast {
   stroke: rgba(192, 225, 255, 0.64);
-  stroke-width: 0.45;
+  stroke-width: 0.25;
   stroke-dasharray: 0.95 0.95;
 }
 

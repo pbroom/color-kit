@@ -106,6 +106,7 @@ const STYLE_OPTIONS: Array<{
 ];
 
 const WIDTH_OPTIONS: Array<{ value: ColorAreaLineWidth; label: string }> = [
+  { value: 0.25, label: '0.25pt' },
   { value: 0.5, label: '0.5pt' },
   { value: 1, label: '1pt' },
 ];
