@@ -77,7 +77,7 @@ describe('shared component contracts', () => {
       </ColorProvider>,
     );
 
-    expect(screen.getAllByRole('slider')).toHaveLength(7);
+    expect(screen.getAllByRole('slider')).toHaveLength(8);
     expect(screen.getByLabelText('Color value')).toBeTruthy();
   });
 
