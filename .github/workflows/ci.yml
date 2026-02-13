@@ -57,3 +57,6 @@ jobs:
 
       - name: Check formatting
         run: pnpm format:check
+
+      - name: Run lint (including React Compiler hooks rules)
+        run: pnpm lint

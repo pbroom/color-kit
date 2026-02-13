@@ -200,8 +200,20 @@ export function ContrastRegionLayer({
       computeTimeMs: nowMs() - start,
     };
   }, [axes, isDragging, options, resolvedHue, resolvedReference]);
+  const workerPayload = useMemo(
+    () => ({
+      reference: resolvedReference,
+      hue: resolvedHue,
+      axes,
+      options,
+    }),
+    [axes, options, resolvedHue, resolvedReference],
+  );
 
-  const [paths, setPaths] = useState(() => syncComputation?.paths ?? []);
+  const [workerPaths, setWorkerPaths] = useState<{
+    payload: typeof workerPayload;
+    paths: ColorAreaContrastRegionPoint[][];
+  } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
   const regionFillSvgRef = useRef<SVGSVGElement | null>(null);
@@ -209,6 +221,17 @@ export function ContrastRegionLayer({
     width: 100,
     height: 100,
   });
+  const paths = useMemo(() => {
+    if (
+      isDragging &&
+      canUseWorkerOffload() &&
+      workerPaths &&
+      workerPaths.payload === workerPayload
+    ) {
+      return workerPaths.paths;
+    }
+    return syncComputation?.paths ?? [];
+  }, [isDragging, syncComputation, workerPaths, workerPayload]);
 
   const emitMetrics = useCallback(
     (payload: {
@@ -244,7 +267,6 @@ export function ContrastRegionLayer({
     if (!syncComputation) {
       return;
     }
-    setPaths(syncComputation.paths);
     emitMetrics({
       source: 'sync',
       requestId: requestIdRef.current,
@@ -268,7 +290,6 @@ export function ContrastRegionLayer({
         );
       } catch {
         if (syncComputation) {
-          setPaths(syncComputation.paths);
           emitMetrics({
             source: 'sync',
             requestId: requestIdRef.current,
@@ -283,7 +304,6 @@ export function ContrastRegionLayer({
     const worker = workerRef.current;
     if (!worker) {
       if (syncComputation) {
-        setPaths(syncComputation.paths);
         emitMetrics({
           source: 'sync',
           requestId: requestIdRef.current,
@@ -304,7 +324,6 @@ export function ContrastRegionLayer({
       }
       if (payload.error) {
         if (syncComputation) {
-          setPaths(syncComputation.paths);
           emitMetrics({
             source: 'sync',
             requestId: requestIdRef.current,
@@ -314,7 +333,10 @@ export function ContrastRegionLayer({
         }
         return;
       }
-      setPaths(payload.paths);
+      setWorkerPaths({
+        payload: workerPayload,
+        paths: payload.paths,
+      });
       emitMetrics({
         source: 'worker',
         requestId: payload.id,
@@ -327,25 +349,14 @@ export function ContrastRegionLayer({
 
     const message: ContrastRegionWorkerRequest = {
       id: nextRequestId,
-      reference: resolvedReference,
-      hue: resolvedHue,
-      axes,
-      options,
+      ...workerPayload,
     };
     worker.postMessage(message);
 
     return () => {
       worker.removeEventListener('message', onMessage);
     };
-  }, [
-    axes,
-    emitMetrics,
-    isDragging,
-    options,
-    resolvedHue,
-    resolvedReference,
-    syncComputation,
-  ]);
+  }, [axes, emitMetrics, isDragging, syncComputation, workerPayload]);
 
   useEffect(() => {
     return () => {
