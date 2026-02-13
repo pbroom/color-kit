@@ -1,7 +1,6 @@
 import {
   forwardRef,
   useCallback,
-  useMemo,
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -56,30 +55,16 @@ export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(function Swatch(
   },
   ref,
 ) {
-  const displayState = useMemo(
-    () =>
-      createColorState(color, {
-        activeGamut: gamut,
-        source: 'programmatic',
-      }),
-    [color, gamut],
-  );
-  const displayed = useMemo(
-    () => getActiveDisplayedColor(displayState),
-    [displayState],
-  );
-  const displayedHex = useMemo(
-    () => getColorDisplayHex(displayState.displayed.srgb),
-    [displayState.displayed.srgb],
-  );
-  const displayStyles = useMemo(
-    () =>
-      getColorDisplayStyles(
-        displayed,
-        displayState.displayed.srgb,
-        displayState.activeGamut,
-      ),
-    [displayed, displayState.displayed.srgb, displayState.activeGamut],
+  const displayState = createColorState(color, {
+    activeGamut: gamut,
+    source: 'programmatic',
+  });
+  const displayed = getActiveDisplayedColor(displayState);
+  const displayedHex = getColorDisplayHex(displayState.displayed.srgb);
+  const displayStyles = getColorDisplayStyles(
+    displayed,
+    displayState.displayed.srgb,
+    displayState.activeGamut,
   );
 
   const handleClick = useCallback(

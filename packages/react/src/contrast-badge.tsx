@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, type HTMLAttributes } from 'react';
+import { forwardRef, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import { getContrastBadgeSummary } from './api/contrast-badge.js';
 
@@ -35,10 +35,7 @@ export const ContrastBadge = forwardRef<HTMLDivElement, ContrastBadgeProps>(
     { foreground, background, level = 'AA', children, ...props },
     ref,
   ) {
-    const summary = useMemo(
-      () => getContrastBadgeSummary(foreground, background, level),
-      [foreground, background, level],
-    );
+    const summary = getContrastBadgeSummary(foreground, background, level);
 
     return (
       <div

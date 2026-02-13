@@ -25,6 +25,8 @@ This project is intentionally in a pre-production phase:
 - `@color-kit/react` targets React `19+`.
 - Workspace defaults pin React and React DOM to the latest `19.x`.
 - Docs builds run the React Compiler (`babel-plugin-react-compiler`) by default.
+- Repo lint enforces compiler-safe patterns (`react-hooks` recommended-latest + `react-compiler` rule).
+- Decision: `@color-kit/react` stays lint-enforced (not compiler-precompiled) for now, since the current `tsup` library pipeline does not run Babel compiler transforms.
 
 ## Install
 
