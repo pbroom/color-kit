@@ -116,6 +116,7 @@ export type {
 export { ContrastRegionLayer } from './contrast-region-layer.js';
 export type {
   ContrastRegionRenderMode,
+  ContrastRegionLayerMetrics,
   ContrastRegionLayerProps,
 } from './contrast-region-layer.js';
 export { FallbackPointsLayer } from './fallback-points-layer.js';

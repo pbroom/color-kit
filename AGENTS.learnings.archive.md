@@ -12,6 +12,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 ## Entries
 
 - **2026-02-12 — Compiler lint applies to registry mirrors too**: When enabling `react-hooks` recommended-latest rules repo-wide, include `registry/components` in remediation scope; mirrored component sources can fail compiler rules even if package sources are clean.
+- **2026-02-13 — Marching-squares contours need interpolated crossings**: For contrast region overlays, midpoint edge placement makes contours visibly jagged and misaligned at practical step counts; use threshold-based linear edge interpolation (with midpoint as optional fallback) to improve precision without exploding sample density.
 - **2026-02-12 — Bundle ESM-only deps for CJS exports**: If a package ships both `import` and `require` entrypoints, adding an ESM-only dependency can silently break the CJS build (`ERR_REQUIRE_ESM`); configure tsup/esbuild to bundle that dependency (for example via `noExternal`) and verify with a real `require()` smoke test.
 - **2026-02-11 — Cache geometry outside pointer hot path**: In drag loops, cache `getBoundingClientRect()` on pointer start and refresh via resize/scroll observers instead of reading layout every move; repeated rect reads can force sync layout and tank INP.
 - **2026-02-11 — RAF + coalesced events tame pointer pressure**: For high-frequency pointer input, batch updates to one commit per animation frame, consume the latest coalesced event, and skip no-op updates with a small epsilon to avoid redundant React/state churn.

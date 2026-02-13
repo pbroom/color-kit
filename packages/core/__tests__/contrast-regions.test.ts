@@ -43,6 +43,40 @@ describe('contrastRegionPaths()', () => {
     }
   });
 
+  it('supports linear edge interpolation for higher contour precision', () => {
+    const reference = fromHex('#ffffff');
+
+    const midpoint = contrastRegionPaths(reference, 203, {
+      level: 'AA',
+      gamut: 'srgb',
+      lightnessSteps: 24,
+      chromaSteps: 24,
+      edgeInterpolation: 'midpoint',
+    });
+    const linear = contrastRegionPaths(reference, 203, {
+      level: 'AA',
+      gamut: 'srgb',
+      lightnessSteps: 24,
+      chromaSteps: 24,
+      edgeInterpolation: 'linear',
+    });
+
+    expect(midpoint.length).toBeGreaterThan(0);
+    expect(linear.length).toBeGreaterThan(0);
+
+    const midpointPath = midpoint[0] ?? [];
+    const linearPath = linear[0] ?? [];
+    const count = Math.min(midpointPath.length, linearPath.length);
+    let maxDelta = 0;
+    for (let index = 0; index < count; index += 1) {
+      const deltaL = Math.abs(midpointPath[index].l - linearPath[index].l);
+      const deltaC = Math.abs(midpointPath[index].c - linearPath[index].c);
+      maxDelta = Math.max(maxDelta, deltaL, deltaC);
+    }
+
+    expect(maxDelta).toBeGreaterThan(0.0001);
+  });
+
   it('tightens the region for stricter WCAG levels', () => {
     const reference = fromHex('#ffffff');
 
@@ -135,5 +169,13 @@ describe('contrastRegionPaths()', () => {
         lightnessSteps: 1,
       }),
     ).toThrow('contrastRegionPaths() lightnessSteps must be an integer >= 2');
+
+    expect(() =>
+      contrastRegionPaths(reference, 200, {
+        edgeInterpolation: 'nearest' as unknown as 'linear',
+      }),
+    ).toThrow(
+      "contrastRegionPaths() edgeInterpolation must be 'linear' or 'midpoint'",
+    );
   });
 });

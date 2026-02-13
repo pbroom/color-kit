@@ -753,6 +753,25 @@ a {
   width: 128px;
 }
 
+.docs-inline-control-value.docs-inline-control-range {
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.docs-inline-control-value.docs-inline-control-range input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.docs-percent-field.docs-value-field {
+  border-radius: 8px;
+}
+
+.docs-percent-field.docs-value-field input {
+  width: 52px;
+}
+
 .docs-color-field {
   display: inline-flex;
   align-items: center;
@@ -1664,6 +1683,27 @@ a {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+}
+
+.ck-caption.ck-perf-caption {
+  display: grid;
+  gap: 0.3rem;
+  color: #c8ddff;
+}
+
+.ck-perf-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem 0.36rem;
+}
+
+.ck-perf-pill {
+  padding: 0.18rem 0.34rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(7, 12, 22, 0.6);
+  color: #d9ebff;
+  white-space: nowrap;
 }
 
 .ck-contrast-sample {
