@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, type HTMLAttributes } from 'react';
+import { forwardRef, type HTMLAttributes } from 'react';
 import { useSelector } from '@legendapp/state/react';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
@@ -37,18 +37,14 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
     const context = useOptionalColorContext();
     const contextState = useSelector(() => context?.state$.get() ?? null);
 
-    const state = useMemo(() => {
-      if (context) {
-        return contextState;
-      }
-      if (!requestedProp) {
-        return null;
-      }
-      return createColorState(requestedProp, {
-        activeGamut: gamut,
-        source: 'programmatic',
-      });
-    }, [context, contextState, requestedProp, gamut]);
+    const state = context
+      ? contextState
+      : requestedProp
+        ? createColorState(requestedProp, {
+            activeGamut: gamut,
+            source: 'programmatic',
+          })
+        : null;
 
     if (!state) {
       throw new Error(
@@ -56,15 +52,13 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
       );
     }
 
-    const displayed = useMemo(() => getActiveDisplayedColor(state), [state]);
+    const displayed = getActiveDisplayedColor(state);
     const displayedSrgb = state.displayed.srgb;
-    const displayedHex = useMemo(
-      () => getColorDisplayHex(displayedSrgb),
-      [displayedSrgb],
-    );
-    const displayStyles = useMemo(
-      () => getColorDisplayStyles(displayed, displayedSrgb, state.activeGamut),
-      [displayed, displayedSrgb, state.activeGamut],
+    const displayedHex = getColorDisplayHex(displayedSrgb);
+    const displayStyles = getColorDisplayStyles(
+      displayed,
+      displayedSrgb,
+      state.activeGamut,
     );
 
     return (

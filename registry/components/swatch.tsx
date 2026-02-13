@@ -3,7 +3,6 @@
 import {
   forwardRef,
   useCallback,
-  useMemo,
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -64,17 +63,14 @@ export const Swatch = forwardRef<HTMLDivElement, SwatchProps>(function Swatch(
   },
   ref,
 ) {
-  const displayedSrgb = useMemo(() => toSrgbGamut(color), [color]);
-  const displayedP3 = useMemo(() => toP3Gamut(color), [color]);
+  const displayedSrgb = toSrgbGamut(color);
+  const displayedP3 = toP3Gamut(color);
   const displayed = gamut === 'display-p3' ? displayedP3 : displayedSrgb;
-  const displayedHex = useMemo(() => toHex(displayedSrgb), [displayedSrgb]);
+  const displayedHex = toHex(displayedSrgb);
   const outOfGamut =
     gamut === 'display-p3' ? !inP3Gamut(color) : !inSrgbGamut(color);
 
-  const displayStyles = useMemo(
-    () => getDisplayStyles(displayed, displayedSrgb, gamut),
-    [displayed, displayedSrgb, gamut],
-  );
+  const displayStyles = getDisplayStyles(displayed, displayedSrgb, gamut);
 
   const handleClick = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {

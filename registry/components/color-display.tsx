@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useMemo, type HTMLAttributes } from 'react';
+import { forwardRef, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import {
   inP3Gamut,
@@ -59,19 +59,20 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
       );
     }
 
-    const displayedSrgb = useMemo(() => toSrgbGamut(requested), [requested]);
-    const displayedP3 = useMemo(() => toP3Gamut(requested), [requested]);
+    const displayedSrgb = toSrgbGamut(requested);
+    const displayedP3 = toP3Gamut(requested);
     const displayed =
       activeGamut === 'display-p3' ? displayedP3 : displayedSrgb;
-    const displayedHex = useMemo(() => toHex(displayedSrgb), [displayedSrgb]);
+    const displayedHex = toHex(displayedSrgb);
     const outOfGamut =
       activeGamut === 'display-p3'
         ? !inP3Gamut(requested)
         : !inSrgbGamut(requested);
 
-    const displayStyles = useMemo(
-      () => getDisplayStyles(displayed, displayedSrgb, activeGamut),
-      [displayed, displayedSrgb, activeGamut],
+    const displayStyles = getDisplayStyles(
+      displayed,
+      displayedSrgb,
+      activeGamut,
     );
 
     return (

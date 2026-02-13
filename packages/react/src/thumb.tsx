@@ -1,6 +1,5 @@
 import {
   forwardRef,
-  useMemo,
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
@@ -63,20 +62,17 @@ export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
   const contextState = useSelector(() => colorContext?.state$.get() ?? null);
 
   const { x: xNorm, y: yNorm } = getColorAreaThumbPosition(requested, axes);
-  const state = useMemo(
-    () =>
-      contextState ??
-      createColorState(requested, {
-        activeGamut: 'display-p3',
-        source: 'programmatic',
-      }),
-    [contextState, requested],
-  );
-  const displayed = useMemo(() => getActiveDisplayedColor(state), [state]);
-  const displayStyles = useMemo(
-    () =>
-      getColorDisplayStyles(displayed, state.displayed.srgb, state.activeGamut),
-    [displayed, state.activeGamut, state.displayed.srgb],
+  const state =
+    contextState ??
+    createColorState(requested, {
+      activeGamut: 'display-p3',
+      source: 'programmatic',
+    });
+  const displayed = getActiveDisplayedColor(state);
+  const displayStyles = getColorDisplayStyles(
+    displayed,
+    state.displayed.srgb,
+    state.activeGamut,
   );
   const activeGamutKey = state.activeGamut === 'display-p3' ? 'p3' : 'srgb';
 
