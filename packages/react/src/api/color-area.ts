@@ -81,6 +81,7 @@ export interface ColorAreaContrastRegionOptions {
   tolerance?: number;
   maxIterations?: number;
   alpha?: number;
+  edgeInterpolation?: 'linear' | 'midpoint';
 }
 
 export interface ColorAreaChromaBandOptions {
@@ -219,6 +220,7 @@ export function getColorAreaContrastRegionPaths(
     tolerance: options.tolerance,
     maxIterations: options.maxIterations,
     alpha: options.alpha,
+    edgeInterpolation: options.edgeInterpolation,
   });
 
   return paths.map((path) =>

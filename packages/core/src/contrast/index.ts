@@ -156,6 +156,13 @@ export interface ContrastRegionPathOptions {
    * Alpha channel used while sampling.
    */
   alpha?: number;
+  /**
+   * Edge placement strategy for marching-squares contours.
+   * `linear` uses threshold interpolation and improves contour precision.
+   * `midpoint` keeps legacy midpoint edge placement.
+   * @default 'linear'
+   */
+  edgeInterpolation?: 'linear' | 'midpoint';
 }
 
 const DEFAULT_LIGHTNESS_STEPS = 64;
@@ -227,16 +234,46 @@ function edgePoint(
   l1: number,
   c0: number,
   c1: number,
+  values: {
+    v0: number;
+    v1: number;
+    v2: number;
+    v3: number;
+  },
+  interpolation: 'linear' | 'midpoint',
 ): ContrastRegionPoint {
+  const interpolate = (a: number, b: number): number => {
+    if (interpolation === 'midpoint') {
+      return 0.5;
+    }
+    const denom = a - b;
+    if (!Number.isFinite(denom) || Math.abs(denom) <= 1e-12) {
+      return 0.5;
+    }
+    const t = a / denom;
+    if (!Number.isFinite(t)) return 0.5;
+    if (t < 0) return 0;
+    if (t > 1) return 1;
+    return t;
+  };
+
   switch (edge) {
-    case 0:
-      return { l: (l0 + l1) / 2, c: c0 };
-    case 1:
-      return { l: l1, c: (c0 + c1) / 2 };
-    case 2:
-      return { l: (l0 + l1) / 2, c: c1 };
-    case 3:
-      return { l: l0, c: (c0 + c1) / 2 };
+    case 0: {
+      const t = interpolate(values.v0, values.v1);
+      return { l: l0 + (l1 - l0) * t, c: c0 };
+    }
+    case 1: {
+      const t = interpolate(values.v1, values.v2);
+      return { l: l1, c: c0 + (c1 - c0) * t };
+    }
+    case 2: {
+      const t = interpolate(values.v3, values.v2);
+      return { l: l0 + (l1 - l0) * t, c: c1 };
+    }
+    case 3: {
+      const t = interpolate(values.v0, values.v3);
+      return { l: l0, c: c0 + (c1 - c0) * t };
+    }
     default:
       return { l: l0, c: c0 };
   }
@@ -400,9 +437,15 @@ export function contrastRegionPaths(
 
   const alpha = options.alpha ?? 1;
   const gamut = options.gamut ?? 'srgb';
+  const edgeInterpolation = options.edgeInterpolation ?? 'linear';
+  if (edgeInterpolation !== 'linear' && edgeInterpolation !== 'midpoint') {
+    throw new Error(
+      "contrastRegionPaths() edgeInterpolation must be 'linear' or 'midpoint'",
+    );
+  }
   const mappedReference = mapToGamut(reference, gamut);
 
-  const meetsGrid: boolean[][] = [];
+  const scoreGrid: number[][] = [];
   for (
     let lightnessIndex = 0;
     lightnessIndex <= lightnessSteps;
@@ -417,22 +460,22 @@ export function contrastRegionPaths(
       alpha,
     });
 
-    const row: boolean[] = [];
+    const row: number[] = [];
     for (let chromaIndex = 0; chromaIndex <= chromaSteps; chromaIndex += 1) {
       const c = (chromaIndex / chromaSteps) * maxChroma;
 
       if (c > maxInGamut) {
-        row.push(false);
+        row.push(-1);
         continue;
       }
 
       const sample: Color = { l, c, h: hue, alpha };
       const mappedSample = mapToGamut(sample, gamut);
       row.push(
-        contrastRatioUnclamped(mappedSample, mappedReference) >= threshold,
+        contrastRatioUnclamped(mappedSample, mappedReference) - threshold,
       );
     }
-    meetsGrid.push(row);
+    scoreGrid.push(row);
   }
 
   const segments: Array<[ContrastRegionPoint, ContrastRegionPoint]> = [];
@@ -449,18 +492,39 @@ export function contrastRegionPaths(
       const c0 = (chromaIndex / chromaSteps) * maxChroma;
       const c1 = ((chromaIndex + 1) / chromaSteps) * maxChroma;
 
-      const b0 = meetsGrid[lightnessIndex][chromaIndex];
-      const b1 = meetsGrid[lightnessIndex + 1][chromaIndex];
-      const b2 = meetsGrid[lightnessIndex + 1][chromaIndex + 1];
-      const b3 = meetsGrid[lightnessIndex][chromaIndex + 1];
+      const v0 = scoreGrid[lightnessIndex][chromaIndex];
+      const v1 = scoreGrid[lightnessIndex + 1][chromaIndex];
+      const v2 = scoreGrid[lightnessIndex + 1][chromaIndex + 1];
+      const v3 = scoreGrid[lightnessIndex][chromaIndex + 1];
+
+      const b0 = v0 >= 0;
+      const b1 = v1 >= 0;
+      const b2 = v2 >= 0;
+      const b3 = v3 >= 0;
 
       const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
       const edgePairs = segmentEdgesForCell(mask);
       if (edgePairs.length === 0) continue;
 
       for (const [fromEdge, toEdge] of edgePairs) {
-        const from = edgePoint(fromEdge, l0, l1, c0, c1);
-        const to = edgePoint(toEdge, l0, l1, c0, c1);
+        const from = edgePoint(
+          fromEdge,
+          l0,
+          l1,
+          c0,
+          c1,
+          { v0, v1, v2, v3 },
+          edgeInterpolation,
+        );
+        const to = edgePoint(
+          toEdge,
+          l0,
+          l1,
+          c0,
+          c1,
+          { v0, v1, v2, v3 },
+          edgeInterpolation,
+        );
         segments.push([from, to]);
       }
     }

@@ -7,7 +7,12 @@ import {
   type ReactNode,
 } from 'react';
 import { parse, type Color } from '@color-kit/core';
-import { createColorState, type ColorState } from '@color-kit/react';
+import {
+  createColorState,
+  type ColorAreaLayerQuality,
+  type ColorAreaPerformanceProfile,
+  type ColorState,
+} from '@color-kit/react';
 import { COLOR_AREA_DOT_PATTERN } from './color-area-dot-pattern.js';
 
 export type DocsInspectorTab = 'outline' | 'properties';
@@ -98,6 +103,13 @@ export interface ColorAreaInspectorState {
       aa45: ColorAreaRegionControl;
       aa7: ColorAreaRegionControl;
     };
+  };
+  tuning: {
+    performanceProfile: ColorAreaPerformanceProfile;
+    layerQuality: ColorAreaLayerQuality;
+    lineSteps: number;
+    contrastSteps: number;
+    contrastEdgeInterpolation: 'linear' | 'midpoint';
   };
 }
 
@@ -232,6 +244,13 @@ function createRequestedPresetState(): ColorAreaInspectorState {
         },
       },
     },
+    tuning: {
+      performanceProfile: 'auto',
+      layerQuality: 'auto',
+      lineSteps: 128,
+      contrastSteps: 96,
+      contrastEdgeInterpolation: 'linear',
+    },
   };
 }
 
@@ -326,6 +345,13 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
         },
       },
     },
+    tuning: {
+      performanceProfile: 'auto',
+      layerQuality: 'auto',
+      lineSteps: 128,
+      contrastSteps: 96,
+      contrastEdgeInterpolation: 'linear',
+    },
   };
 }
 
@@ -381,6 +407,15 @@ function normalizeColorAreaState(
       activeGamut: next.gamut,
     };
   }
+
+  next.tuning = {
+    ...next.tuning,
+    lineSteps: Math.max(8, Math.min(256, Math.round(next.tuning.lineSteps))),
+    contrastSteps: Math.max(
+      8,
+      Math.min(256, Math.round(next.tuning.contrastSteps)),
+    ),
+  };
   return next;
 }
 

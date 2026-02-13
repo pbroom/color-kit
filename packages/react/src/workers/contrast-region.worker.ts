@@ -17,16 +17,21 @@ workerScope.onmessage = (event): void => {
   const payload = event.data;
 
   try {
+    const start =
+      typeof performance === 'undefined' ? Date.now() : performance.now();
     const paths = getColorAreaContrastRegionPaths(
       payload.reference,
       payload.hue,
       payload.axes,
       payload.options,
     );
+    const end =
+      typeof performance === 'undefined' ? Date.now() : performance.now();
 
     const response: ContrastRegionWorkerResponse = {
       id: payload.id,
       paths,
+      computeTimeMs: end - start,
     };
     workerScope.postMessage(response);
   } catch (error) {

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -23,6 +24,19 @@ import type {
 
 export type ContrastRegionRenderMode = 'line' | 'region';
 
+export interface ContrastRegionLayerMetrics {
+  source: 'sync' | 'worker';
+  requestId: number;
+  computeTimeMs: number;
+  pathCount: number;
+  pointCount: number;
+  lightnessSteps: number;
+  chromaSteps: number;
+  quality: 'high' | 'medium' | 'low';
+  renderMode: ContrastRegionRenderMode;
+  isDragging: boolean;
+}
+
 export interface ContrastRegionLayerProps extends Omit<LayerProps, 'children'> {
   reference?: Color;
   hue?: number;
@@ -35,6 +49,7 @@ export interface ContrastRegionLayerProps extends Omit<LayerProps, 'children'> {
   tolerance?: number;
   maxIterations?: number;
   alpha?: number;
+  edgeInterpolation?: ColorAreaContrastRegionOptions['edgeInterpolation'];
   quality?: ColorAreaLayerQuality;
   renderMode?: ContrastRegionRenderMode;
   regionFillColor?: string;
@@ -43,6 +58,7 @@ export interface ContrastRegionLayerProps extends Omit<LayerProps, 'children'> {
   regionDotSize?: number;
   regionDotGap?: number;
   pathProps?: SVGAttributes<SVGPathElement>;
+  onMetrics?: (metrics: ContrastRegionLayerMetrics) => void;
 }
 
 function resolveQuality(
@@ -69,6 +85,14 @@ function clamp01(value: number): number {
   if (value < 0) return 0;
   if (value > 1) return 1;
   return value;
+}
+
+function nowMs(): number {
+  return typeof performance === 'undefined' ? Date.now() : performance.now();
+}
+
+function countPathPoints(paths: ColorAreaContrastRegionPoint[][]): number {
+  return paths.reduce((total, path) => total + path.length, 0);
 }
 
 function toPath(
@@ -107,6 +131,7 @@ export function ContrastRegionLayer({
   tolerance,
   maxIterations,
   alpha,
+  edgeInterpolation = 'linear',
   quality = 'auto',
   renderMode = 'line',
   regionFillColor = '#c0e1ff',
@@ -115,6 +140,7 @@ export function ContrastRegionLayer({
   regionDotSize = 2,
   regionDotGap = 3,
   pathProps,
+  onMetrics,
   ...props
 }: ContrastRegionLayerProps) {
   const { requested, axes, qualityLevel, isDragging } = useColorAreaContext();
@@ -142,9 +168,11 @@ export function ContrastRegionLayer({
       tolerance,
       maxIterations,
       alpha,
+      edgeInterpolation,
     }),
     [
       alpha,
+      edgeInterpolation,
       effectiveChromaSteps,
       effectiveLightnessSteps,
       gamut,
@@ -156,48 +184,74 @@ export function ContrastRegionLayer({
     ],
   );
 
-  const syncPaths = useMemo(
-    () =>
-      getColorAreaContrastRegionPaths(
-        resolvedReference,
-        resolvedHue,
-        axes,
-        options,
-      ),
-    [axes, options, resolvedHue, resolvedReference],
-  );
-  const workerPayload = useMemo(
-    () => ({
-      reference: resolvedReference,
-      hue: resolvedHue,
+  const syncComputation = useMemo(() => {
+    if (isDragging && canUseWorkerOffload()) {
+      return null;
+    }
+    const start = nowMs();
+    const paths = getColorAreaContrastRegionPaths(
+      resolvedReference,
+      resolvedHue,
       axes,
       options,
-    }),
-    [axes, options, resolvedHue, resolvedReference],
-  );
+    );
+    return {
+      paths,
+      computeTimeMs: nowMs() - start,
+    };
+  }, [axes, isDragging, options, resolvedHue, resolvedReference]);
 
-  const [workerPaths, setWorkerPaths] = useState<{
-    payload: typeof workerPayload;
-    paths: typeof syncPaths;
-  } | null>(null);
+  const [paths, setPaths] = useState(() => syncComputation?.paths ?? []);
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
   const regionFillSvgRef = useRef<SVGSVGElement | null>(null);
   const [regionFillSize, setRegionFillSize] = useState({
-      width: 100,
-      height: 100,
+    width: 100,
+    height: 100,
   });
-  const paths = useMemo(() => {
-    if (
-      isDragging &&
-      canUseWorkerOffload() &&
-      workerPaths &&
-      workerPaths.payload === workerPayload
-    ) {
-      return workerPaths.paths;
+
+  const emitMetrics = useCallback(
+    (payload: {
+      source: 'sync' | 'worker';
+      requestId: number;
+      computeTimeMs: number;
+      paths: ColorAreaContrastRegionPoint[][];
+    }) => {
+      onMetrics?.({
+        source: payload.source,
+        requestId: payload.requestId,
+        computeTimeMs: payload.computeTimeMs,
+        pathCount: payload.paths.length,
+        pointCount: countPathPoints(payload.paths),
+        lightnessSteps: effectiveLightnessSteps,
+        chromaSteps: effectiveChromaSteps,
+        quality: resolvedQuality,
+        renderMode,
+        isDragging,
+      });
+    },
+    [
+      effectiveChromaSteps,
+      effectiveLightnessSteps,
+      isDragging,
+      onMetrics,
+      renderMode,
+      resolvedQuality,
+    ],
+  );
+
+  useEffect(() => {
+    if (!syncComputation) {
+      return;
     }
-    return syncPaths;
-  }, [isDragging, syncPaths, workerPaths, workerPayload]);
+    setPaths(syncComputation.paths);
+    emitMetrics({
+      source: 'sync',
+      requestId: requestIdRef.current,
+      computeTimeMs: syncComputation.computeTimeMs,
+      paths: syncComputation.paths,
+    });
+  }, [emitMetrics, syncComputation]);
 
   useEffect(() => {
     if (!canUseWorkerOffload() || !isDragging) {
@@ -213,12 +267,30 @@ export function ContrastRegionLayer({
           },
         );
       } catch {
+        if (syncComputation) {
+          setPaths(syncComputation.paths);
+          emitMetrics({
+            source: 'sync',
+            requestId: requestIdRef.current,
+            computeTimeMs: syncComputation.computeTimeMs,
+            paths: syncComputation.paths,
+          });
+        }
         return;
       }
     }
 
     const worker = workerRef.current;
     if (!worker) {
+      if (syncComputation) {
+        setPaths(syncComputation.paths);
+        emitMetrics({
+          source: 'sync',
+          requestId: requestIdRef.current,
+          computeTimeMs: syncComputation.computeTimeMs,
+          paths: syncComputation.paths,
+        });
+      }
       return;
     }
 
@@ -231,10 +303,22 @@ export function ContrastRegionLayer({
         return;
       }
       if (payload.error) {
+        if (syncComputation) {
+          setPaths(syncComputation.paths);
+          emitMetrics({
+            source: 'sync',
+            requestId: requestIdRef.current,
+            computeTimeMs: syncComputation.computeTimeMs,
+            paths: syncComputation.paths,
+          });
+        }
         return;
       }
-      setWorkerPaths({
-        payload: workerPayload,
+      setPaths(payload.paths);
+      emitMetrics({
+        source: 'worker',
+        requestId: payload.id,
+        computeTimeMs: payload.computeTimeMs ?? 0,
         paths: payload.paths,
       });
     };
@@ -243,14 +327,25 @@ export function ContrastRegionLayer({
 
     const message: ContrastRegionWorkerRequest = {
       id: nextRequestId,
-      ...workerPayload,
+      reference: resolvedReference,
+      hue: resolvedHue,
+      axes,
+      options,
     };
     worker.postMessage(message);
 
     return () => {
       worker.removeEventListener('message', onMessage);
     };
-  }, [isDragging, workerPayload]);
+  }, [
+    axes,
+    emitMetrics,
+    isDragging,
+    options,
+    resolvedHue,
+    resolvedReference,
+    syncComputation,
+  ]);
 
   useEffect(() => {
     return () => {

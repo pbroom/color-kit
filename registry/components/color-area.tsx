@@ -435,7 +435,9 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         return;
       }
       warnedMultiThumbRef.current = true;
-      console.warn('ColorArea allows one <Thumb />. Extra thumbs were ignored.');
+      console.warn(
+        'ColorArea allows one <Thumb />. Extra thumbs were ignored.',
+      );
     }, [explicitThumbCount]);
     const resolvedChildren: ReactNode = useMemo(
       () =>

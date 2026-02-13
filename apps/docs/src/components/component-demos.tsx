@@ -24,6 +24,7 @@ import {
   type ColorAreaChannel,
   type ColorAreaAxes,
   type ColorAreaInteractionFrameStats,
+  type ContrastRegionLayerMetrics,
   type ColorSliderChannel,
   useColor,
 } from '@color-kit/react';
@@ -189,14 +190,90 @@ function strokePathProps(
 const COLOR_AREA_LINE_STEPS = 128;
 const COLOR_AREA_CONTRAST_STEPS = 72;
 
+function percentile(values: number[], ratio: number): number {
+  if (values.length === 0) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.floor((sorted.length - 1) * ratio)),
+  );
+  return sorted[index];
+}
+
+interface ColorAreaPerfSummary {
+  sampleCount: number;
+  frameP95Ms: number;
+  updateP95Ms: number;
+  droppedRate: number;
+  longTaskRate: number;
+}
+
+interface ContrastMetricSample extends ContrastRegionLayerMetrics {
+  key: string;
+  ts: number;
+}
+
+function summarizePerfFrames(
+  frames: Array<ColorAreaInteractionFrameStats & { ts: number }>,
+): ColorAreaPerfSummary {
+  if (frames.length === 0) {
+    return {
+      sampleCount: 0,
+      frameP95Ms: 0,
+      updateP95Ms: 0,
+      droppedRate: 0,
+      longTaskRate: 0,
+    };
+  }
+
+  const frameTimes = frames.map((frame) => frame.frameTimeMs);
+  const updateTimes = frames.map((frame) => frame.updateDurationMs);
+  const droppedFrames = frames.filter((frame) => frame.droppedFrame).length;
+  const longTasks = frames.filter((frame) => frame.longTask).length;
+
+  return {
+    sampleCount: frames.length,
+    frameP95Ms: percentile(frameTimes, 0.95),
+    updateP95Ms: percentile(updateTimes, 0.95),
+    droppedRate: droppedFrames / frames.length,
+    longTaskRate: longTasks / frames.length,
+  };
+}
+
+function contrastMetricLabel(key: string): string {
+  switch (key) {
+    case 'line-aa3':
+      return 'Line 3:1';
+    case 'line-aa45':
+      return 'Line 4.5:1';
+    case 'line-aa7':
+      return 'Line 7:1';
+    case 'region-aa3':
+      return 'Region 3:1';
+    case 'region-aa45':
+      return 'Region 4.5:1';
+    case 'region-aa7':
+      return 'Region 7:1';
+    default:
+      return key;
+  }
+}
+
 function ColorAreaDemoScene({
   inspectorState,
   axes,
   onInteractionFrame,
+  onContrastMetrics,
 }: {
   inspectorState: ColorAreaInspectorState | null;
   axes: ColorAreaAxes;
   onInteractionFrame: (stats: ColorAreaInteractionFrameStats) => void;
+  onContrastMetrics?: (
+    key: string,
+    metrics: ContrastRegionLayerMetrics,
+  ) => void;
 }) {
   const color = useColorContext();
 
@@ -254,7 +331,18 @@ function ColorAreaDemoScene({
         },
       },
     },
+    tuning: {
+      performanceProfile: 'auto' as const,
+      layerQuality: 'auto' as const,
+      lineSteps: COLOR_AREA_LINE_STEPS,
+      contrastSteps: COLOR_AREA_CONTRAST_STEPS,
+      contrastEdgeInterpolation: 'linear' as const,
+    },
   };
+  const lineSteps = scene.tuning.lineSteps;
+  const contrastSteps = scene.tuning.contrastSteps;
+  const layerQuality = scene.tuning.layerQuality;
+  const contrastEdgeInterpolation = scene.tuning.contrastEdgeInterpolation;
 
   const colorPlaneOutOfGamut = {
     repeatEdgePixels: scene.repeatEdgePixels,
@@ -274,7 +362,7 @@ function ColorAreaDemoScene({
       <ColorArea
         className="ck-color-area"
         axes={axes}
-        performanceProfile="auto"
+        performanceProfile={scene.tuning.performanceProfile}
         onInteractionFrame={onInteractionFrame}
       >
         <Background checkerboard={scene.background.checkerboard} />
@@ -283,16 +371,16 @@ function ColorAreaDemoScene({
         {scene.visualize.p3Boundary.enabled && (
           <GamutBoundaryLayer
             gamut="display-p3"
-            steps={COLOR_AREA_LINE_STEPS}
-            quality="auto"
+            steps={lineSteps}
+            quality={layerQuality}
             pathProps={strokePathProps(scene.visualize.p3Boundary, '#40f5d2')}
           />
         )}
         {scene.visualize.srgbBoundary.enabled && (
           <GamutBoundaryLayer
             gamut="srgb"
-            steps={COLOR_AREA_LINE_STEPS}
-            quality="auto"
+            steps={lineSteps}
+            quality={layerQuality}
             pathProps={strokePathProps(scene.visualize.srgbBoundary, '#ffd447')}
           />
         )}
@@ -301,8 +389,8 @@ function ColorAreaDemoScene({
           <ChromaBandLayer
             gamut="display-p3"
             mode={scene.chromaBand.mode}
-            steps={COLOR_AREA_LINE_STEPS}
-            quality="auto"
+            steps={lineSteps}
+            quality={layerQuality}
             pathProps={strokePathProps(scene.chromaBand.p3, '#9e8cff')}
           />
         )}
@@ -310,8 +398,8 @@ function ColorAreaDemoScene({
           <ChromaBandLayer
             gamut="srgb"
             mode={scene.chromaBand.mode}
-            steps={COLOR_AREA_LINE_STEPS}
-            quality="auto"
+            steps={lineSteps}
+            quality={layerQuality}
             pathProps={strokePathProps(scene.chromaBand.srgb, '#ffe06b')}
           />
         )}
@@ -320,9 +408,11 @@ function ColorAreaDemoScene({
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={3}
-            lightnessSteps={COLOR_AREA_CONTRAST_STEPS}
-            chromaSteps={COLOR_AREA_CONTRAST_STEPS}
-            quality="auto"
+            lightnessSteps={contrastSteps}
+            chromaSteps={contrastSteps}
+            edgeInterpolation={contrastEdgeInterpolation}
+            quality={layerQuality}
+            onMetrics={(metrics) => onContrastMetrics?.('line-aa3', metrics)}
             pathProps={strokePathProps(scene.contrast.lines.aa3, '#bcd6ff')}
           />
         )}
@@ -330,9 +420,11 @@ function ColorAreaDemoScene({
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={4.5}
-            lightnessSteps={COLOR_AREA_CONTRAST_STEPS}
-            chromaSteps={COLOR_AREA_CONTRAST_STEPS}
-            quality="auto"
+            lightnessSteps={contrastSteps}
+            chromaSteps={contrastSteps}
+            edgeInterpolation={contrastEdgeInterpolation}
+            quality={layerQuality}
+            onMetrics={(metrics) => onContrastMetrics?.('line-aa45', metrics)}
             pathProps={strokePathProps(scene.contrast.lines.aa45, '#c0e1ff')}
           />
         )}
@@ -340,9 +432,11 @@ function ColorAreaDemoScene({
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={7}
-            lightnessSteps={COLOR_AREA_CONTRAST_STEPS}
-            chromaSteps={COLOR_AREA_CONTRAST_STEPS}
-            quality="auto"
+            lightnessSteps={contrastSteps}
+            chromaSteps={contrastSteps}
+            edgeInterpolation={contrastEdgeInterpolation}
+            quality={layerQuality}
+            onMetrics={(metrics) => onContrastMetrics?.('line-aa7', metrics)}
             pathProps={strokePathProps(scene.contrast.lines.aa7, '#d5e7ff')}
           />
         )}
@@ -352,9 +446,11 @@ function ColorAreaDemoScene({
             gamut={scene.gamut}
             threshold={3}
             renderMode="region"
-            lightnessSteps={28}
-            chromaSteps={28}
-            quality="auto"
+            lightnessSteps={contrastSteps}
+            chromaSteps={contrastSteps}
+            edgeInterpolation={contrastEdgeInterpolation}
+            quality={layerQuality}
+            onMetrics={(metrics) => onContrastMetrics?.('region-aa3', metrics)}
             regionFillColor="#7ca4ff"
             regionFillOpacity={0.12}
             regionDotOpacity={scene.contrast.regions.aa3.opacityPercent / 100}
@@ -367,9 +463,11 @@ function ColorAreaDemoScene({
             gamut={scene.gamut}
             threshold={4.5}
             renderMode="region"
-            lightnessSteps={28}
-            chromaSteps={28}
-            quality="auto"
+            lightnessSteps={contrastSteps}
+            chromaSteps={contrastSteps}
+            edgeInterpolation={contrastEdgeInterpolation}
+            quality={layerQuality}
+            onMetrics={(metrics) => onContrastMetrics?.('region-aa45', metrics)}
             regionFillColor="#c0e1ff"
             regionFillOpacity={0.14}
             regionDotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
@@ -382,9 +480,11 @@ function ColorAreaDemoScene({
             gamut={scene.gamut}
             threshold={7}
             renderMode="region"
-            lightnessSteps={28}
-            chromaSteps={28}
-            quality="auto"
+            lightnessSteps={contrastSteps}
+            chromaSteps={contrastSteps}
+            edgeInterpolation={contrastEdgeInterpolation}
+            quality={layerQuality}
+            onMetrics={(metrics) => onContrastMetrics?.('region-aa7', metrics)}
             regionFillColor="#dceaff"
             regionFillOpacity={0.16}
             regionDotOpacity={scene.contrast.regions.aa7.opacityPercent / 100}
@@ -482,13 +582,37 @@ export function ColorAreaDemo({
   );
   const [perfFrame, setPerfFrame] =
     useState<ColorAreaInteractionFrameStats | null>(null);
+  const [perfSummary, setPerfSummary] = useState<ColorAreaPerfSummary>(() =>
+    summarizePerfFrames([]),
+  );
+  const [contrastMetrics, setContrastMetrics] = useState<
+    ContrastMetricSample[]
+  >([]);
+  const perfFramesRef = useRef<
+    Array<ColorAreaInteractionFrameStats & { ts: number }>
+  >([]);
+  const contrastMetricsRef = useRef<Record<string, ContrastMetricSample>>({});
   const perfUiUpdateTsRef = useRef(0);
+  const perfSummaryUpdateTsRef = useRef(0);
+  const contrastMetricsUpdateTsRef = useRef(0);
   const handleInteractionFrame = useCallback(
     (stats: ColorAreaInteractionFrameStats) => {
       const now = Date.now();
+      perfFramesRef.current.push({
+        ...stats,
+        ts: now,
+      });
+      if (perfFramesRef.current.length > 240) {
+        perfFramesRef.current.shift();
+      }
+
       if (now - perfUiUpdateTsRef.current >= 120) {
         perfUiUpdateTsRef.current = now;
         setPerfFrame(stats);
+      }
+      if (now - perfSummaryUpdateTsRef.current >= 220) {
+        perfSummaryUpdateTsRef.current = now;
+        setPerfSummary(summarizePerfFrames(perfFramesRef.current));
       }
 
       if (typeof window !== 'undefined') {
@@ -511,6 +635,26 @@ export function ColorAreaDemo({
     },
     [],
   );
+  const handleContrastMetrics = useCallback(
+    (key: string, metrics: ContrastRegionLayerMetrics) => {
+      const now = Date.now();
+      contrastMetricsRef.current[key] = {
+        ...metrics,
+        key,
+        ts: now,
+      };
+
+      if (now - contrastMetricsUpdateTsRef.current >= 160) {
+        contrastMetricsUpdateTsRef.current = now;
+        setContrastMetrics(
+          Object.values(contrastMetricsRef.current).sort((a, b) =>
+            a.key.localeCompare(b.key),
+          ),
+        );
+      }
+    },
+    [],
+  );
 
   return (
     <div className="ck-demo-stack">
@@ -523,6 +667,7 @@ export function ColorAreaDemo({
             axes={axes}
             inspectorState={state}
             onInteractionFrame={handleInteractionFrame}
+            onContrastMetrics={handleContrastMetrics}
           />
         </ColorProvider>
       ) : (
@@ -531,14 +676,42 @@ export function ColorAreaDemo({
             axes={axes}
             inspectorState={null}
             onInteractionFrame={handleInteractionFrame}
+            onContrastMetrics={handleContrastMetrics}
           />
         </ColorProvider>
       )}
-      <div className="ck-caption">
-        Perf profile: auto · quality: {perfFrame?.qualityLevel ?? 'high'} ·
-        frame {perfFrame ? `${perfFrame.frameTimeMs.toFixed(2)}ms` : '--'} ·
-        update {perfFrame ? `${perfFrame.updateDurationMs.toFixed(2)}ms` : '--'}{' '}
-        · coalesced {perfFrame?.coalescedCount ?? 0}
+      <div className="ck-caption ck-perf-caption">
+        <div>
+          Profile: {state?.tuning.performanceProfile ?? 'auto'} · Overlay:{' '}
+          {state?.tuning.layerQuality ?? 'auto'} · Interp:{' '}
+          {state?.tuning.contrastEdgeInterpolation ?? 'linear'}
+        </div>
+        <div>
+          Quality: {perfFrame?.qualityLevel ?? 'high'} · frame p95{' '}
+          {perfSummary.sampleCount > 0
+            ? `${perfSummary.frameP95Ms.toFixed(2)}ms`
+            : '--'}{' '}
+          · update p95{' '}
+          {perfSummary.sampleCount > 0
+            ? `${perfSummary.updateP95Ms.toFixed(2)}ms`
+            : '--'}{' '}
+          · dropped {(perfSummary.droppedRate * 100).toFixed(1)}% · long{' '}
+          {(perfSummary.longTaskRate * 100).toFixed(1)}% · coalesced{' '}
+          {perfFrame?.coalescedCount ?? 0}
+        </div>
+        {contrastMetrics.length > 0 ? (
+          <div className="ck-perf-list">
+            {contrastMetrics.map((metric) => (
+              <span key={metric.key} className="ck-perf-pill">
+                {contrastMetricLabel(metric.key)} {metric.quality}{' '}
+                {metric.lightnessSteps}x{metric.chromaSteps} ·{' '}
+                {metric.source === 'worker' ? 'worker' : 'sync'}{' '}
+                {metric.computeTimeMs.toFixed(2)}ms · {metric.pathCount} paths /{' '}
+                {metric.pointCount} pts
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

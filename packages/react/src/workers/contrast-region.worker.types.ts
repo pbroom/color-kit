@@ -16,5 +16,6 @@ export interface ContrastRegionWorkerRequest {
 export interface ContrastRegionWorkerResponse {
   id: number;
   paths: ColorAreaContrastRegionPoint[][];
+  computeTimeMs?: number;
   error?: string;
 }

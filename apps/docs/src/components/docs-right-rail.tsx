@@ -111,6 +111,25 @@ const WIDTH_OPTIONS: Array<{ value: ColorAreaLineWidth; label: string }> = [
   { value: 1, label: '1pt' },
 ];
 
+const PERFORMANCE_PROFILE_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'quality', label: 'Quality' },
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'performance', label: 'Perf' },
+] as const;
+
+const OVERLAY_QUALITY_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+] as const;
+
+const EDGE_INTERPOLATION_OPTIONS = [
+  { value: 'linear', label: 'Linear' },
+  { value: 'midpoint', label: 'Midpoint' },
+] as const;
+
 function clamp(value: number, min: number, max: number): number {
   if (value < min) return min;
   if (value > max) return max;
@@ -343,6 +362,54 @@ function DotOpacityPills({
         />
         <span aria-hidden="true">%</span>
       </label>
+    </div>
+  );
+}
+
+function StepRangeControl({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (next: number) => void;
+}) {
+  const clampedValue = clamp(Math.round(value), min, max);
+
+  return (
+    <div className="docs-inline-control-row">
+      <span>{label}</span>
+      <div className="docs-inline-control-value docs-inline-control-range">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={clampedValue}
+          onChange={(event) =>
+            onChange(clamp(Number(event.target.value) || min, min, max))
+          }
+        />
+        <label className="docs-percent-field docs-value-field">
+          <input
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={clampedValue}
+            onChange={(event) =>
+              onChange(clamp(Number(event.target.value) || min, min, max))
+            }
+          />
+        </label>
+      </div>
     </div>
   );
 }
@@ -1140,6 +1207,87 @@ function ColorAreaPropertiesPanel() {
             }
           />
         </div>
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Rendering</h4>
+
+        <label className="docs-properties-label">Perf profile</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.performanceProfile}
+          onChange={(performanceProfile) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                performanceProfile,
+              },
+            })
+          }
+          options={[...PERFORMANCE_PROFILE_OPTIONS]}
+          label="Color area performance profile"
+        />
+
+        <label className="docs-properties-label">Overlay quality</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.layerQuality}
+          onChange={(layerQuality) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                layerQuality,
+              },
+            })
+          }
+          options={[...OVERLAY_QUALITY_OPTIONS]}
+          label="Overlay quality level"
+        />
+
+        <StepRangeControl
+          label="Line steps"
+          value={colorAreaState.tuning.lineSteps}
+          min={16}
+          max={256}
+          step={4}
+          onChange={(lineSteps) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                lineSteps,
+              },
+            })
+          }
+        />
+
+        <StepRangeControl
+          label="Contrast steps"
+          value={colorAreaState.tuning.contrastSteps}
+          min={12}
+          max={256}
+          step={4}
+          onChange={(contrastSteps) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                contrastSteps,
+              },
+            })
+          }
+        />
+
+        <label className="docs-properties-label">Contour interpolation</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.contrastEdgeInterpolation}
+          onChange={(contrastEdgeInterpolation) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                contrastEdgeInterpolation,
+              },
+            })
+          }
+          options={[...EDGE_INTERPOLATION_OPTIONS]}
+          label="Contrast contour interpolation"
+        />
       </section>
     </div>
   );
