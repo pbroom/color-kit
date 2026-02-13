@@ -3,6 +3,9 @@ import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 
+const reactHooksRecommendedLatestRules =
+  reactHooksPlugin.configs['recommended-latest'].rules;
+
 export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -22,9 +25,8 @@ export default tseslint.config(
       'react-hooks': reactHooksPlugin,
     },
     rules: {
+      ...reactHooksRecommendedLatestRules,
       'react/react-in-jsx-scope': 'off',
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_' },

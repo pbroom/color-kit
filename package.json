@@ -15,7 +15,7 @@
     "agents:check": "node scripts/agent-learning-check.mjs",
     "agents:check:strict": "node scripts/agent-learning-check.mjs --strict",
     "pr:stack": "bash ./scripts/stack-pr.sh",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "pnpm -r exec rm -rf dist node_modules"

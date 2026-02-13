@@ -697,9 +697,6 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
     const webglStateRef = useRef<WebglState | null>(null);
     const gpuUnavailableRef = useRef(false);
     const lastRenderKeyRef = useRef<string | null>(null);
-    const drawPlaneRef = useRef<() => void>(() => {});
-    const syncCanvasSizeRef =
-      useRef<() => { width: number; height: number } | null>(null);
     const [activeRenderer, setActiveRenderer] =
       useState<ActiveColorPlaneRenderer>(
         BENCHMARK_SELECTED_COLOR_PLANE_RENDERER,
@@ -760,8 +757,6 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         height: scaledHeight,
       };
     }, [effectiveScale]);
-
-    syncCanvasSizeRef.current = syncCanvasSize;
 
     const renderPlane = useCallback(() => {
       const canvas = canvasRef.current;
@@ -856,10 +851,14 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       syncCanvasSize,
     ]);
 
-    drawPlaneRef.current = renderPlane;
-
     useEffect(() => {
-      renderPlane();
+      const frame = window.requestAnimationFrame(() => {
+        renderPlane();
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frame);
+      };
     }, [renderPlane]);
 
     useEffect(() => {
@@ -868,14 +867,14 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       }
 
       const observer = new ResizeObserver(() => {
-        syncCanvasSizeRef.current?.();
-        drawPlaneRef.current();
+        syncCanvasSize();
+        renderPlane();
       });
       observer.observe(canvasNode);
       return () => {
         observer.disconnect();
       };
-    }, [canvasNode]);
+    }, [canvasNode, renderPlane, syncCanvasSize]);
 
     useEffect(() => {
       return () => {
