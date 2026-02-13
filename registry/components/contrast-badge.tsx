@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useMemo, type HTMLAttributes } from 'react';
+import { forwardRef, type HTMLAttributes } from 'react';
 import type { Color } from '@color-kit/core';
 import { contrastRatio, meetsAA, meetsAAA } from '@color-kit/core';
 
@@ -48,15 +48,8 @@ export const ContrastBadge = forwardRef<HTMLDivElement, ContrastBadgeProps>(
     { foreground, background, largeText = false, children, ...props },
     ref,
   ) {
-    const ratio = useMemo(
-      () => contrastRatio(foreground, background),
-      [foreground, background],
-    );
-
-    const level = useMemo(
-      () => getWcagLevel(foreground, background, largeText),
-      [foreground, background, largeText],
-    );
+    const ratio = contrastRatio(foreground, background);
+    const level = getWcagLevel(foreground, background, largeText);
 
     const ratioText = ratio.toFixed(2);
 
