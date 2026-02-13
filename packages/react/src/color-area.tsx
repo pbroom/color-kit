@@ -727,28 +727,32 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       [onPointerCancel, flushPendingPosition],
     );
 
-    const { explicitThumbCount, explicitThumb, resolvedChildren } = useMemo(() => {
-      const thumbCount = countThumbs(children);
-      const firstThumb = findFirstThumb(children);
-      const nextChildren = thumbCount > 0 ? pruneAllThumbs(children) : children;
+    const { explicitThumbCount, explicitThumb, resolvedChildren } =
+      useMemo(() => {
+        const thumbCount = countThumbs(children);
+        const firstThumb = findFirstThumb(children);
+        const nextChildren =
+          thumbCount > 0 ? pruneAllThumbs(children) : children;
 
-      if (thumbCount > 1 && !isProductionEnvironment()) {
-        throw new Error('ColorArea allows only one <Thumb /> child.');
-      }
+        if (thumbCount > 1 && !isProductionEnvironment()) {
+          throw new Error('ColorArea allows only one <Thumb /> child.');
+        }
 
-      return {
-        explicitThumbCount: thumbCount,
-        explicitThumb: firstThumb,
-        resolvedChildren: nextChildren,
-      };
-    }, [children]);
+        return {
+          explicitThumbCount: thumbCount,
+          explicitThumb: firstThumb,
+          resolvedChildren: nextChildren,
+        };
+      }, [children]);
 
     useEffect(() => {
       if (explicitThumbCount <= 1 || warnedMultiThumbRef.current) {
         return;
       }
       warnedMultiThumbRef.current = true;
-      console.warn('ColorArea allows one <Thumb />. Extra thumbs were ignored.');
+      console.warn(
+        'ColorArea allows one <Thumb />. Extra thumbs were ignored.',
+      );
     }, [explicitThumbCount]);
 
     const contextValue = useMemo(

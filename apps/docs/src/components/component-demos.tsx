@@ -467,9 +467,7 @@ function ColorAreaDemoScene({
             chromaSteps={contrastSteps}
             edgeInterpolation={contrastEdgeInterpolation}
             quality={layerQuality}
-            onMetrics={(metrics) =>
-              onContrastMetrics?.('region-aa45', metrics)
-            }
+            onMetrics={(metrics) => onContrastMetrics?.('region-aa45', metrics)}
             regionFillColor="#c0e1ff"
             regionFillOpacity={0.14}
             regionDotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
@@ -587,12 +585,12 @@ export function ColorAreaDemo({
   const [perfSummary, setPerfSummary] = useState<ColorAreaPerfSummary>(() =>
     summarizePerfFrames([]),
   );
-  const [contrastMetrics, setContrastMetrics] = useState<ContrastMetricSample[]>(
-    [],
-  );
-  const perfFramesRef = useRef<Array<ColorAreaInteractionFrameStats & { ts: number }>>(
-    [],
-  );
+  const [contrastMetrics, setContrastMetrics] = useState<
+    ContrastMetricSample[]
+  >([]);
+  const perfFramesRef = useRef<
+    Array<ColorAreaInteractionFrameStats & { ts: number }>
+  >([]);
   const contrastMetricsRef = useRef<Record<string, ContrastMetricSample>>({});
   const perfUiUpdateTsRef = useRef(0);
   const perfSummaryUpdateTsRef = useRef(0);

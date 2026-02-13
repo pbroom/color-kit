@@ -25,7 +25,8 @@ workerScope.onmessage = (event): void => {
       payload.axes,
       payload.options,
     );
-    const end = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const end =
+      typeof performance === 'undefined' ? Date.now() : performance.now();
 
     const response: ContrastRegionWorkerResponse = {
       id: payload.id,

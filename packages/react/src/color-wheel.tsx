@@ -256,12 +256,10 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
         lastNormRef.current = normalized;
         lastCommitTsRef.current = now;
         setRequested(
-          colorFromColorWheelPosition(
-            requested,
-            normalized.x,
-            normalized.y,
-            [minChroma, maxChroma],
-          ),
+          colorFromColorWheelPosition(requested, normalized.x, normalized.y, [
+            minChroma,
+            maxChroma,
+          ]),
           {
             interaction: 'pointer',
           },

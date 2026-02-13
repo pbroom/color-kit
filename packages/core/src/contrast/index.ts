@@ -471,7 +471,9 @@ export function contrastRegionPaths(
 
       const sample: Color = { l, c, h: hue, alpha };
       const mappedSample = mapToGamut(sample, gamut);
-      row.push(contrastRatioUnclamped(mappedSample, mappedReference) - threshold);
+      row.push(
+        contrastRatioUnclamped(mappedSample, mappedReference) - threshold,
+      );
     }
     scoreGrid.push(row);
   }
