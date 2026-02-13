@@ -11,6 +11,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 
 ## Entries
 
+- **2026-02-13 — Land compiler lint gates with baseline remediations**: Adding `pnpm lint` to CI is only actionable if the current mainline is already clean under `react-hooks` compiler rules; include baseline fixes (for example removing direct `setState` in effects) in the same change.
 - **2026-02-12 — Compiler lint applies to registry mirrors too**: When enabling `react-hooks` recommended-latest rules repo-wide, include `registry/components` in remediation scope; mirrored component sources can fail compiler rules even if package sources are clean.
 - **2026-02-13 — Marching-squares contours need interpolated crossings**: For contrast region overlays, midpoint edge placement makes contours visibly jagged and misaligned at practical step counts; use threshold-based linear edge interpolation (with midpoint as optional fallback) to improve precision without exploding sample density.
 - **2026-02-12 — Bundle ESM-only deps for CJS exports**: If a package ships both `import` and `require` entrypoints, adding an ESM-only dependency can silently break the CJS build (`ERR_REQUIRE_ESM`); configure tsup/esbuild to bundle that dependency (for example via `noExternal`) and verify with a real `require()` smoke test.

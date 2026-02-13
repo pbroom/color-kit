@@ -14,6 +14,7 @@ This file defines top-level guidance for Codex in this repository.
 - Use Conventional Commit style messages (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`).
 - If Graphite is configured, prefer `gt` workflow (`gt create`, `gt modify`, `gt submit --stack`).
 - If Graphite is unavailable or unsynced, fall back to plain `git` + `gh`.
+- For React/TSX work, run `pnpm lint` and proactively resolve `react-hooks/*` findings (including React Compiler rules) in touched files before final validation.
 
 ## Parallel Work
 
