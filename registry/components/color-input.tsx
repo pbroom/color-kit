@@ -644,7 +644,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     const [draftValue, setDraftValue] = useState('');
     const [isScrubbing, setIsScrubbing] = useState(false);
     const skipBlurCommitRef = useRef(false);
-    const focusStartValueRef = useRef<number | null>(null);
+    const [focusStartValue, setFocusStartValue] = useState<number | null>(null);
     const lastCommittedValueRef = useRef<number | null>(null);
 
     const activePointerIdRef = useRef<number | null>(null);
@@ -655,6 +655,9 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     const lastScrubCommitTsRef = useRef(0);
     const pendingScrubRef = useRef<ScrubSnapshot | null>(null);
     const scrubFrameRef = useRef<number | null>(null);
+    const processPendingScrubRef = useRef<(frameTime: number) => void>(
+      () => {},
+    );
 
     const currentValue = isEditing ? draftValue : displayValue;
     const parsedDraftValue = useMemo(() => {
@@ -664,7 +667,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
 
       const parsed = parseExpressionValue(
         draftValue,
-        focusStartValueRef.current ?? channelValue,
+        focusStartValue ?? channelValue,
         resolvedRange,
         allowExpressions,
       );
@@ -676,6 +679,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       allowExpressions,
       channelValue,
       draftValue,
+      focusStartValue,
       isEditing,
       resolvedRange,
       resolvedWrap,
@@ -725,6 +729,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         onInvalidCommit?.(draftValue);
         setDraftValue(displayValue);
         setIsEditing(false);
+        setFocusStartValue(null);
         return false;
       }
 
@@ -734,11 +739,13 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           COMMIT_NOOP_EPSILON
       ) {
         setIsEditing(false);
+        setFocusStartValue(null);
         return true;
       }
 
       commitChannelValue(parsedDraftValue, 'text-input');
       setIsEditing(false);
+      setFocusStartValue(null);
       return true;
     }, [
       commitChannelValue,
@@ -751,7 +758,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     const handleFocus = useCallback(() => {
       setIsEditing(true);
       setDraftValue(displayValue);
-      focusStartValueRef.current = channelValue;
+      setFocusStartValue(channelValue);
       lastCommittedValueRef.current = channelValue;
 
       if (!selectAllOnFocus) {
@@ -766,6 +773,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     const handleBlur = useCallback(() => {
       if (skipBlurCommitRef.current) {
         skipBlurCommitRef.current = false;
+        setFocusStartValue(null);
         return;
       }
 
@@ -774,6 +782,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       } else {
         setIsEditing(false);
         setDraftValue(displayValue);
+        setFocusStartValue(null);
       }
     }, [commitDraft, commitOnBlur, displayValue]);
 
@@ -853,6 +862,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           event.preventDefault();
           setIsEditing(false);
           setDraftValue(displayValue);
+          setFocusStartValue(null);
           skipBlurCommitRef.current = true;
           (event.target as HTMLInputElement).blur();
         }
@@ -874,6 +884,12 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         scrubFrameRef.current = null;
       }
       pendingScrubRef.current = null;
+    }, []);
+
+    const schedulePendingScrubFrame = useCallback(() => {
+      scrubFrameRef.current = requestAnimationFrame((frameTime: number) => {
+        processPendingScrubRef.current(frameTime);
+      });
     }, []);
 
     const commitScrubSnapshot = useCallback(
@@ -952,7 +968,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           frameTime >= lastScrubCommitTsRef.current &&
           frameTime - lastScrubCommitTsRef.current < minFrameDelta
         ) {
-          scrubFrameRef.current = requestAnimationFrame(processPendingScrub);
+          schedulePendingScrubFrame();
           return;
         }
 
@@ -960,17 +976,21 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         commitScrubSnapshot(pending, false);
         lastScrubCommitTsRef.current = frameTime;
       },
-      [commitScrubSnapshot, maxScrubRate],
+      [commitScrubSnapshot, maxScrubRate, schedulePendingScrubFrame],
     );
+
+    useEffect(() => {
+      processPendingScrubRef.current = processPendingScrub;
+    }, [processPendingScrub]);
 
     const queueScrubSnapshot = useCallback(
       (snapshot: ScrubSnapshot) => {
         pendingScrubRef.current = snapshot;
         if (scrubFrameRef.current === null) {
-          scrubFrameRef.current = requestAnimationFrame(processPendingScrub);
+          schedulePendingScrubFrame();
         }
       },
-      [processPendingScrub],
+      [schedulePendingScrubFrame],
     );
 
     const endScrubbing = useCallback(
@@ -1004,7 +1024,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         scrubStartValueRef.current = channelValue;
         lastScrubValueRef.current = channelValue;
         lastScrubCommitTsRef.current = 0;
-        focusStartValueRef.current = channelValue;
+        setFocusStartValue(channelValue);
         lastCommittedValueRef.current = channelValue;
         setIsEditing(true);
         setDraftValue(displayValue);

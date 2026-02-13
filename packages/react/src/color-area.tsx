@@ -239,9 +239,17 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const warnedAxesRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
     const isDraggingRef = useRef(false);
-    const [qualityLevel, setQualityLevel] = useState<ColorAreaQualityLevel>(
-      profileDefaultQuality(performanceProfile),
-    );
+    const [adaptiveQualityState, setAdaptiveQualityState] = useState<{
+      profile: ColorAreaPerformanceProfile;
+      level: ColorAreaQualityLevel;
+    }>(() => ({
+      profile: performanceProfile,
+      level: profileDefaultQuality(performanceProfile),
+    }));
+    const qualityLevel =
+      adaptiveQualityState.profile === performanceProfile
+        ? adaptiveQualityState.level
+        : profileDefaultQuality(performanceProfile);
     const qualityLevelRef = useRef(qualityLevel);
     const rafRef = useRef<number | null>(null);
     const pendingPositionRef = useRef<{
@@ -261,11 +269,15 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const rollingUpdateMsRef = useRef<number[]>([]);
     const rollingFrameMsRef = useRef<number[]>([]);
 
-    const resolvedAxes = useMemo(() => {
-      const resolved = resolveColorAreaAxes(axes);
+    const requestedAxes = useMemo(() => resolveColorAreaAxes(axes), [axes]);
+    const hasDuplicateAxes = useMemo(
+      () => !areColorAreaAxesDistinct(requestedAxes),
+      [requestedAxes],
+    );
 
-      if (areColorAreaAxesDistinct(resolved)) {
-        return resolved;
+    const resolvedAxes = useMemo(() => {
+      if (!hasDuplicateAxes) {
+        return requestedAxes;
       }
 
       if (!isProductionEnvironment()) {
@@ -274,15 +286,18 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         );
       }
 
-      if (!warnedAxesRef.current) {
-        warnedAxesRef.current = true;
-        console.warn(
-          'ColorArea received duplicate axis channels. Falling back to distinct production-safe axes.',
-        );
-      }
+      return normalizeAxesForProdFallback(requestedAxes);
+    }, [hasDuplicateAxes, requestedAxes]);
 
-      return normalizeAxesForProdFallback(resolved);
-    }, [axes]);
+    useEffect(() => {
+      if (!hasDuplicateAxes || warnedAxesRef.current) {
+        return;
+      }
+      warnedAxesRef.current = true;
+      console.warn(
+        'ColorArea received duplicate axis channels. Falling back to distinct production-safe axes.',
+      );
+    }, [hasDuplicateAxes]);
 
     const refreshRect = useCallback(() => {
       const element = areaRef.current;
@@ -298,10 +313,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const updateAdaptiveQuality = useCallback(
       (updateDurationMs: number, frameTimeMs: number) => {
         if (performanceProfile === 'quality') {
-          if (qualityLevelRef.current !== 'high') {
-            qualityLevelRef.current = 'high';
-            setQualityLevel('high');
-          }
+          qualityLevelRef.current = 'high';
           return;
         }
 
@@ -349,7 +361,10 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
 
         if (nextQuality !== qualityLevelRef.current) {
           qualityLevelRef.current = nextQuality;
-          setQualityLevel(nextQuality);
+          setAdaptiveQualityState({
+            profile: performanceProfile,
+            level: nextQuality,
+          });
         }
       },
       [performanceProfile],
@@ -501,7 +516,6 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     useEffect(() => {
       const defaultLevel = profileDefaultQuality(performanceProfile);
       qualityLevelRef.current = defaultLevel;
-      setQualityLevel(defaultLevel);
       rollingUpdateMsRef.current = [];
       rollingFrameMsRef.current = [];
     }, [performanceProfile]);
@@ -713,32 +727,29 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       [onPointerCancel, flushPendingPosition],
     );
 
-    const { explicitThumbCount, explicitThumb, resolvedChildren } =
-      useMemo(() => {
-        const thumbCount = countThumbs(children);
-        const firstThumb = findFirstThumb(children);
-        const nextChildren =
-          thumbCount > 0 ? pruneAllThumbs(children) : children;
+    const { explicitThumbCount, explicitThumb, resolvedChildren } = useMemo(() => {
+      const thumbCount = countThumbs(children);
+      const firstThumb = findFirstThumb(children);
+      const nextChildren = thumbCount > 0 ? pruneAllThumbs(children) : children;
 
-        if (thumbCount > 1) {
-          if (!isProductionEnvironment()) {
-            throw new Error('ColorArea allows only one <Thumb /> child.');
-          }
+      if (thumbCount > 1 && !isProductionEnvironment()) {
+        throw new Error('ColorArea allows only one <Thumb /> child.');
+      }
 
-          if (!warnedMultiThumbRef.current) {
-            warnedMultiThumbRef.current = true;
-            console.warn(
-              'ColorArea allows one <Thumb />. Extra thumbs were ignored.',
-            );
-          }
-        }
+      return {
+        explicitThumbCount: thumbCount,
+        explicitThumb: firstThumb,
+        resolvedChildren: nextChildren,
+      };
+    }, [children]);
 
-        return {
-          explicitThumbCount: thumbCount,
-          explicitThumb: firstThumb,
-          resolvedChildren: nextChildren,
-        };
-      }, [children]);
+    useEffect(() => {
+      if (explicitThumbCount <= 1 || warnedMultiThumbRef.current) {
+        return;
+      }
+      warnedMultiThumbRef.current = true;
+      console.warn('ColorArea allows one <Thumb />. Extra thumbs were ignored.');
+    }, [explicitThumbCount]);
 
     const contextValue = useMemo(
       () => ({
