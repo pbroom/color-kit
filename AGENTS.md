@@ -42,3 +42,7 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-02-09 — Share docs nav and route registries**: Drive docs sidebar items and page module resolution from one registry file so new MDX pages are added once and cannot drift into broken links.
 - **2026-02-10 — Rebuild core before react tests on new exports**: `@color-kit/react` tests resolve `@color-kit/core` through package exports, so adding new core exports requires a fresh `pnpm build` (or at least `@color-kit/core` build) before `pnpm test` to avoid stale-dist runtime misses.
 - **2026-02-10 — Use functional updates for collection hooks**: Multi-entry hooks (`useMultiColor`) must compute next state from the latest snapshot (functional `setState`) to keep batched operations deterministic; closure-based snapshots drop sequential edits in a single event.
+
+## Agent Learnings
+
+- **2026-02-15 — Keep AGENTS edits minimally invasive**: When updating `AGENTS.md`, preserve existing project-specific policies and add only the missing structure or guidance needed for the current request.
