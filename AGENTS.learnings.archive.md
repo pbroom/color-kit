@@ -11,6 +11,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 
 ## Entries
 
+- **2026-02-17 — Pin exploration subagent model explicitly**: For codebase discovery workflows, set `model: gpt-5.3-codex-high` in subagent frontmatter and repeat the model preference in the prompt body so delegation stays consistent.
 - **2026-02-13 — Compiler lint can be clean while memo cleanup is still worthwhile**: Enabling both `react-hooks` recommended-latest and `eslint-plugin-react-compiler` catches compiler-safety issues, but it does not automatically identify all low-value `useMemo`/`useCallback` usage; targeted manual cleanup plus tests/bench checks is still needed.
 - **2026-02-13 — Land compiler lint gates with baseline remediations**: Adding `pnpm lint` to CI is only actionable if the current mainline is already clean under `react-hooks` compiler rules; include baseline fixes (for example removing direct `setState` in effects) in the same change.
 - **2026-02-12 — Compiler lint applies to registry mirrors too**: When enabling `react-hooks` recommended-latest rules repo-wide, include `registry/components` in remediation scope; mirrored component sources can fail compiler rules even if package sources are clean.
