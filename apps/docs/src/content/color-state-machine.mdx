@@ -1,0 +1,24 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { ColorStateGraph } from '@/components/color-state-graph';
+
+# Color State Machine
+
+The **Color** context (provided by `ColorProvider` and consumed via `useColor` or `useColorContext`) manages a small internal state machine. Understanding it helps when building pickers, debugging updates, or wiring custom controls.
+
+## Live visualization
+
+The diagram below is wired to a live color instance. Use the mini picker to change the color; the graph updates in real time and briefly highlights the path that data takes through the system.
+
+<ComponentPreview>
+  <ColorStateGraph />
+</ComponentPreview>
+
+## How it works
+
+- **Inputs** (left) are the ways state can change: pointer drag, keyboard, text input, programmatic API, or toggling gamut/view.
+- **Actions** are the functions that apply those inputs: `setRequested`, `setChannel`, `setFromString`, and so on.
+- **Core state** holds the canonical values: `requested` (OKLCH intent), `activeGamut`, `activeView`, and `meta.source`.
+- **Computations** derive from state: `mapDisplayedColors` produces gamut-mapped sRGB and P3 from `requested`; `getActiveDisplayedColor` picks the active displayed color from `activeGamut`.
+- **Outputs** (right) are what you read: `displayed`, `hex`, `rgb`, `displayedCss()`, and out-of-gamut flags.
+
+`requested` is never clamped; out-of-gamut intent is allowed. The displayed colors and out-of-gamut flags are computed from `requested` and `activeGamut`, so changing the picker or calling `setRequested` updates the whole chain.
