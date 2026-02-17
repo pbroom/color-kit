@@ -80,6 +80,11 @@ export const docsNavigation: DocsNavSection[] = [
         href: toDocsHref('react-primitives'),
       },
       {
+        title: 'Color State Machine',
+        path: 'color-state-machine',
+        href: toDocsHref('color-state-machine'),
+      },
+      {
         title: 'shadcn Registry',
         path: 'shadcn-registry',
         href: toDocsHref('shadcn-registry'),
