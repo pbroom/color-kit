@@ -101,6 +101,7 @@ export {
   inP3Gamut,
   toSrgbGamut,
   toP3Gamut,
+  maxChromaForHue,
   maxChromaAt,
   gamutBoundaryPath,
   chromaBand,
@@ -108,6 +109,9 @@ export {
 export type {
   GamutTarget,
   GamutBoundaryPoint,
+  HueCusp,
+  MaxChromaForHueMethod,
+  MaxChromaForHueOptions,
   MaxChromaAtOptions,
   GamutBoundaryPathOptions,
   ChromaBandMode,
