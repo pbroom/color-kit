@@ -1,4 +1,13 @@
+import { Moon, Sun } from 'lucide-react';
 import { useTheme, type ThemePreference } from './theme-context.js';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const options: Array<{ label: string; value: ThemePreference }> = [
   { label: 'Light', value: 'light' },
@@ -7,21 +16,36 @@ const options: Array<{ label: string; value: ThemePreference }> = [
 ];
 
 export function ThemeSwitcher() {
-  const { preference, setPreference } = useTheme();
+  const { preference, resolvedTheme, setPreference } = useTheme();
 
   return (
-    <div className="theme-switcher" role="group" aria-label="Theme">
-      {options.map((option) => (
-        <button
-          key={option.value}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
           type="button"
-          className={preference === option.value ? 'is-active' : undefined}
-          aria-pressed={preference === option.value}
-          onClick={() => setPreference(option.value)}
+          variant="ghost"
+          size="icon"
+          aria-label="Toggle theme"
         >
-          {option.label}
-        </button>
-      ))}
-    </div>
+          {resolvedTheme === 'dark' ? (
+            <Moon className="size-4" />
+          ) : (
+            <Sun className="size-4" />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-36">
+        <DropdownMenuRadioGroup
+          value={preference}
+          onValueChange={(value) => setPreference(value as ThemePreference)}
+        >
+          {options.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

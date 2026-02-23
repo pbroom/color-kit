@@ -1,3 +1,12 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
 export interface ApiTableRow {
   name: string;
   type: string;
@@ -11,33 +20,33 @@ interface ApiTableProps {
 
 export function ApiTable({ rows }: ApiTableProps) {
   return (
-    <div className="not-prose my-6 overflow-x-auto">
-      <table className="docs-api-table">
-        <thead>
-          <tr>
-            <th>Prop</th>
-            <th>Type</th>
-            <th>Default</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="not-prose my-6 rounded-xl border bg-card/70 p-2 shadow-xs">
+      <Table className="docs-api-table">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[14ch]">Prop</TableHead>
+            <TableHead className="w-[24ch]">Type</TableHead>
+            <TableHead className="w-[12ch]">Default</TableHead>
+            <TableHead>Description</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map((row) => (
-            <tr key={row.name}>
-              <td>
+            <TableRow key={row.name}>
+              <TableCell className="align-top">
                 <code>{row.name}</code>
-              </td>
-              <td>
+              </TableCell>
+              <TableCell className="align-top">
                 <code>{row.type}</code>
-              </td>
-              <td>
+              </TableCell>
+              <TableCell className="align-top">
                 {row.defaultValue ? <code>{row.defaultValue}</code> : '-'}
-              </td>
-              <td>{row.description}</td>
-            </tr>
+              </TableCell>
+              <TableCell>{row.description}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -1,8 +1,9 @@
-import { useParams } from 'react-router';
 import { Suspense } from 'react';
-import { docsPages } from '../content/docs-registry.js';
-import { getComponentDoc } from '../content/components/component-docs-data.js';
+import { useParams } from 'react-router';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ComponentDocPage } from '../components/component-doc-page.js';
+import { getComponentDoc } from '../content/components/component-docs-data.js';
+import { docsPages } from '../content/docs-registry.js';
 
 function NotFound() {
   return (
@@ -33,10 +34,11 @@ export function DocsPage() {
   return (
     <Suspense
       fallback={
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-64 bg-muted rounded" />
-          <div className="h-4 w-full bg-muted rounded" />
-          <div className="h-4 w-3/4 bg-muted rounded" />
+        <div className="space-y-5">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-48 w-full rounded-xl" />
         </div>
       }
     >

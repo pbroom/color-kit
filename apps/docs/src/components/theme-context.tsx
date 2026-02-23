@@ -107,6 +107,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.dataset.theme = resolvedTheme;
     root.dataset.themePreference = preference;
+    root.classList.toggle('dark', resolvedTheme === 'dark');
     root.style.colorScheme = resolvedTheme;
   }, [preference, resolvedTheme]);
 

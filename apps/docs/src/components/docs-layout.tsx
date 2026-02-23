@@ -1,5 +1,17 @@
-import { useEffect, useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router';
+import { useEffect, useEffectEvent, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router';
+import { Github, Menu, PanelRightOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 import { docsNavigation } from '../content/docs-registry.js';
 import {
   DocsInspectorProvider,
@@ -16,6 +28,38 @@ function slugifyHeading(title: string): string {
     .replace(/\s+/g, '-');
 }
 
+function DocsSidebarNav({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav className="space-y-5">
+      {docsNavigation.map((section) => (
+        <div key={section.title}>
+          <h4 className="ck-nav-section-title">{section.title}</h4>
+          <ul className="space-y-1">
+            {section.items.map((item) => (
+              <li key={item.href}>
+                <Link
+                  to={item.href}
+                  className="ck-nav-link"
+                  data-active={pathname === item.href}
+                  onClick={onNavigate}
+                >
+                  {item.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
+
 function DocsLayoutInner() {
   const location = useLocation();
   const [headingsState, setHeadingsState] = useState<{
@@ -25,13 +69,23 @@ function DocsLayoutInner() {
     pathname: location.pathname,
     items: [],
   });
+  const [navSheetOpen, setNavSheetOpen] = useState(false);
+  const [panelsSheetOpen, setPanelsSheetOpen] = useState(false);
   const { setActiveTab } = useDocsInspector();
   const headings =
     headingsState.pathname === location.pathname ? headingsState.items : [];
+  const closeSheetsOnRouteChange = useEffectEvent(() => {
+    setNavSheetOpen(false);
+    setPanelsSheetOpen(false);
+  });
 
   useEffect(() => {
     setActiveTab('outline');
   }, [location.pathname, setActiveTab]);
+
+  useEffect(() => {
+    closeSheetsOnRouteChange();
+  }, [location.pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,72 +158,139 @@ function DocsLayoutInner() {
   }, [location.pathname]);
 
   return (
-    <div className="docs-shell">
-      <header className="docs-header">
-        <div className="docs-header-inner">
-          <Link to="/" className="docs-brand">
-            <span className="docs-brand-dot" />
-            Color Kit
-          </Link>
-          <div className="docs-header-actions">
-            <nav className="docs-header-nav">
-              <Link to="/docs/introduction" className="docs-top-link">
-                Docs
-              </Link>
-              <Link to="/docs/components/color-area" className="docs-top-link">
-                Components
-              </Link>
-              <Link to="/docs/shadcn-registry" className="docs-top-link">
-                Registry
-              </Link>
-              <a
-                href="https://github.com/pbroom/color-kit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="docs-top-link"
+    <div className="docs-shell ck-shell-bg min-h-screen">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 w-full max-w-[1560px] items-center justify-between gap-3 px-4">
+          <div className="flex items-center gap-2">
+            <Sheet open={navSheetOpen} onOpenChange={setNavSheetOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="xl:hidden"
+                  aria-label="Open docs navigation"
+                >
+                  <Menu className="size-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                className="w-[20rem] p-0 sm:max-w-[20rem]"
               >
-                GitHub
-              </a>
+                <div className="flex h-full min-h-0 flex-col">
+                  <SheetHeader className="border-b p-4">
+                    <SheetTitle>Documentation</SheetTitle>
+                    <SheetDescription>
+                      Browse Color Kit guides and components.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="min-h-0 flex-1 p-3">
+                    <ScrollArea className="h-full pr-2">
+                      <DocsSidebarNav
+                        pathname={location.pathname}
+                        onNavigate={() => setNavSheetOpen(false)}
+                      />
+                    </ScrollArea>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Link to="/" className="docs-brand">
+              <span className="docs-brand-dot" />
+              Color Kit
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <nav className="hidden items-center gap-1 md:flex">
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/docs/introduction">Docs</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/docs/components/color-area">Components</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/docs/shadcn-registry">Registry</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <a
+                  href="https://github.com/pbroom/color-kit"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Github className="size-4" />
+                  GitHub
+                </a>
+              </Button>
             </nav>
+
+            <Sheet open={panelsSheetOpen} onOpenChange={setPanelsSheetOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="xl:hidden"
+                >
+                  <PanelRightOpen className="size-4" />
+                  Panels
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                className="w-[min(92vw,28rem)] p-4 sm:max-w-[28rem]"
+              >
+                <SheetHeader className="pb-3">
+                  <SheetTitle>Page panels</SheetTitle>
+                  <SheetDescription>
+                    Page outline and interactive demo properties.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="min-h-0 flex-1">
+                  <DocsRightRail headings={headings} className="h-full" />
+                </div>
+              </SheetContent>
+            </Sheet>
+
             <ThemeSwitcher />
           </div>
         </div>
       </header>
 
-      <div className="docs-body">
-        <aside className="docs-left-rail">
-          <nav>
-            {docsNavigation.map((section) => (
-              <div key={section.title} className="docs-nav-section">
-                <h4>{section.title}</h4>
-                <ul>
-                  {section.items.map((item) => (
-                    <li key={item.href}>
-                      <Link
-                        to={item.href}
-                        className={`docs-side-link ${
-                          location.pathname === item.href
-                            ? 'is-active'
-                            : undefined
-                        }`}
-                      >
-                        {item.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+      <div className="ck-docs-grid">
+        <aside
+          className="ck-docs-sidebar"
+          aria-label="Documentation navigation"
+        >
+          <div className="ck-docs-sidebar-sticky">
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="min-h-0 flex-1 pt-2">
+                <ScrollArea className="h-full pr-2">
+                  <DocsSidebarNav pathname={location.pathname} />
+                </ScrollArea>
               </div>
-            ))}
-          </nav>
+            </div>
+          </div>
         </aside>
 
-        <main className="docs-main">
-          <article className="prose docs-article" data-doc-content="">
+        <main className="ck-docs-main" id="docs-content">
+          <article
+            className={cn(
+              'ck-docs-article prose docs-article px-5 py-6 md:px-8 md:py-8',
+            )}
+            data-doc-content=""
+          >
             <Outlet />
           </article>
         </main>
 
-        <DocsRightRail headings={headings} />
+        <div className="ck-docs-rightrail" aria-label="Page tools and outline">
+          <div className="ck-docs-rightrail-sticky">
+            <DocsRightRail headings={headings} />
+          </div>
+        </div>
       </div>
     </div>
   );

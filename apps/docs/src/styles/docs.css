@@ -1,0 +1,182 @@
+@layer components {
+  .ck-shell-bg {
+    background: var(--background);
+  }
+
+  .ck-docs-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(0, 340px);
+    gap: 1.25rem;
+    width: min(1560px, 100%);
+    margin: 0 auto;
+    padding: 1rem 1rem 2rem;
+  }
+
+  .ck-docs-sidebar,
+  .ck-docs-rightrail {
+    min-height: calc(100vh - 5rem);
+  }
+
+  .ck-docs-sidebar-sticky,
+  .ck-docs-rightrail-sticky {
+    position: sticky;
+    top: 4.5rem;
+    max-height: calc(100vh - 5.5rem);
+  }
+
+  .ck-docs-main {
+    min-width: 0;
+  }
+
+  .ck-docs-article {
+    @apply rounded-none border-0 bg-transparent shadow-none;
+    backdrop-filter: none;
+  }
+
+  .ck-docs-article .prose,
+  .ck-docs-article.prose {
+    max-width: none;
+  }
+
+  .ck-nav-section-title {
+    @apply mb-2 px-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  .ck-nav-link {
+    @apply flex items-center rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/60 hover:text-accent-foreground;
+  }
+
+  .ck-nav-link[data-active='true'] {
+    @apply bg-accent text-accent-foreground shadow-sm;
+  }
+
+  .ck-home-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .ck-home-card {
+    grid-column: span 6;
+  }
+
+  .ck-home-card[data-span='2'] {
+    grid-column: span 12;
+  }
+
+  .ck-home-card-demo {
+    @apply rounded-lg border bg-background/60 p-4;
+  }
+
+  .ck-rightrail-panel {
+    @apply flex min-h-0 flex-1 flex-col;
+  }
+
+  .ck-rightrail-scroll {
+    @apply min-h-0 flex-1;
+  }
+
+  .ck-rightrail-content {
+    @apply p-4;
+  }
+
+  .docs-right-rail {
+    --docs-panel-surface: color-mix(in oklab, var(--card) 92%, var(--muted));
+    --docs-panel-border: color-mix(
+      in oklab,
+      var(--border) 88%,
+      var(--foreground) 12%
+    );
+    --docs-panel-control: color-mix(
+      in oklab,
+      var(--background) 78%,
+      var(--muted)
+    );
+    --docs-panel-control-border: color-mix(
+      in oklab,
+      var(--border) 75%,
+      var(--foreground) 10%
+    );
+    --docs-panel-text: var(--foreground);
+    --docs-panel-muted: var(--muted-foreground);
+    --docs-panel-subtle: color-mix(
+      in oklab,
+      var(--muted-foreground) 86%,
+      var(--foreground)
+    );
+    --docs-panel-copy: color-mix(
+      in oklab,
+      var(--foreground) 30%,
+      var(--muted-foreground)
+    );
+    --docs-panel-focus: var(--ring);
+    --docs-panel-shadow: 0 1px 2px color-mix(in oklab, black 10%, transparent);
+
+    border-left: 0;
+    min-height: 0;
+    max-height: none;
+    padding: 0;
+    position: static;
+    top: auto;
+    align-self: stretch;
+    overflow: visible;
+    overscroll-behavior: auto;
+    scrollbar-gutter: auto;
+  }
+
+  .docs-right-empty {
+    margin: 0;
+    @apply text-sm text-muted-foreground;
+  }
+
+  .docs-outline-nav {
+    margin-top: 0;
+    gap: 0.4rem;
+  }
+
+  .docs-outline-link {
+    @apply rounded-sm px-1 py-0.5 text-sm text-muted-foreground transition-colors;
+  }
+
+  .docs-outline-link:hover {
+    @apply bg-accent/60 text-accent-foreground;
+  }
+
+  .docs-outline-link.nested {
+    @apply pl-4;
+  }
+
+  @media (max-width: 1279px) {
+    .ck-docs-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ck-docs-sidebar,
+    .ck-docs-rightrail {
+      display: none;
+    }
+
+    .ck-docs-main {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .ck-home-card,
+    .ck-home-card[data-span='2'] {
+      grid-column: span 12;
+    }
+  }
+}
+
+@layer utilities {
+  .ck-scroll-shadow {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black 0.5rem,
+      black calc(100% - 0.5rem),
+      transparent
+    );
+  }
+}
