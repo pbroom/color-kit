@@ -47,3 +47,4 @@ This file defines top-level guidance for Codex in this repository.
 
 - **2026-02-17 — Pin exploration subagent model explicitly**: For codebase discovery workflows, set `model: gpt-5.3-codex-high` in subagent frontmatter and repeat the model preference in the prompt body so delegation stays consistent.
 - **2026-02-23 — Keep branch returns simple**: When a PR branch is done and no longer needed, switch to `main` first and then delete the feature branch to avoid confusing residual state in subsequent work.
+- **2026-02-23 — Rebase before push on diverged branch**: If your feature branch reports ahead/behind status, rebase onto the current remote branch first so push is a fast-forward and your local fixes stay on top of teammates' latest updates.
