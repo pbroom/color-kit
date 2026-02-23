@@ -6,13 +6,7 @@ import type { ComponentDocData } from '@/content/components/component-docs-data'
 import { ApiTable } from './api-table.js';
 import { ComponentPreview } from './component-preview.js';
 
-function CommandCard({
-  label,
-  command,
-}: {
-  label: string;
-  command: string;
-}) {
+function CommandCard({ label, command }: { label: string; command: string }) {
   return (
     <Card className="h-full border-border/70 bg-card/80 shadow-xs">
       <CardHeader className="pb-3">
