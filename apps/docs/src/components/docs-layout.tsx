@@ -1,11 +1,8 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { Github, Menu, PanelRightOpen } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
@@ -177,7 +174,10 @@ function DocsLayoutInner() {
                   <Menu className="size-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[20rem] p-0 sm:max-w-[20rem]">
+              <SheetContent
+                side="left"
+                className="w-[20rem] p-0 sm:max-w-[20rem]"
+              >
                 <div className="flex h-full min-h-0 flex-col">
                   <SheetHeader className="border-b p-4">
                     <SheetTitle>Documentation</SheetTitle>
@@ -201,9 +201,6 @@ function DocsLayoutInner() {
               <span className="docs-brand-dot" />
               Color Kit
             </Link>
-            <Badge variant="outline" className="hidden md:inline-flex">
-              Docs
-            </Badge>
           </div>
 
           <div className="flex items-center gap-2">
@@ -241,7 +238,10 @@ function DocsLayoutInner() {
                   Panels
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[min(92vw,28rem)] p-4 sm:max-w-[28rem]">
+              <SheetContent
+                side="right"
+                className="w-[min(92vw,28rem)] p-4 sm:max-w-[28rem]"
+              >
                 <SheetHeader className="pb-3">
                   <SheetTitle>Page panels</SheetTitle>
                   <SheetDescription>
@@ -260,19 +260,18 @@ function DocsLayoutInner() {
       </header>
 
       <div className="ck-docs-grid">
-        <aside className="ck-docs-sidebar" aria-label="Documentation navigation">
+        <aside
+          className="ck-docs-sidebar"
+          aria-label="Documentation navigation"
+        >
           <div className="ck-docs-sidebar-sticky">
-            <Card className="flex h-full min-h-0 flex-col border-border/70 bg-card/80 shadow-xs backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Browse docs</CardTitle>
-              </CardHeader>
-              <Separator />
-              <CardContent className="min-h-0 flex-1 p-3">
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="min-h-0 flex-1 pt-2">
                 <ScrollArea className="h-full pr-2">
                   <DocsSidebarNav pathname={location.pathname} />
                 </ScrollArea>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </aside>
 

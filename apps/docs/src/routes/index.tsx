@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight, Github, Sparkles } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { ArrowRight, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+
 import {
   ColorAreaDemo,
   ColorDisplayDemo,
@@ -85,19 +85,15 @@ const cards: ShowcaseCard[] = [
 
 function ShowcaseCard({ card }: { card: ShowcaseCard }) {
   return (
-    <Card className="ck-home-card flex flex-col overflow-hidden border-border/70 bg-card/80 shadow-sm backdrop-blur-sm" data-span={card.className === 'span-2' ? '2' : undefined}>
+    <Card
+      className="ck-home-card flex flex-col overflow-hidden border-border/70 bg-card/80 shadow-sm backdrop-blur-sm"
+      data-span={card.className === 'span-2' ? '2' : undefined}
+    >
       <CardHeader className="pb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-xl tracking-tight">{card.title}</CardTitle>
-            <CardDescription className="mt-2 text-sm leading-relaxed">
-              {card.description}
-            </CardDescription>
-          </div>
-          <Badge variant="outline" className="hidden shrink-0 md:inline-flex">
-            Demo
-          </Badge>
-        </div>
+        <CardTitle className="text-xl tracking-tight">{card.title}</CardTitle>
+        <CardDescription className="mt-2 text-sm leading-relaxed">
+          {card.description}
+        </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="ck-home-card-demo">{card.demo}</div>
@@ -124,9 +120,6 @@ export function HomePage() {
               <span className="docs-brand-dot" />
               Color Kit
             </Link>
-            <Badge variant="outline" className="hidden md:inline-flex">
-              Docs
-            </Badge>
           </div>
           <div className="flex items-center gap-2">
             <nav className="hidden items-center gap-1 md:flex">
@@ -156,23 +149,16 @@ export function HomePage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-[1560px] flex-col gap-8 px-4 py-8 md:gap-10 md:py-10">
-        <section className="relative overflow-hidden rounded-2xl border border-border/70 bg-card/80 p-6 shadow-sm backdrop-blur-sm md:p-10">
-          <div className="absolute inset-0 pointer-events-none opacity-70">
-            <div className="absolute -left-12 top-0 h-36 w-36 rounded-full bg-primary/20 blur-3xl" />
-            <div className="absolute right-0 top-4 h-40 w-40 rounded-full bg-sky-400/20 blur-3xl" />
-          </div>
-          <div className="relative space-y-5">
-            <Badge variant="secondary" className="w-fit">
-              <Sparkles className="mr-1 size-3.5" />
-              React Primitives + shadcn Registry
-            </Badge>
+        <section className="p-6 md:p-10">
+          <div className="space-y-5">
             <div className="max-w-3xl space-y-4">
               <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
                 The Color Tooling Foundation for Product Teams
               </h1>
               <p className="text-base leading-relaxed text-muted-foreground md:text-lg">
-                Build color interfaces with requested/displayed intent semantics,
-                deterministic gamut mapping, and composable React primitives.
+                Build color interfaces with requested/displayed intent
+                semantics, deterministic gamut mapping, and composable React
+                primitives.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -187,19 +173,14 @@ export function HomePage() {
         </section>
 
         <section className="space-y-4">
-          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                Interactive Playground Grid
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
-                This surface doubles as product showcase, performance testbed,
-                and visual consistency harness for docs development.
-              </p>
-            </div>
-            <Badge variant="outline" className="w-fit">
-              Docs-like shell + shadcn primitives
-            </Badge>
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+              Interactive Playground Grid
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
+              This surface doubles as product showcase, performance testbed, and
+              visual consistency harness for docs development.
+            </p>
           </div>
 
           <div className="ck-home-grid">

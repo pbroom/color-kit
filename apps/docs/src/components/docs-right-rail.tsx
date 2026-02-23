@@ -12,7 +12,6 @@ import {
   type Color,
 } from '@color-kit/core';
 import { useLocation } from 'react-router';
-import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -1502,7 +1501,7 @@ export function DocsRightRail({
 
   return (
     <aside className={cn('docs-right-rail ck-rightrail-panel', className)}>
-      <Card className="flex min-h-0 flex-1 flex-col border bg-card/85 shadow-xs backdrop-blur-sm">
+      <div className="flex min-h-0 flex-1 flex-col">
         <div className="p-3 pb-0">
           <Tabs
             value={activeTab}
@@ -1523,7 +1522,7 @@ export function DocsRightRail({
           </Tabs>
         </div>
 
-        <CardContent className="ck-rightrail-scroll min-h-0 p-0">
+        <div className="ck-rightrail-scroll min-h-0 p-0">
           <ScrollArea className="h-full">
             <div className="ck-rightrail-content">
               {activeTab === 'outline' ? (
@@ -1537,8 +1536,8 @@ export function DocsRightRail({
               )}
             </div>
           </ScrollArea>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </aside>
   );
 }
