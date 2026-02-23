@@ -23,7 +23,7 @@ export interface SwatchGroupProps extends Omit<
  * A group of swatches that manages selection state.
  *
  * Works standalone with `value`/`onChange` props, or reads from
- * a parent `<ColorProvider>` context automatically.
+ * a parent `<Color>` context automatically.
  *
  * Renders as a plain `<div>` — completely unstyled.
  * Use data attributes and CSS to style it.

@@ -243,7 +243,7 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorWheel requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorWheel requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 

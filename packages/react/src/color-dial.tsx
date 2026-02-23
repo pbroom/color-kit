@@ -70,9 +70,9 @@ export interface ColorDialProps extends Omit<
    * @default 0.0005
    */
   dragEpsilon?: number;
-  /** Standalone requested color value (alternative to ColorProvider) */
+  /** Standalone requested color value (alternative to Color) */
   requested?: Color;
-  /** Standalone change handler (alternative to ColorProvider) */
+  /** Standalone change handler (alternative to Color) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 
@@ -134,7 +134,7 @@ export const ColorDial = forwardRef<HTMLDivElement, ColorDialProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorDial requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorDial requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 

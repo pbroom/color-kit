@@ -38,9 +38,9 @@ export interface ColorWheelProps extends Omit<
    * @default [0, 0.4]
    */
   chromaRange?: [number, number];
-  /** Standalone requested color (alternative to ColorProvider) */
+  /** Standalone requested color (alternative to Color) */
   requested?: Color;
-  /** Standalone change handler (alternative to ColorProvider) */
+  /** Standalone change handler (alternative to Color) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /**
    * Which state stream should feed visual variables and metadata.
@@ -49,7 +49,7 @@ export interface ColorWheelProps extends Omit<
   source?: 'requested' | 'displayed';
   /**
    * Display target when `source="displayed"`.
-   * Falls back to ColorProvider active gamut.
+   * Falls back to Color active gamut.
    */
   displayGamut?: GamutTarget;
   /**
@@ -165,7 +165,7 @@ export const ColorWheel = forwardRef<HTMLDivElement, ColorWheelProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorWheel requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorWheel requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 

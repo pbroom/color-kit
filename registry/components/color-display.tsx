@@ -55,7 +55,7 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
 
     if (!requested) {
       throw new Error(
-        'ColorDisplay requires either a <ColorProvider> ancestor or an explicit requested prop.',
+        'ColorDisplay requires either a <Color> ancestor or an explicit requested prop.',
       );
     }
 

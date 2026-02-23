@@ -27,9 +27,9 @@ export interface ColorStringInputProps extends Omit<
    * @default 'hex'
    */
   format?: ColorStringInputFormat;
-  /** Standalone requested color value (alternative to ColorProvider) */
+  /** Standalone requested color value (alternative to Color) */
   requested?: Color;
-  /** Standalone change handler (alternative to ColorProvider) */
+  /** Standalone change handler (alternative to Color) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /** Called when invalid text is committed via Enter or blur. */
   onInvalidCommit?: (draft: string) => void;
@@ -61,7 +61,7 @@ export const ColorStringInput = forwardRef<
 
   if (!requested || !setRequested) {
     throw new Error(
-      'ColorStringInput requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+      'ColorStringInput requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
     );
   }
 

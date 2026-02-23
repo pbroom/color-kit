@@ -13,7 +13,7 @@ export interface ColorDisplayProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'color'
 > {
-  /** Standalone requested color value (alternative to ColorProvider) */
+  /** Standalone requested color value (alternative to Color) */
   requested?: Color;
   /** Active gamut for standalone mode */
   gamut?: GamutTarget;
@@ -48,7 +48,7 @@ export const ColorDisplay = forwardRef<HTMLDivElement, ColorDisplayProps>(
 
     if (!state) {
       throw new Error(
-        'ColorDisplay requires either a <ColorProvider> ancestor or an explicit requested prop.',
+        'ColorDisplay requires either a <Color> ancestor or an explicit requested prop.',
       );
     }
 

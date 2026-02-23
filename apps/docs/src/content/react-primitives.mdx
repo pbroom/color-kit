@@ -12,7 +12,7 @@ Color Kit React primitives are intentionally headless building blocks for design
 
 ```tsx
 import {
-  ColorProvider,
+  Color,
   ColorArea,
   ColorSlider,
   ColorInput,
@@ -22,14 +22,14 @@ import {
 
 export function Picker() {
   return (
-    <ColorProvider defaultColor="#3b82f6">
+    <Color defaultColor="#3b82f6">
       <ColorArea />
       <ColorSlider channel="h" />
       <ColorSlider channel="alpha" />
       <ColorInput model="oklch" channel="h" />
       <ColorStringInput format="oklch" />
       <ColorDisplay />
-    </ColorProvider>
+    </Color>
   );
 }
 ```

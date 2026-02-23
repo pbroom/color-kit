@@ -606,7 +606,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorInput requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorInput requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 

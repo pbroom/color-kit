@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { parse } from '@color-kit/core';
-import { ColorProvider } from '../src/color-provider.js';
+import { Color } from '../src/color.js';
 import { SwatchGroup } from '../src/swatch-group.js';
 
 afterEach(() => {
@@ -15,9 +15,9 @@ describe('SwatchGroup', () => {
     const colors = [parse('#ff0000'), parse('#00ff00')];
 
     render(
-      <ColorProvider defaultColor="#00ff00">
+      <Color defaultColor="#00ff00">
         <SwatchGroup colors={colors} />
-      </ColorProvider>,
+      </Color>,
     );
 
     const options = screen.getAllByRole('option');

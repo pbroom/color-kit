@@ -1,7 +1,7 @@
 import type { ApiTableRow } from '@/components/api-table';
 
 interface ComponentApiDocs {
-  colorProvider: ApiTableRow[];
+  color: ApiTableRow[];
   colorArea: ApiTableRow[];
   colorWheel: ApiTableRow[];
   colorDial: ApiTableRow[];
@@ -16,7 +16,7 @@ interface ComponentApiDocs {
 }
 
 export const componentApiDocs: ComponentApiDocs = {
-  colorProvider: [
+  color: [
     {
       name: 'children',
       type: 'ReactNode',
@@ -62,7 +62,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'requested',
       type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
+      description: 'Standalone value when not using Color context.',
     },
     {
       name: 'onChangeRequested',
@@ -134,7 +134,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'requested',
       type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
+      description: 'Standalone value when not using Color context.',
     },
     {
       name: 'onChangeRequested',
@@ -229,7 +229,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'requested',
       type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
+      description: 'Standalone value when not using Color context.',
     },
     {
       name: 'onChangeRequested',
@@ -284,7 +284,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'requested',
       type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
+      description: 'Standalone value when not using Color context.',
     },
     {
       name: 'onChangeRequested',
@@ -308,7 +308,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'requested',
       type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
+      description: 'Standalone value when not using Color context.',
     },
     {
       name: 'onChangeRequested',
@@ -415,7 +415,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'requested',
       type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
+      description: 'Standalone value when not using Color context.',
     },
     {
       name: 'onChangeRequested',
@@ -438,7 +438,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'requested',
       type: 'Color',
-      description: 'Standalone value when not using ColorProvider context.',
+      description: 'Standalone value when not using Color context.',
     },
     {
       name: 'onChangeRequested',
@@ -450,8 +450,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'requested',
       type: 'Color',
-      description:
-        'Standalone requested value when not using ColorProvider context.',
+      description: 'Standalone requested value when not using Color context.',
     },
     {
       name: 'gamut',

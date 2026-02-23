@@ -6,8 +6,8 @@ export type {
   ColorAreaPerformanceProfile,
   ColorAreaQualityLevel,
 } from './color-area-context.js';
-export { ColorProvider } from './color-provider.js';
-export type { ColorProviderProps } from './color-provider.js';
+export { Color } from './color.js';
+export type { ColorProps } from './color.js';
 
 // Hooks
 export { useColor } from './use-color.js';

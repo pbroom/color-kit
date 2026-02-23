@@ -350,7 +350,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorArea requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorArea requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 
