@@ -1,5 +1,5 @@
 import { useMemo, type HTMLAttributes } from 'react';
-import { maxChromaAt } from '@color-kit/core';
+import { maxChromaAt, maxChromaForHue } from '@color-kit/core';
 import { useSelector } from '@legendapp/state/react';
 import { useOptionalColorContext } from './context.js';
 import { SliderMarker } from './slider-marker.js';
@@ -13,7 +13,10 @@ export interface ChromaMarkersProps extends Omit<
 > {
   /** Override gamut target used for max-chroma marker math. */
   gamut?: 'srgb' | 'display-p3';
-  /** Number of lightness samples used for hue-wide max chroma. */
+  /**
+   * Compatibility tuning knob for hue-wide max marker accuracy.
+   * Higher values increase the internal hue cusp LUT density.
+   */
   hueMaxSteps?: number;
 }
 
@@ -40,6 +43,7 @@ export function ChromaMarkers({
   const maxRangeChroma = Math.max(0, slider.range[0], slider.range[1]);
 
   const normalizedHueSteps = Math.max(2, Math.round(hueMaxSteps));
+  const hueCuspLutSize = Math.max(256, normalizedHueSteps * 64);
 
   const { currentMaxChroma, hueWideMaxChroma } = useMemo(() => {
     if (slider.channel !== 'c') {
@@ -54,17 +58,14 @@ export function ChromaMarkers({
       maxChroma: maxRangeChroma,
     });
 
-    let hueWide = 0;
-    for (let index = 0; index <= normalizedHueSteps; index += 1) {
-      const lightness = index / normalizedHueSteps;
-      const sample = maxChromaAt(lightness, slider.requested.h, {
+    const hueWide = Math.min(
+      maxRangeChroma,
+      maxChromaForHue(slider.requested.h, {
         gamut: resolvedGamut,
-        maxChroma: maxRangeChroma,
-      });
-      if (sample > hueWide) {
-        hueWide = sample;
-      }
-    }
+        method: 'lut',
+        lutSize: hueCuspLutSize,
+      }).c,
+    );
 
     return {
       currentMaxChroma: current,
@@ -72,7 +73,7 @@ export function ChromaMarkers({
     };
   }, [
     maxRangeChroma,
-    normalizedHueSteps,
+    hueCuspLutSize,
     resolvedGamut,
     slider.channel,
     slider.requested.h,

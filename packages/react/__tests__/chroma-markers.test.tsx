@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
 import type { Color } from '@color-kit/core';
-import { maxChromaAt } from '@color-kit/core';
+import { maxChromaAt, maxChromaForHue } from '@color-kit/core';
 import { ChromaMarkers } from '../src/chroma-markers.js';
 import { Color } from '../src/color.js';
 import { ColorSlider } from '../src/color-slider.js';
@@ -19,6 +19,14 @@ describe('ChromaMarkers', () => {
       gamut: 'srgb',
       maxChroma: 0.4,
     });
+    const expectedHueWide = Math.min(
+      0.4,
+      maxChromaForHue(requested.h, {
+        gamut: 'srgb',
+        method: 'lut',
+        lutSize: 4096,
+      }).c,
+    );
 
     const { container } = render(
       <ColorSlider
@@ -45,6 +53,10 @@ describe('ChromaMarkers', () => {
     expect(fallback).toBeTruthy();
     expect(Number(current?.getAttribute('data-value'))).toBeCloseTo(
       expectedCurrent,
+      4,
+    );
+    expect(Number(hueWide?.getAttribute('data-value'))).toBeCloseTo(
+      expectedHueWide,
       4,
     );
   });
