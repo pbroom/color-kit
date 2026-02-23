@@ -19,10 +19,7 @@ export interface ColorProps extends UseColorOptions {
  * </Color>
  * ```
  */
-export function Color({
-  children,
-  ...colorOptions
-}: ColorProps) {
+export function Color({ children, ...colorOptions }: ColorProps) {
   // Provider stays stable while children subscribe to state$ slices.
   const colorState = useColor({
     ...colorOptions,

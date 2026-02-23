@@ -8,10 +8,7 @@ export interface ColorProps extends UseColorOptions {
   children: ReactNode;
 }
 
-export function Color({
-  children,
-  ...colorOptions
-}: ColorProps) {
+export function Color({ children, ...colorOptions }: ColorProps) {
   const colorState = useColor(colorOptions);
 
   return (

@@ -54,3 +54,4 @@ This archive is the source of truth for reusable agent learnings in this reposit
 - **2026-02-10 — Prevent theme flash with early theme bootstrap**: In Vite docs apps, set `data-theme` in `index.html` before React mounts and mirror preference state with `localStorage` + `matchMedia` so `system` mode tracks OS changes without first-paint flicker.
 
 - **2026-02-23 — Stage before Graphite create from main**: Running `gt create` with unstaged changes can enter an interactive prompt; staging all effort files first (`git add -A`) keeps the branch creation and commit fully non-interactive for a faster PR stack submit.
+- **2026-02-23 — Prioritize smallest CI failures first**: In CI triage, inspect the first failing step and fix one deterministic root cause before broad refactors; for formatting failures, running tool-specific auto-fix (e.g., `prettier --write`) keeps changes minimal and fast.
