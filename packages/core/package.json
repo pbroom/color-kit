@@ -26,7 +26,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "bench:max-chroma-for-hue": "node bench/max-chroma-for-hue-bench.mjs"
   },
   "keywords": [
     "color",
