@@ -12,6 +12,11 @@ import {
   type Color,
 } from '@color-kit/core';
 import { useLocation } from 'react-router';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { cn } from '@/lib/utils';
 import {
   useDocsInspector,
   type ColorAreaFormatRow,
@@ -66,20 +71,27 @@ function SegmentedOptions<T extends string>({
   label: string;
 }) {
   return (
-    <div className="docs-segmented" role="group" aria-label={label}>
+    <ToggleGroup
+      type="single"
+      value={value}
+      className="docs-segmented w-full justify-start"
+      aria-label={label}
+      onValueChange={(next) => {
+        if (next) {
+          onChange(next as T);
+        }
+      }}
+    >
       {options.map((option) => (
-        <button
+        <ToggleGroupItem
           key={option.value}
-          type="button"
+          value={option.value}
           aria-label={`${label}: ${option.label}`}
-          aria-pressed={value === option.value}
-          className={value === option.value ? 'is-active' : undefined}
-          onClick={() => onChange(option.value)}
         >
           {option.label}
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   );
 }
 
@@ -1476,48 +1488,57 @@ const PROPERTIES_PANELS = {
   '/docs/components/contrast-badge': ContrastBadgePropertiesPanel,
 } as const;
 
-export function DocsRightRail({ headings }: { headings: DocsHeading[] }) {
+export function DocsRightRail({
+  headings,
+  className,
+}: {
+  headings: DocsHeading[];
+  className?: string;
+}) {
   const { pathname } = useLocation();
   const { activeTab, setActiveTab } = useDocsInspector();
   const PropertiesPanel =
     PROPERTIES_PANELS[pathname as keyof typeof PROPERTIES_PANELS];
 
   return (
-    <aside className="docs-right-rail">
-      <div
-        className="docs-right-tabs"
-        role="tablist"
-        aria-label="Docs side panels"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'outline'}
-          className={activeTab === 'outline' ? 'is-active' : undefined}
-          onClick={() => setActiveTab('outline')}
-        >
-          On this page
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'properties'}
-          className={activeTab === 'properties' ? 'is-active' : undefined}
-          onClick={() => setActiveTab('properties')}
-        >
-          Properties
-        </button>
-      </div>
+    <aside className={cn('docs-right-rail ck-rightrail-panel', className)}>
+      <Card className="flex min-h-0 flex-1 flex-col border bg-card/85 shadow-xs backdrop-blur-sm">
+        <div className="p-3 pb-0">
+          <Tabs
+            value={activeTab}
+            onValueChange={(next) => {
+              if (next === 'outline' || next === 'properties') {
+                setActiveTab(next);
+              }
+            }}
+            className="w-full"
+          >
+            <TabsList
+              className="grid h-9 w-full grid-cols-2"
+              aria-label="Docs side panels"
+            >
+              <TabsTrigger value="outline">On this page</TabsTrigger>
+              <TabsTrigger value="properties">Properties</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
-      {activeTab === 'outline' ? (
-        <OutlinePanel headings={headings} />
-      ) : PropertiesPanel ? (
-        <PropertiesPanel />
-      ) : (
-        <p className="docs-right-empty">
-          No live demo controls are available for this page yet.
-        </p>
-      )}
+        <CardContent className="ck-rightrail-scroll min-h-0 p-0">
+          <ScrollArea className="h-full">
+            <div className="ck-rightrail-content">
+              {activeTab === 'outline' ? (
+                <OutlinePanel headings={headings} />
+              ) : PropertiesPanel ? (
+                <PropertiesPanel />
+              ) : (
+                <p className="docs-right-empty">
+                  No live demo controls are available for this page yet.
+                </p>
+              )}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
     </aside>
   );
 }
