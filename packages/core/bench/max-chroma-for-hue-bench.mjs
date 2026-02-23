@@ -1,4 +1,4 @@
-/* global console, process */
+/* eslint-env node */
 
 import { performance } from 'node:perf_hooks';
 import { existsSync } from 'node:fs';
