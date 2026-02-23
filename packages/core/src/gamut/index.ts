@@ -9,6 +9,30 @@ const EPSILON = 0.000075;
 const DEFAULT_MAX_CHROMA = 0.4;
 const DEFAULT_TOLERANCE = 0.0001;
 const DEFAULT_MAX_ITERATIONS = 30;
+const DEFAULT_HUE_CUSP_LUT_SIZE = 4096;
+
+const OKLAB_LMS_PRIME_COEFFICIENTS = {
+  l: { a: 0.3963377774, b: 0.2158037573 },
+  m: { a: -0.1055613458, b: -0.0638541728 },
+  s: { a: -0.0894841775, b: -1.291485548 },
+} as const;
+
+const OKLAB_TO_LINEAR_SRGB_ROWS = [
+  [4.0767416621, -3.3077115913, 0.2309699292],
+  [-1.2684380046, 2.6097574011, -0.3413193965],
+  [-0.0041960863, -0.7034186147, 1.707614701],
+] as const;
+
+// Composed matrix: linear-sRGB -> linear-P3 multiplied by OKLab(l,m,s) -> linear-sRGB.
+const OKLAB_TO_LINEAR_P3_ROWS = [
+  [3.1277700759423896, -2.2571370014989434, 0.12936692555655316],
+  [-1.091009052397986, 2.4133317637074136, -0.3223227113094277],
+  [-0.026010813144971768, -0.5080413257213188, 1.5340521388662907],
+] as const;
+
+const HUE_CUSP_CHANNEL_EPSILON = 1e-7;
+const MAX_SATURATION_SEARCH = 16;
+const SATURATION_ROOT_ITERATIONS = 24;
 
 export type GamutTarget = 'srgb' | 'display-p3';
 
@@ -36,6 +60,30 @@ export interface MaxChromaAtOptions {
 export interface GamutBoundaryPoint {
   l: number;
   c: number;
+}
+
+export interface HueCusp {
+  l: number;
+  c: number;
+}
+
+export type MaxChromaForHueMethod = 'direct' | 'lut';
+
+export interface MaxChromaForHueOptions {
+  gamut?: GamutTarget;
+  /**
+   * `lut` uses a cached hue lookup table with interpolation for maximum
+   * throughput across repeated calls. `direct` computes the cusp exactly
+   * for the requested hue without a lightness sweep.
+   * @default 'lut'
+   */
+  method?: MaxChromaForHueMethod;
+  /**
+   * Number of evenly spaced hue samples in the cached LUT.
+   * Higher values increase warm-up cost and reduce interpolation error.
+   * @default 4096
+   */
+  lutSize?: number;
 }
 
 export interface GamutBoundaryPathOptions extends MaxChromaAtOptions {
@@ -70,8 +118,244 @@ export interface ChromaBandOptions extends MaxChromaAtOptions {
 const DEFAULT_CHROMA_BAND_STEPS = 12;
 const DEFAULT_CHROMA_BAND_SELECTED_LIGHTNESS = 0.5;
 
+type TargetRow = readonly [number, number, number];
+type TargetRows = readonly [TargetRow, TargetRow, TargetRow];
+type CubicCoefficients = readonly [number, number, number, number];
+
+const hueCuspLutCache = new Map<string, readonly HueCusp[]>();
+
 function isInTargetGamut(color: Color, gamut: GamutTarget): boolean {
   return gamut === 'display-p3' ? inP3Gamut(color) : inSrgbGamut(color);
+}
+
+function getTargetRows(gamut: GamutTarget): TargetRows {
+  return gamut === 'display-p3'
+    ? OKLAB_TO_LINEAR_P3_ROWS
+    : OKLAB_TO_LINEAR_SRGB_ROWS;
+}
+
+function resolveHueLmsPrimeSlopes(
+  hueUnitA: number,
+  hueUnitB: number,
+): readonly [number, number, number] {
+  const uL =
+    OKLAB_LMS_PRIME_COEFFICIENTS.l.a * hueUnitA +
+    OKLAB_LMS_PRIME_COEFFICIENTS.l.b * hueUnitB;
+  const uM =
+    OKLAB_LMS_PRIME_COEFFICIENTS.m.a * hueUnitA +
+    OKLAB_LMS_PRIME_COEFFICIENTS.m.b * hueUnitB;
+  const uS =
+    OKLAB_LMS_PRIME_COEFFICIENTS.s.a * hueUnitA +
+    OKLAB_LMS_PRIME_COEFFICIENTS.s.b * hueUnitB;
+  return [uL, uM, uS];
+}
+
+function channelPolynomialForSaturation(
+  row: TargetRow,
+  slopes: readonly [number, number, number],
+): CubicCoefficients {
+  const [mL, mM, mS] = row;
+  const [uL, uM, uS] = slopes;
+
+  const c0 = mL + mM + mS;
+  const c1 = 3 * (mL * uL + mM * uM + mS * uS);
+  const c2 = 3 * (mL * uL * uL + mM * uM * uM + mS * uS * uS);
+  const c3 = mL * uL * uL * uL + mM * uM * uM * uM + mS * uS * uS * uS;
+
+  return [c0, c1, c2, c3];
+}
+
+function evalCubic(coeffs: CubicCoefficients, x: number): number {
+  const [c0, c1, c2, c3] = coeffs;
+  return ((c3 * x + c2) * x + c1) * x + c0;
+}
+
+function evalCubicDerivative(coeffs: CubicCoefficients, x: number): number {
+  const [, c1, c2, c3] = coeffs;
+  return (3 * c3 * x + 2 * c2) * x + c1;
+}
+
+function findPositiveCubicRoot(coeffs: CubicCoefficients): number | null {
+  const f0 = coeffs[0];
+  if (!(f0 > 0)) {
+    return 0;
+  }
+
+  let lo = 0;
+  let hi = 1;
+  let fHi = evalCubic(coeffs, hi);
+
+  while (fHi > 0 && hi < MAX_SATURATION_SEARCH) {
+    hi *= 2;
+    fHi = evalCubic(coeffs, hi);
+  }
+
+  if (fHi > 0) {
+    return null;
+  }
+
+  let x = (lo + hi) / 2;
+  for (let index = 0; index < SATURATION_ROOT_ITERATIONS; index += 1) {
+    const fX = evalCubic(coeffs, x);
+    if (fX > 0) {
+      lo = x;
+    } else {
+      hi = x;
+    }
+
+    const derivative = evalCubicDerivative(coeffs, x);
+    if (Math.abs(derivative) > 1e-12) {
+      const next = x - fX / derivative;
+      if (next > lo && next < hi) {
+        x = next;
+        continue;
+      }
+    }
+
+    x = (lo + hi) / 2;
+  }
+
+  return x;
+}
+
+function evaluateTargetChannelsAtSaturation(
+  rows: TargetRows,
+  slopes: readonly [number, number, number],
+  saturation: number,
+): readonly [number, number, number] {
+  const [uL, uM, uS] = slopes;
+  const lPrime = 1 + uL * saturation;
+  const mPrime = 1 + uM * saturation;
+  const sPrime = 1 + uS * saturation;
+
+  const l = lPrime * lPrime * lPrime;
+  const m = mPrime * mPrime * mPrime;
+  const s = sPrime * sPrime * sPrime;
+
+  const rowR = rows[0];
+  const rowG = rows[1];
+  const rowB = rows[2];
+
+  return [
+    rowR[0] * l + rowR[1] * m + rowR[2] * s,
+    rowG[0] * l + rowG[1] * m + rowG[2] * s,
+    rowB[0] * l + rowB[1] * m + rowB[2] * s,
+  ];
+}
+
+function resolveHueCuspDirect(hue: number, gamut: GamutTarget): HueCusp {
+  const h = normalizeHue(hue);
+  const hueRad = (h * Math.PI) / 180;
+  const hueUnitA = Math.cos(hueRad);
+  const hueUnitB = Math.sin(hueRad);
+
+  const rows = getTargetRows(gamut);
+  const slopes = resolveHueLmsPrimeSlopes(hueUnitA, hueUnitB);
+
+  let bestSaturation = Number.POSITIVE_INFINITY;
+
+  for (const row of rows) {
+    const coeffs = channelPolynomialForSaturation(row, slopes);
+    const root = findPositiveCubicRoot(coeffs);
+    if (root === null || root < 0) continue;
+
+    const [r, g, b] = evaluateTargetChannelsAtSaturation(rows, slopes, root);
+    const minChannel = Math.min(r, g, b);
+    if (minChannel < -HUE_CUSP_CHANNEL_EPSILON) continue;
+
+    if (root < bestSaturation) {
+      bestSaturation = root;
+    }
+  }
+
+  if (!Number.isFinite(bestSaturation)) {
+    return resolveHueCuspFallback(h, gamut);
+  }
+
+  const [r, g, b] = evaluateTargetChannelsAtSaturation(
+    rows,
+    slopes,
+    bestSaturation,
+  );
+  const maxChannel = Math.max(r, g, b);
+  if (!(maxChannel > 0)) {
+    return { l: 0, c: 0 };
+  }
+
+  const l = clamp(Math.cbrt(1 / maxChannel), 0, 1);
+  const c = Math.max(0, l * bestSaturation);
+  return { l, c };
+}
+
+function getNormalizedHueCuspLutSize(lutSize?: number): number {
+  if (!Number.isFinite(lutSize)) return DEFAULT_HUE_CUSP_LUT_SIZE;
+  const normalized = Math.floor(lutSize ?? DEFAULT_HUE_CUSP_LUT_SIZE);
+  return normalized >= 16 ? normalized : DEFAULT_HUE_CUSP_LUT_SIZE;
+}
+
+function getHueCuspLut(
+  gamut: GamutTarget,
+  lutSize?: number,
+): readonly HueCusp[] {
+  const size = getNormalizedHueCuspLutSize(lutSize);
+  const cacheKey = `${gamut}:${size}`;
+  const cached = hueCuspLutCache.get(cacheKey);
+  if (cached) return cached;
+
+  const table: HueCusp[] = [];
+  for (let index = 0; index < size; index += 1) {
+    const hue = (index / size) * 360;
+    table.push(resolveHueCuspDirect(hue, gamut));
+  }
+
+  hueCuspLutCache.set(cacheKey, table);
+  return table;
+}
+
+function sampleHueCuspLut(
+  hue: number,
+  gamut: GamutTarget,
+  lutSize?: number,
+): HueCusp {
+  const table = getHueCuspLut(gamut, lutSize);
+  const size = table.length;
+  const h = normalizeHue(hue);
+  const position = (h / 360) * size;
+  const index = Math.floor(position) % size;
+  const t = position - Math.floor(position);
+  const nextIndex = (index + 1) % size;
+
+  const a = table[index];
+  const b = table[nextIndex];
+  return {
+    l: a.l + (b.l - a.l) * t,
+    c: a.c + (b.c - a.c) * t,
+  };
+}
+
+/**
+ * Resolve the hue cusp: the lightness/chroma point with maximum in-gamut
+ * chroma for a fixed hue.
+ *
+ * This avoids scanning lightness values and supports a cached LUT mode for
+ * very high-throughput repeated queries (e.g. interactive wheels/overlays).
+ */
+export function maxChromaForHue(
+  hue: number,
+  options: MaxChromaForHueOptions = {},
+): HueCusp {
+  const gamut = options.gamut ?? 'srgb';
+  const method = options.method ?? 'lut';
+
+  if (method === 'direct') {
+    return resolveHueCuspDirect(hue, gamut);
+  }
+
+  if (method === 'lut') {
+    return sampleHueCuspLut(hue, gamut, options.lutSize);
+  }
+
+  throw new Error("maxChromaForHue() method must be 'direct' or 'lut'");
 }
 
 /**
@@ -127,6 +411,56 @@ export function maxChromaAt(
   }
 
   return lo;
+}
+
+function resolveHueCuspFallback(hue: number, gamut: GamutTarget): HueCusp {
+  // Rare fallback: coarse scan + local refinement using the existing boundary primitive.
+  const coarseSteps = 96;
+  let bestLightness = 0;
+  let bestChroma = 0;
+
+  for (let index = 0; index <= coarseSteps; index += 1) {
+    const l = index / coarseSteps;
+    const c = maxChromaAt(l, hue, { gamut });
+    if (c > bestChroma) {
+      bestChroma = c;
+      bestLightness = l;
+    }
+  }
+
+  const step = 1 / coarseSteps;
+  let lo = clamp(bestLightness - step, 0, 1);
+  let hi = clamp(bestLightness + step, 0, 1);
+
+  for (let index = 0; index < 18; index += 1) {
+    const span = hi - lo;
+    if (span <= 1e-6) break;
+    const left = lo + span / 3;
+    const right = hi - span / 3;
+    const cLeft = maxChromaAt(left, hue, { gamut });
+    const cRight = maxChromaAt(right, hue, { gamut });
+    if (cLeft <= cRight) {
+      lo = left;
+      if (cRight > bestChroma) {
+        bestChroma = cRight;
+        bestLightness = right;
+      }
+    } else {
+      hi = right;
+      if (cLeft > bestChroma) {
+        bestChroma = cLeft;
+        bestLightness = left;
+      }
+    }
+  }
+
+  const refinedLightness = (lo + hi) / 2;
+  const refinedChroma = maxChromaAt(refinedLightness, hue, { gamut });
+  if (refinedChroma >= bestChroma) {
+    return { l: refinedLightness, c: refinedChroma };
+  }
+
+  return { l: bestLightness, c: bestChroma };
 }
 
 /**
