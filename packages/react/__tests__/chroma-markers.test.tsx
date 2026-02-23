@@ -5,7 +5,7 @@ import { cleanup, render } from '@testing-library/react';
 import type { Color } from '@color-kit/core';
 import { maxChromaAt } from '@color-kit/core';
 import { ChromaMarkers } from '../src/chroma-markers.js';
-import { ColorProvider } from '../src/color-provider.js';
+import { Color } from '../src/color.js';
 import { ColorSlider } from '../src/color-slider.js';
 
 afterEach(() => {
@@ -92,11 +92,11 @@ describe('ChromaMarkers', () => {
     const requested: Color = { l: 0.84, c: 0.3, h: 146, alpha: 1 };
 
     const srgb = render(
-      <ColorProvider defaultColor={requested} defaultGamut="srgb">
+      <Color defaultColor={requested} defaultGamut="srgb">
         <ColorSlider channel="c">
           <ChromaMarkers />
         </ColorSlider>
-      </ColorProvider>,
+      </Color>,
     );
 
     const srgbCurrent = srgb.container.querySelector(
@@ -108,11 +108,11 @@ describe('ChromaMarkers', () => {
     cleanup();
 
     const p3 = render(
-      <ColorProvider defaultColor={requested} defaultGamut="display-p3">
+      <Color defaultColor={requested} defaultGamut="display-p3">
         <ColorSlider channel="c">
           <ChromaMarkers />
         </ColorSlider>
-      </ColorProvider>,
+      </Color>,
     );
 
     const p3Current = p3.container.querySelector(

@@ -35,7 +35,7 @@
       "name": "color-wheel",
       "type": "registry:component",
       "title": "Color Wheel",
-      "description": "A circular hue/chroma control. Headless, accessible, and composable with ColorProvider.",
+      "description": "A circular hue/chroma control. Headless, accessible, and composable with Color.",
       "dependencies": ["@color-kit/core"],
       "files": [
         {
@@ -46,15 +46,15 @@
       "categories": ["color"]
     },
     {
-      "name": "color-provider",
+      "name": "color",
       "type": "registry:component",
-      "title": "Color Provider",
+      "title": "Color",
       "description": "React context provider for sharing dual-state color contracts between color-kit components.",
       "dependencies": ["@color-kit/core"],
       "registryDependencies": ["use-color"],
       "files": [
         {
-          "path": "registry/components/color-provider.tsx",
+          "path": "registry/components/color.tsx",
           "type": "registry:component"
         },
         {

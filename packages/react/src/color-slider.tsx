@@ -51,9 +51,9 @@ export interface ColorSliderProps extends Omit<
    * @default 'horizontal'
    */
   orientation?: ColorSliderOrientation;
-  /** Standalone requested color value (alternative to ColorProvider) */
+  /** Standalone requested color value (alternative to Color) */
   requested?: Color;
-  /** Standalone change handler (alternative to ColorProvider) */
+  /** Standalone change handler (alternative to Color) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /**
    * Minimum normalized movement before committing another pointer update.
@@ -107,7 +107,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorSlider requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorSlider requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 

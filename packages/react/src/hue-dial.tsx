@@ -17,9 +17,9 @@ export interface HueDialProps extends Omit<
    * @default 360
    */
   endAngle?: number;
-  /** Standalone requested color (alternative to ColorProvider) */
+  /** Standalone requested color (alternative to Color) */
   requested?: Color;
-  /** Standalone change handler (alternative to ColorProvider) */
+  /** Standalone change handler (alternative to Color) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
 }
 

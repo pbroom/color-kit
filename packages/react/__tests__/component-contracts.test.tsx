@@ -6,7 +6,7 @@ import type { Color } from '@color-kit/core';
 import { ColorArea } from '../src/color-area.js';
 import { ColorDial } from '../src/color-dial.js';
 import { ColorInput } from '../src/color-input.js';
-import { ColorProvider } from '../src/color-provider.js';
+import { Color } from '../src/color.js';
 import { ColorStringInput } from '../src/color-string-input.js';
 import { ColorSlider } from '../src/color-slider.js';
 import { ColorWheel } from '../src/color-wheel.js';
@@ -57,9 +57,9 @@ describe('shared component contracts', () => {
     );
   });
 
-  it('renders context-driven primitives from ColorProvider without standalone props', () => {
+  it('renders context-driven primitives from Color without standalone props', () => {
     render(
-      <ColorProvider defaultColor={OUT_OF_GAMUT_REQUESTED}>
+      <Color defaultColor={OUT_OF_GAMUT_REQUESTED}>
         <ColorArea />
         <ColorSlider channel="c" />
         <ColorWheel />
@@ -70,7 +70,7 @@ describe('shared component contracts', () => {
         <ColorSlider channel="alpha" />
         <ColorInput model="oklch" channel="h" />
         <ColorStringInput />
-      </ColorProvider>,
+      </Color>,
     );
 
     expect(screen.getAllByRole('slider')).toHaveLength(8);
@@ -80,10 +80,10 @@ describe('shared component contracts', () => {
 
   it('keeps ColorArea thumb coordinates stable across active gamut switches', () => {
     const { container } = render(
-      <ColorProvider defaultColor={OUT_OF_GAMUT_REQUESTED}>
+      <Color defaultColor={OUT_OF_GAMUT_REQUESTED}>
         <ColorArea />
         <GamutToggle />
-      </ColorProvider>,
+      </Color>,
     );
 
     const thumb = container.querySelector('[data-color-area-thumb]');
@@ -104,10 +104,10 @@ describe('shared component contracts', () => {
 
   it('keeps ColorSlider thumb coordinates stable across active gamut switches', () => {
     const { container } = render(
-      <ColorProvider defaultColor={OUT_OF_GAMUT_REQUESTED}>
+      <Color defaultColor={OUT_OF_GAMUT_REQUESTED}>
         <ColorSlider channel="c" />
         <GamutToggle />
-      </ColorProvider>,
+      </Color>,
     );
 
     const thumb = container.querySelector('[data-color-slider-thumb]');
@@ -122,10 +122,10 @@ describe('shared component contracts', () => {
 
   it('keeps ColorWheel thumb coordinates stable across active gamut switches', () => {
     const { container } = render(
-      <ColorProvider defaultColor={OUT_OF_GAMUT_REQUESTED}>
+      <Color defaultColor={OUT_OF_GAMUT_REQUESTED}>
         <ColorWheel />
         <GamutToggle />
-      </ColorProvider>,
+      </Color>,
     );
 
     const thumb = container.querySelector('[data-color-wheel-thumb]');

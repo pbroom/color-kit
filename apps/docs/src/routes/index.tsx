@@ -29,9 +29,9 @@ const cards: ShowcaseCard[] = [
     demo: <ColorAreaDemo />,
   },
   {
-    title: 'Color Provider',
+    title: 'Color',
     description: 'Shared canonical state for coordinated primitives.',
-    href: '/docs/components/color-provider',
+    href: '/docs/components/color',
     demo: <ColorProviderDemo />,
   },
   {

@@ -59,7 +59,7 @@ export const ColorStringInput = forwardRef<
 
   if (!requested || !setRequested) {
     throw new Error(
-      'ColorStringInput requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+      'ColorStringInput requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
     );
   }
 

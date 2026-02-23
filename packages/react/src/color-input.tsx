@@ -34,9 +34,9 @@ interface ColorInputBaseProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
 > {
-  /** Standalone requested color value (alternative to ColorProvider) */
+  /** Standalone requested color value (alternative to Color) */
   requested?: Color;
-  /** Standalone change handler (alternative to ColorProvider) */
+  /** Standalone change handler (alternative to Color) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /** Optional channel range override */
   range?: [number, number];
@@ -147,7 +147,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorInput requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorInput requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 

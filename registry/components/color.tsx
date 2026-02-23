@@ -4,14 +4,11 @@ import { type ReactNode } from 'react';
 import { ColorContext } from '@/hooks/color-context';
 import { useColor, type UseColorOptions } from '@/hooks/use-color';
 
-export interface ColorProviderProps extends UseColorOptions {
+export interface ColorProps extends UseColorOptions {
   children: ReactNode;
 }
 
-export function ColorProvider({
-  children,
-  ...colorOptions
-}: ColorProviderProps) {
+export function Color({ children, ...colorOptions }: ColorProps) {
   const colorState = useColor(colorOptions);
 
   return (

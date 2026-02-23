@@ -35,23 +35,23 @@ export interface ComponentDocData {
 type ComponentDocRegistry = Record<string, ComponentDocData>;
 
 const docs: ComponentDocRegistry = {
-  'color-provider': {
-    slug: 'color-provider',
-    title: 'Color Provider',
+  color: {
+    slug: 'color',
+    title: 'Color',
     summary: 'Shared state host for requested/displayed color workflows.',
     description:
-      'Use ColorProvider to coordinate ColorArea, sliders, input fields, and swatches around one canonical requested color state.',
-    registryName: 'color-provider',
+      'Use Color to coordinate ColorArea, sliders, input fields, and swatches around one canonical requested color state.',
+    registryName: 'color',
     demo: ColorProviderDemo,
-    usage: `import { ColorProvider, ColorArea, ColorSlider, ColorInput } from '@color-kit/react';
+    usage: `import { Color, ColorArea, ColorSlider, ColorInput } from '@color-kit/react';
 
 export function Picker() {
   return (
-    <ColorProvider defaultColor="#3b82f6">
+    <Color defaultColor="#3b82f6">
       <ColorArea />
       <ColorSlider channel="h" />
       <ColorInput model="oklch" channel="h" />
-    </ColorProvider>
+    </Color>
   );
 }`,
     helperApis: ['useColor'],
@@ -64,8 +64,8 @@ export function Picker() {
       'Delegates semantics to child primitives while guaranteeing shared state consistency.',
       'Works with keyboard-first control compositions.',
     ],
-    props: componentApiDocs.colorProvider,
-    anatomy: `<ColorProvider>\n  {children}\n</ColorProvider>`,
+    props: componentApiDocs.color,
+    anatomy: `<Color>\n  {children}\n</Color>`,
   },
   'color-area': {
     slug: 'color-area',
@@ -147,7 +147,7 @@ export function Picker() {
     features: [
       'Angle-driven hue and radius-driven chroma editing in one primitive.',
       'Requested geometry remains stable across gamut target changes.',
-      'Standalone mode and ColorProvider context mode share the same behavior.',
+      'Standalone mode and Color context mode share the same behavior.',
     ],
     accessibility: [
       'Uses slider semantics with keyboard support for hue and chroma edits.',
@@ -182,7 +182,7 @@ export function Picker() {
     ],
     features: [
       'Orientation-aware keyboard and pointer interactions.',
-      'Shared requested state contract with ColorProvider or standalone props.',
+      'Shared requested state contract with Color or standalone props.',
       'Use `channel="h"` and `channel="alpha"` for hue/opacity workflows.',
       'Customizable channel ranges for bounded workflows.',
       'Optional child marker primitives for annotated rails.',
@@ -241,7 +241,7 @@ export function Picker() {
     helperApis: ['ColorApi.colorFromColorDialPosition'],
     features: [
       'Thin wrapper around ColorDial tuned for circular hue workflows.',
-      'Works in standalone mode or within ColorProvider.',
+      'Works in standalone mode or within Color.',
       'Arc angles can be overridden for partial dial variants.',
     ],
     accessibility: [
@@ -266,7 +266,7 @@ export function Picker() {
     features: [
       'Simple interactive hook (`onSelect`) for palette logic.',
       'Selection metadata for styling and a11y states.',
-      'Works with ColorProvider-driven and standalone values.',
+      'Works with Color-driven and standalone values.',
     ],
     accessibility: [
       'Supports option/listbox usage patterns in composed collections.',
@@ -349,7 +349,7 @@ export function Picker() {
     features: [
       'Format-aware string entry (`hex`, `rgb`, `hsl`, `oklch`).',
       'Soft-invalid commit handling via `onInvalidCommit`.',
-      'Works standalone or with ColorProvider context.',
+      'Works standalone or with Color context.',
     ],
     accessibility: [
       'Native textbox semantics with explicit labels.',

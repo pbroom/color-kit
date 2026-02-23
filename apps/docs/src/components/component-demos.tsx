@@ -10,7 +10,7 @@ import {
   ColorDisplay,
   ColorInput,
   ColorStringInput,
-  ColorProvider,
+  Color,
   ColorSlider,
   ColorWheel,
   ContrastRegionLayer,
@@ -550,9 +550,9 @@ function ColorProviderDemoContent() {
 
 export function ColorProviderDemo() {
   return (
-    <ColorProvider defaultColor="#3b82f6">
+    <Color defaultColor="#3b82f6">
       <ColorProviderDemoContent />
-    </ColorProvider>
+    </Color>
   );
 }
 
@@ -659,7 +659,7 @@ export function ColorAreaDemo({
   return (
     <div className="ck-demo-stack">
       {state && setColorAreaColorState ? (
-        <ColorProvider
+        <Color
           state={state.colorState}
           onChange={(event) => setColorAreaColorState(event.next)}
         >
@@ -669,16 +669,16 @@ export function ColorAreaDemo({
             onInteractionFrame={handleInteractionFrame}
             onContrastMetrics={handleContrastMetrics}
           />
-        </ColorProvider>
+        </Color>
       ) : (
-        <ColorProvider defaultColor="#2563eb" defaultGamut="display-p3">
+        <Color defaultColor="#2563eb" defaultGamut="display-p3">
           <ColorAreaDemoScene
             axes={axes}
             inspectorState={null}
             onInteractionFrame={handleInteractionFrame}
             onContrastMetrics={handleContrastMetrics}
           />
-        </ColorProvider>
+        </Color>
       )}
       <div className="ck-caption ck-perf-caption">
         <div>
@@ -806,7 +806,7 @@ export function ColorSliderDemo({
 
 export function ColorDialDemo() {
   return (
-    <ColorProvider defaultColor="#8b5cf6">
+    <Color defaultColor="#8b5cf6">
       <div className="ck-demo-stack">
         <ColorDial
           channel="h"
@@ -818,13 +818,13 @@ export function ColorDialDemo() {
           <ColorInput model="oklch" channel="h" className="ck-input" />
         </div>
       </div>
-    </ColorProvider>
+    </Color>
   );
 }
 
 export function HueDialDemo() {
   return (
-    <ColorProvider defaultColor="#ef4444">
+    <Color defaultColor="#ef4444">
       <div className="ck-demo-stack">
         <HueDial
           className="ck-dial"
@@ -835,13 +835,13 @@ export function HueDialDemo() {
           <ColorInput model="oklch" channel="h" className="ck-input" />
         </div>
       </div>
-    </ColorProvider>
+    </Color>
   );
 }
 
 export function ColorWheelDemo() {
   return (
-    <ColorProvider defaultColor="oklch(0.62 0.26 220)">
+    <Color defaultColor="oklch(0.62 0.26 220)">
       <div className="ck-demo-stack">
         <ColorWheel
           className="ck-wheel"
@@ -852,7 +852,7 @@ export function ColorWheelDemo() {
           <ColorDisplay className="ck-color-display" />
         </div>
       </div>
-    </ColorProvider>
+    </Color>
   );
 }
 
@@ -881,9 +881,9 @@ function ColorSliderHueDemoContent() {
 
 export function ColorSliderHueDemo() {
   return (
-    <ColorProvider defaultColor="#ef4444">
+    <Color defaultColor="#ef4444">
       <ColorSliderHueDemoContent />
-    </ColorProvider>
+    </Color>
   );
 }
 
@@ -910,9 +910,9 @@ function ColorSliderAlphaDemoContent() {
 
 export function ColorSliderAlphaDemo() {
   return (
-    <ColorProvider defaultColor="oklch(0.72 0.2 220 / 0.65)">
+    <Color defaultColor="oklch(0.72 0.2 220 / 0.65)">
       <ColorSliderAlphaDemoContent />
-    </ColorProvider>
+    </Color>
   );
 }
 
@@ -1124,9 +1124,9 @@ function ColorDisplayDemoContent() {
 
 export function ColorDisplayDemo() {
   return (
-    <ColorProvider defaultColor="#10b981">
+    <Color defaultColor="#10b981">
       <ColorDisplayDemoContent />
-    </ColorProvider>
+    </Color>
   );
 }
 

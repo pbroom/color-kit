@@ -58,7 +58,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorSlider requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorSlider requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 

@@ -75,20 +75,20 @@ const comp = complementary(blue);
 ### React
 
 ```tsx
-import { ColorProvider, ColorArea, useColor } from '@color-kit/react';
+import { Color, ColorArea, useColor } from '@color-kit/react';
 
 function ColorPicker() {
   return (
-    <ColorProvider defaultColor="#3b82f6">
+    <Color defaultColor="#3b82f6">
       <ColorArea style={{ width: 200, height: 200 }} />
-    </ColorProvider>
+    </Color>
   );
 }
 ```
 
 ### Dual-State React Contract
 
-`useColor` and `ColorProvider` expose explicit requested/displayed state:
+`useColor` and `Color` expose explicit requested/displayed state:
 
 - `requested`: canonical OKLCH user intent
 - `displayed`: deterministic gamut-mapped output (`srgb` and `display-p3`)

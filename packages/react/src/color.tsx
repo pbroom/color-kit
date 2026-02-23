@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { ColorContext } from './context.js';
 import { useColor, type UseColorOptions } from './use-color.js';
 
-export interface ColorProviderProps extends UseColorOptions {
+export interface ColorProps extends UseColorOptions {
   children: ReactNode;
 }
 
@@ -11,18 +11,15 @@ export interface ColorProviderProps extends UseColorOptions {
  *
  * @example
  * ```tsx
- * <ColorProvider defaultColor="#ff6600">
+ * <Color defaultColor="#ff6600">
  *   <ColorArea />
  *   <ColorSlider channel="h" />
  *   <ColorInput model="oklch" channel="h" />
  *   <ColorStringInput format="oklch" />
- * </ColorProvider>
+ * </Color>
  * ```
  */
-export function ColorProvider({
-  children,
-  ...colorOptions
-}: ColorProviderProps) {
+export function Color({ children, ...colorOptions }: ColorProps) {
   // Provider stays stable while children subscribe to state$ slices.
   const colorState = useColor({
     ...colorOptions,

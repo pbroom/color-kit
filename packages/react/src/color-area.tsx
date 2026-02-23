@@ -48,9 +48,9 @@ export interface ColorAreaProps extends Omit<
    * @default { x: { channel: 'l' }, y: { channel: 'c' } }
    */
   axes?: ColorAreaAxes;
-  /** Standalone requested color (alternative to ColorProvider) */
+  /** Standalone requested color (alternative to Color) */
   requested?: Color;
-  /** Standalone change handler (alternative to ColorProvider) */
+  /** Standalone change handler (alternative to Color) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /**
    * Runtime quality/performance profile.
@@ -229,7 +229,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
 
     if (!requested || !setRequested) {
       throw new Error(
-        'ColorArea requires either a <ColorProvider> ancestor or explicit requested/onChangeRequested props.',
+        'ColorArea requires either a <Color> ancestor or explicit requested/onChangeRequested props.',
       );
     }
 
