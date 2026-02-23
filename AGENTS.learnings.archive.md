@@ -52,3 +52,5 @@ This archive is the source of truth for reusable agent learnings in this reposit
 - **2026-02-10 — Use Corepack pnpm in fresh worktrees**: Fresh worktrees can pick up an older global `pnpm` and silently rewrite lockfiles or miss test peers. Run installs/validation with `corepack pnpm` so dependency resolution matches the repo-pinned package manager version.
 - **2026-02-10 — Capture pointers on interactive roots**: In React pointer handlers, call `e.currentTarget.setPointerCapture(...)` instead of `e.target` so drag capture remains stable even when events originate from nested children.
 - **2026-02-10 — Prevent theme flash with early theme bootstrap**: In Vite docs apps, set `data-theme` in `index.html` before React mounts and mirror preference state with `localStorage` + `matchMedia` so `system` mode tracks OS changes without first-paint flicker.
+
+- **2026-02-23 — Stage before Graphite create from main**: Running `gt create` with unstaged changes can enter an interactive prompt; staging all effort files first (`git add -A`) keeps the branch creation and commit fully non-interactive for a faster PR stack submit.
