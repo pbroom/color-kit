@@ -9,7 +9,7 @@ import type { ColorAreaLayerQuality } from './gamut-boundary-layer.js';
 
 export type ChromaBandLayerMode = 'closest' | 'percentage';
 
-export interface ChromaBandLayerProps extends Omit<LayerProps, 'children'> {
+export interface ChromaBandLayerProps extends LayerProps {
   mode?: ChromaBandLayerMode;
   gamut?: GamutTarget;
   hue?: number;
@@ -48,6 +48,7 @@ export function ChromaBandLayer({
   steps = 48,
   quality = 'auto',
   pathProps,
+  children,
   ...props
 }: ChromaBandLayerProps) {
   const { requested, axes, qualityLevel } = useColorAreaContext();
@@ -79,6 +80,7 @@ export function ChromaBandLayer({
       data-quality={resolvedQuality}
       data-mode={mode}
     >
+      {children}
       <Line
         points={points}
         pathProps={{

@@ -14,6 +14,7 @@ import {
   ColorSlider,
   ColorWheel,
   ContrastRegionLayer,
+  ContrastRegionFill,
   ContrastBadge,
   FallbackPointsLayer,
   GamutBoundaryLayer,
@@ -492,7 +493,6 @@ function ColorAreaDemoScene({
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={3}
-            renderMode="region"
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
             edgeInterpolation={contrastEdgeInterpolation}
@@ -501,20 +501,22 @@ function ColorAreaDemoScene({
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics) => onContrastMetrics?.('region-aa3', metrics)}
-            regionFillColor="#7ca4ff"
-            regionFillOpacity={0.12}
-            regionDotOpacity={scene.contrast.regions.aa3.opacityPercent / 100}
-            regionDotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-            regionDotGap={COLOR_AREA_DOT_PATTERN.dotGap}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#7ca4ff')}
-          />
+          >
+            <ContrastRegionFill
+              fillColor="#7ca4ff"
+              fillOpacity={0.12}
+              dotOpacity={scene.contrast.regions.aa3.opacityPercent / 100}
+              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
+              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            />
+          </ContrastRegionLayer>
         )}
         {scene.contrast.regions.aa45.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={4.5}
-            renderMode="region"
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
             edgeInterpolation={contrastEdgeInterpolation}
@@ -523,20 +525,22 @@ function ColorAreaDemoScene({
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics) => onContrastMetrics?.('region-aa45', metrics)}
-            regionFillColor="#c0e1ff"
-            regionFillOpacity={0.14}
-            regionDotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
-            regionDotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-            regionDotGap={COLOR_AREA_DOT_PATTERN.dotGap}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#c0e1ff')}
-          />
+          >
+            <ContrastRegionFill
+              fillColor="#c0e1ff"
+              fillOpacity={0.14}
+              dotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
+              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
+              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            />
+          </ContrastRegionLayer>
         )}
         {scene.contrast.regions.aa7.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={7}
-            renderMode="region"
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
             edgeInterpolation={contrastEdgeInterpolation}
@@ -545,14 +549,17 @@ function ColorAreaDemoScene({
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics) => onContrastMetrics?.('region-aa7', metrics)}
-            regionFillColor="#dceaff"
-            regionFillOpacity={0.16}
-            regionDotOpacity={scene.contrast.regions.aa7.opacityPercent / 100}
-            regionDotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-            regionDotGap={COLOR_AREA_DOT_PATTERN.dotGap}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#dceaff')}
-          />
+          >
+            <ContrastRegionFill
+              fillColor="#dceaff"
+              fillOpacity={0.16}
+              dotOpacity={scene.contrast.regions.aa7.opacityPercent / 100}
+              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
+              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            />
+          </ContrastRegionLayer>
         )}
         <FallbackPointsLayer
           showP3={scene.visualize.p3Fallback}

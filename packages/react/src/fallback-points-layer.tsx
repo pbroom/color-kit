@@ -6,7 +6,7 @@ import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Point } from './point.js';
 
-export interface FallbackPointsLayerProps extends Omit<LayerProps, 'children'> {
+export interface FallbackPointsLayerProps extends LayerProps {
   showSrgb?: boolean;
   showP3?: boolean;
   srgbPointProps?: Omit<HTMLAttributes<HTMLDivElement>, 'onChange'>;
@@ -21,6 +21,7 @@ export function FallbackPointsLayer({
   showP3 = true,
   srgbPointProps,
   p3PointProps,
+  children,
   ...props
 }: FallbackPointsLayerProps) {
   const { requested, axes } = useColorAreaContext();
@@ -41,6 +42,7 @@ export function FallbackPointsLayer({
       interactive={props.interactive ?? false}
       data-color-area-fallback-points-layer=""
     >
+      {children}
       {showP3 ? (
         <Point
           {...p3PointProps}

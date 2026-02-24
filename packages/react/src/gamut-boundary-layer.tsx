@@ -9,7 +9,7 @@ import { PathPointsOverlay } from './path-points-overlay.js';
 
 export type ColorAreaLayerQuality = 'auto' | 'high' | 'medium' | 'low';
 
-export interface GamutBoundaryLayerProps extends Omit<LayerProps, 'children'> {
+export interface GamutBoundaryLayerProps extends LayerProps {
   gamut?: GamutTarget;
   hue?: number;
   steps?: number;
@@ -59,6 +59,7 @@ export function GamutBoundaryLayer({
   showPathPoints = false,
   pointProps,
   cornerRadius,
+  children,
   ...props
 }: GamutBoundaryLayerProps) {
   const { requested, axes, qualityLevel } = useColorAreaContext();
@@ -99,6 +100,7 @@ export function GamutBoundaryLayer({
       data-color-area-gamut-boundary-layer=""
       data-quality={resolvedQuality}
     >
+      {children}
       <Line
         points={points}
         cornerRadius={cornerRadius}

@@ -116,11 +116,10 @@ export const componentApiDocs: ComponentApiDocs = {
         'Band interpolation strategy. `closest` maps to clamped chroma and `percentage` maps to proportional chroma.',
     },
     {
-      name: 'ContrastRegionLayer.renderMode',
-      type: "'line' | 'region'",
-      defaultValue: "'line'",
+      name: 'ContrastRegionLayer children / ContrastRegionFill',
+      type: 'ReactNode / ContrastRegionFillProps',
       description:
-        'Switches between contour rendering and filled region rendering with optional dotted pattern controls.',
+        'Use ContrastRegionFill as a child of ContrastRegionLayer for filled region and optional dot pattern; omit children for contour lines only.',
     },
     {
       name: 'GamutBoundaryLayer.showPathPoints / pointProps',
@@ -134,7 +133,7 @@ export const componentApiDocs: ComponentApiDocs = {
       type: 'boolean / SVGAttributes<SVGCircleElement>',
       defaultValue: 'false / undefined',
       description:
-        'Optional sampled vertex overlay for each computed contrast contour, in both line and region render modes.',
+        'Optional sampled vertex overlay for each computed contrast contour.',
     },
   ],
   colorWheel: [

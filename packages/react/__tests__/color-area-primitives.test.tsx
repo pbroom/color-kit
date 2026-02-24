@@ -6,7 +6,10 @@ import { inP3Gamut, inSrgbGamut, type Color } from '@color-kit/core';
 import { ChromaBandLayer } from '../src/chroma-band-layer.js';
 import { ColorArea } from '../src/color-area.js';
 import { ColorPlane } from '../src/color-plane.js';
-import { ContrastRegionLayer } from '../src/contrast-region-layer.js';
+import {
+  ContrastRegionLayer,
+  ContrastRegionFill,
+} from '../src/contrast-region-layer.js';
 import { FallbackPointsLayer } from '../src/fallback-points-layer.js';
 import { GamutBoundaryLayer } from '../src/gamut-boundary-layer.js';
 
@@ -112,20 +115,19 @@ describe('ColorArea primitives', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('renders contrast regions in filled region mode with pattern overlay', () => {
+  it('renders contrast regions with ContrastRegionFill child (filled region + pattern overlay)', () => {
     const requested: Color = { l: 0.68, c: 0.22, h: 245, alpha: 1 };
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ContrastRegionLayer
-          threshold={4.5}
-          renderMode="region"
-          regionFillColor="#88aaff"
-          regionFillOpacity={0.2}
-          regionDotOpacity={0.2}
-          regionDotSize={2}
-          regionDotGap={2}
-          showPathPoints
-        />
+        <ContrastRegionLayer threshold={4.5} showPathPoints>
+          <ContrastRegionFill
+            fillColor="#88aaff"
+            fillOpacity={0.2}
+            dotOpacity={0.2}
+            dotSize={2}
+            dotGap={2}
+          />
+        </ContrastRegionLayer>
       </ColorArea>,
     );
 

@@ -831,7 +831,7 @@ export const Line = forwardRef<SVGSVGElement, LineProps>(function Line(
   );
 });
 
-export interface GamutBoundaryLayerProps extends Omit<LayerProps, 'children'> {
+export interface GamutBoundaryLayerProps extends LayerProps {
   gamut?: GamutTarget;
   hue?: number;
   steps?: number;
@@ -843,6 +843,7 @@ export function GamutBoundaryLayer({
   hue,
   steps = 48,
   pathProps,
+  children,
   ...props
 }: GamutBoundaryLayerProps) {
   const { requested, axes } = useAreaContext();
@@ -858,12 +859,13 @@ export function GamutBoundaryLayer({
       interactive={props.interactive ?? false}
       data-color-area-gamut-boundary-layer=""
     >
+      {children}
       <Line points={points} pathProps={{ fill: 'none', ...pathProps }} />
     </Layer>
   );
 }
 
-export interface ContrastRegionLayerProps extends Omit<LayerProps, 'children'> {
+export interface ContrastRegionLayerProps extends LayerProps {
   reference?: Color;
   hue?: number;
   gamut?: GamutTarget;
@@ -891,6 +893,7 @@ export function ContrastRegionLayer({
   maxIterations,
   alpha,
   pathProps,
+  children,
   ...props
 }: ContrastRegionLayerProps) {
   const { requested, axes } = useAreaContext();
@@ -931,6 +934,7 @@ export function ContrastRegionLayer({
       interactive={props.interactive ?? false}
       data-color-area-contrast-region-layer=""
     >
+      {children}
       {paths.map((points, index) => (
         <Line
           key={index}
@@ -942,7 +946,7 @@ export function ContrastRegionLayer({
   );
 }
 
-export interface FallbackPointsLayerProps extends Omit<LayerProps, 'children'> {
+export interface FallbackPointsLayerProps extends LayerProps {
   showSrgb?: boolean;
   showP3?: boolean;
   srgbPointProps?: Omit<HTMLAttributes<HTMLDivElement>, 'onChange'>;
@@ -954,6 +958,7 @@ export function FallbackPointsLayer({
   showP3 = true,
   srgbPointProps,
   p3PointProps,
+  children,
   ...props
 }: FallbackPointsLayerProps) {
   const { requested, axes } = useAreaContext();
@@ -971,6 +976,7 @@ export function FallbackPointsLayer({
       interactive={props.interactive ?? false}
       data-color-area-fallback-points-layer=""
     >
+      {children}
       {showP3 ? (
         <Point
           {...p3PointProps}
