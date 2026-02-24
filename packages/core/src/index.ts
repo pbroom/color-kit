@@ -25,6 +25,7 @@ export {
   toHsv,
   fromHsv,
   toHct,
+  fromHct,
   toOklab,
   fromOklab,
   toOklch,

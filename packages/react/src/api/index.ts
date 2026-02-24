@@ -71,6 +71,7 @@ export {
   sampleSliderGradient,
 } from './slider-gradient.js';
 export type {
+  SliderHueGradientMode,
   SliderColorModel,
   SliderColorSpace,
   SliderGradientStop,
@@ -81,6 +82,7 @@ export type {
   HslSliderModelChannel,
   HsvSliderModelChannel,
   RgbSliderModelChannel,
+  HctSliderModelChannel,
 } from './slider-gradient.js';
 
 export {

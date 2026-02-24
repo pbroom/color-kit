@@ -5,11 +5,13 @@ import {
   toRgb,
   toHsl,
   toHct,
+  fromHct,
   toCss,
   fromHex,
   fromHsl,
   hexToRgb,
   rgbToHex,
+  maxHctChromaForHue,
 } from '../src/index.js';
 import type { Color } from '../src/index.js';
 
@@ -154,5 +156,52 @@ describe('HCT conversion', () => {
     const color = parse('rgb(0 128 255 / 0.35)');
     const hct = toHct(color);
     expect(hct.alpha).toBeCloseTo(0.35, 6);
+  });
+
+  it('should convert HCT to Color and preserve alpha', () => {
+    const color = fromHct({
+      h: 210,
+      c: 50,
+      t: 60,
+      alpha: 0.35,
+    });
+
+    expect(Number.isFinite(color.l)).toBe(true);
+    expect(Number.isFinite(color.c)).toBe(true);
+    expect(Number.isFinite(color.h)).toBe(true);
+    expect(color.alpha).toBeCloseTo(0.35, 6);
+  });
+
+  it('should roundtrip HCT approximately through Color', () => {
+    const input = {
+      h: 305,
+      c: 70,
+      t: 52,
+      alpha: 0.8,
+    };
+
+    const restored = toHct(fromHct(input));
+
+    expect(Math.abs(restored.h - input.h)).toBeLessThan(1);
+    expect(Math.abs(restored.t - input.t)).toBeLessThan(1);
+    expect(restored.c).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(restored.c)).toBe(true);
+    expect(restored.alpha).toBeCloseTo(input.alpha, 6);
+  });
+
+  it('should support HCT hue-peak values produced by maxHctChromaForHue', () => {
+    for (const hue of [42, 196]) {
+      const peak = maxHctChromaForHue(hue, { method: 'lut', lutSize: 1024 });
+      const color = fromHct({
+        h: hue,
+        c: peak.c,
+        t: peak.t,
+        alpha: 1,
+      });
+
+      expect(Number.isFinite(color.l)).toBe(true);
+      expect(Number.isFinite(color.c)).toBe(true);
+      expect(Number.isFinite(color.h)).toBe(true);
+    }
   });
 });
