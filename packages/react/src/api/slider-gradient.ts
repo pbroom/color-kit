@@ -192,6 +192,8 @@ function sampleStaticHueColorFromModel(
       return fromHct(next);
     }
   }
+
+  return null;
 }
 
 function sampleColorFromModel(

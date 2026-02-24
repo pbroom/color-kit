@@ -358,7 +358,9 @@ describe('slider gradient api', () => {
       steps: 8,
     });
 
-    expect(srgb.map((stop) => stop.color)).toEqual(p3.map((stop) => stop.color));
+    expect(srgb.map((stop) => stop.color)).toEqual(
+      p3.map((stop) => stop.color),
+    );
     expect(p3[0]?.activeCss).toContain('color(display-p3');
   });
 });
