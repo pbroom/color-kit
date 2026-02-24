@@ -118,5 +118,13 @@ export type {
   ChromaBandOptions,
 } from './gamut/index.js';
 
+// HCT utilities
+export { maxHctChromaForHue, maxHctPeakToneForHue } from './hct/index.js';
+export type {
+  HctHuePeak,
+  MaxHctChromaForHueMethod,
+  MaxHctChromaForHueOptions,
+} from './hct/index.js';
+
 // Utilities
 export { clamp, round, normalizeHue, lerp } from './utils/index.js';
