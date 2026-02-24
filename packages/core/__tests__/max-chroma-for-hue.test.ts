@@ -118,4 +118,26 @@ describe('maxChromaForHue()', () => {
     expect(Math.abs(lut.l - direct.l)).toBeLessThan(0.0025);
     expect(Math.abs(lut.c - direct.c)).toBeLessThan(0.0015);
   });
+
+  it('keeps LUT interpolation in gamut across the sRGB blue cusp branch crossover', () => {
+    for (let hue = 264.03; hue <= 264.1; hue += 0.01) {
+      const lut = maxChromaForHue(hue, {
+        gamut: 'srgb',
+        method: 'lut',
+        lutSize: 4096,
+      });
+      const boundary = maxChromaAt(lut.l, hue, { gamut: 'srgb' });
+
+      expect(inSrgbGamut({ l: lut.l, c: lut.c, h: hue, alpha: 1 })).toBe(true);
+      expect(lut.c).toBeLessThanOrEqual(boundary + 0.0005);
+    }
+  });
+
+  it('does not miss the first cubic boundary root near the sRGB blue cusp', () => {
+    const hue = 264.05;
+    const direct = maxChromaForHue(hue, { gamut: 'srgb', method: 'direct' });
+
+    expect(Math.abs(direct.l - 0.4899233835688325)).toBeLessThan(0.0002);
+    expect(Math.abs(direct.c - 0.28770887901836667)).toBeLessThan(0.0002);
+  });
 });
