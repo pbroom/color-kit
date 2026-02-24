@@ -46,6 +46,9 @@
     "typescript-eslint": "^8.54.0"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ],
     "overrides": {
       "@types/react": "^19.2.13",
       "@types/react-dom": "^19.2.3",
