@@ -1,10 +1,14 @@
-import type { Color, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
+import type { Color, Hct, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
 import {
+  fromHct,
   fromHsl,
   fromHsv,
   fromOklch,
   fromRgb,
+  maxChromaForHue,
+  maxHctChromaForHue,
   toCss,
+  toHct,
   toHsl,
   toHsv,
   toOklch,
@@ -16,19 +20,22 @@ import type { ColorSliderOrientation } from './color-slider.js';
 
 const DEFAULT_STEPS = 64;
 
-export type SliderColorModel = 'oklch' | 'hsl' | 'hsv' | 'rgb';
+export type SliderColorModel = 'oklch' | 'hsl' | 'hsv' | 'rgb' | 'hct';
 export type SliderColorSpace = 'srgb' | 'display-p3';
+export type SliderHueGradientMode = 'static' | 'selected-color';
 
 export type OklchSliderModelChannel = 'l' | 'c' | 'h' | 'alpha';
 export type HslSliderModelChannel = 'h' | 's' | 'l' | 'alpha';
 export type HsvSliderModelChannel = 'h' | 's' | 'v' | 'alpha';
 export type RgbSliderModelChannel = 'r' | 'g' | 'b' | 'alpha';
+export type HctSliderModelChannel = 'h';
 
 export type SliderModelChannel =
   | OklchSliderModelChannel
   | HslSliderModelChannel
   | HsvSliderModelChannel
-  | RgbSliderModelChannel;
+  | RgbSliderModelChannel
+  | HctSliderModelChannel;
 
 interface SliderGradientBaseOptions {
   baseColor: Color;
@@ -36,6 +43,7 @@ interface SliderGradientBaseOptions {
   steps?: number;
   orientation?: ColorSliderOrientation;
   colorSpace?: SliderColorSpace;
+  hueGradientMode?: SliderHueGradientMode;
 }
 
 interface OklchSliderGradientOptions extends SliderGradientBaseOptions {
@@ -58,11 +66,17 @@ interface RgbSliderGradientOptions extends SliderGradientBaseOptions {
   channel: RgbSliderModelChannel;
 }
 
+interface HctSliderGradientOptions extends SliderGradientBaseOptions {
+  model: 'hct';
+  channel: HctSliderModelChannel;
+}
+
 export type SampleSliderGradientOptions =
   | OklchSliderGradientOptions
   | HslSliderGradientOptions
   | HsvSliderGradientOptions
-  | RgbSliderGradientOptions;
+  | RgbSliderGradientOptions
+  | HctSliderGradientOptions;
 
 export interface SliderGradientStop {
   /** Normalized position in [0, 1] */
@@ -110,6 +124,12 @@ function resolveColorSpace(colorSpace?: SliderColorSpace): SliderColorSpace {
   return colorSpace ?? 'display-p3';
 }
 
+function resolveHueGradientMode(
+  hueGradientMode?: SliderHueGradientMode,
+): SliderHueGradientMode {
+  return hueGradientMode ?? 'static';
+}
+
 function gradientDirection(orientation: ColorSliderOrientation): string {
   return orientation === 'vertical' ? 'to top' : 'to right';
 }
@@ -118,10 +138,79 @@ function toStopPercent(t: number): string {
   return `${(t * 100).toFixed(3)}%`;
 }
 
+function sampleStaticHueColorFromModel(
+  options: SampleSliderGradientOptions,
+  value: number,
+  colorSpace: SliderColorSpace,
+): Color | null {
+  if (options.channel !== 'h') {
+    return null;
+  }
+
+  switch (options.model) {
+    case 'oklch': {
+      const cusp = maxChromaForHue(value, {
+        gamut: colorSpace,
+        method: 'lut',
+      });
+      const next: Oklch = {
+        l: cusp.l,
+        c: cusp.c,
+        h: value,
+        alpha: 1,
+      };
+      return fromOklch(next);
+    }
+    case 'hsl': {
+      const next: Hsl = {
+        h: value,
+        s: 100,
+        l: 50,
+        alpha: 1,
+      };
+      return fromHsl(next);
+    }
+    case 'hsv': {
+      const next: Hsv = {
+        h: value,
+        s: 100,
+        v: 100,
+        alpha: 1,
+      };
+      return fromHsv(next);
+    }
+    case 'hct': {
+      const peak = maxHctChromaForHue(value, {
+        method: 'lut',
+      });
+      const next: Hct = {
+        h: value,
+        c: peak.c,
+        t: peak.t,
+        alpha: 1,
+      };
+      return fromHct(next);
+    }
+  }
+}
+
 function sampleColorFromModel(
   options: SampleSliderGradientOptions,
   value: number,
+  colorSpace: SliderColorSpace,
+  hueGradientMode: SliderHueGradientMode,
 ): Color {
+  if (hueGradientMode === 'static') {
+    const staticHueColor = sampleStaticHueColorFromModel(
+      options,
+      value,
+      colorSpace,
+    );
+    if (staticHueColor) {
+      return staticHueColor;
+    }
+  }
+
   switch (options.model) {
     case 'oklch': {
       const oklch = toOklch(options.baseColor);
@@ -155,6 +244,14 @@ function sampleColorFromModel(
       };
       return fromRgb(next);
     }
+    case 'hct': {
+      const hct = toHct(options.baseColor);
+      const next: Hct = {
+        ...hct,
+        h: value,
+      };
+      return fromHct(next);
+    }
   }
 }
 
@@ -174,6 +271,7 @@ export function sampleSliderGradient(
 ): SliderGradientStop[] {
   const steps = resolveSteps(options.steps);
   const colorSpace = resolveColorSpace(options.colorSpace);
+  const hueGradientMode = resolveHueGradientMode(options.hueGradientMode);
 
   const stops: SliderGradientStop[] = [];
 
@@ -181,7 +279,12 @@ export function sampleSliderGradient(
     const t = index / steps;
     const value = options.range[0] + t * (options.range[1] - options.range[0]);
 
-    const sampledColor = sampleColorFromModel(options, value);
+    const sampledColor = sampleColorFromModel(
+      options,
+      value,
+      colorSpace,
+      hueGradientMode,
+    );
     const activeColor = mapToColorSpace(sampledColor, colorSpace);
     const srgbColor = toSrgbGamut(sampledColor);
 

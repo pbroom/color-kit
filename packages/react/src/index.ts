@@ -68,11 +68,13 @@ export type {
   ColorSliderKey,
   SampleSliderGradientOptions,
   ColorSliderOrientation,
+  SliderHueGradientMode,
   SliderColorModel,
   SliderColorSpace,
   SliderGradientStop,
   SliderGradientStyles,
   SliderModelChannel,
+  HctSliderModelChannel,
   ContrastBadgeSummary,
 } from './api/index.js';
 

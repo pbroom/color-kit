@@ -74,6 +74,11 @@ const rail = ColorApi.getSliderGradientStyles({
 Use `ColorApi.getSliderGradientStyles` when rail visuals need to represent an exact color model/channel/range.
 
 - Set `model` to the source model you want the rail to represent (`oklch`, `hsl`, `hsv`, `rgb`).
+- Hue rails also support `model: 'hct'` (hue-only) using Material HCT semantics.
 - Set `channel` + `range` to match the controlled slider axis.
 - Use the active gamut for `colorSpace`.
+- Hue rails default to `hueGradientMode: 'static'` (canonical hue spectrum).
+- Set `hueGradientMode: 'selected-color'` to keep the hue ramp derived from the current selected color.
+- OKLCH static hue rails are gamut-aware, so `srgb` and `display-p3` hue spectra can differ.
+- HCT hue rails use Material HCT (sRGB-based), so `colorSpace` affects CSS output/fallbacks, not the underlying HCT hue spectrum geometry.
 - Apply `activeBackgroundImage` in P3-supporting contexts and keep `srgbBackgroundImage` + `srgbBackgroundColor` as deterministic fallback.

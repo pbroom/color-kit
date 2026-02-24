@@ -104,6 +104,22 @@ export function toHct(color: Color): Hct {
   };
 }
 
+/** Convert HCT (Material hue/chroma/tone model) to a Color */
+export function fromHct(hct: Hct): Color {
+  const argb = MaterialHct.from(hct.h, hct.c, hct.t).toInt();
+  const rgb: Rgb = {
+    r: (argb >>> 16) & 0xff,
+    g: (argb >>> 8) & 0xff,
+    b: argb & 0xff,
+    alpha: hct.alpha,
+  };
+  const color = fromRgb(rgb);
+  return {
+    ...color,
+    alpha: hct.alpha,
+  };
+}
+
 /** Convert HSV to a Color */
 export function fromHsv(hsv: Hsv): Color {
   return fromRgb(hsvToRgb(hsv));

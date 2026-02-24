@@ -26,6 +26,7 @@ import {
   type ColorAreaInteractionFrameStats,
   type ContrastRegionLayerMetrics,
   type ColorSliderChannel,
+  type SliderHueGradientMode,
   useColor,
 } from '@color-kit/react';
 import {
@@ -117,6 +118,7 @@ function getOklchSliderRail(
   channel: ColorSliderChannel,
   requested: ReturnType<typeof parse>,
   gamut: 'display-p3' | 'srgb',
+  hueGradientMode?: SliderHueGradientMode,
 ): { colorSpace: 'display-p3' | 'srgb'; style: SliderRailStyle } {
   const range = ColorApi.resolveColorSliderRange(channel);
   const gradient = ColorApi.getSliderGradientStyles({
@@ -125,6 +127,7 @@ function getOklchSliderRail(
     range,
     baseColor: requested,
     colorSpace: gamut,
+    hueGradientMode,
   });
   const startStop = gradient.stops[0];
   const endStop = gradient.stops[gradient.stops.length - 1] ?? startStop;
@@ -287,7 +290,13 @@ function ColorAreaDemoScene({
   const color = useColorContext();
 
   const hueRail = useMemo(
-    () => getOklchSliderRail('h', color.requested, color.activeGamut),
+    () =>
+      getOklchSliderRail(
+        'h',
+        color.requested,
+        color.activeGamut,
+        'selected-color',
+      ),
     [color.activeGamut, color.requested],
   );
   const scene = inspectorState ?? {
