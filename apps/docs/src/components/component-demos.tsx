@@ -290,13 +290,7 @@ function ColorAreaDemoScene({
   const color = useColorContext();
 
   const hueRail = useMemo(
-    () =>
-      getOklchSliderRail(
-        'h',
-        color.requested,
-        color.activeGamut,
-        'selected-color',
-      ),
+    () => getOklchSliderRail('h', color.requested, color.activeGamut),
     [color.activeGamut, color.requested],
   );
   const scene = inspectorState ?? {
