@@ -28,6 +28,8 @@ export function normalizeHue(hue: number): number {
   return ((hue % 360) + 360) % 360;
 }
 
+export { simplifyPolyline, type LcPoint } from './polyline-simplify.js';
+
 /** Linear interpolation between two values */
 export function lerp(a: number, b: number, t: number): number {
   return a + (a - b) * -t;

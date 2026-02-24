@@ -86,6 +86,32 @@ describe('ColorArea primitives', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('renders sampled vector points for gamut and contrast overlays', () => {
+    const requested: Color = { l: 0.72, c: 0.24, h: 220, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <GamutBoundaryLayer gamut="srgb" showPathPoints />
+        <ContrastRegionLayer threshold={4.5} showPathPoints />
+      </ColorArea>,
+    );
+
+    const gamutPoints = container.querySelector(
+      '[data-color-area-gamut-boundary-points]',
+    );
+    const contrastPoints = container.querySelector(
+      '[data-color-area-contrast-region-points]',
+    );
+
+    expect(gamutPoints).toBeTruthy();
+    expect(contrastPoints).toBeTruthy();
+    expect(
+      gamutPoints?.querySelectorAll('[data-color-area-path-point]').length,
+    ).toBeGreaterThan(0);
+    expect(
+      contrastPoints?.querySelectorAll('[data-color-area-path-point]').length,
+    ).toBeGreaterThan(0);
+  });
+
   it('renders contrast regions in filled region mode with pattern overlay', () => {
     const requested: Color = { l: 0.68, c: 0.22, h: 245, alpha: 1 };
     const { container } = render(
@@ -98,6 +124,7 @@ describe('ColorArea primitives', () => {
           regionDotOpacity={0.2}
           regionDotSize={2}
           regionDotGap={2}
+          showPathPoints
         />
       </ColorArea>,
     );
@@ -107,6 +134,9 @@ describe('ColorArea primitives', () => {
     ).toBeTruthy();
     expect(
       container.querySelector('[data-color-area-contrast-region-fill]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-color-area-contrast-region-points]'),
     ).toBeTruthy();
   });
 

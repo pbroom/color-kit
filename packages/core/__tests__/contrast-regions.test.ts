@@ -178,4 +178,73 @@ describe('contrastRegionPaths()', () => {
       "contrastRegionPaths() edgeInterpolation must be 'linear' or 'midpoint'",
     );
   });
+
+  it('simplifyTolerance reduces contour point count', () => {
+    const reference = fromHex('#ffffff');
+    const raw = contrastRegionPaths(reference, 200, {
+      level: 'AA',
+      gamut: 'srgb',
+      lightnessSteps: 32,
+      chromaSteps: 32,
+    });
+    const simplified = contrastRegionPaths(reference, 200, {
+      level: 'AA',
+      gamut: 'srgb',
+      lightnessSteps: 32,
+      chromaSteps: 32,
+      simplifyTolerance: 0.002,
+    });
+    expect(simplified.length).toBe(raw.length);
+    const rawTotal = raw.reduce((s, p) => s + p.length, 0);
+    const simplifiedTotal = simplified.reduce((s, p) => s + p.length, 0);
+    expect(simplifiedTotal).toBeLessThanOrEqual(rawTotal);
+    if (rawTotal > 4) expect(simplifiedTotal).toBeLessThan(rawTotal);
+  });
+
+  it('adaptive sampling returns deterministic contour paths', () => {
+    const reference = fromHex('#ffffff');
+    const first = contrastRegionPaths(reference, 150, {
+      level: 'AA',
+      gamut: 'srgb',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 12,
+      adaptiveMaxDepth: 2,
+    });
+    const second = contrastRegionPaths(reference, 150, {
+      level: 'AA',
+      gamut: 'srgb',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 12,
+      adaptiveMaxDepth: 2,
+    });
+    expect(first.length).toBe(second.length);
+    for (let i = 0; i < first.length; i += 1) {
+      expect(first[i].length).toBe(second[i].length);
+      for (let j = 0; j < first[i].length; j += 1) {
+        expect(first[i][j].l).toBe(second[i][j].l);
+        expect(first[i][j].c).toBe(second[i][j].c);
+      }
+    }
+  });
+
+  it('adaptive contours are bounded and non-empty when threshold is attainable', () => {
+    const reference = fromHex('#ffffff');
+    const paths = contrastRegionPaths(reference, 200, {
+      level: 'AA',
+      gamut: 'srgb',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 16,
+      adaptiveMaxDepth: 2,
+    });
+    expect(paths.length).toBeGreaterThan(0);
+    for (const path of paths) {
+      expect(path.length).toBeGreaterThan(1);
+      for (const point of path) {
+        expect(point.l).toBeGreaterThanOrEqual(0);
+        expect(point.l).toBeLessThanOrEqual(1);
+        expect(point.c).toBeGreaterThanOrEqual(0);
+        expect(point.c).toBeLessThanOrEqual(0.4);
+      }
+    }
+  });
 });

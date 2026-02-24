@@ -122,6 +122,20 @@ export const componentApiDocs: ComponentApiDocs = {
       description:
         'Switches between contour rendering and filled region rendering with optional dotted pattern controls.',
     },
+    {
+      name: 'GamutBoundaryLayer.showPathPoints / pointProps',
+      type: 'boolean / SVGAttributes<SVGCircleElement>',
+      defaultValue: 'false / undefined',
+      description:
+        'Optional sampled vertex overlay for the boundary path. Useful for visualizing the exact polyline points used to build the SVG.',
+    },
+    {
+      name: 'ContrastRegionLayer.showPathPoints / pointProps',
+      type: 'boolean / SVGAttributes<SVGCircleElement>',
+      defaultValue: 'false / undefined',
+      description:
+        'Optional sampled vertex overlay for each computed contrast contour, in both line and region render modes.',
+    },
   ],
   colorWheel: [
     {

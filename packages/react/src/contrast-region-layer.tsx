@@ -15,7 +15,8 @@ import {
 } from './api/color-area.js';
 import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
-import { Line } from './line.js';
+import { Line, pathWithRoundedCorners } from './line.js';
+import { PathPointsOverlay } from './path-points-overlay.js';
 import type { ColorAreaLayerQuality } from './gamut-boundary-layer.js';
 import type {
   ContrastRegionWorkerRequest,
@@ -58,7 +59,17 @@ export interface ContrastRegionLayerProps extends Omit<LayerProps, 'children'> {
   regionDotSize?: number;
   regionDotGap?: number;
   pathProps?: SVGAttributes<SVGPathElement>;
+  showPathPoints?: boolean;
+  pointProps?: SVGAttributes<SVGCircleElement>;
   onMetrics?: (metrics: ContrastRegionLayerMetrics) => void;
+  /** RDP simplification tolerance in (l,c) space; omit to disable */
+  simplifyTolerance?: number;
+  /** 'uniform' (default) or 'adaptive' grid for contour extraction */
+  samplingMode?: 'uniform' | 'adaptive';
+  adaptiveBaseSteps?: number;
+  adaptiveMaxDepth?: number;
+  /** Corner radius in 0-1 for path vertices; omit for sharp corners */
+  cornerRadius?: number;
 }
 
 function resolveQuality(
@@ -98,11 +109,18 @@ function countPathPoints(paths: ColorAreaContrastRegionPoint[][]): number {
 function toPath(
   points: ColorAreaContrastRegionPoint[],
   closeLoop: boolean,
+  cornerRadius?: number,
 ): string {
   if (points.length < 2) {
     return '';
   }
-
+  if (cornerRadius != null && cornerRadius > 0) {
+    return pathWithRoundedCorners(
+      points.map((p) => ({ x: p.x, y: p.y })),
+      cornerRadius,
+      closeLoop,
+    );
+  }
   const commands = points.map((point, index) => {
     const x = (point.x * 100).toFixed(3);
     const y = (point.y * 100).toFixed(3);
@@ -140,7 +158,14 @@ export function ContrastRegionLayer({
   regionDotSize = 2,
   regionDotGap = 3,
   pathProps,
+  showPathPoints = false,
+  pointProps,
   onMetrics,
+  simplifyTolerance,
+  samplingMode,
+  adaptiveBaseSteps,
+  adaptiveMaxDepth,
+  cornerRadius,
   ...props
 }: ContrastRegionLayerProps) {
   const { requested, axes, qualityLevel, isDragging } = useColorAreaContext();
@@ -157,28 +182,66 @@ export function ContrastRegionLayer({
 
   const resolvedReference = reference ?? requested;
   const resolvedHue = hue ?? requested.h;
+
+  // Freeze step counts when drag starts so adaptive quality doesn't change
+  // resolution mid-drag and cause contour flicker.
+  const [frozenSteps, setFrozenSteps] = useState<{
+    lightness: number;
+    chroma: number;
+  } | null>(null);
+  const prevDraggingRef = useRef(false);
+  useEffect(() => {
+    if (isDragging && !prevDraggingRef.current) {
+      const steps = {
+        lightness: effectiveLightnessSteps,
+        chroma: effectiveChromaSteps,
+      };
+      queueMicrotask(() => setFrozenSteps(steps));
+    }
+    if (!isDragging) {
+      queueMicrotask(() => setFrozenSteps(null));
+    }
+    prevDraggingRef.current = isDragging;
+  }, [isDragging, effectiveLightnessSteps, effectiveChromaSteps]);
+
+  const stepsForOptions =
+    isDragging && frozenSteps
+      ? frozenSteps
+      : {
+          lightness: effectiveLightnessSteps,
+          chroma: effectiveChromaSteps,
+        };
+
   const options = useMemo<ColorAreaContrastRegionOptions>(
     () => ({
       gamut,
       threshold,
       level,
-      lightnessSteps: effectiveLightnessSteps,
-      chromaSteps: effectiveChromaSteps,
+      lightnessSteps: stepsForOptions.lightness,
+      chromaSteps: stepsForOptions.chroma,
       maxChroma,
       tolerance,
       maxIterations,
       alpha,
       edgeInterpolation,
+      simplifyTolerance,
+      samplingMode,
+      adaptiveBaseSteps,
+      adaptiveMaxDepth,
     }),
     [
       alpha,
       edgeInterpolation,
-      effectiveChromaSteps,
-      effectiveLightnessSteps,
+      stepsForOptions.lightness,
+      stepsForOptions.chroma,
       gamut,
       level,
       maxChroma,
       maxIterations,
+      simplifyTolerance,
+      samplingMode,
+      adaptiveBaseSteps,
+      adaptiveMaxDepth,
       threshold,
       tolerance,
     ],
@@ -222,16 +285,14 @@ export function ContrastRegionLayer({
     height: 100,
   });
   const paths = useMemo(() => {
-    if (
-      isDragging &&
-      canUseWorkerOffload() &&
-      workerPaths &&
-      workerPaths.payload === workerPayload
-    ) {
-      return workerPaths.paths;
+    if (isDragging && canUseWorkerOffload()) {
+      // Use latest worker result we have to avoid empty-path flicker when
+      // payload changes every frame (workerPayload ref identity). May show
+      // previous contour for one frame when params change during drag.
+      return workerPaths?.paths ?? [];
     }
     return syncComputation?.paths ?? [];
-  }, [isDragging, syncComputation, workerPaths, workerPayload]);
+  }, [isDragging, syncComputation, workerPaths]);
 
   const emitMetrics = useCallback(
     (payload: {
@@ -371,10 +432,10 @@ export function ContrastRegionLayer({
   const regionPathData = useMemo(
     () =>
       paths
-        .map((points) => toPath(points, true))
+        .map((points) => toPath(points, true, cornerRadius))
         .filter((path) => path.length > 0)
         .join(' '),
-    [paths],
+    [paths, cornerRadius],
   );
 
   const dotOpacity = clamp01(regionDotOpacity);
@@ -467,6 +528,8 @@ export function ContrastRegionLayer({
             <Line
               key={index}
               points={points}
+              cornerRadius={cornerRadius}
+              closed
               pathProps={{
                 fill: 'none',
                 ...pathProps,
@@ -520,6 +583,14 @@ export function ContrastRegionLayer({
             />
           ) : null}
         </svg>
+      ) : null}
+
+      {showPathPoints ? (
+        <PathPointsOverlay
+          paths={paths}
+          pointProps={pointProps}
+          data-color-area-contrast-region-points=""
+        />
       ) : null}
     </Layer>
   );
