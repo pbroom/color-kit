@@ -25,6 +25,7 @@ import {
   type ColorAreaChannel,
   type ColorAreaAxes,
   type ColorAreaInteractionFrameStats,
+  type ColorUpdateEvent,
   type ContrastRegionLayerMetrics,
   type ColorSliderChannel,
   type SliderHueGradientMode,
@@ -223,9 +224,18 @@ interface ColorAreaPerfSummary {
   longTaskRate: number;
 }
 
-interface ContrastMetricSample extends ContrastRegionLayerMetrics {
+interface ContrastMetricSample {
   key: string;
   ts: number;
+  source: 'sync' | 'worker';
+  requestId: number;
+  computeTimeMs: number;
+  pathCount: number;
+  pointCount: number;
+  lightnessSteps: number;
+  chromaSteps: number;
+  quality: 'high' | 'medium' | 'low';
+  isDragging: boolean;
 }
 
 function summarizePerfFrames(
@@ -448,7 +458,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('line-aa3', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('line-aa3', metrics)
+            }
             pathProps={strokePathProps(scene.contrast.lines.aa3, '#bcd6ff')}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#bcd6ff')}
@@ -465,7 +477,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('line-aa45', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('line-aa45', metrics)
+            }
             pathProps={strokePathProps(scene.contrast.lines.aa45, '#c0e1ff')}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#c0e1ff')}
@@ -482,7 +496,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('line-aa7', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('line-aa7', metrics)
+            }
             pathProps={strokePathProps(scene.contrast.lines.aa7, '#d5e7ff')}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#d5e7ff')}
@@ -500,7 +516,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('region-aa3', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('region-aa3', metrics)
+            }
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#7ca4ff')}
           >
@@ -524,7 +542,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('region-aa45', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('region-aa45', metrics)
+            }
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#c0e1ff')}
           >
@@ -548,7 +568,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('region-aa7', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('region-aa7', metrics)
+            }
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#dceaff')}
           >
@@ -730,7 +752,9 @@ export function ColorAreaDemo({
       {state && setColorAreaColorState ? (
         <Color
           state={state.colorState}
-          onChange={(event) => setColorAreaColorState(event.next)}
+          onChange={(event: ColorUpdateEvent) =>
+            setColorAreaColorState(event.next)
+          }
         >
           <ColorAreaDemoScene
             axes={axes}
