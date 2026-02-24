@@ -259,8 +259,8 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       contrastSteps: 96,
       contrastEdgeInterpolation: 'linear',
       simplifyTolerance: undefined,
-      lineSamplingMode: 'uniform',
-      contrastSamplingMode: 'uniform',
+      lineSamplingMode: 'adaptive',
+      contrastSamplingMode: 'adaptive',
       cornerRadius: undefined,
     },
   };
@@ -365,8 +365,8 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       contrastSteps: 96,
       contrastEdgeInterpolation: 'linear',
       simplifyTolerance: undefined,
-      lineSamplingMode: 'uniform',
-      contrastSamplingMode: 'uniform',
+      lineSamplingMode: 'adaptive',
+      contrastSamplingMode: 'adaptive',
       cornerRadius: undefined,
     },
   };

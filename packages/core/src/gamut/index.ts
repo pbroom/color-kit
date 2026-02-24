@@ -128,8 +128,25 @@ export interface ChromaBandOptions extends MaxChromaAtOptions {
   /**
    * Number of equal lightness segments to sample.
    * The returned band has `steps + 1` colors.
+   * Ignored when samplingMode is 'adaptive'.
    */
   steps?: number;
+  /**
+   * `uniform`: fixed lightness steps (default).
+   * `adaptive`: reuse adaptive boundary sampling and project to chroma mode.
+   * @default 'uniform'
+   */
+  samplingMode?: 'uniform' | 'adaptive';
+  /**
+   * Max perpendicular error in (l, c) before subdividing in adaptive mode.
+   * @default 0.001
+   */
+  adaptiveTolerance?: number;
+  /**
+   * Max recursion depth in adaptive mode to avoid runaway.
+   * @default 12
+   */
+  adaptiveMaxDepth?: number;
   /**
    * Lightness anchor for proportional mode.
    * Used to resolve the requested/max chroma ratio.
@@ -140,6 +157,8 @@ export interface ChromaBandOptions extends MaxChromaAtOptions {
 
 const DEFAULT_CHROMA_BAND_STEPS = 12;
 const DEFAULT_CHROMA_BAND_SELECTED_LIGHTNESS = 0.5;
+const CHROMA_BAND_CROSSING_EPSILON = 1e-7;
+const CHROMA_BAND_CROSSING_ITERATIONS = 18;
 
 type TargetRow = readonly [number, number, number];
 type TargetRows = readonly [TargetRow, TargetRow, TargetRow];
@@ -610,6 +629,9 @@ export function gamutBoundaryPath(
 const DEFAULT_ADAPTIVE_TOLERANCE = 0.001;
 const DEFAULT_ADAPTIVE_MAX_DEPTH = 12;
 const MIN_SEGMENT_LENGTH = 1e-6;
+const ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON = 1e-7;
+const ADAPTIVE_PROBE_FRACTIONS = [0.25, 0.5, 0.75] as const;
+const ADAPTIVE_EDGE_PROBES = [1 / 128, 1 / 64, 1 / 32, 1 / 16] as const;
 
 function perpendicularDistance(
   p: GamutBoundaryPoint,
@@ -629,10 +651,59 @@ function perpendicularDistance(
   return Math.hypot(p.l - projL, p.c - projC);
 }
 
+function appendUniqueLightness(lightnesses: number[], lightness: number): void {
+  if (!Number.isFinite(lightness)) {
+    return;
+  }
+  const normalized = clamp(lightness, 0, 1);
+  for (const current of lightnesses) {
+    if (Math.abs(current - normalized) <= ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON) {
+      return;
+    }
+  }
+  lightnesses.push(normalized);
+}
+
+function adaptiveMaxErrorProbe(
+  a: GamutBoundaryPoint,
+  b: GamutBoundaryPoint,
+  maxChromaAtBound: (l: number) => number,
+): { probe: GamutBoundaryPoint; error: number } {
+  const span = b.l - a.l;
+  let bestProbe: GamutBoundaryPoint | null = null;
+  let bestError = -1;
+
+  for (const fraction of ADAPTIVE_PROBE_FRACTIONS) {
+    const l = a.l + span * fraction;
+    if (l <= a.l + MIN_SEGMENT_LENGTH || l >= b.l - MIN_SEGMENT_LENGTH) {
+      continue;
+    }
+    const probe: GamutBoundaryPoint = { l, c: maxChromaAtBound(l) };
+    const error = perpendicularDistance(probe, a, b);
+    if (error > bestError) {
+      bestError = error;
+      bestProbe = probe;
+    }
+  }
+
+  if (bestProbe) {
+    return { probe: bestProbe, error: bestError };
+  }
+
+  const lMid = (a.l + b.l) / 2;
+  const mid: GamutBoundaryPoint = { l: lMid, c: maxChromaAtBound(lMid) };
+  return {
+    probe: mid,
+    error: perpendicularDistance(mid, a, b),
+  };
+}
+
 function gamutBoundaryPathAdaptive(
   hue: number,
   options: GamutBoundaryPathOptions,
 ): GamutBoundaryPoint[] {
+  const normalizedHue = normalizeHue(hue);
+  const gamut = options.gamut ?? 'srgb';
   const tol =
     Number.isFinite(options.adaptiveTolerance) && options.adaptiveTolerance! > 0
       ? options.adaptiveTolerance!
@@ -642,7 +713,37 @@ function gamutBoundaryPathAdaptive(
       ? Math.min(20, Math.max(1, options.adaptiveMaxDepth!))
       : DEFAULT_ADAPTIVE_MAX_DEPTH;
 
-  const maxChromaAtBound = (l: number): number => maxChromaAt(l, hue, options);
+  const maxChromaAtBound = (l: number): number =>
+    maxChromaAt(l, normalizedHue, options);
+  const maxChromaBound = Math.max(0, options.maxChroma ?? DEFAULT_MAX_CHROMA);
+  const cusp = maxChromaForHue(normalizedHue, {
+    gamut,
+    method: 'direct',
+  });
+  const cuspPoint: GamutBoundaryPoint = {
+    l: clamp(cusp.l, 0, 1),
+    c: Math.min(Math.max(0, cusp.c), maxChromaBound),
+  };
+  const anchorLightnesses: number[] = [];
+  appendUniqueLightness(anchorLightnesses, 0);
+  appendUniqueLightness(anchorLightnesses, 1);
+  appendUniqueLightness(anchorLightnesses, cuspPoint.l);
+  for (const probe of ADAPTIVE_EDGE_PROBES) {
+    appendUniqueLightness(anchorLightnesses, probe);
+    appendUniqueLightness(anchorLightnesses, 1 - probe);
+  }
+  anchorLightnesses.sort((a, b) => a - b);
+  const anchorPoints = anchorLightnesses.map((lightness) => {
+    if (
+      Math.abs(lightness - cuspPoint.l) <= ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON
+    ) {
+      return cuspPoint;
+    }
+    return {
+      l: lightness,
+      c: maxChromaAtBound(lightness),
+    };
+  });
 
   const recurse = (
     a: GamutBoundaryPoint,
@@ -653,23 +754,24 @@ function gamutBoundaryPathAdaptive(
     if (spanL <= MIN_SEGMENT_LENGTH || depth >= maxDepth) {
       return [b];
     }
-    const lMid = (a.l + b.l) / 2;
-    const cMid = maxChromaAtBound(lMid);
-    const mid: GamutBoundaryPoint = { l: lMid, c: cMid };
-    const err = perpendicularDistance(mid, a, b);
+    const { probe, error: err } = adaptiveMaxErrorProbe(a, b, maxChromaAtBound);
+    const leftSpan = Math.abs(probe.l - a.l);
+    const rightSpan = Math.abs(b.l - probe.l);
+    if (leftSpan <= MIN_SEGMENT_LENGTH || rightSpan <= MIN_SEGMENT_LENGTH) {
+      return [b];
+    }
     if (err <= tol) {
       return [b];
     }
-    const left = recurse(a, mid, depth + 1);
-    const right = recurse(mid, b, depth + 1);
-    return [...left.slice(0, -1), ...right];
+    const left = recurse(a, probe, depth + 1);
+    const right = recurse(probe, b, depth + 1);
+    return [...left, ...right];
   };
 
-  const c0 = maxChromaAtBound(0);
-  const c1 = maxChromaAtBound(1);
-  const start: GamutBoundaryPoint = { l: 0, c: c0 };
-  const end: GamutBoundaryPoint = { l: 1, c: c1 };
-  const points = [start, ...recurse(start, end, 0)];
+  const points = [anchorPoints[0]];
+  for (let index = 0; index < anchorPoints.length - 1; index += 1) {
+    points.push(...recurse(anchorPoints[index], anchorPoints[index + 1], 0));
+  }
   const simplifyTol = options.simplifyTolerance;
   if (simplifyTol != null && Number.isFinite(simplifyTol) && simplifyTol > 0) {
     return simplifyPolyline(points, simplifyTol, false);
@@ -692,14 +794,15 @@ export function chromaBand(
     throw new Error('chromaBand() requires a finite requestedChroma');
   }
 
-  const steps = options.steps ?? DEFAULT_CHROMA_BAND_STEPS;
-  if (!Number.isInteger(steps) || steps < 2) {
-    throw new Error('chromaBand() requires steps >= 2');
-  }
-
   const mode = options.mode ?? 'clamped';
   if (mode !== 'clamped' && mode !== 'proportional') {
     throw new Error("chromaBand() mode must be 'clamped' or 'proportional'");
+  }
+  const samplingMode = options.samplingMode ?? 'uniform';
+  if (samplingMode !== 'uniform' && samplingMode !== 'adaptive') {
+    throw new Error(
+      "chromaBand() samplingMode must be 'uniform' or 'adaptive'",
+    );
   }
 
   const gamut = options.gamut ?? 'srgb';
@@ -725,6 +828,90 @@ export function chromaBand(
     const selectedMax = maxChromaAt(selectedLightness, h, searchOptions);
     proportionalRatio =
       selectedMax <= 0 ? 0 : clamp(requested / selectedMax, 0, 1);
+  }
+
+  if (samplingMode === 'adaptive') {
+    const boundary = gamutBoundaryPath(h, {
+      ...searchOptions,
+      samplingMode: 'adaptive',
+      adaptiveTolerance: options.adaptiveTolerance,
+      adaptiveMaxDepth: options.adaptiveMaxDepth,
+    });
+    if (boundary.length === 0) {
+      return [];
+    }
+
+    const mapBoundaryChroma = (boundaryChroma: number): number =>
+      mode === 'proportional'
+        ? proportionalRatio * boundaryChroma
+        : Math.min(requested, boundaryChroma);
+
+    const maxChromaAtBound = (lightness: number): number =>
+      maxChromaAt(lightness, h, searchOptions);
+
+    const resolveCrossingLightness = (
+      a: GamutBoundaryPoint,
+      b: GamutBoundaryPoint,
+    ): number => {
+      let lo = a.l;
+      let hi = b.l;
+      let loDelta = a.c - requested;
+      if (lo > hi) {
+        lo = b.l;
+        hi = a.l;
+        loDelta = b.c - requested;
+      }
+      for (let i = 0; i < CHROMA_BAND_CROSSING_ITERATIONS; i += 1) {
+        const mid = (lo + hi) / 2;
+        const midDelta = maxChromaAtBound(mid) - requested;
+        if (Math.abs(midDelta) <= CHROMA_BAND_CROSSING_EPSILON) {
+          return mid;
+        }
+        const oppositeSigns =
+          (loDelta < 0 && midDelta > 0) || (loDelta > 0 && midDelta < 0);
+        if (oppositeSigns) {
+          hi = mid;
+        } else {
+          lo = mid;
+          loDelta = midDelta;
+        }
+      }
+      return (lo + hi) / 2;
+    };
+
+    const adaptiveBand: Color[] = [];
+    const append = (lightness: number, chroma: number) => {
+      adaptiveBand.push({
+        l: lightness,
+        c: chroma,
+        h,
+        alpha,
+      });
+    };
+
+    append(boundary[0].l, mapBoundaryChroma(boundary[0].c));
+    for (let index = 1; index < boundary.length; index += 1) {
+      const prev = boundary[index - 1];
+      const next = boundary[index];
+      if (mode === 'clamped') {
+        const prevDelta = prev.c - requested;
+        const nextDelta = next.c - requested;
+        const crossesRequested =
+          (prevDelta < 0 && nextDelta > 0) || (prevDelta > 0 && nextDelta < 0);
+        if (crossesRequested) {
+          const crossingLightness = resolveCrossingLightness(prev, next);
+          append(crossingLightness, requested);
+        }
+      }
+      append(next.l, mapBoundaryChroma(next.c));
+    }
+
+    return adaptiveBand;
+  }
+
+  const steps = options.steps ?? DEFAULT_CHROMA_BAND_STEPS;
+  if (!Number.isInteger(steps) || steps < 2) {
+    throw new Error('chromaBand() requires steps >= 2');
   }
 
   const band: Color[] = [];

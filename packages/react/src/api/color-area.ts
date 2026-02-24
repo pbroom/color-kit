@@ -100,6 +100,10 @@ export interface ColorAreaChromaBandOptions {
   gamut?: GamutTarget;
   mode?: ChromaBandMode;
   steps?: number;
+  /** 'uniform' (default) or 'adaptive' band sampling */
+  samplingMode?: 'uniform' | 'adaptive';
+  adaptiveTolerance?: number;
+  adaptiveMaxDepth?: number;
   selectedLightness?: number;
   maxChroma?: number;
   tolerance?: number;
@@ -274,6 +278,9 @@ export function getColorAreaChromaBandPoints(
     gamut: options.gamut ?? 'srgb',
     mode: options.mode ?? 'clamped',
     steps: options.steps,
+    samplingMode: options.samplingMode,
+    adaptiveTolerance: options.adaptiveTolerance,
+    adaptiveMaxDepth: options.adaptiveMaxDepth,
     selectedLightness: options.selectedLightness ?? reference.l,
     maxChroma: options.maxChroma,
     tolerance: options.tolerance,

@@ -1357,7 +1357,7 @@ function ColorAreaPropertiesPanel() {
 
         <label className="docs-properties-label">Line sampling</label>
         <SegmentedOptions
-          value={colorAreaState.tuning.lineSamplingMode ?? 'uniform'}
+          value={colorAreaState.tuning.lineSamplingMode ?? 'adaptive'}
           onChange={(lineSamplingMode) =>
             setColorAreaState({
               tuning: {
@@ -1372,7 +1372,7 @@ function ColorAreaPropertiesPanel() {
 
         <label className="docs-properties-label">Contrast sampling</label>
         <SegmentedOptions
-          value={colorAreaState.tuning.contrastSamplingMode ?? 'uniform'}
+          value={colorAreaState.tuning.contrastSamplingMode ?? 'adaptive'}
           onChange={(contrastSamplingMode) =>
             setColorAreaState({
               tuning: {

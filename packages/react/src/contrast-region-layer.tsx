@@ -234,6 +234,41 @@ function qualityStepMultiplier(quality: 'high' | 'medium' | 'low'): number {
   return 0.45;
 }
 
+const MIN_AUTO_ADAPTIVE_BASE_STEPS = 8;
+const MAX_AUTO_ADAPTIVE_BASE_STEPS = 48;
+const MIN_AUTO_ADAPTIVE_DEPTH = 1;
+const MAX_AUTO_ADAPTIVE_DEPTH = 6;
+
+function autoAdaptiveBaseSteps(
+  quality: 'high' | 'medium' | 'low',
+  widthPx: number,
+  heightPx: number,
+): number {
+  const targetCellPx = quality === 'high' ? 28 : quality === 'medium' ? 36 : 48;
+  const longestEdge = Math.max(1, Math.max(widthPx, heightPx));
+  const baseSteps = Math.round(longestEdge / targetCellPx);
+  return Math.min(
+    MAX_AUTO_ADAPTIVE_BASE_STEPS,
+    Math.max(MIN_AUTO_ADAPTIVE_BASE_STEPS, baseSteps),
+  );
+}
+
+function autoAdaptiveMaxDepth(
+  quality: 'high' | 'medium' | 'low',
+  widthPx: number,
+  heightPx: number,
+  baseSteps: number,
+): number {
+  const longestEdge = Math.max(1, Math.max(widthPx, heightPx));
+  const baseCellPx = longestEdge / Math.max(1, baseSteps);
+  const targetLeafPx = quality === 'high' ? 7 : quality === 'medium' ? 9 : 12;
+  const depth = Math.ceil(Math.log2(Math.max(1, baseCellPx / targetLeafPx)));
+  return Math.min(
+    MAX_AUTO_ADAPTIVE_DEPTH,
+    Math.max(MIN_AUTO_ADAPTIVE_DEPTH, depth),
+  );
+}
+
 function canUseWorkerOffload(): boolean {
   return typeof window !== 'undefined' && typeof Worker !== 'undefined';
 }
@@ -304,7 +339,13 @@ export function ContrastRegionLayer({
   children,
   ...props
 }: ContrastRegionLayerProps) {
-  const { requested, axes, qualityLevel, isDragging } = useColorAreaContext();
+  const { areaRef, requested, axes, qualityLevel, isDragging } =
+    useColorAreaContext();
+  const [areaSize, setAreaSize] = useState({
+    width: 0,
+    height: 0,
+    dpr: 1,
+  });
   const resolvedQuality = resolveQuality(quality, qualityLevel);
   const multiplier = qualityStepMultiplier(resolvedQuality);
   const effectiveLightnessSteps = Math.max(
@@ -346,6 +387,116 @@ export function ContrastRegionLayer({
           chroma: effectiveChromaSteps,
         };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const areaNode = areaRef.current;
+    if (!areaNode) {
+      return;
+    }
+
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const rect = areaNode.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return;
+      }
+      const nextDpr = window.devicePixelRatio || 1;
+      setAreaSize((current) => {
+        if (
+          Math.abs(current.width - rect.width) < 0.5 &&
+          Math.abs(current.height - rect.height) < 0.5 &&
+          Math.abs(current.dpr - nextDpr) < 0.01
+        ) {
+          return current;
+        }
+        return {
+          width: rect.width,
+          height: rect.height,
+          dpr: nextDpr,
+        };
+      });
+    };
+    const schedule = () => {
+      if (frame !== 0) {
+        return;
+      }
+      frame = window.requestAnimationFrame(measure);
+    };
+
+    schedule();
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(schedule);
+      observer.observe(areaNode);
+      window.addEventListener('resize', schedule);
+      return () => {
+        observer.disconnect();
+        window.removeEventListener('resize', schedule);
+        if (frame !== 0) {
+          window.cancelAnimationFrame(frame);
+        }
+      };
+    }
+
+    window.addEventListener('resize', schedule);
+    return () => {
+      window.removeEventListener('resize', schedule);
+      if (frame !== 0) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, [areaRef]);
+
+  const resolvedAdaptiveBaseSteps = useMemo(() => {
+    if (samplingMode !== 'adaptive') {
+      return adaptiveBaseSteps;
+    }
+    if (adaptiveBaseSteps != null) {
+      return adaptiveBaseSteps;
+    }
+    if (areaSize.width <= 0 || areaSize.height <= 0) {
+      return undefined;
+    }
+    const widthPx = areaSize.width * areaSize.dpr;
+    const heightPx = areaSize.height * areaSize.dpr;
+    return autoAdaptiveBaseSteps(resolvedQuality, widthPx, heightPx);
+  }, [
+    adaptiveBaseSteps,
+    areaSize.dpr,
+    areaSize.height,
+    areaSize.width,
+    resolvedQuality,
+    samplingMode,
+  ]);
+
+  const resolvedAdaptiveMaxDepth = useMemo(() => {
+    if (samplingMode !== 'adaptive') {
+      return adaptiveMaxDepth;
+    }
+    if (adaptiveMaxDepth != null) {
+      return adaptiveMaxDepth;
+    }
+    if (areaSize.width <= 0 || areaSize.height <= 0) {
+      return undefined;
+    }
+    const widthPx = areaSize.width * areaSize.dpr;
+    const heightPx = areaSize.height * areaSize.dpr;
+    const baseSteps =
+      resolvedAdaptiveBaseSteps ??
+      autoAdaptiveBaseSteps(resolvedQuality, widthPx, heightPx);
+    return autoAdaptiveMaxDepth(resolvedQuality, widthPx, heightPx, baseSteps);
+  }, [
+    adaptiveMaxDepth,
+    areaSize.dpr,
+    areaSize.height,
+    areaSize.width,
+    resolvedAdaptiveBaseSteps,
+    resolvedQuality,
+    samplingMode,
+  ]);
+
   const options = useMemo<ColorAreaContrastRegionOptions>(
     () => ({
       gamut,
@@ -360,8 +511,8 @@ export function ContrastRegionLayer({
       edgeInterpolation,
       simplifyTolerance,
       samplingMode,
-      adaptiveBaseSteps,
-      adaptiveMaxDepth,
+      adaptiveBaseSteps: resolvedAdaptiveBaseSteps,
+      adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
     }),
     [
       alpha,
@@ -374,8 +525,8 @@ export function ContrastRegionLayer({
       maxIterations,
       simplifyTolerance,
       samplingMode,
-      adaptiveBaseSteps,
-      adaptiveMaxDepth,
+      resolvedAdaptiveBaseSteps,
+      resolvedAdaptiveMaxDepth,
       threshold,
       tolerance,
     ],

@@ -1,5 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { gamutBoundaryPath, inP3Gamut, inSrgbGamut } from '../src/index.js';
+import {
+  gamutBoundaryPath,
+  inP3Gamut,
+  inSrgbGamut,
+  maxChromaForHue,
+  maxChromaAt,
+} from '../src/index.js';
+
+function interpolateChromaAt(
+  points: Array<{ l: number; c: number }>,
+  lightness: number,
+): number {
+  if (points.length === 0) {
+    return 0;
+  }
+  if (lightness <= points[0].l) {
+    return points[0].c;
+  }
+  if (lightness >= points[points.length - 1].l) {
+    return points[points.length - 1].c;
+  }
+
+  let index = 0;
+  while (index < points.length - 1 && points[index + 1].l < lightness) {
+    index += 1;
+  }
+  const a = points[index];
+  const b = points[index + 1];
+  const span = b.l - a.l;
+  if (span <= 1e-12) {
+    return b.c;
+  }
+  const t = (lightness - a.l) / span;
+  return a.c + (b.c - a.c) * t;
+}
 
 describe('gamutBoundaryPath()', () => {
   it('returns deterministic lightness/chroma points with expected shape', () => {
@@ -107,24 +141,60 @@ describe('gamutBoundaryPath()', () => {
     }
   });
 
-  it('adaptive boundary stays within max geometric error of dense reference', () => {
-    const reference = gamutBoundaryPath(90, { gamut: 'srgb', steps: 128 });
-    const adaptive = gamutBoundaryPath(90, {
+  it('adaptive mode includes the resolved hue cusp point', () => {
+    const hue = 252;
+    const cusp = maxChromaForHue(hue, {
+      gamut: 'display-p3',
+      method: 'direct',
+    });
+    const adaptive = gamutBoundaryPath(hue, {
+      gamut: 'display-p3',
+      samplingMode: 'adaptive',
+      adaptiveTolerance: 0.001,
+      adaptiveMaxDepth: 12,
+    });
+    const cuspPoint = adaptive.find(
+      (point) => Math.abs(point.l - cusp.l) <= 1e-12,
+    );
+    const expectedCuspChroma = Math.min(cusp.c, 0.4);
+
+    expect(cuspPoint).toBeDefined();
+    expect(cuspPoint?.c ?? 0).toBeCloseTo(expectedCuspChroma, 10);
+  });
+
+  it('adaptive boundary interpolation stays close to maxChromaAt samples', () => {
+    const hue = 90;
+    const adaptive = gamutBoundaryPath(hue, {
       gamut: 'srgb',
       samplingMode: 'adaptive',
       adaptiveTolerance: 0.001,
       adaptiveMaxDepth: 10,
     });
-    const maxError = 0.006;
-    for (const p of adaptive) {
-      let i = 0;
-      while (i < reference.length - 1 && reference[i + 1].l < p.l) i += 1;
-      if (i >= reference.length - 1) continue;
-      const a = reference[i];
-      const b = reference[i + 1];
-      const t = (p.l - a.l) / (b.l - a.l);
-      const expectedC = a.c + t * (b.c - a.c);
-      expect(Math.abs(p.c - expectedC)).toBeLessThanOrEqual(maxError);
+    const maxError = 0.01;
+    const probes = 1024;
+
+    for (let index = 0; index <= probes; index += 1) {
+      const l = index / probes;
+      const expected = maxChromaAt(l, hue, { gamut: 'srgb' });
+      const approximated = interpolateChromaAt(adaptive, l);
+      expect(Math.abs(expected - approximated)).toBeLessThanOrEqual(maxError);
+    }
+  });
+
+  it('adaptive sampled points stay on the maxChromaAt boundary', () => {
+    const hue = 252;
+    const adaptive = gamutBoundaryPath(hue, {
+      gamut: 'display-p3',
+      samplingMode: 'adaptive',
+      adaptiveTolerance: 0.001,
+      adaptiveMaxDepth: 12,
+    });
+    const maxBoundaryError = 0.006;
+    for (const point of adaptive) {
+      const expected = maxChromaAt(point.l, hue, { gamut: 'display-p3' });
+      expect(Math.abs(point.c - expected)).toBeLessThanOrEqual(
+        maxBoundaryError,
+      );
     }
   });
 });
