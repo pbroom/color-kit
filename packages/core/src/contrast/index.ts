@@ -8,7 +8,7 @@ import {
 import { toRgb } from '../conversion/index.js';
 import { oklabToLinearRgb } from '../conversion/oklab.js';
 import { oklchToOklab } from '../conversion/oklch.js';
-import { srgbToLinearChannel } from '../utils/index.js';
+import { srgbToLinearChannel, simplifyPolyline } from '../utils/index.js';
 
 /**
  * Calculate relative luminance of a color per WCAG 2.1.
@@ -163,6 +163,28 @@ export interface ContrastRegionPathOptions {
    * @default 'linear'
    */
   edgeInterpolation?: 'linear' | 'midpoint';
+  /**
+   * If set, run Ramer-Douglas-Peucker simplification on each contour path.
+   * Tolerance is in normalized (l, c) space; e.g. 0.001–0.002.
+   * Omit or 0 to disable.
+   */
+  simplifyTolerance?: number;
+  /**
+   * `uniform`: fixed grid (lightnessSteps × chromaSteps).
+   * `adaptive`: quadtree-style refinement only in cells that cross the threshold.
+   * @default 'uniform'
+   */
+  samplingMode?: 'uniform' | 'adaptive';
+  /**
+   * In adaptive mode, base grid size per axis (subdivided where contour crosses).
+   * @default 16
+   */
+  adaptiveBaseSteps?: number;
+  /**
+   * In adaptive mode, max subdivision depth.
+   * @default 3
+   */
+  adaptiveMaxDepth?: number;
 }
 
 const DEFAULT_LIGHTNESS_STEPS = 64;
@@ -423,15 +445,6 @@ export function contrastRegionPaths(
     throw new Error('contrastRegionPaths() requires threshold > 1');
   }
 
-  const lightnessSteps = validateSteps(
-    'contrastRegionPaths() lightnessSteps',
-    options.lightnessSteps ?? DEFAULT_LIGHTNESS_STEPS,
-  );
-  const chromaSteps = validateSteps(
-    'contrastRegionPaths() chromaSteps',
-    options.chromaSteps ?? DEFAULT_CHROMA_STEPS,
-  );
-
   const maxChroma = Math.max(0, options.maxChroma ?? 0.4);
   if (maxChroma === 0) return [];
 
@@ -445,67 +458,196 @@ export function contrastRegionPaths(
   }
   const mappedReference = mapToGamut(reference, gamut);
 
-  const scoreGrid: number[][] = [];
-  for (
-    let lightnessIndex = 0;
-    lightnessIndex <= lightnessSteps;
-    lightnessIndex += 1
-  ) {
-    const l = lightnessIndex / lightnessSteps;
-    const maxInGamut = maxChromaAt(l, hue, {
-      gamut,
-      tolerance: options.tolerance,
-      maxIterations: options.maxIterations,
+  const mode = options.samplingMode ?? 'uniform';
+  let segments: Array<[ContrastRegionPoint, ContrastRegionPoint]>;
+
+  if (mode === 'adaptive') {
+    segments = contrastRegionPathsAdaptive(
+      hue,
+      threshold,
       maxChroma,
       alpha,
-    });
+      gamut,
+      mappedReference,
+      edgeInterpolation,
+      options,
+    );
+  } else {
+    const lightnessSteps = validateSteps(
+      'contrastRegionPaths() lightnessSteps',
+      options.lightnessSteps ?? DEFAULT_LIGHTNESS_STEPS,
+    );
+    const chromaSteps = validateSteps(
+      'contrastRegionPaths() chromaSteps',
+      options.chromaSteps ?? DEFAULT_CHROMA_STEPS,
+    );
 
-    const row: number[] = [];
-    for (let chromaIndex = 0; chromaIndex <= chromaSteps; chromaIndex += 1) {
-      const c = (chromaIndex / chromaSteps) * maxChroma;
+    const scoreGrid: number[][] = [];
+    for (
+      let lightnessIndex = 0;
+      lightnessIndex <= lightnessSteps;
+      lightnessIndex += 1
+    ) {
+      const l = lightnessIndex / lightnessSteps;
+      const maxInGamut = maxChromaAt(l, hue, {
+        gamut,
+        tolerance: options.tolerance,
+        maxIterations: options.maxIterations,
+        maxChroma,
+        alpha,
+      });
 
-      if (c > maxInGamut) {
-        row.push(-1);
-        continue;
+      const row: number[] = [];
+      for (let chromaIndex = 0; chromaIndex <= chromaSteps; chromaIndex += 1) {
+        const c = (chromaIndex / chromaSteps) * maxChroma;
+
+        if (c > maxInGamut) {
+          row.push(-1);
+          continue;
+        }
+
+        const sample: Color = { l, c, h: hue, alpha };
+        const mappedSample = mapToGamut(sample, gamut);
+        row.push(
+          contrastRatioUnclamped(mappedSample, mappedReference) - threshold,
+        );
       }
-
-      const sample: Color = { l, c, h: hue, alpha };
-      const mappedSample = mapToGamut(sample, gamut);
-      row.push(
-        contrastRatioUnclamped(mappedSample, mappedReference) - threshold,
-      );
+      scoreGrid.push(row);
     }
-    scoreGrid.push(row);
+
+    segments = [];
+    for (
+      let lightnessIndex = 0;
+      lightnessIndex < lightnessSteps;
+      lightnessIndex += 1
+    ) {
+      const l0 = lightnessIndex / lightnessSteps;
+      const l1 = (lightnessIndex + 1) / lightnessSteps;
+
+      for (let chromaIndex = 0; chromaIndex < chromaSteps; chromaIndex += 1) {
+        const c0 = (chromaIndex / chromaSteps) * maxChroma;
+        const c1 = ((chromaIndex + 1) / chromaSteps) * maxChroma;
+
+        const v0 = scoreGrid[lightnessIndex][chromaIndex];
+        const v1 = scoreGrid[lightnessIndex + 1][chromaIndex];
+        const v2 = scoreGrid[lightnessIndex + 1][chromaIndex + 1];
+        const v3 = scoreGrid[lightnessIndex][chromaIndex + 1];
+
+        const b0 = v0 >= 0;
+        const b1 = v1 >= 0;
+        const b2 = v2 >= 0;
+        const b3 = v3 >= 0;
+
+        const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
+        const edgePairs = segmentEdgesForCell(mask);
+        if (edgePairs.length === 0) continue;
+
+        for (const [fromEdge, toEdge] of edgePairs) {
+          const from = edgePoint(
+            fromEdge,
+            l0,
+            l1,
+            c0,
+            c1,
+            { v0, v1, v2, v3 },
+            edgeInterpolation,
+          );
+          const to = edgePoint(
+            toEdge,
+            l0,
+            l1,
+            c0,
+            c1,
+            { v0, v1, v2, v3 },
+            edgeInterpolation,
+          );
+          segments.push([from, to]);
+        }
+      }
+    }
   }
+
+  const rawPaths = buildContourPaths(segments);
+  const tol = options.simplifyTolerance;
+  if (tol != null && Number.isFinite(tol) && tol > 0) {
+    return rawPaths.map((p) => simplifyPolyline(p, tol, true));
+  }
+  return rawPaths;
+}
+
+const DEFAULT_ADAPTIVE_BASE_STEPS = 16;
+const DEFAULT_ADAPTIVE_MAX_DEPTH_CONTRAST = 3;
+
+function contrastRegionPathsAdaptive(
+  hue: number,
+  threshold: number,
+  maxChroma: number,
+  alpha: number,
+  gamut: GamutTarget,
+  mappedReference: Color,
+  edgeInterpolation: 'linear' | 'midpoint',
+  options: ContrastRegionPathOptions,
+): Array<[ContrastRegionPoint, ContrastRegionPoint]> {
+  const baseSteps = Math.max(
+    2,
+    Math.min(
+      64,
+      Number.isInteger(options.adaptiveBaseSteps) &&
+        options.adaptiveBaseSteps! > 0
+        ? options.adaptiveBaseSteps!
+        : DEFAULT_ADAPTIVE_BASE_STEPS,
+    ),
+  );
+  const maxDepth = Math.max(
+    0,
+    Math.min(
+      6,
+      Number.isInteger(options.adaptiveMaxDepth) &&
+        options.adaptiveMaxDepth! >= 0
+        ? options.adaptiveMaxDepth!
+        : DEFAULT_ADAPTIVE_MAX_DEPTH_CONTRAST,
+    ),
+  );
+
+  const maxChromaAtOpts = {
+    gamut,
+    tolerance: options.tolerance,
+    maxIterations: options.maxIterations,
+    maxChroma,
+    alpha,
+  };
+
+  const getValue = (l: number, c: number): number => {
+    if (c > maxChroma) return -1;
+    const maxInGamut = maxChromaAt(l, hue, maxChromaAtOpts);
+    if (c > maxInGamut) return -1;
+    const sample: Color = { l, c, h: hue, alpha };
+    const mappedSample = mapToGamut(sample, gamut);
+    return contrastRatioUnclamped(mappedSample, mappedReference) - threshold;
+  };
 
   const segments: Array<[ContrastRegionPoint, ContrastRegionPoint]> = [];
 
-  for (
-    let lightnessIndex = 0;
-    lightnessIndex < lightnessSteps;
-    lightnessIndex += 1
-  ) {
-    const l0 = lightnessIndex / lightnessSteps;
-    const l1 = (lightnessIndex + 1) / lightnessSteps;
+  const processCell = (
+    l0: number,
+    l1: number,
+    c0: number,
+    c1: number,
+    v00: number,
+    v10: number,
+    v11: number,
+    v01: number,
+    depth: number,
+  ): void => {
+    const b0 = v00 >= 0;
+    const b1 = v10 >= 0;
+    const b2 = v11 >= 0;
+    const b3 = v01 >= 0;
+    const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
+    if (mask === 0 || mask === 15) return;
 
-    for (let chromaIndex = 0; chromaIndex < chromaSteps; chromaIndex += 1) {
-      const c0 = (chromaIndex / chromaSteps) * maxChroma;
-      const c1 = ((chromaIndex + 1) / chromaSteps) * maxChroma;
-
-      const v0 = scoreGrid[lightnessIndex][chromaIndex];
-      const v1 = scoreGrid[lightnessIndex + 1][chromaIndex];
-      const v2 = scoreGrid[lightnessIndex + 1][chromaIndex + 1];
-      const v3 = scoreGrid[lightnessIndex][chromaIndex + 1];
-
-      const b0 = v0 >= 0;
-      const b1 = v1 >= 0;
-      const b2 = v2 >= 0;
-      const b3 = v3 >= 0;
-
-      const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
+    if (depth >= maxDepth) {
       const edgePairs = segmentEdgesForCell(mask);
-      if (edgePairs.length === 0) continue;
-
       for (const [fromEdge, toEdge] of edgePairs) {
         const from = edgePoint(
           fromEdge,
@@ -513,7 +655,7 @@ export function contrastRegionPaths(
           l1,
           c0,
           c1,
-          { v0, v1, v2, v3 },
+          { v0: v00, v1: v10, v2: v11, v3: v01 },
           edgeInterpolation,
         );
         const to = edgePoint(
@@ -522,15 +664,73 @@ export function contrastRegionPaths(
           l1,
           c0,
           c1,
-          { v0, v1, v2, v3 },
+          { v0: v00, v1: v10, v2: v11, v3: v01 },
           edgeInterpolation,
         );
         segments.push([from, to]);
       }
+      return;
+    }
+
+    const lMid = (l0 + l1) / 2;
+    const cMid = (c0 + c1) / 2;
+    const vMidBottom = getValue(lMid, c0);
+    const vMidRight = getValue(l1, cMid);
+    const vMidTop = getValue(lMid, c1);
+    const vMidLeft = getValue(l0, cMid);
+    const vCenter = getValue(lMid, cMid);
+
+    processCell(
+      l0,
+      lMid,
+      c0,
+      cMid,
+      v00,
+      vMidBottom,
+      vCenter,
+      vMidLeft,
+      depth + 1,
+    );
+    processCell(
+      lMid,
+      l1,
+      c0,
+      cMid,
+      vMidBottom,
+      v10,
+      vMidRight,
+      vCenter,
+      depth + 1,
+    );
+    processCell(
+      lMid,
+      l1,
+      cMid,
+      c1,
+      vCenter,
+      vMidRight,
+      v11,
+      vMidTop,
+      depth + 1,
+    );
+    processCell(l0, lMid, cMid, c1, vMidLeft, vCenter, vMidTop, v01, depth + 1);
+  };
+
+  for (let li = 0; li < baseSteps; li += 1) {
+    const l0 = li / baseSteps;
+    const l1 = (li + 1) / baseSteps;
+    for (let ci = 0; ci < baseSteps; ci += 1) {
+      const c0 = (ci / baseSteps) * maxChroma;
+      const c1 = ((ci + 1) / baseSteps) * maxChroma;
+      const v00 = getValue(l0, c0);
+      const v10 = getValue(l1, c0);
+      const v11 = getValue(l1, c1);
+      const v01 = getValue(l0, c1);
+      processCell(l0, l1, c0, c1, v00, v10, v11, v01, 0);
     }
   }
 
-  return buildContourPaths(segments);
+  return segments;
 }
 
 /**

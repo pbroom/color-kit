@@ -62,6 +62,12 @@ export interface ColorAreaGamutBoundaryPoint {
 export interface ColorAreaGamutBoundaryOptions {
   gamut?: GamutTarget;
   steps?: number;
+  /** RDP simplification tolerance in (l,c) space; omit to disable */
+  simplifyTolerance?: number;
+  /** 'uniform' (default) or 'adaptive' sampling */
+  samplingMode?: 'uniform' | 'adaptive';
+  adaptiveTolerance?: number;
+  adaptiveMaxDepth?: number;
 }
 
 export interface ColorAreaContrastRegionPoint {
@@ -82,6 +88,12 @@ export interface ColorAreaContrastRegionOptions {
   maxIterations?: number;
   alpha?: number;
   edgeInterpolation?: 'linear' | 'midpoint';
+  /** RDP simplification tolerance in (l,c) space; omit to disable */
+  simplifyTolerance?: number;
+  /** 'uniform' (default) or 'adaptive' for contrast grid */
+  samplingMode?: 'uniform' | 'adaptive';
+  adaptiveBaseSteps?: number;
+  adaptiveMaxDepth?: number;
 }
 
 export interface ColorAreaChromaBandOptions {
@@ -183,6 +195,10 @@ export function getColorAreaGamutBoundaryPoints(
   const boundary = gamutBoundaryPath(hue, {
     gamut: options.gamut ?? 'srgb',
     steps: options.steps,
+    simplifyTolerance: options.simplifyTolerance,
+    samplingMode: options.samplingMode,
+    adaptiveTolerance: options.adaptiveTolerance,
+    adaptiveMaxDepth: options.adaptiveMaxDepth,
   });
 
   return boundary.map((point) => {
@@ -221,6 +237,10 @@ export function getColorAreaContrastRegionPaths(
     maxIterations: options.maxIterations,
     alpha: options.alpha,
     edgeInterpolation: options.edgeInterpolation,
+    simplifyTolerance: options.simplifyTolerance,
+    samplingMode: options.samplingMode,
+    adaptiveBaseSteps: options.adaptiveBaseSteps,
+    adaptiveMaxDepth: options.adaptiveMaxDepth,
   });
 
   return paths.map((path) =>

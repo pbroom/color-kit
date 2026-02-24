@@ -141,6 +141,25 @@ const EDGE_INTERPOLATION_OPTIONS = [
   { value: 'midpoint', label: 'Midpoint' },
 ] as const;
 
+const SAMPLING_MODE_OPTIONS = [
+  { value: 'uniform', label: 'Uniform' },
+  { value: 'adaptive', label: 'Adaptive' },
+] as const;
+
+const SIMPLIFY_TOLERANCE_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: '0.001', label: '0.001' },
+  { value: '0.0015', label: '0.0015' },
+  { value: '0.002', label: '0.002' },
+] as const;
+
+const CORNER_RADIUS_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: '0.005', label: '0.005' },
+  { value: '0.008', label: '0.008' },
+  { value: '0.012', label: '0.012' },
+] as const;
+
 function clamp(value: number, min: number, max: number): number {
   if (value < min) return min;
   if (value > max) return max;
@@ -889,6 +908,22 @@ function ColorAreaPropertiesPanel() {
           sRGB fallback
         </label>
 
+        <label className="docs-toggle-row">
+          <input
+            type="checkbox"
+            checked={colorAreaState.visualize.vectorPoints}
+            onChange={(event) =>
+              setColorAreaState({
+                visualize: {
+                  ...colorAreaState.visualize,
+                  vectorPoints: event.target.checked,
+                },
+              })
+            }
+          />
+          Vector path points
+        </label>
+
         <div className="docs-control-row">
           <label className="docs-toggle-row">
             <input
@@ -1298,6 +1333,76 @@ function ColorAreaPropertiesPanel() {
           }
           options={[...EDGE_INTERPOLATION_OPTIONS]}
           label="Contrast contour interpolation"
+        />
+
+        <label className="docs-properties-label">Simplify tolerance</label>
+        <SegmentedOptions
+          value={
+            colorAreaState.tuning.simplifyTolerance == null ||
+            colorAreaState.tuning.simplifyTolerance === 0
+              ? 'off'
+              : String(colorAreaState.tuning.simplifyTolerance)
+          }
+          onChange={(value) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                simplifyTolerance: value === 'off' ? undefined : Number(value),
+              },
+            })
+          }
+          options={[...SIMPLIFY_TOLERANCE_OPTIONS]}
+          label="RDP simplification (l,c) tolerance"
+        />
+
+        <label className="docs-properties-label">Line sampling</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.lineSamplingMode ?? 'uniform'}
+          onChange={(lineSamplingMode) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                lineSamplingMode,
+              },
+            })
+          }
+          options={[...SAMPLING_MODE_OPTIONS]}
+          label="Gamut boundary sampling"
+        />
+
+        <label className="docs-properties-label">Contrast sampling</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.contrastSamplingMode ?? 'uniform'}
+          onChange={(contrastSamplingMode) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                contrastSamplingMode,
+              },
+            })
+          }
+          options={[...SAMPLING_MODE_OPTIONS]}
+          label="Contrast contour sampling"
+        />
+
+        <label className="docs-properties-label">Corner radius</label>
+        <SegmentedOptions
+          value={
+            colorAreaState.tuning.cornerRadius == null ||
+            colorAreaState.tuning.cornerRadius === 0
+              ? 'off'
+              : String(colorAreaState.tuning.cornerRadius)
+          }
+          onChange={(value) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                cornerRadius: value === 'off' ? undefined : Number(value),
+              },
+            })
+          }
+          options={[...CORNER_RADIUS_OPTIONS]}
+          label="Path corner rounding (0–1)"
         />
       </section>
     </div>

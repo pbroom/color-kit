@@ -2,7 +2,7 @@ import type { Color } from '../types.js';
 import { oklchToOklab } from '../conversion/oklch.js';
 import { oklabToLinearRgb } from '../conversion/oklab.js';
 import { linearSrgbToLinearP3 } from '../conversion/p3.js';
-import { clamp, normalizeHue } from '../utils/index.js';
+import { clamp, normalizeHue, simplifyPolyline } from '../utils/index.js';
 
 /** Small epsilon to account for floating-point rounding */
 const EPSILON = 0.000075;
@@ -90,8 +90,31 @@ export interface GamutBoundaryPathOptions extends MaxChromaAtOptions {
   /**
    * Number of equal lightness segments to sample.
    * The returned path has `steps + 1` points.
+   * Ignored when samplingMode is 'adaptive'.
    */
   steps?: number;
+  /**
+   * If set, run Ramer-Douglas-Peucker simplification after sampling.
+   * Tolerance is in normalized (l, c) space; e.g. 0.001–0.002.
+   * Omit or 0 to disable.
+   */
+  simplifyTolerance?: number;
+  /**
+   * `uniform`: fixed steps over lightness (default).
+   * `adaptive`: recursive midpoint refinement where curvature exceeds tolerance.
+   * @default 'uniform'
+   */
+  samplingMode?: 'uniform' | 'adaptive';
+  /**
+   * Max perpendicular error in (l, c) before subdividing in adaptive mode.
+   * @default 0.001
+   */
+  adaptiveTolerance?: number;
+  /**
+   * Max recursion depth in adaptive mode to avoid runaway.
+   * @default 12
+   */
+  adaptiveMaxDepth?: number;
 }
 
 export type ChromaBandMode = 'clamped' | 'proportional';
@@ -562,6 +585,10 @@ export function gamutBoundaryPath(
   hue: number,
   options: GamutBoundaryPathOptions = {},
 ): GamutBoundaryPoint[] {
+  const mode = options.samplingMode ?? 'uniform';
+  if (mode === 'adaptive') {
+    return gamutBoundaryPathAdaptive(hue, options);
+  }
   const steps = options.steps ?? 100;
   if (!Number.isInteger(steps) || steps < 2) {
     throw new Error('gamutBoundaryPath() requires steps >= 2');
@@ -573,7 +600,81 @@ export function gamutBoundaryPath(
     const c = maxChromaAt(l, hue, options);
     path.push({ l, c });
   }
+  const tol = options.simplifyTolerance;
+  if (tol != null && Number.isFinite(tol) && tol > 0) {
+    return simplifyPolyline(path, tol, false);
+  }
   return path;
+}
+
+const DEFAULT_ADAPTIVE_TOLERANCE = 0.001;
+const DEFAULT_ADAPTIVE_MAX_DEPTH = 12;
+const MIN_SEGMENT_LENGTH = 1e-6;
+
+function perpendicularDistance(
+  p: GamutBoundaryPoint,
+  a: GamutBoundaryPoint,
+  b: GamutBoundaryPoint,
+): number {
+  const dl = b.l - a.l;
+  const dc = b.c - a.c;
+  const lenSq = dl * dl + dc * dc;
+  if (lenSq <= 0) {
+    return Math.hypot(p.l - a.l, p.c - a.c);
+  }
+  let t = ((p.l - a.l) * dl + (p.c - a.c) * dc) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projL = a.l + t * dl;
+  const projC = a.c + t * dc;
+  return Math.hypot(p.l - projL, p.c - projC);
+}
+
+function gamutBoundaryPathAdaptive(
+  hue: number,
+  options: GamutBoundaryPathOptions,
+): GamutBoundaryPoint[] {
+  const tol =
+    Number.isFinite(options.adaptiveTolerance) && options.adaptiveTolerance! > 0
+      ? options.adaptiveTolerance!
+      : DEFAULT_ADAPTIVE_TOLERANCE;
+  const maxDepth =
+    Number.isInteger(options.adaptiveMaxDepth) && options.adaptiveMaxDepth! > 0
+      ? Math.min(20, Math.max(1, options.adaptiveMaxDepth!))
+      : DEFAULT_ADAPTIVE_MAX_DEPTH;
+
+  const maxChromaAtBound = (l: number): number => maxChromaAt(l, hue, options);
+
+  const recurse = (
+    a: GamutBoundaryPoint,
+    b: GamutBoundaryPoint,
+    depth: number,
+  ): GamutBoundaryPoint[] => {
+    const spanL = Math.abs(b.l - a.l);
+    if (spanL <= MIN_SEGMENT_LENGTH || depth >= maxDepth) {
+      return [b];
+    }
+    const lMid = (a.l + b.l) / 2;
+    const cMid = maxChromaAtBound(lMid);
+    const mid: GamutBoundaryPoint = { l: lMid, c: cMid };
+    const err = perpendicularDistance(mid, a, b);
+    if (err <= tol) {
+      return [b];
+    }
+    const left = recurse(a, mid, depth + 1);
+    const right = recurse(mid, b, depth + 1);
+    return [...left.slice(0, -1), ...right];
+  };
+
+  const c0 = maxChromaAtBound(0);
+  const c1 = maxChromaAtBound(1);
+  const start: GamutBoundaryPoint = { l: 0, c: c0 };
+  const end: GamutBoundaryPoint = { l: 1, c: c1 };
+  const points = [start, ...recurse(start, end, 0)];
+  const simplifyTol = options.simplifyTolerance;
+  if (simplifyTol != null && Number.isFinite(simplifyTol) && simplifyTol > 0) {
+    return simplifyPolyline(points, simplifyTol, false);
+  }
+  return points;
 }
 
 /**

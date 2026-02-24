@@ -77,6 +77,7 @@ export interface ColorAreaInspectorState {
   visualize: {
     p3Fallback: boolean;
     srgbFallback: boolean;
+    vectorPoints: boolean;
     p3Boundary: ColorAreaStrokeControl;
     srgbBoundary: ColorAreaStrokeControl;
     patternOverlay: {
@@ -110,6 +111,12 @@ export interface ColorAreaInspectorState {
     lineSteps: number;
     contrastSteps: number;
     contrastEdgeInterpolation: 'linear' | 'midpoint';
+    /** RDP simplification tolerance; undefined or 0 = off */
+    simplifyTolerance?: number;
+    lineSamplingMode?: 'uniform' | 'adaptive';
+    contrastSamplingMode?: 'uniform' | 'adaptive';
+    /** Corner radius in 0-1 for path vertices; undefined = sharp */
+    cornerRadius?: number;
   };
 }
 
@@ -177,6 +184,7 @@ function createRequestedPresetState(): ColorAreaInspectorState {
     visualize: {
       p3Fallback: false,
       srgbFallback: false,
+      vectorPoints: false,
       p3Boundary: {
         enabled: false,
         style: 'solid',
@@ -250,6 +258,10 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       lineSteps: 128,
       contrastSteps: 96,
       contrastEdgeInterpolation: 'linear',
+      simplifyTolerance: undefined,
+      lineSamplingMode: 'uniform',
+      contrastSamplingMode: 'uniform',
+      cornerRadius: undefined,
     },
   };
 }
@@ -278,6 +290,7 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
     visualize: {
       p3Fallback: true,
       srgbFallback: true,
+      vectorPoints: false,
       p3Boundary: {
         enabled: true,
         style: 'solid',
@@ -351,6 +364,10 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       lineSteps: 128,
       contrastSteps: 96,
       contrastEdgeInterpolation: 'linear',
+      simplifyTolerance: undefined,
+      lineSamplingMode: 'uniform',
+      contrastSamplingMode: 'uniform',
+      cornerRadius: undefined,
     },
   };
 }

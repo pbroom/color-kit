@@ -98,9 +98,9 @@ export function Picker() {
     }}
   />
   <ChromaBandLayer mode="closest" gamut="srgb" />
-  <GamutBoundaryLayer gamut="display-p3" />
-  <ContrastRegionLayer threshold={4.5} renderMode="line" />
-  <ContrastRegionLayer threshold={4.5} renderMode="region" regionDotOpacity={0.2} />
+  <GamutBoundaryLayer gamut="display-p3" showPathPoints />
+  <ContrastRegionLayer threshold={4.5} renderMode="line" showPathPoints />
+  <ContrastRegionLayer threshold={4.5} renderMode="region" regionDotOpacity={0.2} showPathPoints />
   <FallbackPointsLayer />
 </ColorArea>;`,
     helperApis: [
