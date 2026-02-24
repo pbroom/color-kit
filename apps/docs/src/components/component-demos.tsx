@@ -362,7 +362,8 @@ function ColorAreaDemoScene({
   const simplifyTolerance = scene.tuning.simplifyTolerance;
   const lineSamplingMode = scene.tuning.lineSamplingMode ?? 'uniform';
   const contrastSamplingMode = scene.tuning.contrastSamplingMode ?? 'uniform';
-  const cornerRadius = scene.tuning.cornerRadius;
+  const cornerRadius =
+    'cornerRadius' in scene.tuning ? scene.tuning.cornerRadius : undefined;
   const showPathPoints = scene.visualize.vectorPoints;
 
   const colorPlaneOutOfGamut = {
