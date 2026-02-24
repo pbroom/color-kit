@@ -115,11 +115,14 @@ export type {
   ChromaBandLayerMode,
   ChromaBandLayerProps,
 } from './chroma-band-layer.js';
-export { ContrastRegionLayer } from './contrast-region-layer.js';
+export {
+  ContrastRegionLayer,
+  ContrastRegionFill,
+} from './contrast-region-layer.js';
 export type {
-  ContrastRegionRenderMode,
   ContrastRegionLayerMetrics,
   ContrastRegionLayerProps,
+  ContrastRegionFillProps,
 } from './contrast-region-layer.js';
 export { FallbackPointsLayer } from './fallback-points-layer.js';
 export type { FallbackPointsLayerProps } from './fallback-points-layer.js';

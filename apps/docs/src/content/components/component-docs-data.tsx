@@ -81,6 +81,7 @@ export function Picker() {
   ColorArea,
   ColorPlane,
   ContrastRegionLayer,
+  ContrastRegionFill,
   FallbackPointsLayer,
   GamutBoundaryLayer,
 } from '@color-kit/react';
@@ -99,8 +100,10 @@ export function Picker() {
   />
   <ChromaBandLayer mode="closest" gamut="srgb" />
   <GamutBoundaryLayer gamut="display-p3" showPathPoints />
-  <ContrastRegionLayer threshold={4.5} renderMode="line" showPathPoints />
-  <ContrastRegionLayer threshold={4.5} renderMode="region" regionDotOpacity={0.2} showPathPoints />
+  <ContrastRegionLayer threshold={4.5} showPathPoints />
+  <ContrastRegionLayer threshold={4.5} showPathPoints>
+    <ContrastRegionFill fillColor="#c0e1ff" fillOpacity={0.14} dotOpacity={0.2} />
+  </ContrastRegionLayer>
   <FallbackPointsLayer />
 </ColorArea>;`,
     helperApis: [

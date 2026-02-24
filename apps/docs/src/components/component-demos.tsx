@@ -14,6 +14,7 @@ import {
   ColorSlider,
   ColorWheel,
   ContrastRegionLayer,
+  ContrastRegionFill,
   ContrastBadge,
   FallbackPointsLayer,
   GamutBoundaryLayer,
@@ -24,6 +25,7 @@ import {
   type ColorAreaChannel,
   type ColorAreaAxes,
   type ColorAreaInteractionFrameStats,
+  type ColorUpdateEvent,
   type ContrastRegionLayerMetrics,
   type ColorSliderChannel,
   type SliderHueGradientMode,
@@ -222,9 +224,18 @@ interface ColorAreaPerfSummary {
   longTaskRate: number;
 }
 
-interface ContrastMetricSample extends ContrastRegionLayerMetrics {
+interface ContrastMetricSample {
   key: string;
   ts: number;
+  source: 'sync' | 'worker';
+  requestId: number;
+  computeTimeMs: number;
+  pathCount: number;
+  pointCount: number;
+  lightnessSteps: number;
+  chromaSteps: number;
+  quality: 'high' | 'medium' | 'low';
+  isDragging: boolean;
 }
 
 function summarizePerfFrames(
@@ -447,7 +458,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('line-aa3', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('line-aa3', metrics)
+            }
             pathProps={strokePathProps(scene.contrast.lines.aa3, '#bcd6ff')}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#bcd6ff')}
@@ -464,7 +477,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('line-aa45', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('line-aa45', metrics)
+            }
             pathProps={strokePathProps(scene.contrast.lines.aa45, '#c0e1ff')}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#c0e1ff')}
@@ -481,7 +496,9 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('line-aa7', metrics)}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('line-aa7', metrics)
+            }
             pathProps={strokePathProps(scene.contrast.lines.aa7, '#d5e7ff')}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#d5e7ff')}
@@ -492,7 +509,6 @@ function ColorAreaDemoScene({
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={3}
-            renderMode="region"
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
             edgeInterpolation={contrastEdgeInterpolation}
@@ -500,21 +516,25 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('region-aa3', metrics)}
-            regionFillColor="#7ca4ff"
-            regionFillOpacity={0.12}
-            regionDotOpacity={scene.contrast.regions.aa3.opacityPercent / 100}
-            regionDotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-            regionDotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('region-aa3', metrics)
+            }
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#7ca4ff')}
-          />
+          >
+            <ContrastRegionFill
+              fillColor="#7ca4ff"
+              fillOpacity={0.12}
+              dotOpacity={scene.contrast.regions.aa3.opacityPercent / 100}
+              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
+              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            />
+          </ContrastRegionLayer>
         )}
         {scene.contrast.regions.aa45.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={4.5}
-            renderMode="region"
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
             edgeInterpolation={contrastEdgeInterpolation}
@@ -522,21 +542,25 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('region-aa45', metrics)}
-            regionFillColor="#c0e1ff"
-            regionFillOpacity={0.14}
-            regionDotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
-            regionDotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-            regionDotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('region-aa45', metrics)
+            }
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#c0e1ff')}
-          />
+          >
+            <ContrastRegionFill
+              fillColor="#c0e1ff"
+              fillOpacity={0.14}
+              dotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
+              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
+              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            />
+          </ContrastRegionLayer>
         )}
         {scene.contrast.regions.aa7.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={7}
-            renderMode="region"
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
             edgeInterpolation={contrastEdgeInterpolation}
@@ -544,15 +568,20 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
-            onMetrics={(metrics) => onContrastMetrics?.('region-aa7', metrics)}
-            regionFillColor="#dceaff"
-            regionFillOpacity={0.16}
-            regionDotOpacity={scene.contrast.regions.aa7.opacityPercent / 100}
-            regionDotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-            regionDotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+              onContrastMetrics?.('region-aa7', metrics)
+            }
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#dceaff')}
-          />
+          >
+            <ContrastRegionFill
+              fillColor="#dceaff"
+              fillOpacity={0.16}
+              dotOpacity={scene.contrast.regions.aa7.opacityPercent / 100}
+              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
+              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+            />
+          </ContrastRegionLayer>
         )}
         <FallbackPointsLayer
           showP3={scene.visualize.p3Fallback}
@@ -723,7 +752,9 @@ export function ColorAreaDemo({
       {state && setColorAreaColorState ? (
         <Color
           state={state.colorState}
-          onChange={(event) => setColorAreaColorState(event.next)}
+          onChange={(event: ColorUpdateEvent) =>
+            setColorAreaColorState(event.next)
+          }
         >
           <ColorAreaDemoScene
             axes={axes}

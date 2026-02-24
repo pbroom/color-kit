@@ -1,5 +1,7 @@
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -23,8 +25,6 @@ import type {
   ContrastRegionWorkerResponse,
 } from './workers/contrast-region.worker.types.js';
 
-export type ContrastRegionRenderMode = 'line' | 'region';
-
 export interface ContrastRegionLayerMetrics {
   source: 'sync' | 'worker';
   requestId: number;
@@ -34,11 +34,10 @@ export interface ContrastRegionLayerMetrics {
   lightnessSteps: number;
   chromaSteps: number;
   quality: 'high' | 'medium' | 'low';
-  renderMode: ContrastRegionRenderMode;
   isDragging: boolean;
 }
 
-export interface ContrastRegionLayerProps extends Omit<LayerProps, 'children'> {
+export interface ContrastRegionLayerProps extends LayerProps {
   reference?: Color;
   hue?: number;
   gamut?: GamutTarget;
@@ -52,12 +51,6 @@ export interface ContrastRegionLayerProps extends Omit<LayerProps, 'children'> {
   alpha?: number;
   edgeInterpolation?: ColorAreaContrastRegionOptions['edgeInterpolation'];
   quality?: ColorAreaLayerQuality;
-  renderMode?: ContrastRegionRenderMode;
-  regionFillColor?: string;
-  regionFillOpacity?: number;
-  regionDotOpacity?: number;
-  regionDotSize?: number;
-  regionDotGap?: number;
   pathProps?: SVGAttributes<SVGPathElement>;
   showPathPoints?: boolean;
   pointProps?: SVGAttributes<SVGCircleElement>;
@@ -70,6 +63,159 @@ export interface ContrastRegionLayerProps extends Omit<LayerProps, 'children'> {
   adaptiveMaxDepth?: number;
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
+}
+
+interface ContrastRegionPathContextValue {
+  paths: ColorAreaContrastRegionPoint[][];
+  regionPathData: string;
+  cornerRadius?: number;
+}
+
+const ContrastRegionPathContext =
+  createContext<ContrastRegionPathContextValue | null>(null);
+
+function useContrastRegionPath(): ContrastRegionPathContextValue {
+  const value = useContext(ContrastRegionPathContext);
+  if (!value) {
+    throw new Error(
+      'ContrastRegionFill must be used as a child of ContrastRegionLayer.',
+    );
+  }
+  return value;
+}
+
+export interface ContrastRegionFillProps {
+  /** Fill color for the region. @default '#c0e1ff' */
+  fillColor?: string;
+  /** Fill opacity 0–1. @default 0.22 */
+  fillOpacity?: number;
+  /** Dot pattern opacity 0–1; 0 disables dots. @default 0 */
+  dotOpacity?: number;
+  /** Dot size in px. @default 2 */
+  dotSize?: number;
+  /** Gap between dots in px. @default 3 */
+  dotGap?: number;
+  /** Additional path element props (e.g. fill). */
+  pathProps?: SVGAttributes<SVGPathElement>;
+}
+
+function clamp01(value: number): number {
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+/**
+ * Renders a filled region (and optional dot pattern) for the computed contrast
+ * contour. Must be used as a child of ContrastRegionLayer.
+ */
+export function ContrastRegionFill({
+  fillColor = '#c0e1ff',
+  fillOpacity = 0.22,
+  dotOpacity = 0,
+  dotSize = 2,
+  dotGap = 3,
+  pathProps,
+}: ContrastRegionFillProps) {
+  const { regionPathData } = useContrastRegionPath();
+  const patternId = useId().replace(/[:]/g, '_');
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [size, setSize] = useState({ width: 100, height: 100 });
+
+  const dotOpacityClamped = clamp01(dotOpacity);
+  const dotSizeEffective = Math.max(1, dotSize);
+  const dotGapEffective = Math.max(0, dotGap);
+  const dotCell = dotSizeEffective + dotGapEffective;
+  const dotCellX = (dotCell * 100) / Math.max(1, size.width);
+  const dotCellY = (dotCell * 100) / Math.max(1, size.height);
+  const dotSizeX = (dotSizeEffective * 100) / Math.max(1, size.width);
+  const dotSizeY = (dotSizeEffective * 100) / Math.max(1, size.height);
+
+  useEffect(() => {
+    if (dotOpacityClamped <= 0 || typeof window === 'undefined') {
+      return;
+    }
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const rect = svg.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      setSize((current) => {
+        if (
+          Math.abs(current.width - rect.width) < 0.5 &&
+          Math.abs(current.height - rect.height) < 0.5
+        ) {
+          return current;
+        }
+        return { width: rect.width, height: rect.height };
+      });
+    };
+    const schedule = () => {
+      if (frame !== 0) return;
+      frame = window.requestAnimationFrame(measure);
+    };
+    schedule();
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(schedule);
+      observer.observe(svg);
+      return () => {
+        observer.disconnect();
+        if (frame !== 0) window.cancelAnimationFrame(frame);
+      };
+    }
+    window.addEventListener('resize', schedule);
+    return () => {
+      window.removeEventListener('resize', schedule);
+      if (frame !== 0) window.cancelAnimationFrame(frame);
+    };
+  }, [dotOpacityClamped, regionPathData]);
+
+  if (!regionPathData) return null;
+
+  return (
+    <svg
+      ref={svgRef}
+      data-color-area-contrast-region-fill=""
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+      }}
+    >
+      {dotOpacityClamped > 0 ? (
+        <defs>
+          <pattern
+            id={patternId}
+            patternUnits="userSpaceOnUse"
+            width={dotCellX}
+            height={dotCellY}
+          >
+            <ellipse
+              cx={dotSizeX * 0.5}
+              cy={dotSizeY * 0.5}
+              rx={dotSizeX * 0.5}
+              ry={dotSizeY * 0.5}
+              fill={`rgba(255,255,255,${dotOpacityClamped})`}
+            />
+          </pattern>
+        </defs>
+      ) : null}
+      <path
+        d={regionPathData}
+        fill={fillColor}
+        fillOpacity={clamp01(fillOpacity)}
+        {...pathProps}
+      />
+      {dotOpacityClamped > 0 ? (
+        <path d={regionPathData} fill={`url(#${patternId})`} stroke="none" />
+      ) : null}
+    </svg>
+  );
 }
 
 function resolveQuality(
@@ -90,12 +236,6 @@ function qualityStepMultiplier(quality: 'high' | 'medium' | 'low'): number {
 
 function canUseWorkerOffload(): boolean {
   return typeof window !== 'undefined' && typeof Worker !== 'undefined';
-}
-
-function clamp01(value: number): number {
-  if (value < 0) return 0;
-  if (value > 1) return 1;
-  return value;
 }
 
 function nowMs(): number {
@@ -135,7 +275,8 @@ function toPath(
 }
 
 /**
- * Precomposed Layer wrapper for drawing contrast-safe paths or filled regions.
+ * Precomposed Layer wrapper for drawing contrast-safe paths. Compose
+ * ContrastRegionFill as a child for filled region + dot pattern.
  */
 export function ContrastRegionLayer({
   reference,
@@ -151,12 +292,6 @@ export function ContrastRegionLayer({
   alpha,
   edgeInterpolation = 'linear',
   quality = 'auto',
-  renderMode = 'line',
-  regionFillColor = '#c0e1ff',
-  regionFillOpacity = 0.22,
-  regionDotOpacity = 0,
-  regionDotSize = 2,
-  regionDotGap = 3,
   pathProps,
   showPathPoints = false,
   pointProps,
@@ -166,6 +301,7 @@ export function ContrastRegionLayer({
   adaptiveBaseSteps,
   adaptiveMaxDepth,
   cornerRadius,
+  children,
   ...props
 }: ContrastRegionLayerProps) {
   const { requested, axes, qualityLevel, isDragging } = useColorAreaContext();
@@ -183,8 +319,6 @@ export function ContrastRegionLayer({
   const resolvedReference = reference ?? requested;
   const resolvedHue = hue ?? requested.h;
 
-  // Freeze step counts when drag starts so adaptive quality doesn't change
-  // resolution mid-drag and cause contour flicker.
   const [frozenSteps, setFrozenSteps] = useState<{
     lightness: number;
     chroma: number;
@@ -279,16 +413,9 @@ export function ContrastRegionLayer({
   } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
-  const regionFillSvgRef = useRef<SVGSVGElement | null>(null);
-  const [regionFillSize, setRegionFillSize] = useState({
-    width: 100,
-    height: 100,
-  });
+
   const paths = useMemo(() => {
     if (isDragging && canUseWorkerOffload()) {
-      // Use latest worker result we have to avoid empty-path flicker when
-      // payload changes every frame (workerPayload ref identity). May show
-      // previous contour for one frame when params change during drag.
       return workerPaths?.paths ?? [];
     }
     return syncComputation?.paths ?? [];
@@ -310,7 +437,6 @@ export function ContrastRegionLayer({
         lightnessSteps: effectiveLightnessSteps,
         chromaSteps: effectiveChromaSteps,
         quality: resolvedQuality,
-        renderMode,
         isDragging,
       });
     },
@@ -319,7 +445,6 @@ export function ContrastRegionLayer({
       effectiveLightnessSteps,
       isDragging,
       onMetrics,
-      renderMode,
       resolvedQuality,
     ],
   );
@@ -428,7 +553,6 @@ export function ContrastRegionLayer({
     };
   }, []);
 
-  const patternId = useId().replace(/[:]/g, '_');
   const regionPathData = useMemo(
     () =>
       paths
@@ -438,80 +562,14 @@ export function ContrastRegionLayer({
     [paths, cornerRadius],
   );
 
-  const dotOpacity = clamp01(regionDotOpacity);
-  const dotSize = Math.max(1, regionDotSize);
-  const dotGap = Math.max(0, regionDotGap);
-  const dotCell = dotSize + dotGap;
-  const dotCellX = (dotCell * 100) / Math.max(1, regionFillSize.width);
-  const dotCellY = (dotCell * 100) / Math.max(1, regionFillSize.height);
-  const dotSizeX = (dotSize * 100) / Math.max(1, regionFillSize.width);
-  const dotSizeY = (dotSize * 100) / Math.max(1, regionFillSize.height);
-
-  useEffect(() => {
-    if (
-      renderMode !== 'region' ||
-      dotOpacity <= 0 ||
-      typeof window === 'undefined'
-    ) {
-      return;
-    }
-
-    const svg = regionFillSvgRef.current;
-    if (!svg) {
-      return;
-    }
-
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      const rect = svg.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) {
-        return;
-      }
-      setRegionFillSize((current) => {
-        if (
-          Math.abs(current.width - rect.width) < 0.5 &&
-          Math.abs(current.height - rect.height) < 0.5
-        ) {
-          return current;
-        }
-        return {
-          width: rect.width,
-          height: rect.height,
-        };
-      });
-    };
-
-    const schedule = () => {
-      if (frame !== 0) {
-        return;
-      }
-      frame = window.requestAnimationFrame(measure);
-    };
-
-    schedule();
-
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(() => {
-        schedule();
-      });
-      observer.observe(svg);
-      return () => {
-        observer.disconnect();
-        if (frame !== 0) {
-          window.cancelAnimationFrame(frame);
-        }
-      };
-    }
-
-    window.addEventListener('resize', schedule);
-    return () => {
-      window.removeEventListener('resize', schedule);
-      if (frame !== 0) {
-        window.cancelAnimationFrame(frame);
-      }
-    };
-  }, [dotOpacity, regionPathData, renderMode]);
+  const pathContextValue: ContrastRegionPathContextValue = useMemo(
+    () => ({
+      paths,
+      regionPathData,
+      cornerRadius,
+    }),
+    [paths, regionPathData, cornerRadius],
+  );
 
   return (
     <Layer
@@ -520,71 +578,23 @@ export function ContrastRegionLayer({
       interactive={props.interactive ?? false}
       data-color-area-contrast-region-layer=""
       data-quality={resolvedQuality}
-      data-render-mode={renderMode}
       data-worker={isDragging && canUseWorkerOffload() ? 'async' : 'sync'}
     >
-      {renderMode === 'line'
-        ? paths.map((points, index) => (
-            <Line
-              key={index}
-              points={points}
-              cornerRadius={cornerRadius}
-              closed
-              pathProps={{
-                fill: 'none',
-                ...pathProps,
-              }}
-            />
-          ))
-        : null}
-
-      {renderMode === 'region' && regionPathData ? (
-        <svg
-          ref={regionFillSvgRef}
-          data-color-area-contrast-region-fill=""
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
+      <ContrastRegionPathContext.Provider value={pathContextValue}>
+        {children}
+      </ContrastRegionPathContext.Provider>
+      {paths.map((points, index) => (
+        <Line
+          key={index}
+          points={points}
+          cornerRadius={cornerRadius}
+          closed
+          pathProps={{
+            fill: 'none',
+            ...pathProps,
           }}
-        >
-          {dotOpacity > 0 ? (
-            <defs>
-              <pattern
-                id={patternId}
-                patternUnits="userSpaceOnUse"
-                width={dotCellX}
-                height={dotCellY}
-              >
-                <ellipse
-                  cx={dotSizeX * 0.5}
-                  cy={dotSizeY * 0.5}
-                  rx={dotSizeX * 0.5}
-                  ry={dotSizeY * 0.5}
-                  fill={`rgba(255,255,255,${dotOpacity})`}
-                />
-              </pattern>
-            </defs>
-          ) : null}
-
-          <path
-            d={regionPathData}
-            fill={regionFillColor}
-            fillOpacity={clamp01(regionFillOpacity)}
-            {...pathProps}
-          />
-          {dotOpacity > 0 ? (
-            <path
-              d={regionPathData}
-              fill={`url(#${patternId})`}
-              stroke="none"
-            />
-          ) : null}
-        </svg>
-      ) : null}
-
+        />
+      ))}
       {showPathPoints ? (
         <PathPointsOverlay
           paths={paths}
