@@ -59,3 +59,36 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-02-24 — Prefer Bash 3-compatible script primitives**: For repository shell utilities, avoid `mapfile` and other Bash 4+ built-ins so scripts run both in CI Linux images and on default macOS Bash installations.
 - **2026-02-24 — PR review with inlines via one API call**: To post a PR review with body and inline comments in one shot, build a JSON payload (body + event: "COMMENT" + comments array with path, line, body) and use `gh api repos/owner/repo/pulls/N/reviews --input payload.json` so all comments are associated with the same review.
 - **2026-02-24 — Prefer slotted styling over wrapper prop sprawl**: For geometry convenience layers, keep the wrapper focused on data/shape generation and expose composable underlay/overlay child slots instead of adding many style-specific scalar props.
+
+## Cursor Cloud specific instructions
+
+### Product overview
+
+color-kit is a pnpm monorepo (Node >=18, pnpm 10.x) containing three workspace packages:
+
+| Package | Path | Purpose |
+|---|---|---|
+| `@color-kit/core` | `packages/core` | Color space conversions, manipulation, contrast, harmony, scales (tsup + vitest) |
+| `@color-kit/react` | `packages/react` | Headless React primitives for color pickers (tsup + vitest, depends on core) |
+| `@color-kit/docs` | `apps/docs` | Vite + React + Tailwind v4 + MDX documentation/demo site |
+
+No Docker, databases, or external services are required.
+
+### Common commands
+
+Standard scripts are defined in root `package.json`:
+
+- **Install deps**: `pnpm install`
+- **Build all**: `pnpm build` (order: core → react → docs)
+- **Dev mode**: `pnpm dev` (builds core+react first, then runs all three in parallel watch)
+- **Lint**: `pnpm lint` (ESLint, zero warnings enforced)
+- **Format check**: `pnpm format:check` / **Format fix**: `pnpm format`
+- **Tests**: `pnpm test` (vitest across core + react)
+- **Docs dev server only**: `pnpm --filter @color-kit/docs dev` (port 5173 by default)
+
+### Non-obvious caveats
+
+- **esbuild build scripts must be allowed**: The repo uses `pnpm.onlyBuiltDependencies: ["esbuild"]` in root `package.json` so that tsup (which depends on esbuild) can compile. Without this, `pnpm install` silently skips the esbuild postinstall and builds fail.
+- **Build order matters**: `@color-kit/react` imports from `@color-kit/core` via package exports (not source). After adding/changing core exports, rebuild core before running react tests or the docs dev server. The `dev:prepare` script handles this automatically.
+- **Docs dev server for manual testing**: Run `pnpm --filter @color-kit/docs dev --host 0.0.0.0` when you need browser-accessible testing at `http://localhost:5173/`.
+- **No `.env` files needed**: The entire stack is frontend-only with zero secrets or environment variables.
