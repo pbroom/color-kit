@@ -88,8 +88,8 @@ export {
   BENCHMARK_SELECTED_COLOR_PLANE_RENDERER,
 } from './color-plane.js';
 export type {
+  ColorPlaneEdgeBehavior,
   ColorPlaneProps,
-  ColorPlaneOutOfGamutConfig,
   ColorPlaneRenderer,
   ColorPlaneSource,
 } from './color-plane.js';
@@ -97,6 +97,8 @@ export {
   COLOR_PLANE_FRAGMENT_SHADER_SOURCE,
   COLOR_PLANE_VERTEX_SHADER_SOURCE,
 } from './color-plane-shaders.js';
+export { OutOfGamutLayer } from './out-of-gamut-layer.js';
+export type { OutOfGamutLayerProps } from './out-of-gamut-layer.js';
 export { Layer } from './layer.js';
 export type { LayerKind, LayerProps } from './layer.js';
 export { Background } from './background.js';

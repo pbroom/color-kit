@@ -18,11 +18,7 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
   uniform float u_y_channel;
   uniform float u_source;
   uniform float u_gamut;
-  uniform float u_repeat_edge_pixels;
-  uniform vec4 u_out_p3_fill;
-  uniform vec4 u_out_srgb_fill;
-  uniform vec3 u_dot_pattern;
-  uniform vec2 u_dot_pattern_scale;
+  uniform float u_edge_behavior;
 
   const float PI = 3.14159265359;
   const float EPSILON = 0.000075;
@@ -112,53 +108,6 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
     return current;
   }
 
-  void applyOutOfGamutOverlays(
-    inout vec3 color,
-    inout float alpha,
-    bool outP3,
-    bool outSrgb
-  ) {
-    float seedAlpha = clamp(u_seed.w, 0.0, 1.0);
-
-    if (outP3 && u_out_p3_fill.a > 0.0) {
-      float fillAlpha = clamp(u_out_p3_fill.a, 0.0, 1.0);
-      color = mix(color, u_out_p3_fill.rgb, fillAlpha);
-      alpha = max(alpha, fillAlpha * seedAlpha);
-    }
-
-    if (outSrgb && u_out_srgb_fill.a > 0.0) {
-      float fillAlpha = clamp(u_out_srgb_fill.a, 0.0, 1.0);
-      color = mix(color, u_out_srgb_fill.rgb, fillAlpha);
-      alpha = max(alpha, fillAlpha * seedAlpha);
-    }
-
-    bool anyOut = outP3 || outSrgb;
-    if (
-      anyOut &&
-      u_dot_pattern.x > 0.0 &&
-      u_dot_pattern.y > 0.0 &&
-      u_dot_pattern_scale.x > 0.0 &&
-      u_dot_pattern_scale.y > 0.0
-    ) {
-      float opacity = clamp(u_dot_pattern.x, 0.0, 1.0);
-      float dotSize = max(1.0, u_dot_pattern.y);
-      float dotGap = max(0.0, u_dot_pattern.z);
-      float cell = dotSize + dotGap;
-      float cssX = gl_FragCoord.x / u_dot_pattern_scale.x;
-      float cssY = gl_FragCoord.y / u_dot_pattern_scale.y;
-      float localX = mod(cssX, cell);
-      float localY = mod(cssY, cell);
-      float dotRadius = dotSize * 0.5;
-      float sampleX = localX + 0.5;
-      float sampleY = localY + 0.5;
-      vec2 delta = vec2(sampleX - dotRadius, sampleY - dotRadius);
-      float dotMask = 1.0 - step(dotRadius * dotRadius, dot(delta, delta));
-      float dotOpacity = dotMask * opacity;
-      color = mix(color, vec3(1.0), dotOpacity);
-      alpha = max(alpha, dotOpacity * seedAlpha);
-    }
-  }
-
   void main() {
     float xValue = mix(u_x_range.x, u_x_range.y, v_uv.x);
     float yValue = mix(u_y_range.x, u_y_range.y, v_uv.y);
@@ -177,7 +126,10 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
     bool outSrgb = !outP3 && !inSrgbGamut(rawLinear);
 
     vec3 renderLinear = rawLinear;
-    if (u_source >= 0.5 && u_repeat_edge_pixels >= 0.5) {
+    bool targetOut = u_gamut < 0.5 ? (outP3 || outSrgb) : outP3;
+    bool shouldClampEdge = u_source >= 0.5 && u_edge_behavior >= 0.5;
+    bool shouldClipOutOfGamut = u_source >= 0.5 && u_edge_behavior < 0.5 && targetOut;
+    if (shouldClampEdge) {
       renderLinear = mapToGamut(l, c, h);
     }
 
@@ -188,14 +140,10 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
     );
     float alpha = clamp(u_seed.w, 0.0, 1.0);
 
-    bool targetOut = u_gamut < 0.5 ? (outP3 || outSrgb) : outP3;
-    bool clipOutOfGamut = u_source >= 0.5 && u_repeat_edge_pixels < 0.5 && targetOut;
-    if (clipOutOfGamut) {
+    if (shouldClipOutOfGamut) {
       baseColor = vec3(0.0);
       alpha = 0.0;
     }
-
-    applyOutOfGamutOverlays(baseColor, alpha, outP3, outSrgb);
 
     gl_FragColor = vec4(baseColor, alpha);
   }
