@@ -22,7 +22,7 @@ export interface ComponentDocData {
   summary: string;
   description: string;
   registryName: string;
-  demo: ComponentType;
+  demo: ComponentType<{ inspectorDriven?: boolean }>;
   usage: string;
   helperApis: string[];
   features: string[];

@@ -398,11 +398,6 @@ function ColorAreaDemoScene({
     outOfP3FillOpacity: scene.background.outOfP3.opacityPercent / 100,
     outOfSrgbFillColor: scene.background.outOfSrgb.color,
     outOfSrgbFillOpacity: scene.background.outOfSrgb.opacityPercent / 100,
-    dotPatternOpacity: scene.visualize.patternOverlay.enabled
-      ? scene.visualize.patternOverlay.opacityPercent / 100
-      : 0,
-    dotPatternSize: scene.visualize.patternOverlay.dotSize,
-    dotPatternGap: scene.visualize.patternOverlay.dotGap,
   };
 
   return (

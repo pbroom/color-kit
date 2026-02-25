@@ -240,7 +240,7 @@ function DocsLayoutInner() {
               </SheetTrigger>
               <SheetContent
                 side="right"
-                className="w-[min(92vw,28rem)] p-4 sm:max-w-[28rem]"
+                className="w-[min(92vw,28rem)] p-4 sm:max-w-md"
               >
                 <SheetHeader className="pb-3">
                   <SheetTitle>Page panels</SheetTitle>
