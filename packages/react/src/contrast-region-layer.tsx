@@ -9,7 +9,15 @@ import {
   useState,
   type SVGAttributes,
 } from 'react';
-import type { Color, GamutTarget } from '@color-kit/core';
+import {
+  oklabToLinearRgb,
+  oklchToOklab,
+  toP3Gamut,
+  toSrgbGamut,
+  type Color,
+  type ContrastRegionLevel,
+  type GamutTarget,
+} from '@color-kit/core';
 import {
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
@@ -290,6 +298,7 @@ function countPathPoints(paths: ColorAreaContrastRegionPoint[][]): number {
 const CLOSED_PATH_TOLERANCE = 1e-6;
 const BOUNDARY_CONNECT_TOLERANCE = 0.02;
 const BOUNDARY_SNAP_TOLERANCE = 0.008;
+const REGION_MIN_AREA = 0.00002;
 
 type ColorAreaLcPoint = Pick<
   ColorAreaContrastRegionPoint,
@@ -323,6 +332,133 @@ function polylineLength(points: ColorAreaLcPoint[]): number {
     total += Math.hypot(next.x - prev.x, next.y - prev.y);
   }
   return total;
+}
+
+function polygonArea(points: ColorAreaLcPoint[]): number {
+  if (points.length < 3) return 0;
+  let doubleArea = 0;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    doubleArea += current.x * next.y - next.x * current.y;
+  }
+  return Math.abs(doubleArea) * 0.5;
+}
+
+function pointInPolygonLc(
+  point: Pick<ColorAreaLcPoint, 'l' | 'c'>,
+  polygon: Pick<ColorAreaLcPoint, 'l' | 'c'>[],
+): boolean {
+  let inside = false;
+  for (
+    let index = 0, prev = polygon.length - 1;
+    index < polygon.length;
+    prev = index, index += 1
+  ) {
+    const current = polygon[index];
+    const previous = polygon[prev];
+    const intersects =
+      current.c > point.c !== previous.c > point.c &&
+      point.l <
+        ((previous.l - current.l) * (point.c - current.c)) /
+          (previous.c - current.c + 1e-12) +
+          current.l;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function resolveContrastThresholdValue(
+  threshold: number | undefined,
+  level: ContrastRegionLevel | undefined,
+): number {
+  if (typeof threshold === 'number') {
+    return threshold;
+  }
+  if (level === 'AAA') return 7;
+  if (level === 'AA-large') return 3;
+  return 4.5;
+}
+
+function mapColorToGamut(color: Color, gamut: GamutTarget): Color {
+  return gamut === 'display-p3' ? toP3Gamut(color) : toSrgbGamut(color);
+}
+
+function relativeLuminanceUnclamped(color: Color): number {
+  const linear = oklabToLinearRgb(
+    oklchToOklab({
+      l: color.l,
+      c: color.c,
+      h: color.h,
+      alpha: color.alpha,
+    }),
+  );
+  return 0.2126 * linear.r + 0.7152 * linear.g + 0.0722 * linear.b;
+}
+
+function contrastRatioUnclamped(color1: Color, color2: Color): number {
+  const l1 = relativeLuminanceUnclamped(color1);
+  const l2 = relativeLuminanceUnclamped(color2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function estimateRegionValidityScore(
+  regionPath: ColorAreaContrastRegionPoint[],
+  mappedReference: Color,
+  hue: number,
+  gamut: GamutTarget,
+  threshold: number,
+): number {
+  if (regionPath.length < 3) return 0;
+  let minL = Number.POSITIVE_INFINITY;
+  let maxL = Number.NEGATIVE_INFINITY;
+  let minC = Number.POSITIVE_INFINITY;
+  let maxC = Number.NEGATIVE_INFINITY;
+  for (const point of regionPath) {
+    minL = Math.min(minL, point.l);
+    maxL = Math.max(maxL, point.l);
+    minC = Math.min(minC, point.c);
+    maxC = Math.max(maxC, point.c);
+  }
+  const spanL = Math.max(0, maxL - minL);
+  const spanC = Math.max(0, maxC - minC);
+  if (spanL <= 1e-6 || spanC <= 1e-6) {
+    return 0;
+  }
+
+  let insideCount = 0;
+  let validCount = 0;
+  const samplesPerAxis = 5;
+  for (let y = 0; y < samplesPerAxis; y += 1) {
+    for (let x = 0; x < samplesPerAxis; x += 1) {
+      const l = minL + ((x + 0.5) / samplesPerAxis) * spanL;
+      const c = minC + ((y + 0.5) / samplesPerAxis) * spanC;
+      if (!pointInPolygonLc({ l, c }, regionPath)) {
+        continue;
+      }
+      insideCount += 1;
+      const mappedSample = mapColorToGamut(
+        {
+          l,
+          c,
+          h: hue,
+          alpha: mappedReference.alpha,
+        },
+        gamut,
+      );
+      const ratio = contrastRatioUnclamped(mappedSample, mappedReference);
+      if (ratio >= threshold) {
+        validCount += 1;
+      }
+    }
+  }
+
+  if (insideCount === 0) {
+    return 0;
+  }
+  return validCount / insideCount;
 }
 
 function projectToBoundarySegment(
@@ -415,37 +551,29 @@ function projectToBoundaryWithSegment(
   return nearest;
 }
 
-function nearestBoundaryIndex(
-  point: ColorAreaLcPoint,
+function boundaryArcPointsFromSegments(
   boundary: ColorAreaLcPoint[],
-): { index: number; distance: number } {
-  let nearestIndex = 0;
-  let nearestDistance = Number.POSITIVE_INFINITY;
-  for (let index = 0; index < boundary.length; index += 1) {
-    const distance = distanceInLc(point, boundary[index]);
-    if (distance < nearestDistance) {
-      nearestDistance = distance;
-      nearestIndex = index;
-    }
-  }
-  return { index: nearestIndex, distance: nearestDistance };
-}
-
-function boundaryArcPoints(
-  boundary: ColorAreaLcPoint[],
-  fromIndex: number,
-  toIndex: number,
+  fromSegmentIndex: number,
+  toSegmentIndex: number,
   forward: boolean,
 ): ColorAreaLcPoint[] {
   const count = boundary.length;
   if (count === 0) return [];
-  const points: ColorAreaLcPoint[] = [boundary[fromIndex]];
-  let cursor = fromIndex;
+  const points: ColorAreaLcPoint[] = [];
+  const normalize = (value: number): number =>
+    ((value % count) + count) % count;
+  let segmentIndex = normalize(fromSegmentIndex);
+  const targetSegmentIndex = normalize(toSegmentIndex);
   let guard = 0;
-  while (cursor !== toIndex && guard < count + 2) {
+  while (segmentIndex !== targetSegmentIndex && guard < count + 2) {
     guard += 1;
-    cursor = forward ? (cursor + 1) % count : (cursor - 1 + count) % count;
-    points.push(boundary[cursor]);
+    const vertexIndex = forward
+      ? (segmentIndex + 1) % count
+      : segmentIndex % count;
+    points.push(boundary[vertexIndex]);
+    segmentIndex = forward
+      ? (segmentIndex + 1) % count
+      : (segmentIndex - 1 + count) % count;
   }
   return points;
 }
@@ -506,6 +634,10 @@ function withDomainBaselinePoints(
 function buildBoundaryClosedPath(
   openPath: ColorAreaContrastRegionPoint[],
   boundary: ColorAreaLcPoint[],
+  chooseCandidate?: (
+    forwardCandidate: ColorAreaContrastRegionPoint[],
+    backwardCandidate: ColorAreaContrastRegionPoint[],
+  ) => ColorAreaContrastRegionPoint[] | null,
 ): ColorAreaContrastRegionPoint[] | null {
   if (openPath.length < 2 || boundary.length < 2) {
     return null;
@@ -517,8 +649,6 @@ function buildBoundaryClosedPath(
   if (!startProjection || !endProjection) {
     return null;
   }
-  const startMatch = nearestBoundaryIndex(startProjection.projected, boundary);
-  const endMatch = nearestBoundaryIndex(endProjection.projected, boundary);
   if (
     startProjection.distance > BOUNDARY_CONNECT_TOLERANCE ||
     endProjection.distance > BOUNDARY_CONNECT_TOLERANCE
@@ -527,10 +657,10 @@ function buildBoundaryClosedPath(
   }
 
   const buildCandidate = (forward: boolean): ColorAreaContrastRegionPoint[] => {
-    const connector = boundaryArcPoints(
+    const connector = boundaryArcPointsFromSegments(
       boundary,
-      endMatch.index,
-      startMatch.index,
+      endProjection.segmentIndex,
+      startProjection.segmentIndex,
       forward,
     );
     const candidate: ColorAreaContrastRegionPoint[] = [...openPath];
@@ -569,6 +699,13 @@ function buildBoundaryClosedPath(
 
   const forwardCandidate = buildCandidate(true);
   const backwardCandidate = buildCandidate(false);
+  const chosenCandidate = chooseCandidate?.(
+    forwardCandidate,
+    backwardCandidate,
+  );
+  if (chosenCandidate) {
+    return chosenCandidate;
+  }
   if (forwardCandidate.length < 3 && backwardCandidate.length < 3) {
     return null;
   }
@@ -577,6 +714,17 @@ function buildBoundaryClosedPath(
   }
   if (backwardCandidate.length < 3) {
     return forwardCandidate;
+  }
+  const forwardArea = polygonArea(forwardCandidate);
+  const backwardArea = polygonArea(backwardCandidate);
+  const smallerArea = Math.min(forwardArea, backwardArea);
+  const largerArea = Math.max(forwardArea, backwardArea);
+  // Prefer the non-degenerate candidate when one option nearly collapses.
+  if (
+    largerArea > 0 &&
+    (smallerArea <= 0.00005 || largerArea / Math.max(smallerArea, 1e-9) > 25)
+  ) {
+    return forwardArea >= backwardArea ? forwardCandidate : backwardCandidate;
   }
   return polylineLength(forwardCandidate) <= polylineLength(backwardCandidate)
     ? forwardCandidate
@@ -661,6 +809,10 @@ export function ContrastRegionLayer({
 
   const resolvedReference = reference ?? requested;
   const resolvedHue = hue ?? requested.h;
+  const contrastReference = useMemo(
+    () => mapColorToGamut(resolvedReference, gamut),
+    [gamut, resolvedReference],
+  );
 
   const [frozenSteps, setFrozenSteps] = useState<{
     lightness: number;
@@ -904,7 +1056,7 @@ export function ContrastRegionLayer({
     }
     const start = nowMs();
     const paths = getColorAreaContrastRegionPaths(
-      resolvedReference,
+      contrastReference,
       resolvedHue,
       axes,
       options,
@@ -913,15 +1065,15 @@ export function ContrastRegionLayer({
       paths,
       computeTimeMs: nowMs() - start,
     };
-  }, [axes, isDragging, options, resolvedHue, resolvedReference]);
+  }, [axes, contrastReference, isDragging, options, resolvedHue]);
   const workerPayload = useMemo(
     () => ({
-      reference: resolvedReference,
+      reference: contrastReference,
       hue: resolvedHue,
       axes,
       options,
     }),
-    [axes, options, resolvedHue, resolvedReference],
+    [axes, contrastReference, options, resolvedHue],
   );
 
   const [workerPaths, setWorkerPaths] = useState<{
@@ -935,13 +1087,19 @@ export function ContrastRegionLayer({
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
 
+  const rawPathsAreFresh = useMemo(() => {
+    if (!(isDragging && canUseWorkerOffload())) return true;
+    return (
+      activeWorkerRequestId != null &&
+      workerPaths != null &&
+      workerPaths.requestId === activeWorkerRequestId &&
+      workerPaths.paths.length > 0
+    );
+  }, [activeWorkerRequestId, isDragging, workerPaths]);
+
   const rawPaths = useMemo(() => {
     if (isDragging && canUseWorkerOffload()) {
-      const hasCurrentWorkerResponse =
-        activeWorkerRequestId != null &&
-        workerPaths != null &&
-        workerPaths.requestId === activeWorkerRequestId;
-      if (hasCurrentWorkerResponse && workerPaths.paths.length > 0) {
+      if (rawPathsAreFresh && workerPaths != null) {
         return workerPaths.paths;
       }
       if (lastStablePaths.length > 0) {
@@ -951,9 +1109,9 @@ export function ContrastRegionLayer({
     }
     return syncComputation?.paths ?? [];
   }, [
-    activeWorkerRequestId,
     isDragging,
     lastStablePaths,
+    rawPathsAreFresh,
     syncComputation,
     workerPaths,
   ]);
@@ -1138,31 +1296,101 @@ export function ContrastRegionLayer({
     };
   }, []);
 
+  const resolvedThreshold = useMemo(
+    () => resolveContrastThresholdValue(threshold, level),
+    [level, threshold],
+  );
+  const mappedReference = contrastReference;
+  const referencePoint = useMemo(
+    () => ({
+      l: mappedReference.l,
+      c: mappedReference.c,
+    }),
+    [mappedReference.c, mappedReference.l],
+  );
+
   const regionFillPaths = useMemo(() => {
-    const naturallyClosed = paths.filter(
-      (points) => points.length >= 2 && isPathClosed(points),
-    );
-    if (naturallyClosed.length > 0) {
-      return naturallyClosed;
+    const candidates: ColorAreaContrastRegionPoint[][] = [];
+    for (const points of paths) {
+      if (points.length < 2) {
+        continue;
+      }
+      if (isPathClosed(points)) {
+        candidates.push(points);
+        continue;
+      }
+      const boundaryClosedPath = buildBoundaryClosedPath(
+        points,
+        contrastFillBoundary,
+        (forwardCandidate, backwardCandidate) => {
+          const forwardContainsReference = pointInPolygonLc(
+            referencePoint,
+            forwardCandidate,
+          );
+          const backwardContainsReference = pointInPolygonLc(
+            referencePoint,
+            backwardCandidate,
+          );
+          if (forwardContainsReference !== backwardContainsReference) {
+            return forwardContainsReference
+              ? backwardCandidate
+              : forwardCandidate;
+          }
+          const forwardScore = estimateRegionValidityScore(
+            forwardCandidate,
+            mappedReference,
+            resolvedHue,
+            gamut,
+            resolvedThreshold,
+          );
+          const backwardScore = estimateRegionValidityScore(
+            backwardCandidate,
+            mappedReference,
+            resolvedHue,
+            gamut,
+            resolvedThreshold,
+          );
+          if (Math.abs(forwardScore - backwardScore) > 0.08) {
+            return forwardScore >= backwardScore
+              ? forwardCandidate
+              : backwardCandidate;
+          }
+          return null;
+        },
+      );
+      if (boundaryClosedPath) {
+        candidates.push(boundaryClosedPath);
+        continue;
+      }
+      // Keep a stable fill even when boundary closure can't be resolved.
+      const directClosed = dedupeSequential([...points, points[0]]);
+      if (directClosed.length >= 3) {
+        candidates.push(directClosed);
+      }
     }
-    const longestOpenPath = paths.find((points) => points.length >= 2);
-    if (!longestOpenPath) {
+    if (candidates.length === 0) {
       return [];
     }
-    const boundaryClosedPath = buildBoundaryClosedPath(
-      longestOpenPath,
-      contrastFillBoundary,
+    const candidatesExcludingReference = candidates.filter(
+      (candidate) => !pointInPolygonLc(referencePoint, candidate),
     );
-    if (boundaryClosedPath) {
-      return [boundaryClosedPath];
-    }
-    // Keep a stable fill even when boundary closure can't be resolved this frame.
-    const directClosed = dedupeSequential([
-      ...longestOpenPath,
-      longestOpenPath[0],
-    ]);
-    return directClosed.length >= 3 ? [directClosed] : [];
-  }, [paths, contrastFillBoundary]);
+    const referenceSafeCandidates =
+      candidatesExcludingReference.length > 0
+        ? candidatesExcludingReference
+        : candidates;
+    const nonDegenerate = referenceSafeCandidates.filter(
+      (candidate) => polygonArea(candidate) >= REGION_MIN_AREA,
+    );
+    return nonDegenerate.length > 0 ? nonDegenerate : referenceSafeCandidates;
+  }, [
+    contrastFillBoundary,
+    gamut,
+    mappedReference,
+    paths,
+    referencePoint,
+    resolvedHue,
+    resolvedThreshold,
+  ]);
 
   const regionPathData = useMemo(
     () =>
@@ -1174,17 +1402,17 @@ export function ContrastRegionLayer({
   );
 
   useEffect(() => {
-    if (regionPathData.length > 0) {
+    if (regionPathData.length > 0 && rawPathsAreFresh) {
       queueMicrotask(() => setLastStableRegionPathData(regionPathData));
       return;
     }
-    if (!isDragging) {
+    if (!isDragging && regionPathData.length === 0) {
       queueMicrotask(() => setLastStableRegionPathData(''));
     }
-  }, [isDragging, regionPathData]);
+  }, [isDragging, rawPathsAreFresh, regionPathData]);
 
   const visibleRegionPathData =
-    isDragging && regionPathData.length === 0
+    isDragging && (!rawPathsAreFresh || regionPathData.length === 0)
       ? lastStableRegionPathData
       : regionPathData;
 

@@ -270,4 +270,28 @@ describe('contrastRegionPaths()', () => {
       }
     }
   });
+
+  it('adaptive sampling keeps high-fidelity detail near sharp gamut edges', () => {
+    const reference = { l: 0.0839, c: 0.0158, h: 9, alpha: 1 };
+    const adaptive = contrastRegionPaths(reference, 9, {
+      gamut: 'srgb',
+      threshold: 3,
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 8,
+      adaptiveMaxDepth: 2,
+      edgeInterpolation: 'linear',
+    });
+    const uniform = contrastRegionPaths(reference, 9, {
+      gamut: 'srgb',
+      threshold: 3,
+      samplingMode: 'uniform',
+      lightnessSteps: 8,
+      chromaSteps: 8,
+      edgeInterpolation: 'linear',
+    });
+
+    const adaptivePoints = adaptive.reduce((sum, path) => sum + path.length, 0);
+    const uniformPoints = uniform.reduce((sum, path) => sum + path.length, 0);
+    expect(adaptivePoints).toBeGreaterThan(uniformPoints * 4);
+  });
 });

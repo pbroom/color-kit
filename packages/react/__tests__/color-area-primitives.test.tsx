@@ -2,7 +2,13 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, waitFor } from '@testing-library/react';
-import { inP3Gamut, inSrgbGamut, type Color } from '@color-kit/core';
+import {
+  inP3Gamut,
+  inSrgbGamut,
+  toSrgbGamut,
+  type Color,
+} from '@color-kit/core';
+import * as colorAreaApi from '../src/api/color-area.js';
 import { ChromaBandLayer } from '../src/chroma-band-layer.js';
 import { ColorArea } from '../src/color-area.js';
 import { ColorPlane } from '../src/color-plane.js';
@@ -12,6 +18,74 @@ import {
 } from '../src/contrast-region-layer.js';
 import { FallbackPointsLayer } from '../src/fallback-points-layer.js';
 import { GamutBoundaryLayer } from '../src/gamut-boundary-layer.js';
+
+function pathAreaFromD(pathData: string): number {
+  const matches = Array.from(
+    pathData.matchAll(/(?:M|L)\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g),
+  );
+  const points = matches.map((match) => ({
+    x: Number(match[1]),
+    y: Number(match[2]),
+  }));
+  if (points.length < 3) {
+    return 0;
+  }
+  let doubleArea = 0;
+  for (let index = 0; index < points.length; index += 1) {
+    const current = points[index];
+    const next = points[(index + 1) % points.length];
+    doubleArea += current.x * next.y - next.x * current.y;
+  }
+  return Math.abs(doubleArea) * 0.5;
+}
+
+function pathSubpathsFromD(
+  pathData: string,
+): Array<Array<{ x: number; y: number }>> {
+  return pathData
+    .split(/(?=M\s)/)
+    .map((subpath) =>
+      Array.from(
+        subpath.matchAll(/(?:M|L)\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g),
+      ).map((match) => ({
+        x: Number(match[1]),
+        y: Number(match[2]),
+      })),
+    )
+    .filter((points) => points.length >= 3);
+}
+
+function pointInPolygon(
+  point: { x: number; y: number },
+  polygon: Array<{ x: number; y: number }>,
+): boolean {
+  let inside = false;
+  for (
+    let index = 0, prev = polygon.length - 1;
+    index < polygon.length;
+    prev = index, index += 1
+  ) {
+    const current = polygon[index];
+    const previous = polygon[prev];
+    const intersects =
+      current.y > point.y !== previous.y > point.y &&
+      point.x <
+        ((previous.x - current.x) * (point.y - current.y)) /
+          (previous.y - current.y + 1e-12) +
+          current.x;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function pathContainsPoint(
+  pathData: string,
+  point: { x: number; y: number },
+): boolean {
+  return pathSubpathsFromD(pathData).some((subpath) =>
+    pointInPolygon(point, subpath),
+  );
+}
 
 afterEach(() => {
   cleanup();
@@ -182,6 +256,155 @@ describe('ColorArea primitives', () => {
     expect(
       container.querySelector('[data-color-area-contrast-region-fill]'),
     ).toBeTruthy();
+  });
+
+  it('keeps AAA adaptive fill non-degenerate near cusp transitions', () => {
+    const requested: Color = { l: 0.878, c: 0.1621, h: 292.72, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ContrastRegionLayer threshold={7} samplingMode="adaptive">
+          <ContrastRegionFill dotOpacity={0} />
+        </ContrastRegionLayer>
+      </ColorArea>,
+    );
+
+    const fillPath = container.querySelector(
+      '[data-color-area-contrast-region-fill] path',
+    );
+    expect(fillPath).toBeTruthy();
+
+    const pathData = fillPath?.getAttribute('d') ?? '';
+    expect(pathData.length).toBeGreaterThan(0);
+    expect(pathAreaFromD(pathData)).toBeGreaterThan(50);
+  });
+
+  it.each([3, 4.5])(
+    'keeps hue-zero fill off the reference point (threshold %s)',
+    (threshold) => {
+      const requested: Color = { l: 0.4959, c: 0.0902, h: 0, alpha: 1 };
+      const { container } = render(
+        <ColorArea requested={requested} onChangeRequested={() => {}}>
+          <ContrastRegionLayer threshold={threshold} samplingMode="adaptive">
+            <ContrastRegionFill dotOpacity={0} />
+          </ContrastRegionLayer>
+        </ColorArea>,
+      );
+
+      const fillPath = container.querySelector(
+        '[data-color-area-contrast-region-fill] path',
+      );
+      expect(fillPath).toBeTruthy();
+      const pathData = fillPath?.getAttribute('d') ?? '';
+      const thumbPoint = {
+        x: requested.l * 100,
+        y: (1 - requested.c / 0.4) * 100,
+      };
+      expect(pathContainsPoint(pathData, thumbPoint)).toBe(false);
+    },
+  );
+
+  it('keeps out-of-gamut reference fallback outside filled region', () => {
+    const requested: Color = { l: 0.62, c: 0.33, h: 9, alpha: 1 };
+    expect(inSrgbGamut(requested)).toBe(false);
+
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ContrastRegionLayer
+          gamut="srgb"
+          threshold={4.5}
+          samplingMode="adaptive"
+        >
+          <ContrastRegionFill dotOpacity={0} />
+        </ContrastRegionLayer>
+      </ColorArea>,
+    );
+
+    const fillPath = container.querySelector(
+      '[data-color-area-contrast-region-fill] path',
+    );
+    expect(fillPath).toBeTruthy();
+    const pathData = fillPath?.getAttribute('d') ?? '';
+    const fallback = toSrgbGamut(requested);
+    const fallbackPoint = {
+      x: fallback.l * 100,
+      y: (1 - fallback.c / 0.4) * 100,
+    };
+    expect(pathContainsPoint(pathData, fallbackPoint)).toBe(false);
+  });
+
+  it('closes right-edge arc without vertex kink on boundary', () => {
+    const boundary = [
+      { l: 0, c: 0, x: 0, y: 1 },
+      { l: 0, c: 1, x: 0, y: 0 },
+      { l: 1, c: 1, x: 1, y: 0 },
+      { l: 1, c: 0, x: 1, y: 1 },
+    ];
+    vi.spyOn(colorAreaApi, 'getColorAreaGamutBoundaryPoints').mockReturnValue(
+      boundary,
+    );
+    vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths').mockReturnValue([
+      [
+        { l: 1, c: 0.2, x: 1, y: 0.8 },
+        { l: 0.7, c: 0.5, x: 0.7, y: 0.5 },
+        { l: 1, c: 0.8, x: 1, y: 0.2 },
+      ],
+    ]);
+
+    const requested: Color = { l: 0.3, c: 0.2, h: 210, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ContrastRegionLayer threshold={4.5}>
+          <ContrastRegionFill dotOpacity={0} />
+        </ContrastRegionLayer>
+      </ColorArea>,
+    );
+
+    const fillPath = container.querySelector(
+      '[data-color-area-contrast-region-fill] path',
+    );
+    expect(fillPath).toBeTruthy();
+    const pathData = fillPath?.getAttribute('d') ?? '';
+    expect(pathData).not.toContain('L 100.000 0.000');
+    expect(pathData).not.toContain('L 100.000 100.000');
+  });
+
+  it('renders multiple fill subpaths when both contrast sides exist', () => {
+    const boundary = [
+      { l: 0, c: 0, x: 0, y: 1 },
+      { l: 0, c: 1, x: 0, y: 0 },
+      { l: 1, c: 1, x: 1, y: 0 },
+      { l: 1, c: 0, x: 1, y: 1 },
+    ];
+    vi.spyOn(colorAreaApi, 'getColorAreaGamutBoundaryPoints').mockReturnValue(
+      boundary,
+    );
+    vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths').mockReturnValue([
+      [
+        { l: 0.2, c: 0, x: 0.2, y: 1 },
+        { l: 0.4, c: 1, x: 0.4, y: 0 },
+      ],
+      [
+        { l: 0.6, c: 1, x: 0.6, y: 0 },
+        { l: 0.8, c: 0, x: 0.8, y: 1 },
+      ],
+    ]);
+
+    const requested: Color = { l: 0.55, c: 0.12, h: 210, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ContrastRegionLayer threshold={4.5}>
+          <ContrastRegionFill dotOpacity={0} />
+        </ContrastRegionLayer>
+      </ColorArea>,
+    );
+
+    const fillPath = container.querySelector(
+      '[data-color-area-contrast-region-fill] path',
+    );
+    expect(fillPath).toBeTruthy();
+    const pathData = fillPath?.getAttribute('d') ?? '';
+    const moveCommandCount = pathData.match(/\bM\b/g)?.length ?? 0;
+    expect(moveCommandCount).toBeGreaterThan(1);
   });
 
   it('falls back to cpu when gpu renderer is unavailable', async () => {
