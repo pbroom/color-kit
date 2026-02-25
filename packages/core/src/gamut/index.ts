@@ -720,9 +720,10 @@ function gamutBoundaryPathAdaptive(
     gamut,
     method: 'direct',
   });
+  const cuspLightness = clamp(cusp.l, 0, 1);
   const cuspPoint: GamutBoundaryPoint = {
-    l: clamp(cusp.l, 0, 1),
-    c: Math.min(Math.max(0, cusp.c), maxChromaBound),
+    l: cuspLightness,
+    c: Math.min(Math.max(0, maxChromaAtBound(cuspLightness)), maxChromaBound),
   };
   const anchorLightnesses: number[] = [];
   appendUniqueLightness(anchorLightnesses, 0);

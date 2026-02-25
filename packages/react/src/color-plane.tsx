@@ -599,7 +599,7 @@ function drawWithWebgl(
     axes: Parameters<typeof colorFromColorAreaPosition>[1];
     seed: Color;
     outOfGamut: ResolvedOutOfGamutConfig;
-    dotPatternScale: number;
+    dotPatternScale: { x: number; y: number };
   },
 ): boolean {
   const { gl, uniforms } = state;
@@ -642,14 +642,15 @@ function drawWithWebgl(
     params.outOfGamut.outOfSrgbFill.b,
     params.outOfGamut.outOfSrgbFill.a,
   );
-  const scale = Math.max(1e-6, params.dotPatternScale);
+  const scaleX = Math.max(1e-6, params.dotPatternScale.x);
+  const scaleY = Math.max(1e-6, params.dotPatternScale.y);
   gl.uniform3f(
     uniforms.dotPattern,
     params.outOfGamut.dotPattern.opacity,
     params.outOfGamut.dotPattern.size,
     params.outOfGamut.dotPattern.gap,
   );
-  gl.uniform1f(uniforms.dotPatternScale, scale);
+  gl.uniform2f(uniforms.dotPatternScale, scaleX, scaleY);
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return gl.getError() === gl.NO_ERROR;
@@ -836,7 +837,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
             axes,
             seed: planeSeed,
             outOfGamut: resolvedOutOfGamut,
-            dotPatternScale: scaleX,
+            dotPatternScale: { x: scaleX, y: scaleY },
           })
         ) {
           setActiveRenderer('gpu');

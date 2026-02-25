@@ -1087,19 +1087,22 @@ export function ContrastRegionLayer({
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
 
-  const rawPathsAreFresh = useMemo(() => {
-    if (!(isDragging && canUseWorkerOffload())) return true;
-    return (
+  const hasCurrentWorkerResponse = useMemo(
+    () =>
       activeWorkerRequestId != null &&
       workerPaths != null &&
-      workerPaths.requestId === activeWorkerRequestId &&
-      workerPaths.paths.length > 0
-    );
-  }, [activeWorkerRequestId, isDragging, workerPaths]);
+      workerPaths.requestId === activeWorkerRequestId,
+    [activeWorkerRequestId, workerPaths],
+  );
+
+  const rawPathsAreFresh = useMemo(() => {
+    if (!(isDragging && canUseWorkerOffload())) return true;
+    return hasCurrentWorkerResponse;
+  }, [hasCurrentWorkerResponse, isDragging]);
 
   const rawPaths = useMemo(() => {
     if (isDragging && canUseWorkerOffload()) {
-      if (rawPathsAreFresh && workerPaths != null) {
+      if (hasCurrentWorkerResponse && workerPaths != null) {
         return workerPaths.paths;
       }
       if (lastStablePaths.length > 0) {
@@ -1111,7 +1114,7 @@ export function ContrastRegionLayer({
   }, [
     isDragging,
     lastStablePaths,
-    rawPathsAreFresh,
+    hasCurrentWorkerResponse,
     syncComputation,
     workerPaths,
   ]);
@@ -1186,20 +1189,16 @@ export function ContrastRegionLayer({
 
   useEffect(() => {
     if (!isDragging) {
-      if (syncComputation?.paths && syncComputation.paths.length > 0) {
+      if (syncComputation?.paths) {
         queueMicrotask(() => setLastStablePaths(syncComputation.paths));
       }
       return;
     }
-    const hasCurrentWorkerResponse =
-      activeWorkerRequestId != null &&
-      workerPaths != null &&
-      workerPaths.requestId === activeWorkerRequestId;
-    if (!hasCurrentWorkerResponse || workerPaths.paths.length === 0) {
+    if (!hasCurrentWorkerResponse || !workerPaths) {
       return;
     }
     queueMicrotask(() => setLastStablePaths(workerPaths.paths));
-  }, [activeWorkerRequestId, isDragging, syncComputation, workerPaths]);
+  }, [hasCurrentWorkerResponse, isDragging, syncComputation, workerPaths]);
 
   useEffect(() => {
     if (!canUseWorkerOffload() || !isDragging) {
@@ -1402,17 +1401,13 @@ export function ContrastRegionLayer({
   );
 
   useEffect(() => {
-    if (regionPathData.length > 0 && rawPathsAreFresh) {
+    if (rawPathsAreFresh) {
       queueMicrotask(() => setLastStableRegionPathData(regionPathData));
-      return;
     }
-    if (!isDragging && regionPathData.length === 0) {
-      queueMicrotask(() => setLastStableRegionPathData(''));
-    }
-  }, [isDragging, rawPathsAreFresh, regionPathData]);
+  }, [rawPathsAreFresh, regionPathData]);
 
   const visibleRegionPathData =
-    isDragging && (!rawPathsAreFresh || regionPathData.length === 0)
+    isDragging && !rawPathsAreFresh
       ? lastStableRegionPathData
       : regionPathData;
 

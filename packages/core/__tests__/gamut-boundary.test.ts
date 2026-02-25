@@ -156,9 +156,37 @@ describe('gamutBoundaryPath()', () => {
     const cuspPoint = adaptive.find(
       (point) => Math.abs(point.l - cusp.l) <= 1e-12,
     );
-    const expectedCuspChroma = Math.min(cusp.c, 0.4);
+    const expectedCuspChroma = maxChromaAt(cusp.l, hue, {
+      gamut: 'display-p3',
+    });
 
     expect(cuspPoint).toBeDefined();
+    expect(cuspPoint?.c ?? 0).toBeCloseTo(expectedCuspChroma, 10);
+  });
+
+  it('adaptive cusp anchor respects maxChromaAt search options', () => {
+    const hue = 252;
+    const searchOptions = {
+      gamut: 'display-p3' as const,
+      tolerance: 0.01,
+      maxIterations: 1,
+      maxChroma: 0.4,
+    };
+    const cusp = maxChromaForHue(hue, {
+      gamut: searchOptions.gamut,
+      method: 'direct',
+    });
+    const adaptive = gamutBoundaryPath(hue, {
+      ...searchOptions,
+      samplingMode: 'adaptive',
+      adaptiveTolerance: 0.001,
+      adaptiveMaxDepth: 12,
+    });
+    const cuspPoint = adaptive.find(
+      (point) => Math.abs(point.l - cusp.l) <= 1e-9,
+    );
+    expect(cuspPoint).toBeDefined();
+    const expectedCuspChroma = maxChromaAt(cusp.l, hue, searchOptions);
     expect(cuspPoint?.c ?? 0).toBeCloseTo(expectedCuspChroma, 10);
   });
 

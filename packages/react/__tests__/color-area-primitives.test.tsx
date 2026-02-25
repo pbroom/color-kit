@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import {
   inP3Gamut,
   inSrgbGamut,
@@ -90,6 +90,7 @@ function pathContainsPoint(
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('ColorArea primitives', () => {
@@ -405,6 +406,118 @@ describe('ColorArea primitives', () => {
     const pathData = fillPath?.getAttribute('d') ?? '';
     const moveCommandCount = pathData.match(/\bM\b/g)?.length ?? 0;
     expect(moveCommandCount).toBeGreaterThan(1);
+  });
+
+  it('clears drag overlay when the latest worker response is empty', async () => {
+    const boundary = [
+      { l: 0, c: 0, x: 0, y: 1 },
+      { l: 0, c: 1, x: 0, y: 0 },
+      { l: 1, c: 1, x: 1, y: 0 },
+      { l: 1, c: 0, x: 1, y: 1 },
+    ];
+    vi.spyOn(colorAreaApi, 'getColorAreaGamutBoundaryPoints').mockReturnValue(
+      boundary,
+    );
+    vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths').mockReturnValue(
+      [],
+    );
+
+    const firstResponsePaths = [
+      [
+        { l: 0.2, c: 0.2, x: 0.2, y: 0.8 },
+        { l: 0.5, c: 0.5, x: 0.5, y: 0.5 },
+        { l: 0.8, c: 0.2, x: 0.8, y: 0.8 },
+      ],
+    ];
+
+    class MockWorker {
+      private listeners = new Set<(event: MessageEvent<unknown>) => void>();
+
+      addEventListener(
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+      ): void {
+        if (type !== 'message' || typeof listener !== 'function') {
+          return;
+        }
+        this.listeners.add(listener as (event: MessageEvent<unknown>) => void);
+      }
+
+      removeEventListener(
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+      ): void {
+        if (type !== 'message' || typeof listener !== 'function') {
+          return;
+        }
+        this.listeners.delete(
+          listener as (event: MessageEvent<unknown>) => void,
+        );
+      }
+
+      postMessage(message: { id: number }): void {
+        const payload = {
+          id: message.id,
+          paths: message.id === 1 ? firstResponsePaths : [],
+          computeTimeMs: 1,
+        };
+        queueMicrotask(() => {
+          for (const listener of this.listeners) {
+            listener({ data: payload } as MessageEvent<unknown>);
+          }
+        });
+      }
+
+      terminate(): void {}
+    }
+
+    vi.stubGlobal('Worker', MockWorker as unknown as typeof Worker);
+
+    const requestedA: Color = { l: 0.35, c: 0.16, h: 210, alpha: 1 };
+    const requestedB: Color = { l: 0.66, c: 0.08, h: 210, alpha: 1 };
+    const onChangeRequested = vi.fn();
+    const { container, rerender } = render(
+      <ColorArea requested={requestedA} onChangeRequested={onChangeRequested}>
+        <ContrastRegionLayer threshold={4.5} samplingMode="adaptive" />
+      </ColorArea>,
+    );
+
+    const root = container.querySelector('[data-color-area]') as HTMLDivElement;
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    fireEvent.pointerDown(root, {
+      pointerId: 1,
+      clientX: 20,
+      clientY: 80,
+    });
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-color-area-line]').length).toBe(
+        1,
+      );
+    });
+
+    rerender(
+      <ColorArea requested={requestedB} onChangeRequested={onChangeRequested}>
+        <ContrastRegionLayer threshold={4.5} samplingMode="adaptive" />
+      </ColorArea>,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-color-area-line]').length).toBe(
+        0,
+      );
+    });
   });
 
   it('falls back to cpu when gpu renderer is unavailable', async () => {
