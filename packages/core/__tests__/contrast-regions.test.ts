@@ -247,4 +247,51 @@ describe('contrastRegionPaths()', () => {
       }
     }
   });
+
+  it('adaptive mode produces stitched contours with shared vertices within tolerance', () => {
+    const reference = fromHex('#ffffff');
+    const paths = contrastRegionPaths(reference, 200, {
+      level: 'AA',
+      gamut: 'srgb',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 12,
+      adaptiveMaxDepth: 3,
+      edgeInterpolation: 'linear',
+    });
+    expect(paths.length).toBeGreaterThan(0);
+    const totalPoints = paths.reduce((s, p) => s + p.length, 0);
+    expect(totalPoints).toBeGreaterThan(2);
+    for (const path of paths) {
+      for (const point of path) {
+        expect(point.l).toBeGreaterThanOrEqual(0);
+        expect(point.l).toBeLessThanOrEqual(1);
+        expect(point.c).toBeGreaterThanOrEqual(0);
+        expect(point.c).toBeLessThanOrEqual(0.4);
+      }
+    }
+  });
+
+  it('adaptive sampling keeps high-fidelity detail near sharp gamut edges', () => {
+    const reference = { l: 0.0839, c: 0.0158, h: 9, alpha: 1 };
+    const adaptive = contrastRegionPaths(reference, 9, {
+      gamut: 'srgb',
+      threshold: 3,
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 8,
+      adaptiveMaxDepth: 2,
+      edgeInterpolation: 'linear',
+    });
+    const uniform = contrastRegionPaths(reference, 9, {
+      gamut: 'srgb',
+      threshold: 3,
+      samplingMode: 'uniform',
+      lightnessSteps: 8,
+      chromaSteps: 8,
+      edgeInterpolation: 'linear',
+    });
+
+    const adaptivePoints = adaptive.reduce((sum, path) => sum + path.length, 0);
+    const uniformPoints = uniform.reduce((sum, path) => sum + path.length, 0);
+    expect(adaptivePoints).toBeGreaterThan(uniformPoints * 4);
+  });
 });

@@ -22,6 +22,7 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
   uniform vec4 u_out_p3_fill;
   uniform vec4 u_out_srgb_fill;
   uniform vec3 u_dot_pattern;
+  uniform vec2 u_dot_pattern_scale;
 
   const float PI = 3.14159265359;
   const float EPSILON = 0.000075;
@@ -132,13 +133,21 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
     }
 
     bool anyOut = outP3 || outSrgb;
-    if (anyOut && u_dot_pattern.x > 0.0 && u_dot_pattern.y > 0.0) {
+    if (
+      anyOut &&
+      u_dot_pattern.x > 0.0 &&
+      u_dot_pattern.y > 0.0 &&
+      u_dot_pattern_scale.x > 0.0 &&
+      u_dot_pattern_scale.y > 0.0
+    ) {
       float opacity = clamp(u_dot_pattern.x, 0.0, 1.0);
       float dotSize = max(1.0, u_dot_pattern.y);
       float dotGap = max(0.0, u_dot_pattern.z);
       float cell = dotSize + dotGap;
-      float localX = mod(gl_FragCoord.x - 0.5, cell);
-      float localY = mod(gl_FragCoord.y - 0.5, cell);
+      float cssX = gl_FragCoord.x / u_dot_pattern_scale.x;
+      float cssY = gl_FragCoord.y / u_dot_pattern_scale.y;
+      float localX = mod(cssX, cell);
+      float localY = mod(cssY, cell);
       float dotRadius = dotSize * 0.5;
       float sampleX = localX + 0.5;
       float sampleY = localY + 0.5;

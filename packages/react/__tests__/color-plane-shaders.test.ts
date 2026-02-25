@@ -10,4 +10,16 @@ describe('ColorPlane shaders', () => {
       'float yValue = mix(u_y_range.x, u_y_range.y, 1.0 - v_uv.y);',
     );
   });
+
+  it('uses independent x/y dot-pattern scales for overlay sampling', () => {
+    expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).toContain(
+      'uniform vec2 u_dot_pattern_scale;',
+    );
+    expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).toContain(
+      'float cssX = gl_FragCoord.x / u_dot_pattern_scale.x;',
+    );
+    expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).toContain(
+      'float cssY = gl_FragCoord.y / u_dot_pattern_scale.y;',
+    );
+  });
 });

@@ -97,6 +97,31 @@ describe('chromaBand()', () => {
     expect(band.every((point) => point.c === 0)).toBe(true);
   });
 
+  it('supports adaptive sampling for chroma bands', () => {
+    const hue = 252;
+    const requested = 0.18;
+    const adaptive = chromaBand(hue, requested, {
+      mode: 'clamped',
+      gamut: 'display-p3',
+      samplingMode: 'adaptive',
+      adaptiveTolerance: 0.001,
+      adaptiveMaxDepth: 12,
+    });
+
+    expect(adaptive.length).toBeGreaterThan(2);
+    expect(adaptive[0]?.l).toBe(0);
+    expect(adaptive[adaptive.length - 1]?.l).toBe(1);
+    for (let index = 1; index < adaptive.length; index += 1) {
+      expect(adaptive[index].l).toBeGreaterThan(adaptive[index - 1].l);
+    }
+    for (const point of adaptive) {
+      const max = maxChromaAt(point.l, hue, { gamut: 'display-p3' });
+      expect(point.c).toBeLessThanOrEqual(requested + 1e-6);
+      expect(point.c).toBeLessThanOrEqual(max + 1e-6);
+      expect(inP3Gamut(point)).toBe(true);
+    }
+  });
+
   it('validates options and input values', () => {
     expect(() =>
       chromaBand(210, Number.NaN, {
@@ -115,5 +140,18 @@ describe('chromaBand()', () => {
         mode: 'invalid' as unknown as 'clamped',
       }),
     ).toThrow("chromaBand() mode must be 'clamped' or 'proportional'");
+
+    expect(() =>
+      chromaBand(210, 0.2, {
+        samplingMode: 'invalid' as unknown as 'uniform',
+      }),
+    ).toThrow("chromaBand() samplingMode must be 'uniform' or 'adaptive'");
+
+    expect(() =>
+      chromaBand(210, 0.2, {
+        samplingMode: 'adaptive',
+        steps: 1,
+      }),
+    ).not.toThrow();
   });
 });

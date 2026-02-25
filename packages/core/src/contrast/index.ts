@@ -1,6 +1,7 @@
 import type { Color } from '../types.js';
 import {
   maxChromaAt,
+  maxChromaForHue,
   toP3Gamut,
   toSrgbGamut,
   type GamutTarget,
@@ -246,6 +247,15 @@ function pointKey(point: ContrastRegionPoint): string {
   return `${point.l.toFixed(6)}:${point.c.toFixed(6)}`;
 }
 
+/** Canonicalize point so segments from adjacent adaptive cells share the same vertex. */
+function canonicalizePoint(
+  p: ContrastRegionPoint,
+  tolerance: number = 1e-6,
+): ContrastRegionPoint {
+  const round = (x: number) => Math.round(x / tolerance) * tolerance;
+  return { l: round(p.l), c: round(p.c) };
+}
+
 function edgeKey(a: string, b: string): string {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
@@ -303,6 +313,7 @@ function edgePoint(
 
 function buildContourPaths(
   segments: Array<[ContrastRegionPoint, ContrastRegionPoint]>,
+  canonicalTolerance: number = 1e-6,
 ): ContrastRegionPoint[][] {
   if (segments.length === 0) return [];
 
@@ -311,10 +322,12 @@ function buildContourPaths(
   const visitedEdges = new Set<string>();
 
   for (const [a, b] of segments) {
-    const aKey = pointKey(a);
-    const bKey = pointKey(b);
-    pointByKey.set(aKey, a);
-    pointByKey.set(bKey, b);
+    const aCanon = canonicalizePoint(a, canonicalTolerance);
+    const bCanon = canonicalizePoint(b, canonicalTolerance);
+    const aKey = pointKey(aCanon);
+    const bKey = pointKey(bCanon);
+    pointByKey.set(aKey, aCanon);
+    pointByKey.set(bKey, bCanon);
 
     if (!adjacency.has(aKey)) adjacency.set(aKey, new Set());
     if (!adjacency.has(bKey)) adjacency.set(bKey, new Set());
@@ -567,7 +580,7 @@ export function contrastRegionPaths(
     }
   }
 
-  const rawPaths = buildContourPaths(segments);
+  const rawPaths = buildContourPaths(segments, 1e-5);
   const tol = options.simplifyTolerance;
   if (tol != null && Number.isFinite(tol) && tol > 0) {
     return rawPaths.map((p) => simplifyPolyline(p, tol, true));
@@ -577,6 +590,127 @@ export function contrastRegionPaths(
 
 const DEFAULT_ADAPTIVE_BASE_STEPS = 16;
 const DEFAULT_ADAPTIVE_MAX_DEPTH_CONTRAST = 3;
+const ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON = 1e-6;
+const ADAPTIVE_CHROMA_DEDUPE_EPSILON = 1e-6;
+const ADAPTIVE_EDGE_PROBES = [0.02, 0.05] as const;
+
+function appendUniqueAdaptiveAxis(
+  values: number[],
+  value: number,
+  min: number,
+  max: number,
+  epsilon: number,
+): void {
+  if (!Number.isFinite(value)) {
+    return;
+  }
+  const normalized = Math.max(min, Math.min(max, value));
+  for (const current of values) {
+    if (Math.abs(current - normalized) <= epsilon) {
+      return;
+    }
+  }
+  values.push(normalized);
+}
+
+function buildAdaptiveLightnessAnchors(
+  baseSteps: number,
+  cuspLightness: number,
+): number[] {
+  const anchors: number[] = [];
+  appendUniqueAdaptiveAxis(anchors, 0, 0, 1, ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON);
+  appendUniqueAdaptiveAxis(anchors, 1, 0, 1, ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON);
+  appendUniqueAdaptiveAxis(
+    anchors,
+    cuspLightness,
+    0,
+    1,
+    ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
+  );
+  for (const probe of ADAPTIVE_EDGE_PROBES) {
+    appendUniqueAdaptiveAxis(
+      anchors,
+      probe,
+      0,
+      1,
+      ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
+    );
+    appendUniqueAdaptiveAxis(
+      anchors,
+      1 - probe,
+      0,
+      1,
+      ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
+    );
+  }
+  for (let index = 1; index < baseSteps; index += 1) {
+    appendUniqueAdaptiveAxis(
+      anchors,
+      index / baseSteps,
+      0,
+      1,
+      ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
+    );
+  }
+  anchors.sort((a, b) => a - b);
+  return anchors;
+}
+
+function buildAdaptiveChromaAnchors(
+  baseSteps: number,
+  maxChroma: number,
+  cuspChroma: number,
+): number[] {
+  const anchors: number[] = [];
+  appendUniqueAdaptiveAxis(
+    anchors,
+    0,
+    0,
+    maxChroma,
+    ADAPTIVE_CHROMA_DEDUPE_EPSILON,
+  );
+  appendUniqueAdaptiveAxis(
+    anchors,
+    maxChroma,
+    0,
+    maxChroma,
+    ADAPTIVE_CHROMA_DEDUPE_EPSILON,
+  );
+  appendUniqueAdaptiveAxis(
+    anchors,
+    cuspChroma,
+    0,
+    maxChroma,
+    ADAPTIVE_CHROMA_DEDUPE_EPSILON,
+  );
+  for (const probe of ADAPTIVE_EDGE_PROBES) {
+    appendUniqueAdaptiveAxis(
+      anchors,
+      probe * maxChroma,
+      0,
+      maxChroma,
+      ADAPTIVE_CHROMA_DEDUPE_EPSILON,
+    );
+    appendUniqueAdaptiveAxis(
+      anchors,
+      (1 - probe) * maxChroma,
+      0,
+      maxChroma,
+      ADAPTIVE_CHROMA_DEDUPE_EPSILON,
+    );
+  }
+  for (let index = 1; index < baseSteps; index += 1) {
+    appendUniqueAdaptiveAxis(
+      anchors,
+      (index / baseSteps) * maxChroma,
+      0,
+      maxChroma,
+      ADAPTIVE_CHROMA_DEDUPE_EPSILON,
+    );
+  }
+  anchors.sort((a, b) => a - b);
+  return anchors;
+}
 
 function contrastRegionPathsAdaptive(
   hue: number,
@@ -627,6 +761,16 @@ function contrastRegionPathsAdaptive(
   };
 
   const segments: Array<[ContrastRegionPoint, ContrastRegionPoint]> = [];
+  const cusp = maxChromaForHue(hue, {
+    gamut,
+    method: 'direct',
+  });
+  const lightnessAnchors = buildAdaptiveLightnessAnchors(baseSteps, cusp.l);
+  const chromaAnchors = buildAdaptiveChromaAnchors(
+    baseSteps,
+    maxChroma,
+    cusp.c,
+  );
 
   const processCell = (
     l0: number,
@@ -644,9 +788,10 @@ function contrastRegionPathsAdaptive(
     const b2 = v11 >= 0;
     const b3 = v01 >= 0;
     const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
-    if (mask === 0 || mask === 15) return;
-
     if (depth >= maxDepth) {
+      if (mask === 0 || mask === 15) {
+        return;
+      }
       const edgePairs = segmentEdgesForCell(mask);
       for (const [fromEdge, toEdge] of edgePairs) {
         const from = edgePoint(
@@ -679,6 +824,37 @@ function contrastRegionPathsAdaptive(
     const vMidTop = getValue(lMid, c1);
     const vMidLeft = getValue(l0, cMid);
     const vCenter = getValue(lMid, cMid);
+
+    if (mask === 0 || mask === 15) {
+      const cornerSign = b0;
+      const hasInteriorSignChange =
+        vMidBottom >= 0 !== cornerSign ||
+        vMidRight >= 0 !== cornerSign ||
+        vMidTop >= 0 !== cornerSign ||
+        vMidLeft >= 0 !== cornerSign ||
+        vCenter >= 0 !== cornerSign;
+      let hasBoundarySignChange = false;
+      if (!hasInteriorSignChange) {
+        const boundaryProbes = [
+          { l: l0, c: maxChromaAt(l0, hue, maxChromaAtOpts) },
+          { l: lMid, c: maxChromaAt(lMid, hue, maxChromaAtOpts) },
+          { l: l1, c: maxChromaAt(l1, hue, maxChromaAtOpts) },
+        ];
+        for (const probe of boundaryProbes) {
+          if (probe.c <= c0 + 1e-7 || probe.c >= c1 - 1e-7) {
+            continue;
+          }
+          const boundaryValue = getValue(probe.l, probe.c);
+          if (boundaryValue >= 0 !== cornerSign) {
+            hasBoundarySignChange = true;
+            break;
+          }
+        }
+      }
+      if (!hasInteriorSignChange && !hasBoundarySignChange) {
+        return;
+      }
+    }
 
     processCell(
       l0,
@@ -716,12 +892,15 @@ function contrastRegionPathsAdaptive(
     processCell(l0, lMid, cMid, c1, vMidLeft, vCenter, vMidTop, v01, depth + 1);
   };
 
-  for (let li = 0; li < baseSteps; li += 1) {
-    const l0 = li / baseSteps;
-    const l1 = (li + 1) / baseSteps;
-    for (let ci = 0; ci < baseSteps; ci += 1) {
-      const c0 = (ci / baseSteps) * maxChroma;
-      const c1 = ((ci + 1) / baseSteps) * maxChroma;
+  for (let li = 0; li < lightnessAnchors.length - 1; li += 1) {
+    const l0 = lightnessAnchors[li];
+    const l1 = lightnessAnchors[li + 1];
+    for (let ci = 0; ci < chromaAnchors.length - 1; ci += 1) {
+      const c0 = chromaAnchors[ci];
+      const c1 = chromaAnchors[ci + 1];
+      if (l1 <= l0 || c1 <= c0) {
+        continue;
+      }
       const v00 = getValue(l0, c0);
       const v10 = getValue(l1, c0);
       const v11 = getValue(l1, c1);

@@ -192,6 +192,18 @@ function strokePathProps(
   };
 }
 
+function gamutBoundaryPathProps(
+  control: { style: 'solid' | 'dashed' | 'dots'; width: 0.25 | 0.5 | 1 },
+  stroke: string,
+) {
+  return {
+    ...strokePathProps(control, stroke),
+    // Preserve sharp boundary cusps; round joins visually shave apexes.
+    strokeLinejoin: 'miter' as const,
+    strokeMiterlimit: 6,
+  };
+}
+
 function pathPointProps(fill: string) {
   return {
     r: 0.72,
@@ -271,13 +283,13 @@ function contrastMetricLabel(key: string): string {
       return 'Line 3:1';
     case 'line-aa45':
       return 'Line 4.5:1';
-    case 'line-aa7':
+    case 'line-aaa7':
       return 'Line 7:1';
     case 'region-aa3':
       return 'Region 3:1';
     case 'region-aa45':
       return 'Region 4.5:1';
-    case 'region-aa7':
+    case 'region-aaa7':
       return 'Region 7:1';
     default:
       return key;
@@ -335,7 +347,7 @@ function ColorAreaDemoScene({
       lines: {
         aa3: { enabled: false, style: 'solid', width: 0.25 as const },
         aa45: { enabled: false, style: 'dashed', width: 0.25 as const },
-        aa7: { enabled: false, style: 'dashed', width: 0.25 as const },
+        aaa7: { enabled: false, style: 'dashed', width: 0.25 as const },
       },
       regions: {
         aa3: {
@@ -348,7 +360,7 @@ function ColorAreaDemoScene({
           style: 'dots',
           opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
-        aa7: {
+        aaa7: {
           enabled: false,
           style: 'dots',
           opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
@@ -362,8 +374,8 @@ function ColorAreaDemoScene({
       contrastSteps: COLOR_AREA_CONTRAST_STEPS,
       contrastEdgeInterpolation: 'linear' as const,
       simplifyTolerance: undefined,
-      lineSamplingMode: 'uniform' as const,
-      contrastSamplingMode: 'uniform' as const,
+      lineSamplingMode: 'adaptive' as const,
+      contrastSamplingMode: 'adaptive' as const,
     },
   };
   const lineSteps = scene.tuning.lineSteps;
@@ -371,8 +383,8 @@ function ColorAreaDemoScene({
   const layerQuality = scene.tuning.layerQuality;
   const contrastEdgeInterpolation = scene.tuning.contrastEdgeInterpolation;
   const simplifyTolerance = scene.tuning.simplifyTolerance;
-  const lineSamplingMode = scene.tuning.lineSamplingMode ?? 'uniform';
-  const contrastSamplingMode = scene.tuning.contrastSamplingMode ?? 'uniform';
+  const lineSamplingMode = scene.tuning.lineSamplingMode ?? 'adaptive';
+  const contrastSamplingMode = scene.tuning.contrastSamplingMode ?? 'adaptive';
   const cornerRadius =
     'cornerRadius' in scene.tuning ? scene.tuning.cornerRadius : undefined;
   const showPathPoints = scene.visualize.vectorPoints;
@@ -409,7 +421,10 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={lineSamplingMode}
             cornerRadius={cornerRadius}
-            pathProps={strokePathProps(scene.visualize.p3Boundary, '#40f5d2')}
+            pathProps={gamutBoundaryPathProps(
+              scene.visualize.p3Boundary,
+              '#40f5d2',
+            )}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#40f5d2')}
           />
@@ -422,7 +437,10 @@ function ColorAreaDemoScene({
             simplifyTolerance={simplifyTolerance}
             samplingMode={lineSamplingMode}
             cornerRadius={cornerRadius}
-            pathProps={strokePathProps(scene.visualize.srgbBoundary, '#ffd447')}
+            pathProps={gamutBoundaryPathProps(
+              scene.visualize.srgbBoundary,
+              '#ffd447',
+            )}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#ffd447')}
           />
@@ -434,7 +452,8 @@ function ColorAreaDemoScene({
             mode={scene.chromaBand.mode}
             steps={lineSteps}
             quality={layerQuality}
-            pathProps={strokePathProps(scene.chromaBand.p3, '#9e8cff')}
+            samplingMode={lineSamplingMode}
+            pathProps={gamutBoundaryPathProps(scene.chromaBand.p3, '#9e8cff')}
           />
         )}
         {scene.chromaBand.srgb.enabled && (
@@ -443,7 +462,8 @@ function ColorAreaDemoScene({
             mode={scene.chromaBand.mode}
             steps={lineSteps}
             quality={layerQuality}
-            pathProps={strokePathProps(scene.chromaBand.srgb, '#ffe06b')}
+            samplingMode={lineSamplingMode}
+            pathProps={gamutBoundaryPathProps(scene.chromaBand.srgb, '#ffe06b')}
           />
         )}
 
@@ -461,7 +481,10 @@ function ColorAreaDemoScene({
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
               onContrastMetrics?.('line-aa3', metrics)
             }
-            pathProps={strokePathProps(scene.contrast.lines.aa3, '#bcd6ff')}
+            pathProps={gamutBoundaryPathProps(
+              scene.contrast.lines.aa3,
+              '#bcd6ff',
+            )}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#bcd6ff')}
           />
@@ -480,12 +503,15 @@ function ColorAreaDemoScene({
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
               onContrastMetrics?.('line-aa45', metrics)
             }
-            pathProps={strokePathProps(scene.contrast.lines.aa45, '#c0e1ff')}
+            pathProps={gamutBoundaryPathProps(
+              scene.contrast.lines.aa45,
+              '#c0e1ff',
+            )}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#c0e1ff')}
           />
         )}
-        {scene.contrast.lines.aa7.enabled && (
+        {scene.contrast.lines.aaa7.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={7}
@@ -497,9 +523,12 @@ function ColorAreaDemoScene({
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
-              onContrastMetrics?.('line-aa7', metrics)
+              onContrastMetrics?.('line-aaa7', metrics)
             }
-            pathProps={strokePathProps(scene.contrast.lines.aa7, '#d5e7ff')}
+            pathProps={gamutBoundaryPathProps(
+              scene.contrast.lines.aaa7,
+              '#d5e7ff',
+            )}
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#d5e7ff')}
           />
@@ -557,7 +586,7 @@ function ColorAreaDemoScene({
             />
           </ContrastRegionLayer>
         )}
-        {scene.contrast.regions.aa7.enabled && (
+        {scene.contrast.regions.aaa7.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
             threshold={7}
@@ -569,7 +598,7 @@ function ColorAreaDemoScene({
             samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
-              onContrastMetrics?.('region-aa7', metrics)
+              onContrastMetrics?.('region-aaa7', metrics)
             }
             showPathPoints={showPathPoints}
             pointProps={pathPointProps('#dceaff')}
@@ -577,7 +606,7 @@ function ColorAreaDemoScene({
             <ContrastRegionFill
               fillColor="#dceaff"
               fillOpacity={0.16}
-              dotOpacity={scene.contrast.regions.aa7.opacityPercent / 100}
+              dotOpacity={scene.contrast.regions.aaa7.opacityPercent / 100}
               dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
               dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
             />
