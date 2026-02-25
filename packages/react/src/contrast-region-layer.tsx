@@ -1407,9 +1407,7 @@ export function ContrastRegionLayer({
   }, [rawPathsAreFresh, regionPathData]);
 
   const visibleRegionPathData =
-    isDragging && !rawPathsAreFresh
-      ? lastStableRegionPathData
-      : regionPathData;
+    isDragging && !rawPathsAreFresh ? lastStableRegionPathData : regionPathData;
 
   const pathContextValue: ContrastRegionPathContextValue = useMemo(
     () => ({
