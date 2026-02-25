@@ -27,6 +27,14 @@ import { useOptionalColorContext } from './context.js';
 export type ColorPlaneSource = 'requested' | 'displayed';
 export type ColorPlaneRenderer = 'auto' | 'gpu' | 'cpu' | 'webgl' | 'canvas2d';
 export type ColorPlaneEdgeBehavior = 'transparent' | 'clamp';
+export interface ColorPlaneOutOfGamutConfig {
+  /**
+   * Legacy compatibility option. Mirrors prior ColorPlane behavior:
+   * - true: clamp out-of-gamut displayed pixels to the nearest edge.
+   * - false: keep out-of-gamut displayed pixels transparent.
+   */
+  repeatEdgePixels?: boolean;
+}
 
 type ActiveColorPlaneRenderer = 'gpu' | 'cpu';
 type ResolvedColorPlaneRenderer = 'gpu' | 'cpu';
@@ -48,9 +56,14 @@ export interface ColorPlaneProps extends Omit<
    * Out-of-gamut behavior for displayed source pixels.
    * - 'transparent': keep out-of-gamut pixels transparent.
    * - 'clamp': clamp out-of-gamut pixels to the nearest in-gamut edge.
-   * @default 'transparent'
+   * @default 'clamp'
    */
   edgeBehavior?: ColorPlaneEdgeBehavior;
+  /**
+   * @deprecated Use `edgeBehavior` instead. This legacy option remains for
+   * compatibility and will be removed in a future release.
+   */
+  outOfGamut?: ColorPlaneOutOfGamutConfig;
   /**
    * Extra backing-store scale factor beyond DPR. @default 1
    */
@@ -374,7 +387,8 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       source = 'displayed',
       displayGamut: displayGamutProp,
       renderer = 'auto',
-      edgeBehavior = 'transparent',
+      edgeBehavior,
+      outOfGamut,
       resolutionScale = 1,
       style,
       ...props
@@ -404,10 +418,15 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       () => resolveRenderer(renderer),
       [renderer],
     );
-    const resolvedEdgeBehavior = useMemo<ColorPlaneEdgeBehavior>(
-      () => (edgeBehavior === 'clamp' ? 'clamp' : 'transparent'),
-      [edgeBehavior],
-    );
+    const resolvedEdgeBehavior = useMemo<ColorPlaneEdgeBehavior>(() => {
+      if (edgeBehavior === 'clamp' || edgeBehavior === 'transparent') {
+        return edgeBehavior;
+      }
+      if (outOfGamut?.repeatEdgePixels === false) {
+        return 'transparent';
+      }
+      return 'clamp';
+    }, [edgeBehavior, outOfGamut?.repeatEdgePixels]);
 
     const effectiveScale = useMemo(() => {
       const baseScale =
