@@ -11,15 +11,27 @@ describe('ColorPlane shaders', () => {
     );
   });
 
-  it('uses independent x/y dot-pattern scales for overlay sampling', () => {
+  it('exposes edge behavior uniform for clamp vs transparent', () => {
     expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).toContain(
-      'uniform vec2 u_dot_pattern_scale;',
+      'uniform float u_edge_behavior;',
     );
     expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).toContain(
-      'float cssX = gl_FragCoord.x / u_dot_pattern_scale.x;',
+      'bool shouldClipOutOfGamut = u_source >= 0.5 && u_edge_behavior < 0.5 && targetOut;',
+    );
+  });
+
+  it('does not include out-of-gamut fill or pattern uniforms', () => {
+    expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).not.toContain(
+      'uniform vec4 u_out_p3_fill;',
+    );
+    expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).not.toContain(
+      'uniform vec4 u_out_srgb_fill;',
+    );
+    expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).not.toContain(
+      'uniform vec3 u_dot_pattern;',
     );
     expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).toContain(
-      'float cssY = gl_FragCoord.y / u_dot_pattern_scale.y;',
+      'bool shouldClampEdge = u_source >= 0.5 && u_edge_behavior >= 0.5;',
     );
   });
 });

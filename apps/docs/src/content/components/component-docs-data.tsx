@@ -22,7 +22,7 @@ export interface ComponentDocData {
   summary: string;
   description: string;
   registryName: string;
-  demo: ComponentType;
+  demo: ComponentType<{ inspectorDriven?: boolean }>;
   usage: string;
   helperApis: string[];
   features: string[];
@@ -80,6 +80,7 @@ export function Picker() {
   ChromaBandLayer,
   ColorArea,
   ColorPlane,
+  OutOfGamutLayer,
   ContrastRegionLayer,
   ContrastRegionFill,
   FallbackPointsLayer,
@@ -88,15 +89,13 @@ export function Picker() {
 
 <ColorArea axes={{ x: { channel: 'l' }, y: { channel: 'c' } }}>
   <Background checkerboard />
-  <ColorPlane
-    outOfGamut={{
-      repeatEdgePixels: true,
-      outOfP3FillColor: '#1f1f1f',
-      outOfP3FillOpacity: 0.2,
-      dotPatternOpacity: 0.2,
-      dotPatternSize: 2,
-      dotPatternGap: 3,
-    }}
+  <ColorPlane edgeBehavior="clamp" />
+  <OutOfGamutLayer
+    outOfP3FillColor="#1f1f1f"
+    outOfP3FillOpacity={0.2}
+    dotPatternOpacity={0.2}
+    dotPatternSize={2}
+    dotPatternGap={3}
   />
   <ChromaBandLayer mode="closest" gamut="srgb" />
   <GamutBoundaryLayer gamut="display-p3" showPathPoints />

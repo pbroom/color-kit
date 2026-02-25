@@ -103,10 +103,17 @@ export const componentApiDocs: ComponentApiDocs = {
         'Compose primitives such as Background, ColorPlane, ChromaBandLayer, GamutBoundaryLayer, ContrastRegionLayer, Thumb, Layer, Line, and Point.',
     },
     {
-      name: 'ColorPlane.outOfGamut',
-      type: '{ repeatEdgePixels?: boolean; outOfP3FillColor?: string; outOfP3FillOpacity?: number; outOfSrgbFillColor?: string; outOfSrgbFillOpacity?: number; dotPatternOpacity?: number; dotPatternSize?: number; dotPatternGap?: number }',
+      name: 'ColorPlane.edgeBehavior',
+      type: "'transparent' | 'clamp'",
+      defaultValue: "'transparent'",
       description:
-        'Optional visualization config for out-of-P3/out-of-sRGB fills, dot overlay pattern, and gamut edge repeat behavior.',
+        'Controls displayed-source out-of-gamut edge treatment. `transparent` keeps out-of-gamut pixels clear; `clamp` extends the gradient with nearest in-gamut edge values.',
+    },
+    {
+      name: 'OutOfGamutLayer',
+      type: '{ outOfP3FillColor?: string; outOfP3FillOpacity?: number; outOfSrgbFillColor?: string; outOfSrgbFillOpacity?: number; dotPatternOpacity?: number; dotPatternSize?: number; dotPatternGap?: number }',
+      description:
+        'Composable raster layer for out-of-P3/out-of-sRGB fills and optional dot pattern overlay.',
     },
     {
       name: 'ChromaBandLayer.mode',

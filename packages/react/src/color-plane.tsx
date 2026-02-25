@@ -8,63 +8,36 @@ import {
   type CanvasHTMLAttributes,
 } from 'react';
 import { useSelector } from '@legendapp/state/react';
-import { parse, toRgb, type Color, type GamutTarget } from '@color-kit/core';
+import { type Color, type GamutTarget } from '@color-kit/core';
 import { colorFromColorAreaPosition } from './api/color-area.js';
 import {
   COLOR_PLANE_FRAGMENT_SHADER_SOURCE,
   COLOR_PLANE_VERTEX_SHADER_SOURCE,
 } from './color-plane-shaders.js';
+import {
+  inP3Linear,
+  inSrgbLinear,
+  mapToGamutLinear,
+  oklchToLinearSrgb,
+  transferLinearToSrgbChannel,
+} from './color-plane-gamut-utils.js';
 import { useColorAreaContext } from './color-area-context.js';
 import { useOptionalColorContext } from './context.js';
 
 export type ColorPlaneSource = 'requested' | 'displayed';
 export type ColorPlaneRenderer = 'auto' | 'gpu' | 'cpu' | 'webgl' | 'canvas2d';
+export type ColorPlaneEdgeBehavior = 'transparent' | 'clamp';
+export interface ColorPlaneOutOfGamutConfig {
+  /**
+   * Legacy compatibility option. Mirrors prior ColorPlane behavior:
+   * - true: clamp out-of-gamut displayed pixels to the nearest edge.
+   * - false: keep out-of-gamut displayed pixels transparent.
+   */
+  repeatEdgePixels?: boolean;
+}
 
 type ActiveColorPlaneRenderer = 'gpu' | 'cpu';
 type ResolvedColorPlaneRenderer = 'gpu' | 'cpu';
-
-export interface ColorPlaneOutOfGamutConfig {
-  /**
-   * Keep mapping out-of-gamut samples to their nearest in-gamut edge.
-   * @default true
-   */
-  repeatEdgePixels?: boolean;
-  /**
-   * Fill color for colors outside Display-P3.
-   * @default '#1f1f1f'
-   */
-  outOfP3FillColor?: string;
-  /**
-   * Fill opacity for colors outside Display-P3.
-   * @default 0
-   */
-  outOfP3FillOpacity?: number;
-  /**
-   * Fill color for colors inside P3 but outside sRGB.
-   * @default '#1f1f1f'
-   */
-  outOfSrgbFillColor?: string;
-  /**
-   * Fill opacity for colors inside P3 but outside sRGB.
-   * @default 0
-   */
-  outOfSrgbFillOpacity?: number;
-  /**
-   * Dot pattern opacity for out-of-gamut overlays.
-   * @default 0
-   */
-  dotPatternOpacity?: number;
-  /**
-   * Dot pattern square size in pixels.
-   * @default 2
-   */
-  dotPatternSize?: number;
-  /**
-   * Dot pattern gap in pixels.
-   * @default 2
-   */
-  dotPatternGap?: number;
-}
 
 let warnedWebglAlias = false;
 let warnedCanvasAlias = false;
@@ -80,13 +53,21 @@ export interface ColorPlaneProps extends Omit<
   displayGamut?: GamutTarget;
   renderer?: ColorPlaneRenderer;
   /**
+   * Out-of-gamut behavior for displayed source pixels.
+   * - 'transparent': keep out-of-gamut pixels transparent.
+   * - 'clamp': clamp out-of-gamut pixels to the nearest in-gamut edge.
+   * @default 'clamp'
+   */
+  edgeBehavior?: ColorPlaneEdgeBehavior;
+  /**
+   * @deprecated Use `edgeBehavior` instead. This legacy option remains for
+   * compatibility and will be removed in a future release.
+   */
+  outOfGamut?: ColorPlaneOutOfGamutConfig;
+  /**
    * Extra backing-store scale factor beyond DPR. @default 1
    */
   resolutionScale?: number;
-  /**
-   * Optional out-of-gamut visualization controls.
-   */
-  outOfGamut?: ColorPlaneOutOfGamutConfig;
 }
 
 interface WebglUniforms {
@@ -97,11 +78,7 @@ interface WebglUniforms {
   yChannel: WebGLUniformLocation;
   source: WebGLUniformLocation;
   gamut: WebGLUniformLocation;
-  repeatEdgePixels: WebGLUniformLocation;
-  outP3Fill: WebGLUniformLocation;
-  outSrgbFill: WebGLUniformLocation;
-  dotPattern: WebGLUniformLocation;
-  dotPatternScale: WebGLUniformLocation;
+  edgeBehavior: WebGLUniformLocation;
 }
 
 interface WebglState {
@@ -127,200 +104,6 @@ function planeSeedFromRequested(
   };
 }
 
-interface LinearSrgb {
-  r: number;
-  g: number;
-  b: number;
-}
-
-interface NormalizedRgba {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-}
-
-interface ResolvedOutOfGamutConfig {
-  repeatEdgePixels: boolean;
-  outOfP3Fill: NormalizedRgba;
-  outOfSrgbFill: NormalizedRgba;
-  dotPattern: {
-    opacity: number;
-    size: number;
-    gap: number;
-  };
-}
-
-const GAMUT_EPSILON = 0.000075;
-const GAMUT_ITERS = 14;
-
-function clamp01(value: number): number {
-  if (value < 0) return 0;
-  if (value > 1) return 1;
-  return value;
-}
-
-function transferLinearToSrgbChannel(value: number): number {
-  const absValue = Math.abs(value);
-  const srgb =
-    absValue <= 0.0031308
-      ? 12.92 * absValue
-      : 1.055 * Math.pow(absValue, 1 / 2.4) - 0.055;
-  return clamp01(Math.sign(value) * srgb);
-}
-
-function oklchToLinearSrgb(
-  lightness: number,
-  chroma: number,
-  hue: number,
-): LinearSrgb {
-  const hueRad = (((hue % 360) + 360) % 360) * (Math.PI / 180);
-  const a = chroma * Math.cos(hueRad);
-  const b = chroma * Math.sin(hueRad);
-
-  const lPrime = lightness + 0.3963377774 * a + 0.2158037573 * b;
-  const mPrime = lightness - 0.1055613458 * a - 0.0638541728 * b;
-  const sPrime = lightness - 0.0894841775 * a - 1.291485548 * b;
-
-  const l = lPrime * lPrime * lPrime;
-  const m = mPrime * mPrime * mPrime;
-  const s = sPrime * sPrime * sPrime;
-
-  return {
-    r: 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    b: -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
-  };
-}
-
-function linearSrgbToLinearP3(linearSrgb: LinearSrgb): LinearSrgb {
-  return {
-    r: 0.8224621724 * linearSrgb.r + 0.1775378276 * linearSrgb.g,
-    g: 0.033194198 * linearSrgb.r + 0.966805802 * linearSrgb.g,
-    b:
-      0.0170826307 * linearSrgb.r +
-      0.0723974407 * linearSrgb.g +
-      0.9105199286 * linearSrgb.b,
-  };
-}
-
-function inSrgbLinear(linearSrgb: LinearSrgb): boolean {
-  return (
-    linearSrgb.r >= -GAMUT_EPSILON &&
-    linearSrgb.r <= 1 + GAMUT_EPSILON &&
-    linearSrgb.g >= -GAMUT_EPSILON &&
-    linearSrgb.g <= 1 + GAMUT_EPSILON &&
-    linearSrgb.b >= -GAMUT_EPSILON &&
-    linearSrgb.b <= 1 + GAMUT_EPSILON
-  );
-}
-
-function inP3Linear(linearSrgb: LinearSrgb): boolean {
-  const linearP3 = linearSrgbToLinearP3(linearSrgb);
-  return (
-    linearP3.r >= -GAMUT_EPSILON &&
-    linearP3.r <= 1 + GAMUT_EPSILON &&
-    linearP3.g >= -GAMUT_EPSILON &&
-    linearP3.g <= 1 + GAMUT_EPSILON &&
-    linearP3.b >= -GAMUT_EPSILON &&
-    linearP3.b <= 1 + GAMUT_EPSILON
-  );
-}
-
-function inTargetGamut(linearSrgb: LinearSrgb, gamut: GamutTarget): boolean {
-  return gamut === 'display-p3'
-    ? inP3Linear(linearSrgb)
-    : inSrgbLinear(linearSrgb);
-}
-
-function mapToGamutLinear(
-  lightness: number,
-  chroma: number,
-  hue: number,
-  gamut: GamutTarget,
-): LinearSrgb {
-  const rawLinear = oklchToLinearSrgb(lightness, chroma, hue);
-  if (inTargetGamut(rawLinear, gamut)) {
-    return rawLinear;
-  }
-
-  let lo = 0;
-  let hi = Math.max(chroma, 0);
-  let mapped = 0;
-
-  for (let index = 0; index < GAMUT_ITERS; index += 1) {
-    const mid = (lo + hi) * 0.5;
-    const testLinear = oklchToLinearSrgb(lightness, mid, hue);
-    if (inTargetGamut(testLinear, gamut)) {
-      lo = mid;
-      mapped = mid;
-    } else {
-      hi = mid;
-    }
-  }
-
-  return oklchToLinearSrgb(lightness, mapped, hue);
-}
-
-function blend(base: number, overlay: number, opacity: number): number {
-  return base * (1 - opacity) + overlay * opacity;
-}
-
-function parseColorToRgba(
-  color: string | undefined,
-  fallback: NormalizedRgba,
-): NormalizedRgba {
-  if (!color) {
-    return fallback;
-  }
-
-  try {
-    const rgb = toRgb(parse(color));
-    return {
-      r: clamp01(rgb.r / 255),
-      g: clamp01(rgb.g / 255),
-      b: clamp01(rgb.b / 255),
-      a: clamp01(rgb.alpha),
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-function resolveOutOfGamutConfig(
-  config?: ColorPlaneOutOfGamutConfig,
-): ResolvedOutOfGamutConfig {
-  const p3Color = parseColorToRgba(config?.outOfP3FillColor, {
-    r: 31 / 255,
-    g: 31 / 255,
-    b: 31 / 255,
-    a: 1,
-  });
-  const srgbColor = parseColorToRgba(config?.outOfSrgbFillColor, {
-    r: 31 / 255,
-    g: 31 / 255,
-    b: 31 / 255,
-    a: 1,
-  });
-
-  return {
-    repeatEdgePixels: config?.repeatEdgePixels ?? true,
-    outOfP3Fill: {
-      ...p3Color,
-      a: clamp01(config?.outOfP3FillOpacity ?? 0),
-    },
-    outOfSrgbFill: {
-      ...srgbColor,
-      a: clamp01(config?.outOfSrgbFillOpacity ?? 0),
-    },
-    dotPattern: {
-      opacity: clamp01(config?.dotPatternOpacity ?? 0),
-      size: Math.max(1, config?.dotPatternSize ?? 2),
-      gap: Math.max(0, config?.dotPatternGap ?? 2),
-    },
-  };
-}
-
 function renderPixels(
   width: number,
   height: number,
@@ -328,15 +111,9 @@ function renderPixels(
   source: ColorPlaneSource,
   gamut: GamutTarget,
   axes: Parameters<typeof colorFromColorAreaPosition>[1],
-  outOfGamut: ResolvedOutOfGamutConfig,
-  scaleX: number,
-  scaleY: number,
+  edgeBehavior: ColorPlaneEdgeBehavior,
 ): Uint8ClampedArray {
   const data = new Uint8ClampedArray(width * height * 4);
-  const dotCell = outOfGamut.dotPattern.size + outOfGamut.dotPattern.gap;
-  const dotRadius = outOfGamut.dotPattern.size * 0.5;
-  const safeScaleX = Math.max(1e-6, scaleX);
-  const safeScaleY = Math.max(1e-6, scaleY);
 
   for (let y = 0; y < height; y += 1) {
     const yNorm = height <= 1 ? 0 : y / (height - 1);
@@ -348,15 +125,16 @@ function renderPixels(
       const outOfSrgb = !outOfP3 && !inSrgbLinear(rawLinear);
       const targetOutOfGamut =
         gamut === 'display-p3' ? outOfP3 : outOfP3 || outOfSrgb;
+      const shouldClampEdge =
+        source === 'displayed' && edgeBehavior === 'clamp';
       const clipOutOfGamut =
         source === 'displayed' &&
-        !outOfGamut.repeatEdgePixels &&
+        edgeBehavior === 'transparent' &&
         targetOutOfGamut;
 
-      const renderLinear =
-        source === 'displayed' && outOfGamut.repeatEdgePixels
-          ? mapToGamutLinear(sampled.l, sampled.c, sampled.h, gamut)
-          : rawLinear;
+      const renderLinear = shouldClampEdge
+        ? mapToGamutLinear(sampled.l, sampled.c, sampled.h, gamut)
+        : rawLinear;
 
       let r = 0;
       let g = 0;
@@ -371,48 +149,11 @@ function renderPixels(
         alpha = 0;
       }
 
-      if (outOfP3 && outOfGamut.outOfP3Fill.a > 0) {
-        r = blend(r, outOfGamut.outOfP3Fill.r, outOfGamut.outOfP3Fill.a);
-        g = blend(g, outOfGamut.outOfP3Fill.g, outOfGamut.outOfP3Fill.a);
-        b = blend(b, outOfGamut.outOfP3Fill.b, outOfGamut.outOfP3Fill.a);
-        alpha = Math.max(alpha, sampled.alpha * outOfGamut.outOfP3Fill.a);
-      }
-
-      if (outOfSrgb && outOfGamut.outOfSrgbFill.a > 0) {
-        r = blend(r, outOfGamut.outOfSrgbFill.r, outOfGamut.outOfSrgbFill.a);
-        g = blend(g, outOfGamut.outOfSrgbFill.g, outOfGamut.outOfSrgbFill.a);
-        b = blend(b, outOfGamut.outOfSrgbFill.b, outOfGamut.outOfSrgbFill.a);
-        alpha = Math.max(alpha, sampled.alpha * outOfGamut.outOfSrgbFill.a);
-      }
-
-      if (
-        (outOfP3 || outOfSrgb) &&
-        outOfGamut.dotPattern.opacity > 0 &&
-        dotCell > 0
-      ) {
-        const cssX = (x + 0.5) / safeScaleX;
-        const cssY = (y + 0.5) / safeScaleY;
-        const localX = cssX - Math.floor(cssX / dotCell) * dotCell;
-        const localY = cssY - Math.floor(cssY / dotCell) * dotCell;
-        const distanceSq =
-          (localX - dotRadius) * (localX - dotRadius) +
-          (localY - dotRadius) * (localY - dotRadius);
-        if (distanceSq <= dotRadius * dotRadius) {
-          r = blend(r, 1, outOfGamut.dotPattern.opacity);
-          g = blend(g, 1, outOfGamut.dotPattern.opacity);
-          b = blend(b, 1, outOfGamut.dotPattern.opacity);
-          alpha = Math.max(
-            alpha,
-            sampled.alpha * outOfGamut.dotPattern.opacity,
-          );
-        }
-      }
-
       const offset = (y * width + x) * 4;
-      data[offset] = Math.round(clamp01(r) * 255);
-      data[offset + 1] = Math.round(clamp01(g) * 255);
-      data[offset + 2] = Math.round(clamp01(b) * 255);
-      data[offset + 3] = Math.round(clamp01(alpha) * 255);
+      data[offset] = Math.round(r * 255);
+      data[offset + 1] = Math.round(g * 255);
+      data[offset + 2] = Math.round(b * 255);
+      data[offset + 3] = Math.round(Math.max(0, Math.min(1, alpha)) * 255);
     }
   }
 
@@ -512,14 +253,7 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
   const yChannel = gl.getUniformLocation(program, 'u_y_channel');
   const source = gl.getUniformLocation(program, 'u_source');
   const gamut = gl.getUniformLocation(program, 'u_gamut');
-  const repeatEdgePixels = gl.getUniformLocation(
-    program,
-    'u_repeat_edge_pixels',
-  );
-  const outP3Fill = gl.getUniformLocation(program, 'u_out_p3_fill');
-  const outSrgbFill = gl.getUniformLocation(program, 'u_out_srgb_fill');
-  const dotPattern = gl.getUniformLocation(program, 'u_dot_pattern');
-  const dotPatternScale = gl.getUniformLocation(program, 'u_dot_pattern_scale');
+  const edgeBehavior = gl.getUniformLocation(program, 'u_edge_behavior');
 
   if (
     !seed ||
@@ -529,11 +263,7 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
     !yChannel ||
     !source ||
     !gamut ||
-    !repeatEdgePixels ||
-    !outP3Fill ||
-    !outSrgbFill ||
-    !dotPattern ||
-    !dotPatternScale
+    !edgeBehavior
   ) {
     return null;
   }
@@ -567,11 +297,7 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
       yChannel,
       source,
       gamut,
-      repeatEdgePixels,
-      outP3Fill,
-      outSrgbFill,
-      dotPattern,
-      dotPatternScale,
+      edgeBehavior,
     },
   };
 }
@@ -598,8 +324,7 @@ function drawWithWebgl(
     gamut: GamutTarget;
     axes: Parameters<typeof colorFromColorAreaPosition>[1];
     seed: Color;
-    outOfGamut: ResolvedOutOfGamutConfig;
-    dotPatternScale: { x: number; y: number };
+    edgeBehavior: ColorPlaneEdgeBehavior;
   },
 ): boolean {
   const { gl, uniforms } = state;
@@ -624,33 +349,7 @@ function drawWithWebgl(
   gl.uniform1f(uniforms.yChannel, channelIndex(params.axes.y.channel));
   gl.uniform1f(uniforms.source, params.source === 'requested' ? 0 : 1);
   gl.uniform1f(uniforms.gamut, params.gamut === 'display-p3' ? 1 : 0);
-  gl.uniform1f(
-    uniforms.repeatEdgePixels,
-    params.outOfGamut.repeatEdgePixels ? 1 : 0,
-  );
-  gl.uniform4f(
-    uniforms.outP3Fill,
-    params.outOfGamut.outOfP3Fill.r,
-    params.outOfGamut.outOfP3Fill.g,
-    params.outOfGamut.outOfP3Fill.b,
-    params.outOfGamut.outOfP3Fill.a,
-  );
-  gl.uniform4f(
-    uniforms.outSrgbFill,
-    params.outOfGamut.outOfSrgbFill.r,
-    params.outOfGamut.outOfSrgbFill.g,
-    params.outOfGamut.outOfSrgbFill.b,
-    params.outOfGamut.outOfSrgbFill.a,
-  );
-  const scaleX = Math.max(1e-6, params.dotPatternScale.x);
-  const scaleY = Math.max(1e-6, params.dotPatternScale.y);
-  gl.uniform3f(
-    uniforms.dotPattern,
-    params.outOfGamut.dotPattern.opacity,
-    params.outOfGamut.dotPattern.size,
-    params.outOfGamut.dotPattern.gap,
-  );
-  gl.uniform2f(uniforms.dotPatternScale, scaleX, scaleY);
+  gl.uniform1f(uniforms.edgeBehavior, params.edgeBehavior === 'clamp' ? 1 : 0);
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return gl.getError() === gl.NO_ERROR;
@@ -688,8 +387,9 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       source = 'displayed',
       displayGamut: displayGamutProp,
       renderer = 'auto',
-      resolutionScale = 1,
+      edgeBehavior,
       outOfGamut,
+      resolutionScale = 1,
       style,
       ...props
     },
@@ -718,10 +418,15 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       () => resolveRenderer(renderer),
       [renderer],
     );
-    const resolvedOutOfGamut = useMemo(
-      () => resolveOutOfGamutConfig(outOfGamut),
-      [outOfGamut],
-    );
+    const resolvedEdgeBehavior = useMemo<ColorPlaneEdgeBehavior>(() => {
+      if (edgeBehavior === 'clamp' || edgeBehavior === 'transparent') {
+        return edgeBehavior;
+      }
+      if (outOfGamut?.repeatEdgePixels === false) {
+        return 'transparent';
+      }
+      return 'clamp';
+    }, [edgeBehavior, outOfGamut?.repeatEdgePixels]);
 
     const effectiveScale = useMemo(() => {
       const baseScale =
@@ -767,8 +472,6 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       return {
         width: scaledWidth,
         height: scaledHeight,
-        cssWidth: rect.width,
-        cssHeight: rect.height,
       };
     }, [effectiveScale]);
 
@@ -790,6 +493,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         source,
         displayGamut,
         resolvedRenderer,
+        resolvedEdgeBehavior,
         axes.x.channel,
         axes.x.range[0],
         axes.x.range[1],
@@ -800,29 +504,12 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         planeSeed.c,
         planeSeed.h,
         planeSeed.alpha,
-        resolvedOutOfGamut.repeatEdgePixels ? 1 : 0,
-        resolvedOutOfGamut.outOfP3Fill.r,
-        resolvedOutOfGamut.outOfP3Fill.g,
-        resolvedOutOfGamut.outOfP3Fill.b,
-        resolvedOutOfGamut.outOfP3Fill.a,
-        resolvedOutOfGamut.outOfSrgbFill.r,
-        resolvedOutOfGamut.outOfSrgbFill.g,
-        resolvedOutOfGamut.outOfSrgbFill.b,
-        resolvedOutOfGamut.outOfSrgbFill.a,
-        resolvedOutOfGamut.dotPattern.opacity,
-        resolvedOutOfGamut.dotPattern.size,
-        resolvedOutOfGamut.dotPattern.gap,
       ].join('|');
 
       if (lastRenderKeyRef.current === renderKey) {
         return;
       }
       lastRenderKeyRef.current = renderKey;
-
-      const scaleX =
-        size.cssWidth > 0 ? size.width / size.cssWidth : size.width;
-      const scaleY =
-        size.cssHeight > 0 ? size.height / size.cssHeight : size.height;
 
       if (resolvedRenderer === 'gpu' && !gpuUnavailableRef.current) {
         if (!webglStateRef.current) {
@@ -836,8 +523,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
             gamut: displayGamut,
             axes,
             seed: planeSeed,
-            outOfGamut: resolvedOutOfGamut,
-            dotPatternScale: { x: scaleX, y: scaleY },
+            edgeBehavior: resolvedEdgeBehavior,
           })
         ) {
           setActiveRenderer('gpu');
@@ -854,9 +540,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         source,
         displayGamut,
         axes,
-        resolvedOutOfGamut,
-        scaleX,
-        scaleY,
+        resolvedEdgeBehavior,
       );
 
       const canvasOk = drawWithCanvas2d(canvas, pixels);
@@ -868,7 +552,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       displayGamut,
       requested,
       resolvedRenderer,
-      resolvedOutOfGamut,
+      resolvedEdgeBehavior,
       source,
       syncCanvasSize,
     ]);
@@ -926,6 +610,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         data-color-area-plane=""
         data-source={source}
         data-renderer={activeRenderer}
+        data-edge-behavior={resolvedEdgeBehavior}
         style={{
           position: 'absolute',
           inset: 0,

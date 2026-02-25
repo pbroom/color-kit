@@ -18,6 +18,8 @@ import {
 } from '../src/contrast-region-layer.js';
 import { FallbackPointsLayer } from '../src/fallback-points-layer.js';
 import { GamutBoundaryLayer } from '../src/gamut-boundary-layer.js';
+import { OutOfGamutLayer } from '../src/out-of-gamut-layer.js';
+import type { ColorPlaneOutOfGamutConfig } from '../src/index.js';
 
 function pathAreaFromD(pathData: string): number {
   const matches = Array.from(
@@ -561,19 +563,7 @@ describe('ColorArea primitives', () => {
 
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ColorPlane
-          renderer="gpu"
-          outOfGamut={{
-            repeatEdgePixels: false,
-            outOfP3FillColor: '#1f1f1f',
-            outOfP3FillOpacity: 0.45,
-            outOfSrgbFillColor: '#0a0a0a',
-            outOfSrgbFillOpacity: 0.35,
-            dotPatternOpacity: 0.2,
-            dotPatternSize: 2,
-            dotPatternGap: 2,
-          }}
-        />
+        <ColorPlane renderer="gpu" edgeBehavior="transparent" />
       </ColorArea>,
     );
 
@@ -585,7 +575,7 @@ describe('ColorArea primitives', () => {
     });
   });
 
-  it('clips out-of-gamut pixels when repeat edge pixels is disabled', async () => {
+  it('clips out-of-gamut pixels when edge behavior is transparent', async () => {
     const requested: Color = { l: 0.72, c: 0.36, h: 293, alpha: 1 };
 
     const createImageData = vi.fn((width: number, height: number) => ({
@@ -623,15 +613,7 @@ describe('ColorArea primitives', () => {
 
     render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ColorPlane
-          renderer="cpu"
-          outOfGamut={{
-            repeatEdgePixels: false,
-            outOfP3FillOpacity: 0,
-            outOfSrgbFillOpacity: 0,
-            dotPatternOpacity: 0,
-          }}
-        />
+        <ColorPlane renderer="cpu" edgeBehavior="transparent" />
       </ColorArea>,
     );
 
@@ -662,6 +644,222 @@ describe('ColorArea primitives', () => {
 
     expect(hasTransparentPixel).toBe(true);
     expect(hasOpaquePixel).toBe(true);
+  });
+
+  it('keeps legacy default behavior clamped when edge behavior is omitted', async () => {
+    const requested: Color = { l: 0.72, c: 0.36, h: 293, alpha: 1 };
+
+    const createImageData = vi.fn((width: number, height: number) => ({
+      data: new Uint8ClampedArray(width * height * 4),
+      width,
+      height,
+    }));
+    const putImageData = vi.fn();
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      function getContext(this: HTMLCanvasElement, kind: string) {
+        if (kind === '2d') {
+          return {
+            createImageData,
+            putImageData,
+          } as unknown as RenderingContext;
+        }
+        return null;
+      },
+    );
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      'getBoundingClientRect',
+    ).mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 120,
+      height: 120,
+      right: 120,
+      bottom: 120,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane renderer="cpu" />
+      </ColorArea>,
+    );
+
+    await waitFor(() => {
+      expect(putImageData).toHaveBeenCalled();
+    });
+
+    const latestCall = putImageData.mock.calls.at(-1);
+    const imageData = latestCall?.[0] as ImageData | undefined;
+    expect(imageData).toBeTruthy();
+
+    const pixels = imageData?.data ?? new Uint8ClampedArray();
+    let hasTransparentPixel = false;
+    let hasOpaquePixel = false;
+
+    for (let index = 3; index < pixels.length; index += 4) {
+      const alpha = pixels[index];
+      if (alpha === 0) {
+        hasTransparentPixel = true;
+      }
+      if (alpha === 255) {
+        hasOpaquePixel = true;
+      }
+      if (hasTransparentPixel && hasOpaquePixel) {
+        break;
+      }
+    }
+
+    expect(hasOpaquePixel).toBe(true);
+    expect(hasTransparentPixel).toBe(false);
+  });
+
+  it('maps legacy outOfGamut config to edge behavior', async () => {
+    const requested: Color = { l: 0.72, c: 0.36, h: 293, alpha: 1 };
+    const legacyTransparent: ColorPlaneOutOfGamutConfig = {
+      repeatEdgePixels: false,
+    };
+
+    const createImageData = vi.fn((width: number, height: number) => ({
+      data: new Uint8ClampedArray(width * height * 4),
+      width,
+      height,
+    }));
+    const putImageData = vi.fn();
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      function getContext(this: HTMLCanvasElement, kind: string) {
+        if (kind === '2d') {
+          return {
+            createImageData,
+            putImageData,
+          } as unknown as RenderingContext;
+        }
+        return null;
+      },
+    );
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      'getBoundingClientRect',
+    ).mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 120,
+      height: 120,
+      right: 120,
+      bottom: 120,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane renderer="cpu" outOfGamut={legacyTransparent} />
+      </ColorArea>,
+    );
+
+    await waitFor(() => {
+      expect(putImageData).toHaveBeenCalled();
+    });
+
+    const latestCall = putImageData.mock.calls.at(-1);
+    const imageData = latestCall?.[0] as ImageData | undefined;
+    expect(imageData).toBeTruthy();
+
+    const pixels = imageData?.data ?? new Uint8ClampedArray();
+    let hasTransparentPixel = false;
+    let hasOpaquePixel = false;
+
+    for (let index = 3; index < pixels.length; index += 4) {
+      const alpha = pixels[index];
+      if (alpha === 0) {
+        hasTransparentPixel = true;
+      }
+      if (alpha === 255) {
+        hasOpaquePixel = true;
+      }
+      if (hasTransparentPixel && hasOpaquePixel) {
+        break;
+      }
+    }
+
+    expect(hasTransparentPixel).toBe(true);
+    expect(hasOpaquePixel).toBe(true);
+  });
+
+  it('clamps out-of-gamut pixels when edge behavior is clamp', async () => {
+    const requested: Color = { l: 0.72, c: 0.36, h: 293, alpha: 1 };
+
+    const createImageData = vi.fn((width: number, height: number) => ({
+      data: new Uint8ClampedArray(width * height * 4),
+      width,
+      height,
+    }));
+    const putImageData = vi.fn();
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      function getContext(this: HTMLCanvasElement, kind: string) {
+        if (kind === '2d') {
+          return {
+            createImageData,
+            putImageData,
+          } as unknown as RenderingContext;
+        }
+        return null;
+      },
+    );
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      'getBoundingClientRect',
+    ).mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 120,
+      height: 120,
+      right: 120,
+      bottom: 120,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane renderer="cpu" edgeBehavior="clamp" />
+      </ColorArea>,
+    );
+
+    await waitFor(() => {
+      expect(putImageData).toHaveBeenCalled();
+    });
+
+    const latestCall = putImageData.mock.calls.at(-1);
+    const imageData = latestCall?.[0] as ImageData | undefined;
+    expect(imageData).toBeTruthy();
+
+    const pixels = imageData?.data ?? new Uint8ClampedArray();
+    let hasTransparentPixel = false;
+    let hasOpaquePixel = false;
+
+    for (let index = 3; index < pixels.length; index += 4) {
+      const alpha = pixels[index];
+      if (alpha === 0) {
+        hasTransparentPixel = true;
+      }
+      if (alpha === 255) {
+        hasOpaquePixel = true;
+      }
+      if (hasTransparentPixel && hasOpaquePixel) {
+        break;
+      }
+    }
+
+    expect(hasOpaquePixel).toBe(true);
+    expect(hasTransparentPixel).toBe(false);
   });
 
   it('does not clip P3-only colors when display gamut is display-p3', async () => {
@@ -720,12 +918,7 @@ describe('ColorArea primitives', () => {
         <ColorPlane
           renderer="cpu"
           displayGamut="display-p3"
-          outOfGamut={{
-            repeatEdgePixels: false,
-            outOfP3FillOpacity: 0,
-            outOfSrgbFillOpacity: 0,
-            dotPatternOpacity: 0,
-          }}
+          edgeBehavior="transparent"
         />
       </ColorArea>,
     );
@@ -757,6 +950,94 @@ describe('ColorArea primitives', () => {
 
     expect(hasOpaquePixel).toBe(true);
     expect(hasTransparentPixel).toBe(false);
+  });
+
+  it('renders out-of-gamut overlay fills and dot pattern in dedicated layer', async () => {
+    const requested: Color = { l: 0.72, c: 0.36, h: 293, alpha: 1 };
+
+    const createImageData = vi.fn((width: number, height: number) => ({
+      data: new Uint8ClampedArray(width * height * 4),
+      width,
+      height,
+    }));
+    const putImageData = vi.fn();
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      function getContext(this: HTMLCanvasElement, kind: string) {
+        if (kind === '2d') {
+          return {
+            createImageData,
+            putImageData,
+          } as unknown as RenderingContext;
+        }
+        return null;
+      },
+    );
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      'getBoundingClientRect',
+    ).mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 120,
+      height: 120,
+      right: 120,
+      bottom: 120,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    } as DOMRect);
+
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <OutOfGamutLayer
+          outOfP3FillColor="#1f1f1f"
+          outOfP3FillOpacity={0.35}
+          dotPatternOpacity={0.3}
+          dotPatternSize={2}
+          dotPatternGap={2}
+        />
+      </ColorArea>,
+    );
+
+    await waitFor(() => {
+      expect(putImageData).toHaveBeenCalled();
+    });
+
+    expect(
+      container.querySelector('[data-color-area-out-of-gamut-layer]'),
+    ).toBeTruthy();
+    const latestCall = putImageData.mock.calls.at(-1);
+    const imageData = latestCall?.[0] as ImageData | undefined;
+    expect(imageData).toBeTruthy();
+
+    const pixels = imageData?.data ?? new Uint8ClampedArray();
+    let hasTransparentPixel = false;
+    let hasOverlayPixel = false;
+    let hasPatternHighlight = false;
+
+    for (let index = 0; index < pixels.length; index += 4) {
+      const r = pixels[index];
+      const g = pixels[index + 1];
+      const b = pixels[index + 2];
+      const alpha = pixels[index + 3];
+      if (alpha === 0) {
+        hasTransparentPixel = true;
+      }
+      if (alpha > 0) {
+        hasOverlayPixel = true;
+      }
+      if (alpha > 0 && r > 220 && g > 220 && b > 220) {
+        hasPatternHighlight = true;
+      }
+      if (hasTransparentPixel && hasOverlayPixel && hasPatternHighlight) {
+        break;
+      }
+    }
+
+    expect(hasTransparentPixel).toBe(true);
+    expect(hasOverlayPixel).toBe(true);
+    expect(hasPatternHighlight).toBe(true);
   });
 
   it('accepts legacy renderer aliases for backward compatibility', async () => {

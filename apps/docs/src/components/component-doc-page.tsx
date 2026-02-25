@@ -1,5 +1,4 @@
 import { createElement } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import type { ComponentDocData } from '@/content/components/component-docs-data';
@@ -29,9 +28,6 @@ export function ComponentDocPage({ doc }: { doc: ComponentDocData }) {
   return (
     <div className="space-y-10">
       <header className="space-y-4">
-        <Badge variant="secondary" className="w-fit">
-          React Primitive
-        </Badge>
         <div className="space-y-3">
           <h1 id="overview" className="scroll-mt-24">
             {doc.title}
@@ -70,9 +66,6 @@ export function ComponentDocPage({ doc }: { doc: ComponentDocData }) {
       <section id="demo" className="scroll-mt-24 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="m-0">Demo</h2>
-          {doc.supportsPropertiesPanel ? (
-            <Badge variant="outline">Live inspector controls</Badge>
-          ) : null}
         </div>
         <ComponentPreview>
           {createElement(Demo, {

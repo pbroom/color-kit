@@ -19,6 +19,7 @@ import {
   FallbackPointsLayer,
   GamutBoundaryLayer,
   HueDial,
+  OutOfGamutLayer,
   Swatch,
   SwatchGroup,
   useColorContext,
@@ -389,15 +390,18 @@ function ColorAreaDemoScene({
     'cornerRadius' in scene.tuning ? scene.tuning.cornerRadius : undefined;
   const showPathPoints = scene.visualize.vectorPoints;
 
-  const colorPlaneOutOfGamut = {
-    repeatEdgePixels: scene.repeatEdgePixels,
+  const colorPlaneEdgeBehavior = scene.repeatEdgePixels
+    ? 'clamp'
+    : 'transparent';
+  const patternOverlayOpacity = scene.visualize.patternOverlay.enabled
+    ? scene.visualize.patternOverlay.opacityPercent / 100
+    : 0;
+  const outOfGamutLayerProps = {
     outOfP3FillColor: scene.background.outOfP3.color,
     outOfP3FillOpacity: scene.background.outOfP3.opacityPercent / 100,
     outOfSrgbFillColor: scene.background.outOfSrgb.color,
     outOfSrgbFillOpacity: scene.background.outOfSrgb.opacityPercent / 100,
-    dotPatternOpacity: scene.visualize.patternOverlay.enabled
-      ? scene.visualize.patternOverlay.opacityPercent / 100
-      : 0,
+    dotPatternOpacity: patternOverlayOpacity,
     dotPatternSize: scene.visualize.patternOverlay.dotSize,
     dotPatternGap: scene.visualize.patternOverlay.dotGap,
   };
@@ -411,7 +415,8 @@ function ColorAreaDemoScene({
         onInteractionFrame={onInteractionFrame}
       >
         <Background checkerboard={scene.background.checkerboard} />
-        <ColorPlane renderer="auto" outOfGamut={colorPlaneOutOfGamut} />
+        <ColorPlane renderer="auto" edgeBehavior={colorPlaneEdgeBehavior} />
+        <OutOfGamutLayer {...outOfGamutLayerProps} />
 
         {scene.visualize.p3Boundary.enabled && (
           <GamutBoundaryLayer
