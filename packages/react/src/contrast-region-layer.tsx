@@ -12,6 +12,7 @@ import {
 import type { Color, GamutTarget } from '@color-kit/core';
 import {
   getColorAreaContrastRegionPaths,
+  getColorAreaGamutBoundaryPoints,
   type ColorAreaContrastRegionOptions,
   type ColorAreaContrastRegionPoint,
 } from './api/color-area.js';
@@ -121,6 +122,7 @@ export function ContrastRegionFill({
   const patternId = useId().replace(/[:]/g, '_');
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [size, setSize] = useState({ width: 100, height: 100 });
+  const hasRegionPath = regionPathData.length > 0;
 
   const dotOpacityClamped = clamp01(dotOpacity);
   const dotSizeEffective = Math.max(1, dotSize);
@@ -132,7 +134,11 @@ export function ContrastRegionFill({
   const dotSizeY = (dotSizeEffective * 100) / Math.max(1, size.height);
 
   useEffect(() => {
-    if (dotOpacityClamped <= 0 || typeof window === 'undefined') {
+    if (
+      dotOpacityClamped <= 0 ||
+      !hasRegionPath ||
+      typeof window === 'undefined'
+    ) {
       return;
     }
     const svg = svgRef.current;
@@ -171,9 +177,9 @@ export function ContrastRegionFill({
       window.removeEventListener('resize', schedule);
       if (frame !== 0) window.cancelAnimationFrame(frame);
     };
-  }, [dotOpacityClamped, regionPathData]);
+  }, [dotOpacityClamped, hasRegionPath]);
 
-  if (!regionPathData) return null;
+  if (!hasRegionPath) return null;
 
   return (
     <svg
@@ -281,6 +287,302 @@ function countPathPoints(paths: ColorAreaContrastRegionPoint[][]): number {
   return paths.reduce((total, path) => total + path.length, 0);
 }
 
+const CLOSED_PATH_TOLERANCE = 1e-6;
+const BOUNDARY_CONNECT_TOLERANCE = 0.02;
+const BOUNDARY_SNAP_TOLERANCE = 0.008;
+
+type ColorAreaLcPoint = Pick<
+  ColorAreaContrastRegionPoint,
+  'l' | 'c' | 'x' | 'y'
+>;
+
+function isPathClosed(points: ColorAreaContrastRegionPoint[]): boolean {
+  if (points.length < 2) return false;
+  const first = points[0];
+  const last = points[points.length - 1];
+  return Math.hypot(first.x - last.x, first.y - last.y) < CLOSED_PATH_TOLERANCE;
+}
+
+function isSamePoint(a: ColorAreaLcPoint, b: ColorAreaLcPoint): boolean {
+  return (
+    Math.abs(a.x - b.x) < CLOSED_PATH_TOLERANCE &&
+    Math.abs(a.y - b.y) < CLOSED_PATH_TOLERANCE
+  );
+}
+
+function distanceInLc(a: ColorAreaLcPoint, b: ColorAreaLcPoint): number {
+  return Math.hypot(a.l - b.l, a.c - b.c);
+}
+
+function polylineLength(points: ColorAreaLcPoint[]): number {
+  if (points.length < 2) return 0;
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const prev = points[index - 1];
+    const next = points[index];
+    total += Math.hypot(next.x - prev.x, next.y - prev.y);
+  }
+  return total;
+}
+
+function projectToBoundarySegment(
+  point: ColorAreaLcPoint,
+  start: ColorAreaLcPoint,
+  end: ColorAreaLcPoint,
+): { projected: ColorAreaContrastRegionPoint; distance: number } {
+  const dl = end.l - start.l;
+  const dc = end.c - start.c;
+  const lengthSquared = dl * dl + dc * dc;
+  if (lengthSquared <= 1e-12) {
+    const distance = distanceInLc(point, start);
+    return {
+      projected: {
+        l: start.l,
+        c: start.c,
+        x: start.x,
+        y: start.y,
+      },
+      distance,
+    };
+  }
+  const pointDeltaL = point.l - start.l;
+  const pointDeltaC = point.c - start.c;
+  const t = Math.max(
+    0,
+    Math.min(1, (pointDeltaL * dl + pointDeltaC * dc) / lengthSquared),
+  );
+  const projected = {
+    l: start.l + dl * t,
+    c: start.c + dc * t,
+    x: start.x + (end.x - start.x) * t,
+    y: start.y + (end.y - start.y) * t,
+  };
+  return {
+    projected,
+    distance: distanceInLc(point, projected),
+  };
+}
+
+function projectToBoundary(
+  point: ColorAreaLcPoint,
+  boundary: ColorAreaLcPoint[],
+): { projected: ColorAreaContrastRegionPoint; distance: number } | null {
+  if (boundary.length < 2) return null;
+  let nearest: {
+    projected: ColorAreaContrastRegionPoint;
+    distance: number;
+  } | null = null;
+  for (let index = 0; index < boundary.length - 1; index += 1) {
+    const candidate = projectToBoundarySegment(
+      point,
+      boundary[index],
+      boundary[index + 1],
+    );
+    if (!nearest || candidate.distance < nearest.distance) {
+      nearest = candidate;
+    }
+  }
+  return nearest;
+}
+
+function projectToBoundaryWithSegment(
+  point: ColorAreaLcPoint,
+  boundary: ColorAreaLcPoint[],
+): {
+  projected: ColorAreaContrastRegionPoint;
+  distance: number;
+  segmentIndex: number;
+} | null {
+  if (boundary.length < 2) return null;
+  let nearest: {
+    projected: ColorAreaContrastRegionPoint;
+    distance: number;
+    segmentIndex: number;
+  } | null = null;
+  for (let index = 0; index < boundary.length - 1; index += 1) {
+    const candidate = projectToBoundarySegment(
+      point,
+      boundary[index],
+      boundary[index + 1],
+    );
+    if (!nearest || candidate.distance < nearest.distance) {
+      nearest = {
+        ...candidate,
+        segmentIndex: index,
+      };
+    }
+  }
+  return nearest;
+}
+
+function nearestBoundaryIndex(
+  point: ColorAreaLcPoint,
+  boundary: ColorAreaLcPoint[],
+): { index: number; distance: number } {
+  let nearestIndex = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < boundary.length; index += 1) {
+    const distance = distanceInLc(point, boundary[index]);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = index;
+    }
+  }
+  return { index: nearestIndex, distance: nearestDistance };
+}
+
+function boundaryArcPoints(
+  boundary: ColorAreaLcPoint[],
+  fromIndex: number,
+  toIndex: number,
+  forward: boolean,
+): ColorAreaLcPoint[] {
+  const count = boundary.length;
+  if (count === 0) return [];
+  const points: ColorAreaLcPoint[] = [boundary[fromIndex]];
+  let cursor = fromIndex;
+  let guard = 0;
+  while (cursor !== toIndex && guard < count + 2) {
+    guard += 1;
+    cursor = forward ? (cursor + 1) % count : (cursor - 1 + count) % count;
+    points.push(boundary[cursor]);
+  }
+  return points;
+}
+
+function dedupeSequential(
+  points: ColorAreaContrastRegionPoint[],
+): ColorAreaContrastRegionPoint[] {
+  if (points.length < 2) return points;
+  const deduped: ColorAreaContrastRegionPoint[] = [points[0]];
+  for (let index = 1; index < points.length; index += 1) {
+    if (!isSamePoint(points[index], deduped[deduped.length - 1])) {
+      deduped.push(points[index]);
+    }
+  }
+  return deduped;
+}
+
+function snapPathToBoundary(
+  points: ColorAreaContrastRegionPoint[],
+  boundary: ColorAreaLcPoint[],
+  tolerance: number,
+): ColorAreaContrastRegionPoint[] {
+  if (points.length < 2 || boundary.length < 2) {
+    return points;
+  }
+  const snapped = points.map((point) => {
+    const projected = projectToBoundary(point, boundary);
+    if (!projected || projected.distance > tolerance) {
+      return point;
+    }
+    return projected.projected;
+  });
+  return dedupeSequential(snapped);
+}
+
+function withDomainBaselinePoints(
+  boundary: ColorAreaLcPoint[],
+  segments: number = 64,
+): ColorAreaLcPoint[] {
+  if (boundary.length < 2) {
+    return boundary;
+  }
+  const first = boundary[0];
+  const last = boundary[boundary.length - 1];
+  const extended: ColorAreaLcPoint[] = [...boundary];
+  for (let index = 1; index < segments; index += 1) {
+    const t = index / segments;
+    extended.push({
+      l: last.l + (first.l - last.l) * t,
+      c: 0,
+      x: last.x + (first.x - last.x) * t,
+      y: last.y + (first.y - last.y) * t,
+    });
+  }
+  return extended;
+}
+
+function buildBoundaryClosedPath(
+  openPath: ColorAreaContrastRegionPoint[],
+  boundary: ColorAreaLcPoint[],
+): ColorAreaContrastRegionPoint[] | null {
+  if (openPath.length < 2 || boundary.length < 2) {
+    return null;
+  }
+  const start = openPath[0];
+  const end = openPath[openPath.length - 1];
+  const startProjection = projectToBoundaryWithSegment(start, boundary);
+  const endProjection = projectToBoundaryWithSegment(end, boundary);
+  if (!startProjection || !endProjection) {
+    return null;
+  }
+  const startMatch = nearestBoundaryIndex(startProjection.projected, boundary);
+  const endMatch = nearestBoundaryIndex(endProjection.projected, boundary);
+  if (
+    startProjection.distance > BOUNDARY_CONNECT_TOLERANCE ||
+    endProjection.distance > BOUNDARY_CONNECT_TOLERANCE
+  ) {
+    return null;
+  }
+
+  const buildCandidate = (forward: boolean): ColorAreaContrastRegionPoint[] => {
+    const connector = boundaryArcPoints(
+      boundary,
+      endMatch.index,
+      startMatch.index,
+      forward,
+    );
+    const candidate: ColorAreaContrastRegionPoint[] = [...openPath];
+    if (
+      !isSamePoint(candidate[candidate.length - 1], endProjection.projected)
+    ) {
+      candidate.push(endProjection.projected);
+    }
+    if (
+      connector.length > 0 &&
+      !isSamePoint(candidate[candidate.length - 1], connector[0])
+    ) {
+      candidate.push({
+        ...connector[0],
+      });
+    }
+    for (let index = 1; index < connector.length; index += 1) {
+      candidate.push({
+        ...connector[index],
+      });
+    }
+    if (
+      !isSamePoint(candidate[candidate.length - 1], startProjection.projected)
+    ) {
+      candidate.push(startProjection.projected);
+    }
+    if (!isSamePoint(candidate[candidate.length - 1], start)) {
+      candidate.push(start);
+    }
+    const deduped = dedupeSequential(candidate);
+    if (!isPathClosed(deduped)) {
+      deduped.push(deduped[0]);
+    }
+    return deduped;
+  };
+
+  const forwardCandidate = buildCandidate(true);
+  const backwardCandidate = buildCandidate(false);
+  if (forwardCandidate.length < 3 && backwardCandidate.length < 3) {
+    return null;
+  }
+  if (forwardCandidate.length < 3) {
+    return backwardCandidate;
+  }
+  if (backwardCandidate.length < 3) {
+    return forwardCandidate;
+  }
+  return polylineLength(forwardCandidate) <= polylineLength(backwardCandidate)
+    ? forwardCandidate
+    : backwardCandidate;
+}
+
 function toPath(
   points: ColorAreaContrastRegionPoint[],
   closeLoop: boolean,
@@ -364,28 +666,21 @@ export function ContrastRegionLayer({
     lightness: number;
     chroma: number;
   } | null>(null);
+  const [frozenAdaptive, setFrozenAdaptive] = useState<{
+    baseSteps: number | undefined;
+    maxDepth: number | undefined;
+  } | null>(null);
+  const [lastStablePaths, setLastStablePaths] = useState<
+    ColorAreaContrastRegionPoint[][]
+  >([]);
+  const [lastStableRegionPathData, setLastStableRegionPathData] = useState('');
   const prevDraggingRef = useRef(false);
-  useEffect(() => {
-    if (isDragging && !prevDraggingRef.current) {
-      const steps = {
-        lightness: effectiveLightnessSteps,
-        chroma: effectiveChromaSteps,
-      };
-      queueMicrotask(() => setFrozenSteps(steps));
-    }
-    if (!isDragging) {
-      queueMicrotask(() => setFrozenSteps(null));
-    }
-    prevDraggingRef.current = isDragging;
-  }, [isDragging, effectiveLightnessSteps, effectiveChromaSteps]);
-
-  const stepsForOptions =
-    isDragging && frozenSteps
-      ? frozenSteps
-      : {
-          lightness: effectiveLightnessSteps,
-          chroma: effectiveChromaSteps,
-        };
+  const lastIdleSamplingRef = useRef<{
+    lightness: number;
+    chroma: number;
+    baseSteps: number | undefined;
+    maxDepth: number | undefined;
+  } | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -497,6 +792,77 @@ export function ContrastRegionLayer({
     samplingMode,
   ]);
 
+  useEffect(() => {
+    if (isDragging) {
+      return;
+    }
+    lastIdleSamplingRef.current = {
+      lightness: effectiveLightnessSteps,
+      chroma: effectiveChromaSteps,
+      baseSteps: resolvedAdaptiveBaseSteps,
+      maxDepth: resolvedAdaptiveMaxDepth,
+    };
+  }, [
+    effectiveChromaSteps,
+    effectiveLightnessSteps,
+    isDragging,
+    resolvedAdaptiveBaseSteps,
+    resolvedAdaptiveMaxDepth,
+  ]);
+
+  useEffect(() => {
+    if (isDragging && !prevDraggingRef.current) {
+      const previousIdleSampling = lastIdleSamplingRef.current ?? {
+        lightness: effectiveLightnessSteps,
+        chroma: effectiveChromaSteps,
+        baseSteps: resolvedAdaptiveBaseSteps,
+        maxDepth: resolvedAdaptiveMaxDepth,
+      };
+      queueMicrotask(() =>
+        setFrozenAdaptive({
+          baseSteps: previousIdleSampling.baseSteps,
+          maxDepth: previousIdleSampling.maxDepth,
+        }),
+      );
+      queueMicrotask(() =>
+        setFrozenSteps({
+          lightness: previousIdleSampling.lightness,
+          chroma: previousIdleSampling.chroma,
+        }),
+      );
+    }
+    if (!isDragging) {
+      queueMicrotask(() => setFrozenSteps(null));
+      queueMicrotask(() => setFrozenAdaptive(null));
+    }
+    prevDraggingRef.current = isDragging;
+  }, [
+    isDragging,
+    effectiveLightnessSteps,
+    effectiveChromaSteps,
+    resolvedAdaptiveBaseSteps,
+    resolvedAdaptiveMaxDepth,
+  ]);
+
+  const stepsForOptions =
+    isDragging && frozenSteps
+      ? frozenSteps
+      : {
+          lightness: effectiveLightnessSteps,
+          chroma: effectiveChromaSteps,
+        };
+
+  const adaptiveForOptions =
+    isDragging && frozenAdaptive
+      ? {
+          baseSteps: frozenAdaptive.baseSteps,
+          maxDepth: frozenAdaptive.maxDepth,
+        }
+      : {
+          baseSteps: resolvedAdaptiveBaseSteps,
+          maxDepth: resolvedAdaptiveMaxDepth,
+        };
+
   const options = useMemo<ColorAreaContrastRegionOptions>(
     () => ({
       gamut,
@@ -511,22 +877,22 @@ export function ContrastRegionLayer({
       edgeInterpolation,
       simplifyTolerance,
       samplingMode,
-      adaptiveBaseSteps: resolvedAdaptiveBaseSteps,
-      adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
+      adaptiveBaseSteps: adaptiveForOptions.baseSteps,
+      adaptiveMaxDepth: adaptiveForOptions.maxDepth,
     }),
     [
       alpha,
       edgeInterpolation,
       stepsForOptions.lightness,
       stepsForOptions.chroma,
+      adaptiveForOptions.baseSteps,
+      adaptiveForOptions.maxDepth,
       gamut,
       level,
       maxChroma,
       maxIterations,
       simplifyTolerance,
       samplingMode,
-      resolvedAdaptiveBaseSteps,
-      resolvedAdaptiveMaxDepth,
       threshold,
       tolerance,
     ],
@@ -559,18 +925,66 @@ export function ContrastRegionLayer({
   );
 
   const [workerPaths, setWorkerPaths] = useState<{
+    requestId: number;
     payload: typeof workerPayload;
     paths: ColorAreaContrastRegionPoint[][];
   } | null>(null);
+  const [activeWorkerRequestId, setActiveWorkerRequestId] = useState<
+    number | null
+  >(null);
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
 
-  const paths = useMemo(() => {
+  const rawPaths = useMemo(() => {
     if (isDragging && canUseWorkerOffload()) {
-      return workerPaths?.paths ?? [];
+      const hasCurrentWorkerResponse =
+        activeWorkerRequestId != null &&
+        workerPaths != null &&
+        workerPaths.requestId === activeWorkerRequestId;
+      if (hasCurrentWorkerResponse && workerPaths.paths.length > 0) {
+        return workerPaths.paths;
+      }
+      if (lastStablePaths.length > 0) {
+        return lastStablePaths;
+      }
+      return syncComputation?.paths ?? [];
     }
     return syncComputation?.paths ?? [];
-  }, [isDragging, syncComputation, workerPaths]);
+  }, [
+    activeWorkerRequestId,
+    isDragging,
+    lastStablePaths,
+    syncComputation,
+    workerPaths,
+  ]);
+
+  const contrastGamutBoundary = useMemo(
+    () =>
+      getColorAreaGamutBoundaryPoints(resolvedHue, axes, {
+        gamut,
+        steps: Math.max(128, stepsForOptions.lightness),
+        samplingMode: 'adaptive',
+        simplifyTolerance: simplifyTolerance ?? 0.001,
+      }),
+    [axes, gamut, resolvedHue, simplifyTolerance, stepsForOptions.lightness],
+  );
+
+  const paths = useMemo(
+    () =>
+      rawPaths.map((path) =>
+        snapPathToBoundary(
+          path,
+          contrastGamutBoundary,
+          BOUNDARY_SNAP_TOLERANCE,
+        ),
+      ),
+    [contrastGamutBoundary, rawPaths],
+  );
+
+  const contrastFillBoundary = useMemo(
+    () => withDomainBaselinePoints(contrastGamutBoundary),
+    [contrastGamutBoundary],
+  );
 
   const emitMetrics = useCallback(
     (payload: {
@@ -613,7 +1027,25 @@ export function ContrastRegionLayer({
   }, [emitMetrics, syncComputation]);
 
   useEffect(() => {
+    if (!isDragging) {
+      if (syncComputation?.paths && syncComputation.paths.length > 0) {
+        queueMicrotask(() => setLastStablePaths(syncComputation.paths));
+      }
+      return;
+    }
+    const hasCurrentWorkerResponse =
+      activeWorkerRequestId != null &&
+      workerPaths != null &&
+      workerPaths.requestId === activeWorkerRequestId;
+    if (!hasCurrentWorkerResponse || workerPaths.paths.length === 0) {
+      return;
+    }
+    queueMicrotask(() => setLastStablePaths(workerPaths.paths));
+  }, [activeWorkerRequestId, isDragging, syncComputation, workerPaths]);
+
+  useEffect(() => {
     if (!canUseWorkerOffload() || !isDragging) {
+      queueMicrotask(() => setActiveWorkerRequestId(null));
       return;
     }
 
@@ -653,6 +1085,7 @@ export function ContrastRegionLayer({
 
     const nextRequestId = requestIdRef.current + 1;
     requestIdRef.current = nextRequestId;
+    queueMicrotask(() => setActiveWorkerRequestId(nextRequestId));
 
     const onMessage = (event: MessageEvent<ContrastRegionWorkerResponse>) => {
       const payload = event.data;
@@ -671,6 +1104,7 @@ export function ContrastRegionLayer({
         return;
       }
       setWorkerPaths({
+        requestId: payload.id,
         payload: workerPayload,
         paths: payload.paths,
       });
@@ -693,7 +1127,7 @@ export function ContrastRegionLayer({
     return () => {
       worker.removeEventListener('message', onMessage);
     };
-  }, [axes, emitMetrics, isDragging, syncComputation, workerPayload]);
+  }, [emitMetrics, isDragging, syncComputation, workerPayload]);
 
   useEffect(() => {
     return () => {
@@ -704,22 +1138,63 @@ export function ContrastRegionLayer({
     };
   }, []);
 
+  const regionFillPaths = useMemo(() => {
+    const naturallyClosed = paths.filter(
+      (points) => points.length >= 2 && isPathClosed(points),
+    );
+    if (naturallyClosed.length > 0) {
+      return naturallyClosed;
+    }
+    const longestOpenPath = paths.find((points) => points.length >= 2);
+    if (!longestOpenPath) {
+      return [];
+    }
+    const boundaryClosedPath = buildBoundaryClosedPath(
+      longestOpenPath,
+      contrastFillBoundary,
+    );
+    if (boundaryClosedPath) {
+      return [boundaryClosedPath];
+    }
+    // Keep a stable fill even when boundary closure can't be resolved this frame.
+    const directClosed = dedupeSequential([
+      ...longestOpenPath,
+      longestOpenPath[0],
+    ]);
+    return directClosed.length >= 3 ? [directClosed] : [];
+  }, [paths, contrastFillBoundary]);
+
   const regionPathData = useMemo(
     () =>
-      paths
+      regionFillPaths
         .map((points) => toPath(points, true, cornerRadius))
         .filter((path) => path.length > 0)
         .join(' '),
-    [paths, cornerRadius],
+    [regionFillPaths, cornerRadius],
   );
+
+  useEffect(() => {
+    if (regionPathData.length > 0) {
+      queueMicrotask(() => setLastStableRegionPathData(regionPathData));
+      return;
+    }
+    if (!isDragging) {
+      queueMicrotask(() => setLastStableRegionPathData(''));
+    }
+  }, [isDragging, regionPathData]);
+
+  const visibleRegionPathData =
+    isDragging && regionPathData.length === 0
+      ? lastStableRegionPathData
+      : regionPathData;
 
   const pathContextValue: ContrastRegionPathContextValue = useMemo(
     () => ({
       paths,
-      regionPathData,
+      regionPathData: visibleRegionPathData,
       cornerRadius,
     }),
-    [paths, regionPathData, cornerRadius],
+    [paths, visibleRegionPathData, cornerRadius],
   );
 
   return (
@@ -734,18 +1209,21 @@ export function ContrastRegionLayer({
       <ContrastRegionPathContext.Provider value={pathContextValue}>
         {children}
       </ContrastRegionPathContext.Provider>
-      {paths.map((points, index) => (
-        <Line
-          key={index}
-          points={points}
-          cornerRadius={cornerRadius}
-          closed
-          pathProps={{
-            fill: 'none',
-            ...pathProps,
-          }}
-        />
-      ))}
+      {paths.map((points, index) => {
+        const closed = isPathClosed(points);
+        return (
+          <Line
+            key={index}
+            points={points}
+            cornerRadius={cornerRadius}
+            closed={closed}
+            pathProps={{
+              fill: 'none',
+              ...pathProps,
+            }}
+          />
+        );
+      })}
       {showPathPoints ? (
         <PathPointsOverlay
           paths={paths}

@@ -498,7 +498,7 @@ function ColorAreaPropertiesPanel() {
       | 'chromaBand.srgb'
       | 'contrast.lines.aa3'
       | 'contrast.lines.aa45'
-      | 'contrast.lines.aa7',
+      | 'contrast.lines.aaa7',
   ) => {
     if (path === 'visualize.p3Boundary') {
       setColorAreaState({
@@ -571,7 +571,7 @@ function ColorAreaPropertiesPanel() {
         ...colorAreaState.contrast,
         lines: {
           ...colorAreaState.contrast.lines,
-          aa7: updater(colorAreaState.contrast.lines.aa7),
+          aaa7: updater(colorAreaState.contrast.lines.aaa7),
         },
       },
     });
@@ -1113,19 +1113,19 @@ function ColorAreaPropertiesPanel() {
           <label className="docs-toggle-row">
             <input
               type="checkbox"
-              checked={colorAreaState.contrast.lines.aa7.enabled}
+              checked={colorAreaState.contrast.lines.aaa7.enabled}
               onChange={(event) =>
                 setStroke(
                   (current) => ({ ...current, enabled: event.target.checked }),
-                  'contrast.lines.aa7',
+                  'contrast.lines.aaa7',
                 )
               }
             />
-            7:1 (AA)
+            7:1 (AAA)
           </label>
           <StrokeStylePills
-            value={colorAreaState.contrast.lines.aa7}
-            onChange={(next) => setStroke(() => next, 'contrast.lines.aa7')}
+            value={colorAreaState.contrast.lines.aaa7}
+            onChange={(next) => setStroke(() => next, 'contrast.lines.aaa7')}
           />
         </div>
 
@@ -1217,15 +1217,15 @@ function ColorAreaPropertiesPanel() {
           <label className="docs-toggle-row">
             <input
               type="checkbox"
-              checked={colorAreaState.contrast.regions.aa7.enabled}
+              checked={colorAreaState.contrast.regions.aaa7.enabled}
               onChange={(event) =>
                 setColorAreaState({
                   contrast: {
                     ...colorAreaState.contrast,
                     regions: {
                       ...colorAreaState.contrast.regions,
-                      aa7: {
-                        ...colorAreaState.contrast.regions.aa7,
+                      aaa7: {
+                        ...colorAreaState.contrast.regions.aaa7,
                         enabled: event.target.checked,
                       },
                     },
@@ -1233,18 +1233,18 @@ function ColorAreaPropertiesPanel() {
                 })
               }
             />
-            7:1 (AA)
+            7:1 (AAA)
           </label>
           <DotOpacityPills
-            opacityPercent={colorAreaState.contrast.regions.aa7.opacityPercent}
+            opacityPercent={colorAreaState.contrast.regions.aaa7.opacityPercent}
             onChange={(opacityPercent) =>
               setColorAreaState({
                 contrast: {
                   ...colorAreaState.contrast,
                   regions: {
                     ...colorAreaState.contrast.regions,
-                    aa7: {
-                      ...colorAreaState.contrast.regions.aa7,
+                    aaa7: {
+                      ...colorAreaState.contrast.regions.aaa7,
                       opacityPercent,
                     },
                   },

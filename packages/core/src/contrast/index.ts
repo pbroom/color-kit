@@ -246,6 +246,15 @@ function pointKey(point: ContrastRegionPoint): string {
   return `${point.l.toFixed(6)}:${point.c.toFixed(6)}`;
 }
 
+/** Canonicalize point so segments from adjacent adaptive cells share the same vertex. */
+function canonicalizePoint(
+  p: ContrastRegionPoint,
+  tolerance: number = 1e-6,
+): ContrastRegionPoint {
+  const round = (x: number) => Math.round(x / tolerance) * tolerance;
+  return { l: round(p.l), c: round(p.c) };
+}
+
 function edgeKey(a: string, b: string): string {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
@@ -303,6 +312,7 @@ function edgePoint(
 
 function buildContourPaths(
   segments: Array<[ContrastRegionPoint, ContrastRegionPoint]>,
+  canonicalTolerance: number = 1e-6,
 ): ContrastRegionPoint[][] {
   if (segments.length === 0) return [];
 
@@ -311,10 +321,12 @@ function buildContourPaths(
   const visitedEdges = new Set<string>();
 
   for (const [a, b] of segments) {
-    const aKey = pointKey(a);
-    const bKey = pointKey(b);
-    pointByKey.set(aKey, a);
-    pointByKey.set(bKey, b);
+    const aCanon = canonicalizePoint(a, canonicalTolerance);
+    const bCanon = canonicalizePoint(b, canonicalTolerance);
+    const aKey = pointKey(aCanon);
+    const bKey = pointKey(bCanon);
+    pointByKey.set(aKey, aCanon);
+    pointByKey.set(bKey, bCanon);
 
     if (!adjacency.has(aKey)) adjacency.set(aKey, new Set());
     if (!adjacency.has(bKey)) adjacency.set(bKey, new Set());
@@ -567,7 +579,7 @@ export function contrastRegionPaths(
     }
   }
 
-  const rawPaths = buildContourPaths(segments);
+  const rawPaths = buildContourPaths(segments, 1e-5);
   const tol = options.simplifyTolerance;
   if (tol != null && Number.isFinite(tol) && tol > 0) {
     return rawPaths.map((p) => simplifyPolyline(p, tol, true));
@@ -644,9 +656,10 @@ function contrastRegionPathsAdaptive(
     const b2 = v11 >= 0;
     const b3 = v01 >= 0;
     const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
-    if (mask === 0 || mask === 15) return;
-
     if (depth >= maxDepth) {
+      if (mask === 0 || mask === 15) {
+        return;
+      }
       const edgePairs = segmentEdgesForCell(mask);
       for (const [fromEdge, toEdge] of edgePairs) {
         const from = edgePoint(
@@ -679,6 +692,19 @@ function contrastRegionPathsAdaptive(
     const vMidTop = getValue(lMid, c1);
     const vMidLeft = getValue(l0, cMid);
     const vCenter = getValue(lMid, cMid);
+
+    if (mask === 0 || mask === 15) {
+      const cornerSign = b0;
+      const hasInteriorSignChange =
+        vMidBottom >= 0 !== cornerSign ||
+        vMidRight >= 0 !== cornerSign ||
+        vMidTop >= 0 !== cornerSign ||
+        vMidLeft >= 0 !== cornerSign ||
+        vCenter >= 0 !== cornerSign;
+      if (!hasInteriorSignChange) {
+        return;
+      }
+    }
 
     processCell(
       l0,

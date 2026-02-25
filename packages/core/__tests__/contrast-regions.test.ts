@@ -247,4 +247,27 @@ describe('contrastRegionPaths()', () => {
       }
     }
   });
+
+  it('adaptive mode produces stitched contours with shared vertices within tolerance', () => {
+    const reference = fromHex('#ffffff');
+    const paths = contrastRegionPaths(reference, 200, {
+      level: 'AA',
+      gamut: 'srgb',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 12,
+      adaptiveMaxDepth: 3,
+      edgeInterpolation: 'linear',
+    });
+    expect(paths.length).toBeGreaterThan(0);
+    const totalPoints = paths.reduce((s, p) => s + p.length, 0);
+    expect(totalPoints).toBeGreaterThan(2);
+    for (const path of paths) {
+      for (const point of path) {
+        expect(point.l).toBeGreaterThanOrEqual(0);
+        expect(point.l).toBeLessThanOrEqual(1);
+        expect(point.c).toBeGreaterThanOrEqual(0);
+        expect(point.c).toBeLessThanOrEqual(0.4);
+      }
+    }
+  });
 });

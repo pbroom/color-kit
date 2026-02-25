@@ -97,12 +97,12 @@ export interface ColorAreaInspectorState {
     lines: {
       aa3: ColorAreaStrokeControl;
       aa45: ColorAreaStrokeControl;
-      aa7: ColorAreaStrokeControl;
+      aaa7: ColorAreaStrokeControl;
     };
     regions: {
       aa3: ColorAreaRegionControl;
       aa45: ColorAreaRegionControl;
-      aa7: ColorAreaRegionControl;
+      aaa7: ColorAreaRegionControl;
     };
   };
   tuning: {
@@ -228,7 +228,7 @@ function createRequestedPresetState(): ColorAreaInspectorState {
           style: 'dashed',
           width: 0.25,
         },
-        aa7: {
+        aaa7: {
           enabled: false,
           style: 'dashed',
           width: 0.25,
@@ -245,7 +245,7 @@ function createRequestedPresetState(): ColorAreaInspectorState {
           style: 'dots',
           opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
-        aa7: {
+        aaa7: {
           enabled: false,
           style: 'dots',
           opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
@@ -258,7 +258,7 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       lineSteps: 128,
       contrastSteps: 96,
       contrastEdgeInterpolation: 'linear',
-      simplifyTolerance: undefined,
+      simplifyTolerance: 0.001,
       lineSamplingMode: 'adaptive',
       contrastSamplingMode: 'adaptive',
       cornerRadius: undefined,
@@ -334,7 +334,7 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
           style: 'dashed',
           width: 0.25,
         },
-        aa7: {
+        aaa7: {
           enabled: false,
           style: 'dashed',
           width: 0.25,
@@ -351,7 +351,7 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
           style: 'dots',
           opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
         },
-        aa7: {
+        aaa7: {
           enabled: false,
           style: 'dots',
           opacityPercent: COLOR_AREA_DOT_PATTERN.opacityPercent,
@@ -364,7 +364,7 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       lineSteps: 128,
       contrastSteps: 96,
       contrastEdgeInterpolation: 'linear',
-      simplifyTolerance: undefined,
+      simplifyTolerance: 0.001,
       lineSamplingMode: 'adaptive',
       contrastSamplingMode: 'adaptive',
       cornerRadius: undefined,

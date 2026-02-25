@@ -101,6 +101,7 @@ interface WebglUniforms {
   outP3Fill: WebGLUniformLocation;
   outSrgbFill: WebGLUniformLocation;
   dotPattern: WebGLUniformLocation;
+  dotPatternScale: WebGLUniformLocation;
 }
 
 interface WebglState {
@@ -328,9 +329,14 @@ function renderPixels(
   gamut: GamutTarget,
   axes: Parameters<typeof colorFromColorAreaPosition>[1],
   outOfGamut: ResolvedOutOfGamutConfig,
+  scaleX: number,
+  scaleY: number,
 ): Uint8ClampedArray {
   const data = new Uint8ClampedArray(width * height * 4);
   const dotCell = outOfGamut.dotPattern.size + outOfGamut.dotPattern.gap;
+  const dotRadius = outOfGamut.dotPattern.size * 0.5;
+  const safeScaleX = Math.max(1e-6, scaleX);
+  const safeScaleY = Math.max(1e-6, scaleY);
 
   for (let y = 0; y < height; y += 1) {
     const yNorm = height <= 1 ? 0 : y / (height - 1);
@@ -384,14 +390,13 @@ function renderPixels(
         outOfGamut.dotPattern.opacity > 0 &&
         dotCell > 0
       ) {
-        const localX = x % dotCell;
-        const localY = y % dotCell;
-        const dotRadius = outOfGamut.dotPattern.size * 0.5;
-        const sampleX = localX + 0.5;
-        const sampleY = localY + 0.5;
+        const cssX = (x + 0.5) / safeScaleX;
+        const cssY = (y + 0.5) / safeScaleY;
+        const localX = cssX - Math.floor(cssX / dotCell) * dotCell;
+        const localY = cssY - Math.floor(cssY / dotCell) * dotCell;
         const distanceSq =
-          (sampleX - dotRadius) * (sampleX - dotRadius) +
-          (sampleY - dotRadius) * (sampleY - dotRadius);
+          (localX - dotRadius) * (localX - dotRadius) +
+          (localY - dotRadius) * (localY - dotRadius);
         if (distanceSq <= dotRadius * dotRadius) {
           r = blend(r, 1, outOfGamut.dotPattern.opacity);
           g = blend(g, 1, outOfGamut.dotPattern.opacity);
@@ -514,6 +519,7 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
   const outP3Fill = gl.getUniformLocation(program, 'u_out_p3_fill');
   const outSrgbFill = gl.getUniformLocation(program, 'u_out_srgb_fill');
   const dotPattern = gl.getUniformLocation(program, 'u_dot_pattern');
+  const dotPatternScale = gl.getUniformLocation(program, 'u_dot_pattern_scale');
 
   if (
     !seed ||
@@ -526,7 +532,8 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
     !repeatEdgePixels ||
     !outP3Fill ||
     !outSrgbFill ||
-    !dotPattern
+    !dotPattern ||
+    !dotPatternScale
   ) {
     return null;
   }
@@ -564,6 +571,7 @@ function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
       outP3Fill,
       outSrgbFill,
       dotPattern,
+      dotPatternScale,
     },
   };
 }
@@ -591,6 +599,7 @@ function drawWithWebgl(
     axes: Parameters<typeof colorFromColorAreaPosition>[1];
     seed: Color;
     outOfGamut: ResolvedOutOfGamutConfig;
+    dotPatternScale: number;
   },
 ): boolean {
   const { gl, uniforms } = state;
@@ -633,12 +642,14 @@ function drawWithWebgl(
     params.outOfGamut.outOfSrgbFill.b,
     params.outOfGamut.outOfSrgbFill.a,
   );
+  const scale = Math.max(1e-6, params.dotPatternScale);
   gl.uniform3f(
     uniforms.dotPattern,
     params.outOfGamut.dotPattern.opacity,
     params.outOfGamut.dotPattern.size,
     params.outOfGamut.dotPattern.gap,
   );
+  gl.uniform1f(uniforms.dotPatternScale, scale);
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return gl.getError() === gl.NO_ERROR;
@@ -755,6 +766,8 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       return {
         width: scaledWidth,
         height: scaledHeight,
+        cssWidth: rect.width,
+        cssHeight: rect.height,
       };
     }, [effectiveScale]);
 
@@ -805,6 +818,11 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       }
       lastRenderKeyRef.current = renderKey;
 
+      const scaleX =
+        size.cssWidth > 0 ? size.width / size.cssWidth : size.width;
+      const scaleY =
+        size.cssHeight > 0 ? size.height / size.cssHeight : size.height;
+
       if (resolvedRenderer === 'gpu' && !gpuUnavailableRef.current) {
         if (!webglStateRef.current) {
           webglStateRef.current = createWebglState(canvas);
@@ -818,6 +836,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
             axes,
             seed: planeSeed,
             outOfGamut: resolvedOutOfGamut,
+            dotPatternScale: scaleX,
           })
         ) {
           setActiveRenderer('gpu');
@@ -835,6 +854,8 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         displayGamut,
         axes,
         resolvedOutOfGamut,
+        scaleX,
+        scaleY,
       );
 
       const canvasOk = drawWithCanvas2d(canvas, pixels);

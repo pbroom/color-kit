@@ -119,7 +119,13 @@ describe('ColorArea primitives', () => {
     const requested: Color = { l: 0.68, c: 0.22, h: 245, alpha: 1 };
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ContrastRegionLayer threshold={4.5} showPathPoints>
+        <ContrastRegionLayer
+          threshold={4.5}
+          samplingMode="uniform"
+          lightnessSteps={32}
+          chromaSteps={32}
+          showPathPoints
+        >
           <ContrastRegionFill
             fillColor="#88aaff"
             fillOpacity={0.2}
@@ -135,10 +141,46 @@ describe('ColorArea primitives', () => {
       container.querySelector('[data-color-area-contrast-region-layer]'),
     ).toBeTruthy();
     expect(
-      container.querySelector('[data-color-area-contrast-region-fill]'),
+      container.querySelector('[data-color-area-contrast-region-points]'),
     ).toBeTruthy();
     expect(
-      container.querySelector('[data-color-area-contrast-region-points]'),
+      container.querySelector('[data-color-area-contrast-region-fill]'),
+    ).toBeTruthy();
+  });
+
+  it('renders non-empty contrast region lines with adaptive sampling', () => {
+    const requested: Color = { l: 0.85, c: 0.08, h: 200, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ContrastRegionLayer
+          threshold={4.5}
+          samplingMode="adaptive"
+          lightnessSteps={32}
+          chromaSteps={32}
+        />
+      </ColorArea>,
+    );
+
+    const layer = container.querySelector(
+      '[data-color-area-contrast-region-layer]',
+    );
+    expect(layer).toBeTruthy();
+    const lines = container.querySelectorAll('[data-color-area-line]');
+    expect(lines.length).toBeGreaterThan(0);
+  });
+
+  it('renders contrast region fill when adaptive paths are open', () => {
+    const requested: Color = { l: 0.6953, c: 0.1316, h: 29, alpha: 1 };
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ContrastRegionLayer threshold={4.5} samplingMode="adaptive">
+          <ContrastRegionFill dotOpacity={0.2} />
+        </ContrastRegionLayer>
+      </ColorArea>,
+    );
+
+    expect(
+      container.querySelector('[data-color-area-contrast-region-fill]'),
     ).toBeTruthy();
   });
 
