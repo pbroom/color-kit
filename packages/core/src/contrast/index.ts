@@ -1468,20 +1468,19 @@ export function contrastRegionPaths(
     );
   }
 
-  const metric = options.metric ?? 'wcag';
   const mode = options.samplingMode ?? 'hybrid';
+  const requestedLegacySamplingMode =
+    mode === 'uniform' || mode === 'adaptive';
   const usesLegacyControls =
-    metric === 'wcag' &&
-    (mode === 'uniform' ||
-      mode === 'adaptive' ||
-      options.edgeInterpolation != null ||
-      options.adaptiveBaseSteps != null ||
-      options.adaptiveMaxDepth != null);
+    requestedLegacySamplingMode ||
+    options.edgeInterpolation != null ||
+    options.adaptiveBaseSteps != null ||
+    options.adaptiveMaxDepth != null;
   if (usesLegacyControls) {
     return contrastRegionPathsLegacy(reference, hue, {
       ...options,
       samplingMode:
-        mode === 'uniform' || mode === 'adaptive'
+        requestedLegacySamplingMode
           ? mode
           : options.adaptiveBaseSteps != null ||
               options.adaptiveMaxDepth != null

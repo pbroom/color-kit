@@ -1512,6 +1512,10 @@ export function ContrastRegionLayer({
         payload: workerPayload,
         paths: nextPaths,
       });
+      const wasmDisabledUntilMs =
+        payload.schedulerTelemetry?.circuitBreakers.wasm?.disabledUntilMs ?? 0;
+      const nowMs =
+        typeof performance === 'undefined' ? Date.now() : performance.now();
       emitMetrics({
         source: 'worker',
         requestId: payload.id,
@@ -1521,9 +1525,7 @@ export function ContrastRegionLayer({
         backend: payload.backend,
         scheduleReason: payload.schedule?.reason,
         schedulerBucketCount: payload.schedulerTelemetry?.buckets.length,
-        wasmCircuitOpen:
-          (payload.schedulerTelemetry?.circuitBreakers.wasm?.disabledUntilMs ??
-            0) > 0,
+        wasmCircuitOpen: wasmDisabledUntilMs > nowMs,
         wasmParityStatus: payload.wasmParity?.status,
         wasmParityPathDelta: payload.wasmParity?.pathCountDelta,
         wasmParityPointDelta: payload.wasmParity?.pointCountDelta,

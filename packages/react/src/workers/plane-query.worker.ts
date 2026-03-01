@@ -6,6 +6,7 @@ import {
 import type {
   PlaneComputeBackend,
   PlaneComputeRequest,
+  PlaneComputeResponse,
   PlaneComputeSchedulerOptions,
 } from '@color-kit/core';
 import type {
@@ -60,6 +61,60 @@ function createWorkerScheduler(
     },
     options: SCHEDULER_OPTIONS,
   });
+}
+
+const FLOAT32_PARITY_EPSILON = 1e-4;
+
+function uint32ArraysEqual(a: Uint32Array, b: Uint32Array): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let index = 0; index < a.length; index += 1) {
+    if (a[index] !== b[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function float32ArraysEqualWithinEpsilon(
+  a: Float32Array,
+  b: Float32Array,
+  epsilon: number = FLOAT32_PARITY_EPSILON,
+): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let index = 0; index < a.length; index += 1) {
+    if (Math.abs(a[index] - b[index]) > epsilon) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function packedResultsShapeMatch(
+  jsResponse: PlaneComputeResponse,
+  wasmResponse: PlaneComputeResponse,
+): boolean {
+  return (
+    uint32ArraysEqual(
+      jsResponse.result.pathRanges,
+      wasmResponse.result.pathRanges,
+    ) &&
+    float32ArraysEqualWithinEpsilon(
+      jsResponse.result.pointXY,
+      wasmResponse.result.pointXY,
+    ) &&
+    float32ArraysEqualWithinEpsilon(
+      jsResponse.result.pointLC,
+      wasmResponse.result.pointLC,
+    ) &&
+    float32ArraysEqualWithinEpsilon(
+      jsResponse.result.pointColorLcha,
+      wasmResponse.result.pointColorLcha,
+    )
+  );
 }
 
 function resolveInstalledWasmBackend(): PlaneComputeBackend | undefined {
@@ -247,46 +302,55 @@ workerScope.onmessage = async (event): Promise<void> => {
           );
           const pathCountDelta = Math.abs(jsPathCount - wasmPathCount);
           const pointCountDelta = Math.abs(jsPointCount - wasmPointCount);
+          const countsMatch = pathCountDelta === 0 && pointCountDelta === 0;
           let parityStatus: PlaneQueryWorkerWasmParityResult['status'] =
-            pathCountDelta === 0 && pointCountDelta === 0
-              ? 'ok'
-              : 'shape-mismatch';
+            countsMatch ? 'ok' : 'shape-mismatch';
           let numericMismatchCount: number | undefined;
           let maxAbsDelta: number | undefined;
           let meanAbsDelta: number | undefined;
 
-          if (parityStatus === 'ok' && payload.wasmParityMode === 'numeric') {
-            const pointXYParity = compareNumericParity(
-              jsResponse.result.pointXY,
-              wasmResponse.result.pointXY,
-              FLOAT32_PARITY_TOLERANCE,
-            );
-            const pointLCParity = compareNumericParity(
-              jsResponse.result.pointLC,
-              wasmResponse.result.pointLC,
-              FLOAT32_PARITY_TOLERANCE,
-            );
-            const pointColorParity = compareNumericParity(
-              jsResponse.result.pointColorLcha,
-              wasmResponse.result.pointColorLcha,
-              FLOAT32_PARITY_TOLERANCE,
-            );
-            numericMismatchCount =
-              pointXYParity.mismatchCount +
-              pointLCParity.mismatchCount +
-              pointColorParity.mismatchCount;
-            maxAbsDelta = Math.max(
-              pointXYParity.maxAbsDelta,
-              pointLCParity.maxAbsDelta,
-              pointColorParity.maxAbsDelta,
-            );
-            meanAbsDelta =
-              (pointXYParity.meanAbsDelta +
-                pointLCParity.meanAbsDelta +
-                pointColorParity.meanAbsDelta) /
-              3;
-            if (numericMismatchCount > 0) {
-              parityStatus = 'numeric-mismatch';
+          if (parityStatus === 'ok') {
+            if (payload.wasmParityMode === 'shape') {
+              const shapeMatches = packedResultsShapeMatch(
+                jsResponse,
+                wasmResponse,
+              );
+              if (!shapeMatches) {
+                parityStatus = 'shape-mismatch';
+              }
+            } else if (payload.wasmParityMode === 'numeric') {
+              const pointXYParity = compareNumericParity(
+                jsResponse.result.pointXY,
+                wasmResponse.result.pointXY,
+                FLOAT32_PARITY_TOLERANCE,
+              );
+              const pointLCParity = compareNumericParity(
+                jsResponse.result.pointLC,
+                wasmResponse.result.pointLC,
+                FLOAT32_PARITY_TOLERANCE,
+              );
+              const pointColorParity = compareNumericParity(
+                jsResponse.result.pointColorLcha,
+                wasmResponse.result.pointColorLcha,
+                FLOAT32_PARITY_TOLERANCE,
+              );
+              numericMismatchCount =
+                pointXYParity.mismatchCount +
+                pointLCParity.mismatchCount +
+                pointColorParity.mismatchCount;
+              maxAbsDelta = Math.max(
+                pointXYParity.maxAbsDelta,
+                pointLCParity.maxAbsDelta,
+                pointColorParity.maxAbsDelta,
+              );
+              meanAbsDelta =
+                (pointXYParity.meanAbsDelta +
+                  pointLCParity.meanAbsDelta +
+                  pointColorParity.meanAbsDelta) /
+                3;
+              if (numericMismatchCount > 0) {
+                parityStatus = 'numeric-mismatch';
+              }
             }
           }
 

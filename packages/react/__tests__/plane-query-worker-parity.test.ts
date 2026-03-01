@@ -93,6 +93,33 @@ function createParityMismatchWasmBackend(): PlaneComputeBackend {
   };
 }
 
+function createParityGeometryMismatchWasmBackend(): PlaneComputeBackend {
+  const jsBackend = createJsPlaneComputeBackend();
+  return {
+    kind: 'wasm',
+    run(request: PlaneComputeRequest): PlaneComputeResponse {
+      const response = jsBackend.run(request);
+      const pointXY = new Float32Array(response.result.pointXY);
+      const pointLC = new Float32Array(response.result.pointLC);
+      if (pointXY.length > 0) {
+        pointXY[0] += 0.01;
+      }
+      if (pointLC.length > 0) {
+        pointLC[0] += 0.01;
+      }
+      return {
+        ...response,
+        backend: 'wasm',
+        result: {
+          ...response.result,
+          pointXY,
+          pointLC,
+        },
+      };
+    },
+  };
+}
+
 function createParityNumericMismatchWasmBackend(): PlaneComputeBackend {
   const jsBackend = createJsPlaneComputeBackend();
   return {
@@ -288,6 +315,19 @@ describe('plane-query worker wasm parity', () => {
     expect(evaluateWasmParityGate(response.wasmParity, 'warn').status).toBe(
       'warn',
     );
+    expect(evaluateWasmParityGate(response.wasmParity, 'strict').status).toBe(
+      'fail',
+    );
+  });
+
+  it('reports shape mismatch when geometry differs but counts match', async () => {
+    const response = await runWorkerOnce(
+      createParityGeometryMismatchWasmBackend(),
+    );
+    expect(response.error).toBeUndefined();
+    expect(response.wasmParity?.status).toBe('shape-mismatch');
+    expect(response.wasmParity?.pathCountDelta ?? 0).toBe(0);
+    expect(response.wasmParity?.pointCountDelta ?? 0).toBe(0);
     expect(evaluateWasmParityGate(response.wasmParity, 'strict').status).toBe(
       'fail',
     );
