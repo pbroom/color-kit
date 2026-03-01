@@ -59,3 +59,4 @@ This file defines top-level guidance for Codex in this repository.
 - **Confirm stacked PR base targets parent branch**: After `gt submit --stack`, verify `baseRefName` with `gh pr view <branch> --json baseRefName` so stacked PRs review in dependency order instead of accidentally targeting `main`.
 - **Prefer Bash 3-compatible script primitives**: Avoid Bash 4+ built-ins (for example `mapfile`) so scripts run in both CI Linux images and default macOS Bash.
 - **React Compiler disallows ref-driven render state**: Do not read/mutate refs in render to drive UI branching; keep render inputs in state and update via effects when needed.
+- **Source-branch discovery beats assumptions**: Verify whether a requested helper branch still exists before proceeding; if it does not, use the nearest equivalent AGENTS source branch to keep guidance updates moving without guessing.
