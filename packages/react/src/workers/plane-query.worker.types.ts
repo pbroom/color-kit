@@ -10,17 +10,33 @@ import type {
   PlaneQuery,
 } from '@color-kit/core';
 
-export type PlaneQueryWorkerWasmParityMode = 'off' | 'shape';
+export type PlaneQueryWorkerWasmParityMode = 'off' | 'shape' | 'numeric';
+export type PlaneQueryWorkerWasmInitStatus =
+  | 'pending'
+  | 'ready'
+  | 'unavailable'
+  | 'error';
+
+export interface PlaneQueryWorkerWasmInitState {
+  status: PlaneQueryWorkerWasmInitStatus;
+  attempted: boolean;
+  backendVersion?: string;
+  error?: string;
+}
 
 export interface PlaneQueryWorkerWasmParityResult {
   mode: Exclude<PlaneQueryWorkerWasmParityMode, 'off'>;
-  status: 'ok' | 'shape-mismatch' | 'no-wasm' | 'error';
+  status: 'ok' | 'shape-mismatch' | 'numeric-mismatch' | 'no-wasm' | 'error';
   wasmAvailable: boolean;
   attempted: boolean;
   jsTotalTimeMs?: number;
   wasmTotalTimeMs?: number;
   pathCountDelta?: number;
   pointCountDelta?: number;
+  numericTolerance?: number;
+  numericMismatchCount?: number;
+  maxAbsDelta?: number;
+  meanAbsDelta?: number;
   error?: string;
 }
 
@@ -32,6 +48,7 @@ export interface PlaneQueryWorkerRequest {
   quality?: PlaneComputeQuality;
   performanceProfile?: PlaneComputePerformanceProfile;
   includeSchedulerTelemetry?: boolean;
+  includeWasmInitStatus?: boolean;
   wasmParityMode?: PlaneQueryWorkerWasmParityMode;
 }
 
@@ -43,6 +60,7 @@ export interface PlaneQueryWorkerResponse {
   marshalTimeMs?: number;
   schedule?: PlaneComputeScheduleTrace;
   schedulerTelemetry?: PlaneComputeTelemetrySnapshot;
+  wasmInit?: PlaneQueryWorkerWasmInitState;
   wasmParity?: PlaneQueryWorkerWasmParityResult;
   error?: string;
 }

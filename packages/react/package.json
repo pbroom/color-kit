@@ -25,9 +25,10 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "pretest": "pnpm --filter @color-kit/core-wasm build",
     "test": "vitest run --passWithNoTests",
-    "test:wasm-parity": "vitest run __tests__/plane-query-worker-parity.test.ts __tests__/wasm-parity-gate.test.ts",
-    "test:wasm-parity:strict": "COLOR_KIT_WASM_PARITY_GATE=strict vitest run __tests__/plane-query-worker-parity.test.ts __tests__/wasm-parity-gate.test.ts",
+    "test:wasm-parity": "vitest run __tests__/plane-query-worker-parity.test.ts __tests__/wasm-parity-gate.test.ts __tests__/plane-query-worker-real-wasm.test.ts",
+    "test:wasm-parity:strict": "COLOR_KIT_WASM_PARITY_GATE=strict COLOR_KIT_REQUIRE_REAL_WASM=1 vitest run __tests__/plane-query-worker-parity.test.ts __tests__/wasm-parity-gate.test.ts __tests__/plane-query-worker-real-wasm.test.ts",
     "test:watch": "vitest",
     "bench:color-plane": "node bench/color-plane-renderer-bench.mjs",
     "bench:color-area": "node bench/color-area-interaction-bench.mjs"
@@ -53,6 +54,7 @@
   },
   "dependencies": {
     "@color-kit/core": "workspace:*",
+    "@color-kit/core-wasm": "workspace:*",
     "@legendapp/state": "^2.1.15"
   },
   "peerDependencies": {

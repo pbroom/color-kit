@@ -37,5 +37,9 @@ coverage/
 # Vite
 apps/docs/.vite/
 
+# Rust build artifacts
+packages/core-wasm/rust/target/
+packages/core-wasm/rust/Cargo.lock
+
 # Codex local workspace files
 .codex/

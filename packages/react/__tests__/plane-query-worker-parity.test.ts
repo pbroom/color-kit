@@ -12,14 +12,18 @@ import type {
 import { evaluateWasmParityGate } from '../src/workers/wasm-parity-gate.js';
 
 interface WorkerHarnessScope {
-  onmessage: ((event: MessageEvent<PlaneQueryWorkerRequest>) => void) | null;
+  onmessage:
+    | ((event: MessageEvent<PlaneQueryWorkerRequest>) => void | Promise<void>)
+    | null;
   postMessage: (
     message: PlaneQueryWorkerResponse,
     transfer?: Transferable[],
   ) => void;
 }
 
-function createWorkerRequest(): PlaneQueryWorkerRequest {
+function createWorkerRequest(
+  wasmParityMode: PlaneQueryWorkerRequest['wasmParityMode'] = 'shape',
+): PlaneQueryWorkerRequest {
   return {
     id: 1,
     plane: {
@@ -41,7 +45,8 @@ function createWorkerRequest(): PlaneQueryWorkerRequest {
     quality: 'high',
     performanceProfile: 'balanced',
     includeSchedulerTelemetry: true,
-    wasmParityMode: 'shape',
+    includeWasmInitStatus: true,
+    wasmParityMode,
   };
 }
 
@@ -88,6 +93,28 @@ function createParityMismatchWasmBackend(): PlaneComputeBackend {
   };
 }
 
+function createParityNumericMismatchWasmBackend(): PlaneComputeBackend {
+  const jsBackend = createJsPlaneComputeBackend();
+  return {
+    kind: 'wasm',
+    run(request: PlaneComputeRequest): PlaneComputeResponse {
+      const response = jsBackend.run(request);
+      const pointXY = response.result.pointXY.slice();
+      if (pointXY.length > 0) {
+        pointXY[0] += 0.001;
+      }
+      return {
+        ...response,
+        backend: 'wasm',
+        result: {
+          ...response.result,
+          pointXY,
+        },
+      };
+    },
+  };
+}
+
 function createParityErrorWasmBackend(): PlaneComputeBackend {
   return {
     kind: 'wasm',
@@ -99,6 +126,10 @@ function createParityErrorWasmBackend(): PlaneComputeBackend {
 
 async function runWorkerOnce(
   wasmBackend: PlaneComputeBackend | null,
+  options: {
+    disableAutoBootstrap?: boolean;
+    wasmParityMode?: PlaneQueryWorkerRequest['wasmParityMode'];
+  } = {},
 ): Promise<PlaneQueryWorkerResponse> {
   vi.resetModules();
   const responses: PlaneQueryWorkerResponse[] = [];
@@ -112,8 +143,15 @@ async function runWorkerOnce(
     globalThis as unknown as {
       self?: WorkerHarnessScope;
       __COLOR_KIT_WASM_PLANE_BACKEND__?: PlaneComputeBackend;
+      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
   ).self = scope;
+  (
+    globalThis as unknown as {
+      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+    }
+  ).__COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__ =
+    options.disableAutoBootstrap ?? false;
   if (wasmBackend) {
     (
       globalThis as unknown as {
@@ -130,11 +168,12 @@ async function runWorkerOnce(
 
   await import('../src/workers/plane-query.worker.ts');
   expect(typeof scope.onmessage).toBe('function');
-  scope.onmessage?.({
-    data: createWorkerRequest(),
+  await scope.onmessage?.({
+    data: createWorkerRequest(options.wasmParityMode ?? 'shape'),
   } as MessageEvent<PlaneQueryWorkerRequest>);
-  expect(responses).toHaveLength(1);
-  return responses[0];
+  await Promise.resolve();
+  expect(responses.length).toBeGreaterThan(0);
+  return responses[responses.length - 1];
 }
 
 afterEach(() => {
@@ -142,22 +181,33 @@ afterEach(() => {
     globalThis as unknown as {
       self?: WorkerHarnessScope;
       __COLOR_KIT_WASM_PLANE_BACKEND__?: PlaneComputeBackend;
+      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
   ).self;
   delete (
     globalThis as unknown as {
       __COLOR_KIT_WASM_PLANE_BACKEND__?: PlaneComputeBackend;
+      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
   ).__COLOR_KIT_WASM_PLANE_BACKEND__;
+  delete (
+    globalThis as unknown as {
+      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+    }
+  ).__COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__;
   vi.resetModules();
 });
 
 describe('plane-query worker wasm parity', () => {
   it('reports no-wasm parity status when no backend is installed', async () => {
-    const response = await runWorkerOnce(null);
+    const response = await runWorkerOnce(null, {
+      disableAutoBootstrap: true,
+      wasmParityMode: 'shape',
+    });
     expect(response.error).toBeUndefined();
     expect(response.wasmParity?.status).toBe('no-wasm');
     expect(response.wasmParity?.attempted).toBe(false);
+    expect(response.wasmInit?.status).toBe('unavailable');
     expect(response.schedulerTelemetry?.buckets.length).toBeGreaterThanOrEqual(
       1,
     );
@@ -167,19 +217,26 @@ describe('plane-query worker wasm parity', () => {
   });
 
   it('reports parity-ok when wasm and js packed outputs match', async () => {
-    const response = await runWorkerOnce(createParityOkWasmBackend());
+    const response = await runWorkerOnce(createParityOkWasmBackend(), {
+      wasmParityMode: 'shape',
+    });
     expect(response.error).toBeUndefined();
     expect(response.wasmParity?.status).toBe('ok');
     expect(response.wasmParity?.attempted).toBe(true);
     expect(response.wasmParity?.pathCountDelta ?? 0).toBe(0);
     expect(response.wasmParity?.pointCountDelta ?? 0).toBe(0);
+    expect(response.wasmInit?.status).toBe('ready');
+    expect(response.backend).toBe('wasm');
+    expect(response.schedule?.reason).toBe('warmup');
     expect(evaluateWasmParityGate(response.wasmParity, 'strict').status).toBe(
       'pass',
     );
   });
 
   it('reports shape mismatches and supports strict CI gate decisions', async () => {
-    const response = await runWorkerOnce(createParityMismatchWasmBackend());
+    const response = await runWorkerOnce(createParityMismatchWasmBackend(), {
+      wasmParityMode: 'shape',
+    });
     expect(response.error).toBeUndefined();
     expect(response.wasmParity?.status).toBe('shape-mismatch');
     expect(response.wasmParity?.pathCountDelta ?? 0).toBeGreaterThanOrEqual(0);
@@ -192,11 +249,36 @@ describe('plane-query worker wasm parity', () => {
     );
   });
 
+  it('reports numeric mismatches with float32-friendly tolerance', async () => {
+    const response = await runWorkerOnce(
+      createParityNumericMismatchWasmBackend(),
+      {
+        wasmParityMode: 'numeric',
+      },
+    );
+    expect(response.error).toBeUndefined();
+    expect(response.wasmParity?.mode).toBe('numeric');
+    expect(response.wasmParity?.status).toBe('numeric-mismatch');
+    expect(response.wasmParity?.numericTolerance).toBeCloseTo(1e-4, 8);
+    expect(response.wasmParity?.numericMismatchCount ?? 0).toBeGreaterThan(0);
+    expect(response.wasmParity?.maxAbsDelta ?? 0).toBeGreaterThan(1e-4);
+    expect(evaluateWasmParityGate(response.wasmParity, 'warn').status).toBe(
+      'warn',
+    );
+    expect(evaluateWasmParityGate(response.wasmParity, 'strict').status).toBe(
+      'fail',
+    );
+  });
+
   it('reports parity errors and fails strict gate mode', async () => {
-    const response = await runWorkerOnce(createParityErrorWasmBackend());
+    const response = await runWorkerOnce(createParityErrorWasmBackend(), {
+      wasmParityMode: 'shape',
+    });
     expect(response.error).toBeUndefined();
     expect(response.wasmParity?.status).toBe('error');
     expect(response.wasmParity?.error).toContain('wasm backend crashed');
+    expect(response.backend).toBe('js');
+    expect(response.schedule?.reason).toBe('backend-error');
     expect(evaluateWasmParityGate(response.wasmParity, 'warn').status).toBe(
       'warn',
     );

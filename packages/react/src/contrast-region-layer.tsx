@@ -55,9 +55,17 @@ export interface ContrastRegionLayerMetrics {
   scheduleReason?: string;
   schedulerBucketCount?: number;
   wasmCircuitOpen?: boolean;
-  wasmParityStatus?: 'ok' | 'shape-mismatch' | 'no-wasm' | 'error';
+  wasmParityStatus?:
+    | 'ok'
+    | 'shape-mismatch'
+    | 'numeric-mismatch'
+    | 'no-wasm'
+    | 'error';
   wasmParityPathDelta?: number;
   wasmParityPointDelta?: number;
+  wasmInitStatus?: 'pending' | 'ready' | 'unavailable' | 'error';
+  wasmInitError?: string;
+  wasmBackendVersion?: string;
   quality: 'high' | 'medium' | 'low';
   isDragging: boolean;
 }
@@ -93,7 +101,7 @@ export interface ContrastRegionLayerProps extends LayerProps {
   hybridMaxDepth?: number;
   hybridErrorTolerance?: number;
   includeSchedulerTelemetry?: boolean;
-  wasmParityMode?: 'off' | 'shape';
+  wasmParityMode?: 'off' | 'shape' | 'numeric';
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
   /** Optional precomputed contour paths (for plane-driven overlays). */
@@ -1226,6 +1234,7 @@ export function ContrastRegionLayer({
       quality: resolvedQuality,
       performanceProfile,
       includeSchedulerTelemetry,
+      includeWasmInitStatus: includeSchedulerTelemetry,
       wasmParityMode,
     }),
     [
@@ -1330,9 +1339,17 @@ export function ContrastRegionLayer({
       scheduleReason?: string;
       schedulerBucketCount?: number;
       wasmCircuitOpen?: boolean;
-      wasmParityStatus?: 'ok' | 'shape-mismatch' | 'no-wasm' | 'error';
+      wasmParityStatus?:
+        | 'ok'
+        | 'shape-mismatch'
+        | 'numeric-mismatch'
+        | 'no-wasm'
+        | 'error';
       wasmParityPathDelta?: number;
       wasmParityPointDelta?: number;
+      wasmInitStatus?: 'pending' | 'ready' | 'unavailable' | 'error';
+      wasmInitError?: string;
+      wasmBackendVersion?: string;
     }) => {
       onMetrics?.({
         source: payload.source,
@@ -1351,6 +1368,9 @@ export function ContrastRegionLayer({
         wasmParityStatus: payload.wasmParityStatus,
         wasmParityPathDelta: payload.wasmParityPathDelta,
         wasmParityPointDelta: payload.wasmParityPointDelta,
+        wasmInitStatus: payload.wasmInitStatus,
+        wasmInitError: payload.wasmInitError,
+        wasmBackendVersion: payload.wasmBackendVersion,
         quality: resolvedQuality,
         isDragging,
       });
@@ -1507,6 +1527,9 @@ export function ContrastRegionLayer({
         wasmParityStatus: payload.wasmParity?.status,
         wasmParityPathDelta: payload.wasmParity?.pathCountDelta,
         wasmParityPointDelta: payload.wasmParity?.pointCountDelta,
+        wasmInitStatus: payload.wasmInit?.status,
+        wasmInitError: payload.wasmInit?.error,
+        wasmBackendVersion: payload.wasmInit?.backendVersion,
       });
     };
 

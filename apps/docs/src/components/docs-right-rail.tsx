@@ -156,6 +156,7 @@ const APCA_ROLE_OPTIONS = [
 const WASM_PARITY_MODE_OPTIONS = [
   { value: 'off', label: 'Off' },
   { value: 'shape', label: 'Shape' },
+  { value: 'numeric', label: 'Numeric' },
 ] as const;
 
 const SAMPLING_MODE_OPTIONS = [
