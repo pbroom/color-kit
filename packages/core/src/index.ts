@@ -66,6 +66,10 @@ export {
   contrastRegionPaths,
 } from './contrast/index.js';
 export type {
+  ContrastApcaPolarity,
+  ContrastApcaPreset,
+  ContrastApcaRole,
+  ContrastMetric,
   ContrastRegionLevel,
   ContrastRegionPoint,
   ContrastRegionPathOptions,

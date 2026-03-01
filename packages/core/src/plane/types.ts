@@ -1,4 +1,10 @@
-import type { ContrastRegionLevel } from '../contrast/index.js';
+import type {
+  ContrastApcaPolarity,
+  ContrastApcaPreset,
+  ContrastApcaRole,
+  ContrastMetric,
+  ContrastRegionLevel,
+} from '../contrast/index.js';
 import type { ChromaBandMode, GamutTarget } from '../gamut/index.js';
 import type { Color } from '../types.js';
 
@@ -67,8 +73,12 @@ export interface PlaneContrastQueryOptions {
   reference: Color;
   gamut?: GamutTarget;
   hue?: number;
+  metric?: ContrastMetric;
   level?: ContrastRegionLevel;
   threshold?: number;
+  apcaPreset?: ContrastApcaPreset;
+  apcaPolarity?: ContrastApcaPolarity;
+  apcaRole?: ContrastApcaRole;
   lightnessSteps?: number;
   chromaSteps?: number;
   maxChroma?: number;
@@ -77,9 +87,11 @@ export interface PlaneContrastQueryOptions {
   alpha?: number;
   edgeInterpolation?: 'linear' | 'midpoint';
   simplifyTolerance?: number;
-  samplingMode?: 'uniform' | 'adaptive';
+  samplingMode?: 'hybrid' | 'uniform' | 'adaptive';
   adaptiveBaseSteps?: number;
   adaptiveMaxDepth?: number;
+  hybridMaxDepth?: number;
+  hybridErrorTolerance?: number;
 }
 
 export interface PlaneContrastBoundaryQuery extends PlaneContrastQueryOptions {

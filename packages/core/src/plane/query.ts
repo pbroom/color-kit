@@ -102,8 +102,12 @@ export function getPlaneContrastBoundary(
   const hue = resolvePlaneHue(plane, query.hue);
   const path = contrastRegionPath(query.reference, hue, {
     gamut: query.gamut,
+    metric: query.metric,
     level: query.level,
     threshold: query.threshold,
+    apcaPreset: query.apcaPreset,
+    apcaPolarity: query.apcaPolarity,
+    apcaRole: query.apcaRole,
     lightnessSteps: query.lightnessSteps,
     chromaSteps: query.chromaSteps,
     maxChroma: query.maxChroma,
@@ -115,6 +119,8 @@ export function getPlaneContrastBoundary(
     samplingMode: query.samplingMode,
     adaptiveBaseSteps: query.adaptiveBaseSteps,
     adaptiveMaxDepth: query.adaptiveMaxDepth,
+    hybridMaxDepth: query.hybridMaxDepth,
+    hybridErrorTolerance: query.hybridErrorTolerance,
   });
 
   return {
@@ -140,8 +146,12 @@ export function getPlaneContrastRegion(
   const hue = resolvePlaneHue(plane, query.hue);
   const paths = contrastRegionPaths(query.reference, hue, {
     gamut: query.gamut,
+    metric: query.metric,
     level: query.level,
     threshold: query.threshold,
+    apcaPreset: query.apcaPreset,
+    apcaPolarity: query.apcaPolarity,
+    apcaRole: query.apcaRole,
     lightnessSteps: query.lightnessSteps,
     chromaSteps: query.chromaSteps,
     maxChroma: query.maxChroma,
@@ -153,6 +163,8 @@ export function getPlaneContrastRegion(
     samplingMode: query.samplingMode,
     adaptiveBaseSteps: query.adaptiveBaseSteps,
     adaptiveMaxDepth: query.adaptiveMaxDepth,
+    hybridMaxDepth: query.hybridMaxDepth,
+    hybridErrorTolerance: query.hybridErrorTolerance,
   });
 
   return {
