@@ -3,7 +3,11 @@ import {
   createJsPlaneComputeBackend,
   getPackedPlaneQueryTransferables,
 } from '@color-kit/core';
-import type { PlaneComputeBackend, PlaneComputeRequest } from '@color-kit/core';
+import type {
+  PlaneComputeBackend,
+  PlaneComputeRequest,
+  PlaneComputeResponse,
+} from '@color-kit/core';
 import type {
   PlaneQueryWorkerRequest,
   PlaneQueryWorkerResponse,
@@ -37,6 +41,57 @@ const scheduler = createPlaneComputeScheduler({
     circuitBreakerCooldownMs: 20_000,
   },
 });
+
+const FLOAT32_PARITY_EPSILON = 1e-4;
+
+function uint32ArraysEqual(a: Uint32Array, b: Uint32Array): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let index = 0; index < a.length; index += 1) {
+    if (a[index] !== b[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function float32ArraysEqualWithinEpsilon(
+  a: Float32Array,
+  b: Float32Array,
+  epsilon: number = FLOAT32_PARITY_EPSILON,
+): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let index = 0; index < a.length; index += 1) {
+    if (Math.abs(a[index] - b[index]) > epsilon) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function packedResultsShapeMatch(
+  jsResponse: PlaneComputeResponse,
+  wasmResponse: PlaneComputeResponse,
+): boolean {
+  return (
+    uint32ArraysEqual(jsResponse.result.pathRanges, wasmResponse.result.pathRanges) &&
+    float32ArraysEqualWithinEpsilon(
+      jsResponse.result.pointXY,
+      wasmResponse.result.pointXY,
+    ) &&
+    float32ArraysEqualWithinEpsilon(
+      jsResponse.result.pointLC,
+      wasmResponse.result.pointLC,
+    ) &&
+    float32ArraysEqualWithinEpsilon(
+      jsResponse.result.pointColorLcha,
+      wasmResponse.result.pointColorLcha,
+    )
+  );
+}
 
 function resolveInstalledWasmBackend(): PlaneComputeBackend | undefined {
   const maybeBackend = (
@@ -97,13 +152,14 @@ workerScope.onmessage = (event): void => {
           );
           const pathCountDelta = Math.abs(jsPathCount - wasmPathCount);
           const pointCountDelta = Math.abs(jsPointCount - wasmPointCount);
+          const shapeMatches =
+            pathCountDelta === 0 &&
+            pointCountDelta === 0 &&
+            packedResultsShapeMatch(jsResponse, wasmResponse);
 
           wasmParity = {
             mode: 'shape',
-            status:
-              pathCountDelta === 0 && pointCountDelta === 0
-                ? 'ok'
-                : 'shape-mismatch',
+            status: shapeMatches ? 'ok' : 'shape-mismatch',
             wasmAvailable: true,
             attempted: true,
             jsTotalTimeMs: jsResponse.computeTimeMs + jsResponse.marshalTimeMs,
