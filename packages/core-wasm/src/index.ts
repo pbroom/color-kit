@@ -47,7 +47,13 @@ export interface WasmContrastKernelBindings {
 
 interface WasmGeneratedKernelModule extends WasmContrastKernelBindings {
   default?: (
-    input?: RequestInfo | URL | Response | BufferSource | WebAssembly.Module,
+    input?:
+      | RequestInfo
+      | URL
+      | Response
+      | BufferSource
+      | WebAssembly.Module
+      | { module_or_path?: BufferSource | WebAssembly.Module },
   ) => Promise<unknown>;
 }
 
@@ -69,6 +75,53 @@ let loadedWasmBackendPromise: Promise<PlaneComputeBackend | null> | null = null;
 let loadedKernelBindingsPromise: Promise<WasmContrastKernelBindings | null> | null =
   null;
 let loadedWasmBackendVersion: string | undefined;
+
+function isNodeRuntime(): boolean {
+  const maybeProcess = (
+    globalThis as {
+      process?: {
+        versions?: {
+          node?: string;
+        };
+      };
+    }
+  ).process;
+  return typeof maybeProcess?.versions?.node === 'string';
+}
+
+async function loadNodeWasmBytes(): Promise<Uint8Array | null> {
+  if (!isNodeRuntime()) {
+    return null;
+  }
+  try {
+    const nodeFsModuleSpecifier = 'node:fs/promises';
+    const fsModule = (await import(nodeFsModuleSpecifier)) as {
+      readFile: (path: URL) => Promise<Uint8Array>;
+    };
+    return await fsModule.readFile(
+      new URL('./generated/color_kit_core_wasm_bg.wasm', import.meta.url),
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function initializeGeneratedKernelModule(
+  module: WasmGeneratedKernelModule,
+): Promise<void> {
+  if (typeof module.default !== 'function') {
+    return;
+  }
+  try {
+    await module.default();
+  } catch (initializationError) {
+    const wasmBytes = await loadNodeWasmBytes();
+    if (!wasmBytes) {
+      throw initializationError;
+    }
+    await module.default({ module_or_path: wasmBytes });
+  }
+}
 
 function nowMs(): number {
   return typeof performance === 'undefined' ? Date.now() : performance.now();
@@ -168,9 +221,7 @@ async function loadGeneratedKernelBindings(): Promise<WasmContrastKernelBindings
         const imported = (await import(
           GENERATED_KERNEL_MODULE_PATH
         )) as unknown as WasmGeneratedKernelModule;
-        if (typeof imported.default === 'function') {
-          await imported.default();
-        }
+        await initializeGeneratedKernelModule(imported);
         if (typeof imported.contrast_region_paths_v1 !== 'function') {
           return null;
         }
