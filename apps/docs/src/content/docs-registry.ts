@@ -94,4 +94,39 @@ export const docsNavigation: DocsNavSection[] = [
       href: toDocsHref(page.path),
     })),
   },
+  {
+    title: 'API Reference',
+    items: [
+      {
+        title: 'Plane API',
+        path: 'api/plane-api',
+        href: toDocsHref('api/plane-api'),
+      },
+      {
+        title: 'Plane Queries',
+        path: 'api/plane-queries',
+        href: toDocsHref('api/plane-queries'),
+      },
+    ],
+  },
+  {
+    title: 'Recipes',
+    items: [
+      {
+        title: 'Plane Basic',
+        path: 'recipes/plane-basic',
+        href: toDocsHref('recipes/plane-basic'),
+      },
+      {
+        title: 'Plane Composition',
+        path: 'recipes/plane-composition',
+        href: toDocsHref('recipes/plane-composition'),
+      },
+      {
+        title: 'Plane Performance',
+        path: 'recipes/plane-performance',
+        href: toDocsHref('recipes/plane-performance'),
+      },
+    ],
+  },
 ];

@@ -9,6 +9,7 @@ import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Line } from './line.js';
 import type { ColorAreaLayerQuality } from './gamut-boundary-layer.js';
+import type { LinePoint } from './line.js';
 
 export type ChromaBandLayerMode = 'closest' | 'percentage';
 
@@ -23,6 +24,8 @@ export interface ChromaBandLayerProps extends LayerProps {
   adaptiveTolerance?: number;
   adaptiveMaxDepth?: number;
   pathProps?: SVGAttributes<SVGPathElement>;
+  /** Optional precomputed path points (for plane-driven overlays). */
+  points?: LinePoint[];
 }
 
 function resolveQuality(
@@ -119,6 +122,7 @@ export function ChromaBandLayer({
   adaptiveTolerance,
   adaptiveMaxDepth,
   pathProps,
+  points: pointsProp,
   children,
   ...props
 }: ChromaBandLayerProps) {
@@ -241,7 +245,7 @@ export function ChromaBandLayer({
     samplingMode,
   ]);
 
-  const points = useMemo(
+  const computedPoints = useMemo(
     () =>
       getColorAreaChromaBandPoints(requested, hue ?? requested.h, axes, {
         gamut,
@@ -265,6 +269,7 @@ export function ChromaBandLayer({
       resolvedAdaptiveMaxDepth,
     ],
   );
+  const points = pointsProp ?? computedPoints;
 
   return (
     <Layer

@@ -16,7 +16,7 @@ Color-kit uses **OKLCH** (D65, CSS reference range) as the single canonical inte
 
 **Alternatives not chosen:**
 
-- **CIELAB / L\*a\*b\*** — Less perceptually uniform than OKLAB-derived spaces; not the CSS-native choice.
+- **CIELAB / Lab** — Less perceptually uniform than OKLAB-derived spaces; not the CSS-native choice.
 - **HSL** — Not perceptually uniform; same numeric saturation produces very different perceived intensity across hues. Kept as an interop view only.
 - **OKLAB (cartesian)** — Same perceptual base as OKLCH, but a/b axes are harder to explain (green–red, blue–yellow). OKLCH chroma and hue match user language (“saturation”, “hue”).
 
@@ -65,6 +65,85 @@ Display P3 is the **primary** output target; sRGB is the fallback when P3 is not
 `@color-kit/core` has **no external color library**. All conversion and gamut math is implemented in-house.
 
 > **Why:** Keeps bundle size minimal and allows full control over precision, gamut mapping behavior, and edge cases (e.g. degenerate L/C/H). Tree-shaking stays effective because consumers only pay for what they import. The main alternative, [culori](https://github.com/nicksrandall/culori), is excellent but would delegate gamut mapping and conversion details; color-kit needs those to stay fixed for the requested/displayed contract and for consistent overlay geometry.
+
+### Notes
+
+Looking at the ColorArea component demo, I think I'm arriving at a common abstraction. A lot of this is already in place or close, but the lines of responsibility and composability can be stronger. The architecture can be simpler in a way that highlights the API more clearly, exposing how it works. The API needs to provide ready vector space path data for the different lines, areas, shapes, regions, and slices within 2d and 3d color space. Parameters or color data in, color data out. Let's look at some of the things we need to calculate.
+
+- P3 gamut boundary
+- sRGB gamut boundary
+- Out-of-gamut region for P3
+- Out-of-gamut region for sRGB
+- In-gamut region for P3
+- In-gamut region for sRGB
+- Contrast boundaries (in any given color model or axis combination) for WCAG 3:1, 4.5:1, 7:1
+- Contrast regions (in any given color model or axis combination) for WCAG 3:1, 4.5:1, 7:1
+- P3 chroma band for the current hue using proportional chroma %
+- P3 chroma band for the current hue using closest chroma value
+- sRGB chroma band for the current hue using proportional chroma %
+- sRGB chroma band for the current hue using closest chroma value
+- Eased interpolation between proportional and closest variant chroma bands
+- Nearest point within an area relative to a given point in UV/XY space
+- Intersection points/lines/regions for overlapping lines/areas, union, intersection, difference, etc.
+- Distance between points, lines, areas, regions, etc.
+- Translation of points, lines, areas, and regions from one color space to another
+- The gradient produced from moving between two or more colors within a given color space
+- Linearized gradients from lines curving through 2d or 3d color space
+- Eased gradients
+- The different gradients produced from drawing a path between two colors in various color spaces
+- P3 fallback point for out-of-P3 gamut point
+- sRGB fallback point for out-of-sRGB gamut point
+- Gradients for model channels (OKLCH, OKLAB, RGB, HSL, HSV, HCT, alpha)
+- 2d space gradients:
+
+**OKLCH**
+
+| LL | LC | LH |  
+| CH | CC | CH |  
+| HH | HC | HH |
+
+**HCT**
+
+| HH | HC | HT |
+| CH | CC | CT |
+| TH | TC | TT |
+
+**RGB**
+
+| RR | RG | RB |
+| GR | GG | GB |
+| BR | BG | BB |
+
+**HSL**
+
+| HL | HC | HH |
+| CH | CC | CH |
+| LH | LC | LL |
+
+**HSV**
+
+| HH | HS | HV |
+| SH | SS | SV |
+| VH | VS | VV |
+
+We need to be able to calculate each of these points, lines, or shapes concurrently in real time while the user drags input thumbs around quickly. Ideally, these would be vector space calculations with limited/no sampling and rasterization taking place as late as possible so that things remain as efficient, accurate, and precise as possible. We also need a reliable way to calculate splines/bezier curves and such. We don't want to be stuck outputting hundreds or thousands of points per shape or line segment. We want to pass the simplest, most-accurate data for use in drawing SVG paths that are smooth, precise, and perfectly positioned.
+
+With all these color and math concerns, it would be a great experience to have the API be able to serve you whichever part you want and use it as the path on the color area to chart lines, regions, etc. The API has to work as Javascript for maximum compatibility, but Typescript and React should have first-class support via typed API and hook/component implementations.
+
+With the knowledge I have now, it seems smartest to lower how oppinionated the component implementation is to the most simple, minimal primitives possible and provide detailed recipes.
+
+```JSX
+
+<Color>
+  <ColorArea>
+    <Layer />
+    <ColorPlane />
+    <Layer />
+    <Thumb />
+  </ColorArea>
+</Color>
+
+```
 
 ---
 
@@ -158,7 +237,7 @@ React primitives are **unstyled** and use **data attributes** (`data-color-area`
 
 ### Color context provider model
 
-The **`<Color>`** component wraps the color UI and provides a single source of truth for color state (requested, displayed, activeGamut, activeView). Hooks like `useColor()` and components like `ColorArea` consume this context when used without explicit `color`/`onChange` props.
+The `**<Color>` component wraps the color UI and provides a single source of truth for color state (requested, displayed, activeGamut, activeView). Hooks like `useColor()` and components like `ColorArea` consume this context when used without explicit `color`/`onChange` props.
 
 > **Why:** Centralizes state so all controls (area, sliders, inputs, swatches) stay in sync. Shared gamut and view settings apply consistently. Multi-color (`useMultiColor`) extends this idea for named collections (e.g. palette entries, gradient stops).
 
@@ -249,7 +328,7 @@ Packages are published to **npm** (`@color-kit/core`, `@color-kit/react`). React
 
 ### Multi-color state
 
-**`useMultiColor`** manages named color collections (e.g. `base`, `accent`, palette entries) with shared `activeGamut` and `activeView`. Operations (setChannel, setRequested, etc.) take an entry key.
+`**useMultiColor` manages named color collections (e.g. `base`, `accent`, palette entries) with shared `activeGamut` and `activeView`. Operations (setChannel, setRequested, etc.) take an entry key.
 
 > **Why:** Design tools need multiple colors (foreground/background, palette, gradient stops) with coherent settings. A single `useColor` per context would duplicate settings and make shared overlays (e.g. contrast against “background”) harder.
 

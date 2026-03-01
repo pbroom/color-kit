@@ -166,6 +166,60 @@ describe('ColorArea primitives', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('renders layer primitives with externally supplied plane geometry', () => {
+    const requested: Color = { l: 0.7, c: 0.2, h: 240, alpha: 1 };
+    const points = [
+      { x: 0.1, y: 0.8 },
+      { x: 0.5, y: 0.2 },
+      { x: 0.9, y: 0.8 },
+    ];
+    const regionPath = [
+      [
+        { l: 0.4, c: 0.1, x: 0.2, y: 0.8 },
+        { l: 0.45, c: 0.2, x: 0.5, y: 0.3 },
+        { l: 0.5, c: 0.1, x: 0.8, y: 0.8 },
+      ],
+    ];
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <GamutBoundaryLayer points={points} />
+        <ChromaBandLayer points={points} />
+        <ContrastRegionLayer paths={regionPath} />
+        <FallbackPointsLayer
+          p3Point={{
+            x: 0.2,
+            y: 0.4,
+            color: { l: 0.55, c: 0.2, h: 210, alpha: 1 },
+          }}
+          srgbPoint={{
+            x: 0.85,
+            y: 0.6,
+            color: { l: 0.6, c: 0.15, h: 260, alpha: 1 },
+          }}
+        />
+      </ColorArea>,
+    );
+
+    expect(
+      container.querySelector('[data-color-area-gamut-boundary-layer]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-color-area-chroma-band-layer]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-color-area-contrast-region-layer]'),
+    ).toBeTruthy();
+
+    const p3Point = container.querySelector(
+      '[data-color-area-fallback-point][data-gamut="display-p3"]',
+    );
+    const srgbPoint = container.querySelector(
+      '[data-color-area-fallback-point][data-gamut="srgb"]',
+    );
+    expect(p3Point).toBeTruthy();
+    expect(srgbPoint).toBeTruthy();
+  });
+
   it('renders sampled vector points for gamut and contrast overlays', () => {
     const requested: Color = { l: 0.72, c: 0.24, h: 220, alpha: 1 };
     const { container } = render(

@@ -16,6 +16,11 @@ import {
   getColorSliderNormFromValue,
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
+  getColorAreaPlaneChromaBandPoints,
+  getColorAreaPlaneContrastRegionPaths,
+  getColorAreaPlaneFallbackPoint,
+  getColorAreaPlaneGamutBoundaryPoints,
+  getColorAreaPlaneThumbPosition,
   getColorWheelThumbPosition,
   getColorDialThumbPosition,
   getColorDisplayStyles,
@@ -113,6 +118,48 @@ describe('Color API helpers', () => {
     });
 
     expect(paths).toEqual([]);
+  });
+
+  it('returns normalized plane-driven boundary, region, band, and fallback data', () => {
+    const requested = parse('#3b82f6');
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'l', range: [0, 1] },
+      y: { channel: 'c', range: [0, 0.4] },
+    });
+    const thumb = getColorAreaPlaneThumbPosition(requested, axes);
+    expect(thumb.x).toBeGreaterThanOrEqual(0);
+    expect(thumb.x).toBeLessThanOrEqual(1);
+    expect(thumb.y).toBeGreaterThanOrEqual(0);
+    expect(thumb.y).toBeLessThanOrEqual(1);
+
+    const boundary = getColorAreaPlaneGamutBoundaryPoints(requested, axes, {
+      gamut: 'srgb',
+      steps: 8,
+    });
+    expect(boundary.length).toBeGreaterThan(0);
+
+    const regions = getColorAreaPlaneContrastRegionPaths(requested, axes, {
+      reference: parse('#ffffff'),
+      threshold: 4.5,
+      lightnessSteps: 16,
+      chromaSteps: 16,
+    });
+    expect(regions.length).toBeGreaterThan(0);
+
+    const band = getColorAreaPlaneChromaBandPoints(requested, axes, {
+      requestedChroma: requested.c,
+      steps: 8,
+    });
+    expect(band).toHaveLength(9);
+
+    const fallback = getColorAreaPlaneFallbackPoint(axes, {
+      color: requested,
+      gamut: 'srgb',
+    });
+    expect(fallback.x).toBeGreaterThanOrEqual(0);
+    expect(fallback.x).toBeLessThanOrEqual(1);
+    expect(fallback.y).toBeGreaterThanOrEqual(0);
+    expect(fallback.y).toBeLessThanOrEqual(1);
   });
 
   it('updates color area channels from keyboard input', () => {

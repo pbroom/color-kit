@@ -1,0 +1,189 @@
+<p className="docs-kicker">API Reference</p>
+
+# Plane Queries
+
+<p className="docs-lede">
+  Deterministic geometry queries for a resolved plane. Each query returns typed
+  results with pre-computed points and paths ready for rendering.
+</p>
+
+<div className="prose-api">
+
+## Creating a Query
+
+Use the fluent API to create a query object from a resolved plane:
+
+```ts
+const query = createPlaneQuery(plane);
+```
+
+Or execute stateless query objects directly:
+
+```ts
+runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
+```
+
+## Shared Notes
+
+- `samplingMode` controls quality strategy:
+  - `uniform` &mdash; fixed stepping across the plane.
+  - `adaptive` &mdash; refines where geometry bends, producing fewer points for flat regions.
+- On planes that do not use both lightness and chroma axes, some queries intentionally return empty geometry.
+
+## `gamutBoundary`
+
+Returns the boundary contour of a color gamut projected onto the plane.
+
+```ts
+const boundary = query.gamutBoundary({
+  gamut: 'srgb',
+  hue: 220,
+  samplingMode: 'adaptive',
+  simplifyTolerance: 0.001,
+});
+```
+
+<p className="api-returns">
+  Returns <code>PlaneGamutBoundaryResult</code>
+</p>
+
+<ul className="api-field-list">
+  <li>
+    <code>kind</code> &mdash; <code>'gamutBoundary'</code>
+  </li>
+  <li>
+    <code>gamut</code> &mdash; <code>'srgb' | 'display-p3'</code>
+  </li>
+  <li>
+    <code>hue</code> &mdash; the resolved hue angle
+  </li>
+  <li>
+    <code>points</code> &mdash; <code>{'Array<{ l, c, x, y }>'}</code>
+  </li>
+</ul>
+
+## `contrastBoundary`
+
+Returns a contour where colors on the plane hit a given contrast threshold against a reference color.
+
+```ts
+const line = query.contrastBoundary({
+  reference: parse('#ffffff'),
+  threshold: 4.5,
+  gamut: 'display-p3',
+  samplingMode: 'adaptive',
+});
+```
+
+<p className="api-returns">
+  Returns <code>PlaneContrastBoundaryResult</code> with one contour in{' '}
+  <code>points</code>.
+</p>
+
+## `contrastRegion`
+
+Returns filled region paths where all colors meet a contrast level against the reference.
+
+```ts
+const region = query.contrastRegion({
+  reference: parse('#111827'),
+  level: 'AA',
+  gamut: 'srgb',
+  samplingMode: 'adaptive',
+});
+```
+
+<p className="api-returns">
+  Returns <code>PlaneContrastRegionResult</code> with{' '}
+  <code>{'paths: PlaneRegionPoint[][]'}</code>.
+</p>
+
+## `chromaBand`
+
+Samples a band of colors at a given chroma level, useful for showing achievable lightness range.
+
+```ts
+const band = query.chromaBand({
+  mode: 'percentage',
+  requestedChroma: 0.2,
+  selectedLightness: 0.56,
+  gamut: 'display-p3',
+});
+```
+
+<p className="api-returns">
+  Returns <code>PlaneChromaBandResult</code> with sampled <code>points</code>.
+</p>
+
+## `fallbackPoint`
+
+Finds the closest in-gamut point for a color that falls outside the target gamut on the plane.
+
+```ts
+const fallback = query.fallbackPoint({
+  color: requested,
+  gamut: 'srgb',
+});
+```
+
+<p className="api-returns">
+  Returns <code>PlaneFallbackPointResult</code>
+</p>
+
+<ul className="api-field-list">
+  <li>
+    <code>gamut</code> &mdash; the target gamut
+  </li>
+  <li>
+    <code>point</code> &mdash; <code>{'{ x, y, color }'}</code> where{' '}
+    <code>color</code> is mapped into the target gamut
+  </li>
+</ul>
+
+## `gradient`
+
+Computes evenly-spaced points along a gradient path between two colors on the plane.
+
+```ts
+const gradient = query.gradient({
+  from: parse('#3b82f6'),
+  to: parse('#ef4444'),
+  steps: 32,
+});
+```
+
+<p className="api-returns">
+  Returns <code>PlaneGradientResult</code> with{' '}
+  <code>{'points: Array<{ x, y, color }>'}</code>.
+</p>
+
+## Stateless Query Objects
+
+`runPlaneQuery` and `runPlaneQueries` accept plain objects instead of fluent method calls. This is useful for queueing work, caching, and passing queries across worker boundaries.
+
+```ts
+import { runPlaneQueries } from '@color-kit/core';
+
+const [boundary, fallback] = runPlaneQueries(plane, [
+  { kind: 'gamutBoundary', gamut: 'display-p3', samplingMode: 'adaptive' },
+  { kind: 'fallbackPoint', color: requested, gamut: 'srgb' },
+]);
+```
+
+## Query Execution Helpers
+
+<ul className="api-field-list">
+  <li>
+    <code>runPlaneQuery(plane, query)</code> &mdash; execute a single query
+  </li>
+  <li>
+    <code>runPlaneQueries(plane, [queryA, queryB])</code> &mdash; batch multiple
+    queries
+  </li>
+  <li>
+    <code>PlaneQueryCache</code> + <code>runCachedPlaneQuery(…)</code> &mdash;
+    memoized execution with stable cache keys
+  </li>
+</ul>
+
+</div>

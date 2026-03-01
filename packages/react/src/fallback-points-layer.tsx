@@ -1,5 +1,5 @@
 import type { HTMLAttributes } from 'react';
-import { toHex, toP3Gamut, toSrgbGamut } from '@color-kit/core';
+import { toHex, toP3Gamut, toSrgbGamut, type Color } from '@color-kit/core';
 import { getColorDisplayStyles } from './api/color-display.js';
 import { getColorAreaThumbPosition } from './api/color-area.js';
 import { useColorAreaContext } from './color-area-context.js';
@@ -11,6 +11,8 @@ export interface FallbackPointsLayerProps extends LayerProps {
   showP3?: boolean;
   srgbPointProps?: Omit<HTMLAttributes<HTMLDivElement>, 'onChange'>;
   p3PointProps?: Omit<HTMLAttributes<HTMLDivElement>, 'onChange'>;
+  srgbPoint?: { x: number; y: number; color?: Color };
+  p3Point?: { x: number; y: number; color?: Color };
 }
 
 /**
@@ -21,6 +23,8 @@ export function FallbackPointsLayer({
   showP3 = true,
   srgbPointProps,
   p3PointProps,
+  srgbPoint,
+  p3Point,
   children,
   ...props
 }: FallbackPointsLayerProps) {
@@ -29,10 +33,12 @@ export function FallbackPointsLayer({
   const srgb = toSrgbGamut(requested);
   const p3 = toP3Gamut(requested);
 
-  const srgbPos = getColorAreaThumbPosition(srgb, axes);
-  const p3Pos = getColorAreaThumbPosition(p3, axes);
-  const p3Styles = getColorDisplayStyles(p3, srgb, 'display-p3');
-  const srgbStyles = getColorDisplayStyles(srgb, srgb, 'srgb');
+  const srgbColor = srgbPoint?.color ?? srgb;
+  const p3Color = p3Point?.color ?? p3;
+  const srgbPos = srgbPoint ?? getColorAreaThumbPosition(srgbColor, axes);
+  const p3Pos = p3Point ?? getColorAreaThumbPosition(p3Color, axes);
+  const p3Styles = getColorDisplayStyles(p3Color, srgbColor, 'display-p3');
+  const srgbStyles = getColorDisplayStyles(srgbColor, srgbColor, 'srgb');
 
   return (
     <Layer
@@ -49,7 +55,7 @@ export function FallbackPointsLayer({
           x={p3Pos.x}
           y={p3Pos.y}
           data-color-area-fallback-point=""
-          data-color={toHex(p3)}
+          data-color={toHex(p3Color)}
           data-gamut="display-p3"
           style={{
             width: 10,
@@ -69,7 +75,7 @@ export function FallbackPointsLayer({
           x={srgbPos.x}
           y={srgbPos.y}
           data-color-area-fallback-point=""
-          data-color={toHex(srgb)}
+          data-color={toHex(srgbColor)}
           data-gamut="srgb"
           style={{
             width: 10,

@@ -76,6 +76,9 @@ export type {
   SliderModelChannel,
   HctSliderModelChannel,
   ContrastBadgeSummary,
+  ColorAreaPlanePoint,
+  ColorAreaPlaneBoundaryPoint,
+  ColorAreaPlaneFallbackPoint,
 } from './api/index.js';
 
 // Primitives
