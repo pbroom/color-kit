@@ -9,7 +9,7 @@ Built on **OKLCH** for perceptually uniform color manipulation. Headless React p
 | Package                                | Description                                                                                          |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | [`@color-kit/core`](./packages/core)   | Pure TypeScript color utilities — conversion, contrast, harmony, scales, manipulation, gamut mapping |
-| [`@color-kit/react`](./packages/react) | Headless React primitives — color areas, sliders, swatches, inputs                                   |
+| [`@color-kit/react`](./packages/react) | Headless React primitives — color areas, sliders, and inputs                                         |
 
 ## Stability Policy
 

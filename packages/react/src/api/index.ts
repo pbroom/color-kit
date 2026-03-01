@@ -1,6 +1,7 @@
 export {
   areColorAreaAxesDistinct,
   COLOR_AREA_DEFAULT_RANGES,
+  getColorAreaFallbackPoint,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
   getColorAreaChromaBandPoints,
@@ -17,28 +18,13 @@ export type {
   ColorAreaChannel,
   ColorAreaContrastRegionOptions,
   ColorAreaContrastRegionPoint,
+  ColorAreaFallbackPoint,
   ColorAreaGamutBoundaryOptions,
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,
   ResolvedColorAreaAxes,
   ResolvedColorAreaAxis,
 } from './color-area.js';
-
-export {
-  COLOR_DIAL_DEFAULT_RANGES,
-  colorFromColorDialKey,
-  colorFromColorDialPosition,
-  getColorDialLabel,
-  getColorDialThumbPosition,
-  normalizeColorDialPointer,
-  resolveColorDialAngles,
-  resolveColorDialRange,
-} from './color-dial.js';
-export type {
-  ColorDialChannel,
-  ColorDialKey,
-  ResolvedColorDialAngles,
-} from './color-dial.js';
 
 export {
   COLOR_SLIDER_DEFAULT_RANGES,
@@ -55,16 +41,6 @@ export type {
   ColorSliderKey,
   ColorSliderOrientation,
 } from './color-slider.js';
-
-export {
-  COLOR_WHEEL_DEFAULT_CHROMA_RANGE,
-  colorFromColorWheelKey,
-  colorFromColorWheelPosition,
-  getColorWheelThumbPosition,
-  normalizeColorWheelPointer,
-  resolveColorWheelChromaRange,
-} from './color-wheel.js';
-export type { ColorWheelKey, ColorWheelThumbPosition } from './color-wheel.js';
 
 export {
   getSliderGradientStyles,
@@ -119,26 +95,3 @@ export {
   parseColorStringInputValue,
 } from './color-string-input.js';
 export type { ColorStringInputFormat } from './color-string-input.js';
-
-export { getColorDisplayHex, getColorDisplayStyles } from './color-display.js';
-export type { ColorDisplayStyles } from './color-display.js';
-
-export { getContrastBadgeSummary } from './contrast-badge.js';
-export type { ContrastBadgeSummary } from './contrast-badge.js';
-
-export { SWATCH_COLOR_EQUAL_EPSILON, colorsEqual } from './swatch-group.js';
-
-export {
-  colorFromColorAreaPlanePosition,
-  createColorAreaPlane,
-  getColorAreaPlaneChromaBandPoints,
-  getColorAreaPlaneContrastRegionPaths,
-  getColorAreaPlaneFallbackPoint,
-  getColorAreaPlaneGamutBoundaryPoints,
-  getColorAreaPlaneThumbPosition,
-} from './plane.js';
-export type {
-  ColorAreaPlaneBoundaryPoint,
-  ColorAreaPlaneFallbackPoint,
-  ColorAreaPlanePoint,
-} from './plane.js';

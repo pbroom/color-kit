@@ -1511,85 +1511,10 @@ function ColorInputPropertiesPanel() {
   );
 }
 
-function SwatchGroupPropertiesPanel() {
-  const { swatchGroupState, setSwatchGroupState } = useDocsInspector();
-
-  return (
-    <div className="docs-properties-panel">
-      <section className="docs-properties-group">
-        <h4>Palette</h4>
-        <SegmentedOptions
-          value={swatchGroupState.palette}
-          onChange={(palette) => setSwatchGroupState({ palette })}
-          options={[
-            { value: 'spectrum', label: 'Spectrum' },
-            { value: 'nature', label: 'Nature' },
-            { value: 'neon', label: 'Neon' },
-          ]}
-          label="Swatch group palette"
-        />
-      </section>
-
-      <section className="docs-properties-group">
-        <h4>Columns</h4>
-        <SegmentedOptions
-          value={String(swatchGroupState.columns)}
-          onChange={(columns) =>
-            setSwatchGroupState({ columns: Number(columns) as 3 | 4 | 5 })
-          }
-          options={[
-            { value: '3', label: '3' },
-            { value: '4', label: '4' },
-            { value: '5', label: '5' },
-          ]}
-          label="Swatch group columns"
-        />
-      </section>
-    </div>
-  );
-}
-
-function ContrastBadgePropertiesPanel() {
-  const { contrastBadgeState, setContrastBadgeState } = useDocsInspector();
-
-  return (
-    <div className="docs-properties-panel">
-      <section className="docs-properties-group">
-        <h4>Preset</h4>
-        <SegmentedOptions
-          value={contrastBadgeState.preset}
-          onChange={(preset) => setContrastBadgeState({ preset })}
-          options={[
-            { value: 'interface', label: 'Interface' },
-            { value: 'editorial', label: 'Editorial' },
-            { value: 'alert', label: 'Alert' },
-          ]}
-          label="Contrast badge color preset"
-        />
-      </section>
-
-      <section className="docs-properties-group">
-        <h4>WCAG level</h4>
-        <SegmentedOptions
-          value={contrastBadgeState.level}
-          onChange={(level) => setContrastBadgeState({ level })}
-          options={[
-            { value: 'AA', label: 'AA' },
-            { value: 'AAA', label: 'AAA' },
-          ]}
-          label="Contrast badge level"
-        />
-      </section>
-    </div>
-  );
-}
-
 const PROPERTIES_PANELS = {
   '/docs/components/color-area': ColorAreaPropertiesPanel,
   '/docs/components/color-slider': ColorSliderPropertiesPanel,
   '/docs/components/color-input': ColorInputPropertiesPanel,
-  '/docs/components/swatch-group': SwatchGroupPropertiesPanel,
-  '/docs/components/contrast-badge': ContrastBadgePropertiesPanel,
 } as const;
 
 export function DocsRightRail({

@@ -244,24 +244,18 @@ React primitives are **unstyled** and use **data attributes** (`data-color-area`
 
 The `**<Color>` component wraps the color UI and provides a single source of truth for color state (requested, displayed, activeGamut, activeView). Hooks like `useColor()` and components like `ColorArea` consume this context when used without explicit `color`/`onChange` props.
 
-> **Why:** Centralizes state so all controls (area, sliders, inputs, swatches) stay in sync. Shared gamut and view settings apply consistently. Multi-color (`useMultiColor`) extends this idea for named collections (e.g. palette entries, gradient stops).
+> **Why:** Centralizes state so core controls (area, sliders, inputs) stay in sync. Shared gamut and view settings apply consistently. Multi-color (`useMultiColor`) extends this idea for named collections (e.g. palette entries, gradient stops).
 
 ### Component-specific considerations
 
 Each primitive has a focused role. Summary:
 
-| Component               | Role                                                 | Key decisions                                                                             |
-| ----------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **ColorArea**           | 2D plane: geometry, coordinate mapping, interaction. | UI plane (0–1), not constrained to gamut; thumb at requested; WebGL for gradient. See §5. |
-| **ColorSlider**         | Single-axis slider for any channel (L, C, H, alpha). | `role="slider"`, arrow keys + shift-step; gradient from model-specific math.              |
-| **ColorDial / HueDial** | Angular input for hue (or other channel).            | Same requested/displayed contract; angle ↔ value mapping.                                 |
-| **ColorWheel**          | 2D hue/chroma wheel.                                 | Polar coordinates; one thumb; same state contract.                                        |
-| **ColorInput**          | Numeric channel input (OKLCH, RGB, HSL).             | Parsing/formatting per model; updates requested.                                          |
-| **ColorStringInput**    | Free-form string (hex, rgb(), oklch(), etc.).        | Parse on blur/Enter; validate and set requested.                                          |
-| **ColorDisplay**        | Visual swatch/preview.                               | Uses **displayed** color for background (P3-first with fallback).                         |
-| **Swatch**              | Single color chip; optional selection.               | Can show requested or displayed; click sets requested.                                    |
-| **SwatchGroup**         | Collection of swatches with selection.               | Listbox/option semantics; shared context.                                                 |
-| **ContrastBadge**       | WCAG contrast ratio vs a reference.                  | Uses displayed color; shows ratio and AA/AAA pass.                                        |
+| Component            | Role                                                 | Key decisions                                                                             |
+| -------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **ColorArea**        | 2D plane: geometry, coordinate mapping, interaction. | UI plane (0–1), not constrained to gamut; thumb at requested; WebGL for gradient. See §5. |
+| **ColorSlider**      | Single-axis slider for any channel (L, C, H, alpha). | `role="slider"`, arrow keys + shift-step; gradient from model-specific math.              |
+| **ColorInput**       | Numeric channel input (OKLCH, RGB, HSL).             | Parsing/formatting per model; updates requested.                                          |
+| **ColorStringInput** | Free-form string (hex, rgb(), oklch(), etc.).        | Parse on blur/Enter; validate and set requested.                                          |
 
 **Accessibility:** All interactive components are keyboard-focusable, use appropriate ARIA roles and labels, and expose human-readable `aria-valuetext` where applicable. Non-interactive overlays are `aria-hidden` and `pointer-events: none`. See §8.
 
@@ -397,7 +391,7 @@ Sliders and area use **arrow keys** for increment/decrement; **Shift + arrow** f
 
 ### Focus visibility on dynamic backgrounds
 
-Focus indicators must remain **visible** on the color surface (gradient, swatch). Thumbs and controls sit on varying colors, so outline or ring must contrast against both light and dark regions.
+Focus indicators must remain **visible** on dynamic color surfaces. Thumbs and controls sit on varying colors, so outline or ring must contrast against both light and dark regions.
 
 > **Why:** WCAG 2.4.7 (focus visible). Dynamic backgrounds make a single outline color insufficient; the contract is that focus style is visible against the full range of the control’s background.
 

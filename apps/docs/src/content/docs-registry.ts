@@ -43,16 +43,9 @@ export const docsPages: Record<
 const componentPages = [
   { title: 'Color', path: 'components/color' },
   { title: 'Color Area', path: 'components/color-area' },
-  { title: 'Color Wheel', path: 'components/color-wheel' },
   { title: 'Color Slider', path: 'components/color-slider' },
-  { title: 'Color Dial', path: 'components/color-dial' },
-  { title: 'Hue Dial', path: 'components/hue-dial' },
-  { title: 'Swatch', path: 'components/swatch' },
-  { title: 'Swatch Group', path: 'components/swatch-group' },
   { title: 'Color Input', path: 'components/color-input' },
   { title: 'Color String Input', path: 'components/color-string-input' },
-  { title: 'Color Display', path: 'components/color-display' },
-  { title: 'Contrast Badge', path: 'components/contrast-badge' },
 ] as const;
 
 export const docsNavigation: DocsNavSection[] = [
@@ -106,26 +99,6 @@ export const docsNavigation: DocsNavSection[] = [
         title: 'Plane Queries',
         path: 'api/plane-queries',
         href: toDocsHref('api/plane-queries'),
-      },
-    ],
-  },
-  {
-    title: 'Recipes',
-    items: [
-      {
-        title: 'Plane Basic',
-        path: 'recipes/plane-basic',
-        href: toDocsHref('recipes/plane-basic'),
-      },
-      {
-        title: 'Plane Composition',
-        path: 'recipes/plane-composition',
-        href: toDocsHref('recipes/plane-composition'),
-      },
-      {
-        title: 'Plane Performance',
-        path: 'recipes/plane-performance',
-        href: toDocsHref('recipes/plane-performance'),
       },
     ],
   },

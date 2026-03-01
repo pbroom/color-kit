@@ -47,11 +47,10 @@ export type {
   ColorAreaChannel,
   ColorAreaContrastRegionOptions,
   ColorAreaContrastRegionPoint,
+  ColorAreaFallbackPoint,
   ColorAreaGamutBoundaryOptions,
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,
-  ColorWheelKey,
-  ColorWheelThumbPosition,
   ResolvedColorAreaAxes,
   ResolvedColorAreaAxis,
   ColorInputModel,
@@ -61,10 +60,7 @@ export type {
   HslColorInputChannel,
   ColorInputStepConfig,
   ColorStringInputFormat,
-  ColorDialChannel,
-  ColorDialKey,
   ColorSliderChannel,
-  ResolvedColorDialAngles,
   ColorSliderKey,
   SampleSliderGradientOptions,
   ColorSliderOrientation,
@@ -75,10 +71,6 @@ export type {
   SliderGradientStyles,
   SliderModelChannel,
   HctSliderModelChannel,
-  ContrastBadgeSummary,
-  ColorAreaPlanePoint,
-  ColorAreaPlaneBoundaryPoint,
-  ColorAreaPlaneFallbackPoint,
 } from './api/index.js';
 
 // Primitives
@@ -143,28 +135,7 @@ export type {
 export { ChromaMarkers } from './chroma-markers.js';
 export type { ChromaMarkersProps } from './chroma-markers.js';
 
-export { ColorDial } from './color-dial.js';
-export type { ColorDialProps } from './color-dial.js';
-
-export { HueDial } from './hue-dial.js';
-export type { HueDialProps } from './hue-dial.js';
-
-export { ColorWheel } from './color-wheel.js';
-export type { ColorWheelProps } from './color-wheel.js';
-
-export { Swatch } from './swatch.js';
-export type { SwatchProps } from './swatch.js';
-
-export { SwatchGroup } from './swatch-group.js';
-export type { SwatchGroupProps } from './swatch-group.js';
-
 export { ColorInput } from './color-input.js';
 export type { ColorInputProps } from './color-input.js';
 export { ColorStringInput } from './color-string-input.js';
 export type { ColorStringInputProps } from './color-string-input.js';
-
-export { ColorDisplay } from './color-display.js';
-export type { ColorDisplayProps } from './color-display.js';
-
-export { ContrastBadge } from './contrast-badge.js';
-export type { ContrastBadgeProps } from './contrast-badge.js';

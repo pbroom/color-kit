@@ -24,25 +24,21 @@ function PlaneDrivenArea() {
 
   const p3Boundary = useMemo(
     () =>
-      ColorApi.getColorAreaPlaneGamutBoundaryPoints(
-        color.requested,
-        PLANE_AXES,
-        {
-          gamut: 'display-p3',
-          samplingMode: 'adaptive',
-          steps: 72,
-        },
-      ),
+      ColorApi.getColorAreaGamutBoundaryPoints(color.requested.h, PLANE_AXES, {
+        gamut: 'display-p3',
+        samplingMode: 'adaptive',
+        steps: 72,
+      }),
     [color.requested],
   );
 
   const aa45Region = useMemo(
     () =>
-      ColorApi.getColorAreaPlaneContrastRegionPaths(
-        color.requested,
+      ColorApi.getColorAreaContrastRegionPaths(
+        parse('#ffffff'),
+        color.requested.h,
         PLANE_AXES,
         {
-          reference: parse('#ffffff'),
           threshold: 4.5,
           gamut: color.activeGamut,
           samplingMode: 'adaptive',
@@ -55,7 +51,7 @@ function PlaneDrivenArea() {
 
   const p3Fallback = useMemo(
     () =>
-      ColorApi.getColorAreaPlaneFallbackPoint(PLANE_AXES, {
+      ColorApi.getColorAreaFallbackPoint(PLANE_AXES, {
         color: color.requested,
         gamut: 'display-p3',
       }),
@@ -64,7 +60,7 @@ function PlaneDrivenArea() {
 
   const srgbFallback = useMemo(
     () =>
-      ColorApi.getColorAreaPlaneFallbackPoint(PLANE_AXES, {
+      ColorApi.getColorAreaFallbackPoint(PLANE_AXES, {
         color: color.requested,
         gamut: 'srgb',
       }),

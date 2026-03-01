@@ -5,23 +5,16 @@ import {
   ChromaMarkers,
   ColorApi,
   ColorArea,
-  ColorDial,
   ColorPlane,
-  ColorDisplay,
   ColorInput,
   ColorStringInput,
   Color,
   ColorSlider,
-  ColorWheel,
   ContrastRegionLayer,
   ContrastRegionFill,
-  ContrastBadge,
   FallbackPointsLayer,
   GamutBoundaryLayer,
-  HueDial,
   OutOfGamutLayer,
-  Swatch,
-  SwatchGroup,
   useColorContext,
   type ColorAreaChannel,
   type ColorAreaAxes,
@@ -45,55 +38,6 @@ import {
   type ColorAreaInspectorState,
 } from './docs-inspector-context.js';
 import { COLOR_AREA_DOT_PATTERN } from './color-area-dot-pattern.js';
-
-const DOC_SWATCHES = [
-  '#fb7185',
-  '#f97316',
-  '#facc15',
-  '#22c55e',
-  '#06b6d4',
-  '#3b82f6',
-  '#8b5cf6',
-  '#d946ef',
-].map((value) => parse(value));
-
-const WHEEL_GRADIENT =
-  'radial-gradient(circle at center, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.92) 12%, rgba(255, 255, 255, 0) 68%), conic-gradient(from 0deg, #ff304f 0deg, #ff912a 48deg, #efe034 96deg, #2ddb70 144deg, #00d9d9 192deg, #2d8fff 240deg, #845bff 288deg, #ff3cc2 336deg, #ff304f 360deg)';
-
-const DIAL_RING_BACKGROUND =
-  'conic-gradient(from 0deg, #ff0040, #ffa500, #f7f700, #00c950, #00b7ff, #364dff, #ff00b7, #ff0040)';
-const SWATCH_GROUP_PALETTES = {
-  spectrum: DOC_SWATCHES,
-  nature: [
-    '#14532d',
-    '#166534',
-    '#22c55e',
-    '#84cc16',
-    '#facc15',
-    '#78350f',
-  ].map((value) => parse(value)),
-  neon: ['#ff2e88', '#ff5f1f', '#ffe53b', '#17f9a3', '#00e7ff', '#7a5cff'].map(
-    (value) => parse(value),
-  ),
-} as const;
-
-const CONTRAST_PRESETS = {
-  interface: {
-    foreground: parse('#111827'),
-    background: parse('#f8fafc'),
-    sample: 'The quick brown fox jumps over the lazy dog.',
-  },
-  editorial: {
-    foreground: parse('#3f1d0a'),
-    background: parse('#ffedd5'),
-    sample: 'Typography pairs should remain readable at body sizes.',
-  },
-  alert: {
-    foreground: parse('#fff7ed'),
-    background: parse('#7c2d12'),
-    sample: 'Warning surfaces need clear, testable readability.',
-  },
-} as const;
 
 function normalizeChannels(
   x: ColorAreaChannel,
@@ -169,6 +113,40 @@ function getOklchSliderRail(
       '--ck-slider-thumb-fill-srgb': thumbFillSrgb,
     },
   };
+}
+
+function DemoDisplaySwatch({
+  requested,
+  gamut,
+  className,
+}: {
+  requested: ReturnType<typeof parse>;
+  gamut: 'display-p3' | 'srgb';
+  className?: string;
+}) {
+  const srgbBackground = toCss(toSrgbGamut(requested), 'rgb');
+  const activeBackground =
+    gamut === 'display-p3' ? toCss(toP3Gamut(requested), 'p3') : srgbBackground;
+  return (
+    <div
+      className={className}
+      style={{
+        backgroundColor: srgbBackground,
+        background: activeBackground,
+      }}
+    />
+  );
+}
+
+function ContextDisplaySwatch({ className }: { className?: string }) {
+  const color = useColorContext();
+  return (
+    <DemoDisplaySwatch
+      className={className}
+      requested={color.requested}
+      gamut={color.activeGamut}
+    />
+  );
 }
 
 function strokeDasharray(
@@ -630,7 +608,7 @@ function ColorAreaDemoScene({
       />
       <div className="ck-row">
         <ColorStringInput className="ck-input" format="oklch" />
-        <ColorDisplay className="ck-color-display" />
+        <ContextDisplaySwatch className="ck-color-display" />
       </div>
     </>
   );
@@ -667,7 +645,7 @@ function ColorProviderDemoContent() {
       />
       <div className="ck-row">
         <ColorStringInput className="ck-input" />
-        <ColorDisplay className="ck-color-display" />
+        <ContextDisplaySwatch className="ck-color-display" />
       </div>
     </div>
   );
@@ -902,7 +880,7 @@ export function ColorSliderDemo({
         requested={color.requested}
         onChangeRequested={color.setRequested}
       />
-      <ColorDisplay
+      <DemoDisplaySwatch
         className="ck-color-display"
         requested={color.requested}
         gamut={color.activeGamut}
@@ -931,58 +909,6 @@ export function ColorSliderDemo({
   );
 }
 
-export function ColorDialDemo() {
-  return (
-    <Color defaultColor="#8b5cf6">
-      <div className="ck-demo-stack">
-        <ColorDial
-          channel="h"
-          className="ck-dial"
-          style={{ background: DIAL_RING_BACKGROUND }}
-        />
-        <div className="ck-row">
-          <ColorDisplay className="ck-color-display" />
-          <ColorInput model="oklch" channel="h" className="ck-input" />
-        </div>
-      </div>
-    </Color>
-  );
-}
-
-export function HueDialDemo() {
-  return (
-    <Color defaultColor="#ef4444">
-      <div className="ck-demo-stack">
-        <HueDial
-          className="ck-dial"
-          style={{ background: DIAL_RING_BACKGROUND }}
-        />
-        <div className="ck-row">
-          <ColorDisplay className="ck-color-display" />
-          <ColorInput model="oklch" channel="h" className="ck-input" />
-        </div>
-      </div>
-    </Color>
-  );
-}
-
-export function ColorWheelDemo() {
-  return (
-    <Color defaultColor="oklch(0.62 0.26 220)">
-      <div className="ck-demo-stack">
-        <ColorWheel
-          className="ck-wheel"
-          style={{ background: WHEEL_GRADIENT }}
-        />
-        <div className="ck-row">
-          <ColorStringInput format="oklch" className="ck-input" />
-          <ColorDisplay className="ck-color-display" />
-        </div>
-      </div>
-    </Color>
-  );
-}
-
 function ColorSliderHueDemoContent() {
   const color = useColorContext();
   const hueRail = useMemo(
@@ -999,7 +925,7 @@ function ColorSliderHueDemoContent() {
         style={hueRail.style}
       />
       <div className="ck-row">
-        <ColorDisplay className="ck-color-display" />
+        <ContextDisplaySwatch className="ck-color-display" />
         <ColorStringInput className="ck-input" />
       </div>
     </div>
@@ -1023,7 +949,7 @@ function ColorSliderAlphaDemoContent() {
 
   return (
     <div className="ck-demo-stack">
-      <ColorDisplay className="ck-color-display ck-checker" />
+      <ContextDisplaySwatch className="ck-color-display ck-checker" />
       <ColorSlider
         channel="alpha"
         className="ck-slider ck-slider-v2"
@@ -1040,66 +966,6 @@ export function ColorSliderAlphaDemo() {
     <Color defaultColor="oklch(0.72 0.2 220 / 0.65)">
       <ColorSliderAlphaDemoContent />
     </Color>
-  );
-}
-
-export function SwatchDemo() {
-  const [selectedIndex, setSelectedIndex] = useState(2);
-
-  return (
-    <div className="ck-demo-stack">
-      <div className="ck-swatch-row" role="listbox" aria-label="Color options">
-        {DOC_SWATCHES.map((color, index) => (
-          <Swatch
-            key={`${index}-${toCss(color, 'hex')}`}
-            className="ck-swatch"
-            color={color}
-            isSelected={selectedIndex === index}
-            onSelect={() => setSelectedIndex(index)}
-            aria-label={`Select ${toCss(color, 'hex')}`}
-            role="option"
-            aria-selected={selectedIndex === index}
-          />
-        ))}
-      </div>
-      <div className="ck-caption">
-        Selected: {toCss(DOC_SWATCHES[selectedIndex], 'hex')}
-      </div>
-    </div>
-  );
-}
-
-export function SwatchGroupDemo({
-  inspectorDriven = false,
-}: {
-  inspectorDriven?: boolean;
-}) {
-  const inspector = useOptionalDocsInspector();
-  const state =
-    inspectorDriven && inspector ? inspector.swatchGroupState : null;
-  const paletteName = state?.palette ?? 'spectrum';
-  const palette = SWATCH_GROUP_PALETTES[paletteName];
-  const [selected, setSelected] = useState(palette[0]);
-
-  useEffect(() => {
-    setSelected(palette[0]);
-  }, [palette]);
-
-  return (
-    <div className="ck-demo-stack">
-      <SwatchGroup
-        colors={palette}
-        columns={state?.columns ?? 4}
-        value={selected}
-        onChange={setSelected}
-        className="ck-swatch-grid"
-      />
-      <ColorStringInput
-        className="ck-input"
-        requested={selected}
-        onChangeRequested={setSelected}
-      />
-    </div>
   );
 }
 
@@ -1182,7 +1048,7 @@ export function ColorInputDemo({
         onChangeRequested={colorState.setRequested}
         aria-label="Legacy string input"
       />
-      <ColorDisplay
+      <DemoDisplaySwatch
         className="ck-color-display"
         requested={colorState.requested}
         gamut={state?.gamut ?? 'display-p3'}
@@ -1210,133 +1076,10 @@ export function ColorStringInputDemo() {
         onChangeRequested={colorState.setRequested}
         aria-label="OKLCH string input"
       />
-      <ColorDisplay
+      <DemoDisplaySwatch
         className="ck-color-display"
         requested={colorState.requested}
         gamut={colorState.activeGamut}
-      />
-    </div>
-  );
-}
-
-function ColorDisplayDemoContent() {
-  const color = useColorContext();
-  const hueRail = useMemo(
-    () => getOklchSliderRail('h', color.requested, color.activeGamut),
-    [color.activeGamut, color.requested],
-  );
-  const alphaRail = useMemo(
-    () => getOklchSliderRail('alpha', color.requested, color.activeGamut),
-    [color.activeGamut, color.requested],
-  );
-
-  return (
-    <div className="ck-demo-stack">
-      <ColorDisplay className="ck-color-display" />
-      <ColorSlider
-        channel="h"
-        className="ck-slider ck-slider-v2"
-        data-color-space={hueRail.colorSpace}
-        style={hueRail.style}
-      />
-      <ColorSlider
-        channel="alpha"
-        className="ck-slider ck-slider-v2"
-        data-color-space={alphaRail.colorSpace}
-        style={alphaRail.style}
-      />
-    </div>
-  );
-}
-
-export function ColorDisplayDemo() {
-  return (
-    <Color defaultColor="#10b981">
-      <ColorDisplayDemoContent />
-    </Color>
-  );
-}
-
-export function ContrastBadgeDemo({
-  inspectorDriven = false,
-}: {
-  inspectorDriven?: boolean;
-}) {
-  const inspector = useOptionalDocsInspector();
-  const state =
-    inspectorDriven && inspector ? inspector.contrastBadgeState : null;
-  const preset = CONTRAST_PRESETS[state?.preset ?? 'interface'];
-  const foreground = useColor({
-    defaultColor: toCss(preset.foreground, 'hex'),
-  });
-  const background = useColor({
-    defaultColor: toCss(preset.background, 'hex'),
-  });
-  const presetKey = state?.preset;
-  const foregroundSetterRef = useRef(foreground.setRequested);
-  const backgroundSetterRef = useRef(background.setRequested);
-
-  useEffect(() => {
-    foregroundSetterRef.current = foreground.setRequested;
-  }, [foreground.setRequested]);
-
-  useEffect(() => {
-    backgroundSetterRef.current = background.setRequested;
-  }, [background.setRequested]);
-
-  useEffect(() => {
-    if (!presetKey) return;
-    const nextPreset = CONTRAST_PRESETS[presetKey];
-    const currentForeground = toCss(foreground.requested, 'hex').toLowerCase();
-    const currentBackground = toCss(background.requested, 'hex').toLowerCase();
-    const nextForeground = toCss(nextPreset.foreground, 'hex').toLowerCase();
-    const nextBackground = toCss(nextPreset.background, 'hex').toLowerCase();
-
-    if (currentForeground !== nextForeground) {
-      foregroundSetterRef.current(nextPreset.foreground, {
-        interaction: 'programmatic',
-      });
-    }
-
-    if (currentBackground !== nextBackground) {
-      backgroundSetterRef.current(nextPreset.background, {
-        interaction: 'programmatic',
-      });
-    }
-  }, [presetKey, foreground.requested, background.requested]);
-
-  return (
-    <div className="ck-demo-stack">
-      <div className="ck-row">
-        <ColorStringInput
-          className="ck-input"
-          format="hex"
-          requested={foreground.requested}
-          onChangeRequested={foreground.setRequested}
-          aria-label="Foreground color"
-        />
-        <ColorStringInput
-          className="ck-input"
-          format="hex"
-          requested={background.requested}
-          onChangeRequested={background.setRequested}
-          aria-label="Background color"
-        />
-      </div>
-      <div
-        className="ck-contrast-sample"
-        style={{
-          color: toCss(foreground.requested, 'rgb'),
-          backgroundColor: toCss(background.requested, 'rgb'),
-        }}
-      >
-        {preset.sample}
-      </div>
-      <ContrastBadge
-        className="ck-contrast-badge"
-        foreground={foreground.requested}
-        background={background.requested}
-        level={state?.level ?? 'AA'}
       />
     </div>
   );

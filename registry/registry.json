@@ -32,20 +32,6 @@
       "categories": ["color"]
     },
     {
-      "name": "color-wheel",
-      "type": "registry:component",
-      "title": "Color Wheel",
-      "description": "A circular hue/chroma control. Headless, accessible, and composable with Color.",
-      "dependencies": ["@color-kit/core"],
-      "files": [
-        {
-          "path": "registry/components/color-wheel.tsx",
-          "type": "registry:component"
-        }
-      ],
-      "categories": ["color"]
-    },
-    {
       "name": "color",
       "type": "registry:component",
       "title": "Color",
@@ -79,35 +65,6 @@
       "categories": ["color"]
     },
     {
-      "name": "swatch",
-      "type": "registry:component",
-      "title": "Swatch",
-      "description": "A single color swatch that displays a color. Optionally interactive with click-to-select support.",
-      "dependencies": ["@color-kit/core"],
-      "files": [
-        {
-          "path": "registry/components/swatch.tsx",
-          "type": "registry:component"
-        }
-      ],
-      "categories": ["color"]
-    },
-    {
-      "name": "swatch-group",
-      "type": "registry:component",
-      "title": "Swatch Group",
-      "description": "A group of color swatches with selection state and keyboard navigation.",
-      "dependencies": ["@color-kit/core"],
-      "registryDependencies": ["swatch"],
-      "files": [
-        {
-          "path": "registry/components/swatch-group.tsx",
-          "type": "registry:component"
-        }
-      ],
-      "categories": ["color"]
-    },
-    {
       "name": "color-input",
       "type": "registry:component",
       "title": "Color Input",
@@ -130,34 +87,6 @@
       "files": [
         {
           "path": "registry/components/color-string-input.tsx",
-          "type": "registry:component"
-        }
-      ],
-      "categories": ["color"]
-    },
-    {
-      "name": "color-display",
-      "type": "registry:component",
-      "title": "Color Display",
-      "description": "A display-p3-first preview surface with deterministic sRGB fallback rendering.",
-      "dependencies": ["@color-kit/core"],
-      "files": [
-        {
-          "path": "registry/components/color-display.tsx",
-          "type": "registry:component"
-        }
-      ],
-      "categories": ["color"]
-    },
-    {
-      "name": "contrast-badge",
-      "type": "registry:component",
-      "title": "Contrast Badge",
-      "description": "Displays the contrast ratio between two colors with WCAG AA/AAA compliance level.",
-      "dependencies": ["@color-kit/core"],
-      "files": [
-        {
-          "path": "registry/components/contrast-badge.tsx",
           "type": "registry:component"
         }
       ],
