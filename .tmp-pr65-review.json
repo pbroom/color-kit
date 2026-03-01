@@ -1,0 +1,21 @@
+{
+  "body": "## Inline comments\n- packages/core/src/plane/operations.ts:213 — [SEV-1] Open contour paths break boolean region semantics\n- packages/react/src/gamut-boundary-layer.tsx:252 — [SEV-2] External points path still performs expensive boundary query\n- packages/react/src/chroma-band-layer.tsx:248 — [SEV-2] External points path still performs expensive chroma-band query\n\n## Findings (summary / non-inline)\nSee inline comments below.\n\n## Open questions / assumptions\n- Assumed `PlaneRegion.paths` may represent compound regions (including holes) and that containment semantics should exclude hole interiors.\n\n## Change summary\n- Adds plane query geometry APIs in `@color-kit/core` and plane adapter APIs in `@color-kit/react`.\n- Adds docs/demos and layer props for externally supplied geometry.\n",
+  "event": "COMMENT",
+  "comments": [
+    {
+      "path": "packages/core/src/plane/operations.ts",
+      "line": 213,
+      "body": "[SEV-1] Boolean difference can emit an open contour that inverts containment behavior.\n\nRisk: Consumers can get incorrect hit-testing/region logic for valid donut-like `differenceRegions` outputs, which can produce wrong overlays and interaction states.\n\nEvidence: Subtracting an inner square from an outer square currently yields a region where `containsPoint(result, { x: 0.5, y: 0.5 })` is `true` (hole center), while ring points like `{ x: 0.2, y: 0.5 }` can be `false`. The outer contour traced here is accepted even when not closed.\n\nFix: Only push traced contours that are closed (or explicitly close them before use), and ensure ambiguous marching-cubes cases don't leave the outer shell open.\n\nTest: Add a regression in `packages/core/__tests__/plane.test.ts` for fully-contained subtraction (`outer - inner`) asserting hole center is outside and ring points remain inside."
+    },
+    {
+      "path": "packages/react/src/gamut-boundary-layer.tsx",
+      "line": 252,
+      "body": "[SEV-2] `points` override still pays full boundary computation cost.\n\nRisk: Passing precomputed `points` is meant to avoid expensive sampling during drag/animation, but this still recomputes boundary geometry on each dependency change, causing avoidable main-thread work.\n\nFix: Short-circuit inside the memo (`if (pointsProp) return pointsProp;`) and include `pointsProp` in deps so expensive sampling is skipped when external points are provided.\n\nTest: Add a unit test that supplies `points` and verifies `getColorAreaGamutBoundaryPoints` is not called."
+    },
+    {
+      "path": "packages/react/src/chroma-band-layer.tsx",
+      "line": 248,
+      "body": "[SEV-2] `points` override still computes chroma-band geometry.\n\nRisk: External path injection does not actually bypass internal sampling, so repeated renders still run expensive chroma-band queries and can degrade interaction smoothness.\n\nFix: Same pattern as contrast layer: early-return `pointsProp` from memoized computation and skip internal query work when provided.\n\nTest: Add a unit test that passes `points` and asserts `getColorAreaChromaBandPoints` is not invoked."
+    }
+  ]
+}

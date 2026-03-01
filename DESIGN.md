@@ -145,6 +145,11 @@ With the knowledge I have now, it seems smartest to lower how oppinionated the c
 
 ```
 
+Questions:
+
+- What should be the API structure pattern?
+- Can we get performance wins by building the solvers and calculation engine in rust or zig?
+
 ---
 
 ## 2. Color Science Considerations

@@ -66,3 +66,4 @@ This file defines top-level guidance for Codex in this repository.
 
 - **2026-02-28 — Constrain sticky doc panels**: Set fixed viewport-based heights on sticky sidebar/right-rail containers before relying on ScrollArea internals, so vertical compression doesn’t disable internal scrolling.
 - **2026-02-28 — Stage all intended files before gt submit**: If `gt submit --stack --no-interactive` says the branch has no changes, run `git add`/`gt modify` first so the current work is actually committed and included.
+- **2026-03-01 — Validate contour closure in boolean geometry**: For marching-squares region ops, add a donut subtraction sanity check (`center` outside, ring inside) to catch open-contour regressions before shipping.
