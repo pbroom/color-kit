@@ -70,3 +70,4 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-03-01 — Use PR-scoped reply endpoint for inline feedback**: Reply to review comments with `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`; the non-PR-scoped path returns 404.
 - **2026-03-01 — Avoid sync resets in effects**: Resolve React hook lint errors by moving "loading reset" state transitions into async effect flow and keying rendered output to the in-flight request.
 - **2026-03-01 — Prune registry when pruning components**: Removing public React primitives should also remove matching shadcn registry entries/files and docs nav pages in the same pass, or users will still discover deleted surfaces.
+- **2026-03-01 — Use float32-friendly parity checks**: When worker payloads are packed into `Float32Array`, compare decoded values with float32-appropriate tolerances (for example 1e-4) to avoid false precision regressions in parity tests.

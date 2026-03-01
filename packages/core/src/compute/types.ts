@@ -1,0 +1,64 @@
+import type { GamutTarget } from '../gamut/index.js';
+import type {
+  PlaneDefinition,
+  PlaneQuery,
+  PlaneQueryResult,
+} from '../plane/types.js';
+
+export type PlaneComputeBackendKind = 'js' | 'wasm' | 'webgpu';
+export type PlaneComputePriority = 'drag' | 'idle';
+export type PlaneComputeQuality = 'high' | 'medium' | 'low';
+export type PlaneComputePerformanceProfile =
+  | 'auto'
+  | 'quality'
+  | 'balanced'
+  | 'performance';
+
+export interface PackedPlaneQueryDescriptor {
+  kind: PlaneQuery['kind'];
+  pathStart: number;
+  pathCount: number;
+  hue?: number;
+  gamut?: GamutTarget;
+}
+
+/**
+ * Transfer-friendly packed representation of batched plane query output.
+ *
+ * `pathRanges` contains `[startPoint, pointCount]` tuples.
+ * `pointXY` contains `[x0, y0, x1, y1, ...]`.
+ * `pointLC` contains `[l0, c0, l1, c1, ...]` (NaN when unavailable).
+ * `pointColorLcha` contains `[l0, c0, h0, a0, ...]` (NaN when unavailable).
+ */
+export interface PackedPlaneQueryResult {
+  queryDescriptors: PackedPlaneQueryDescriptor[];
+  pathRanges: Uint32Array;
+  pointXY: Float32Array;
+  pointLC: Float32Array;
+  pointColorLcha: Float32Array;
+}
+
+export interface PlaneComputeRequest {
+  plane: PlaneDefinition;
+  queries: PlaneQuery[];
+  priority?: PlaneComputePriority;
+  quality?: PlaneComputeQuality;
+  performanceProfile?: PlaneComputePerformanceProfile;
+}
+
+export interface PlaneComputeResponse {
+  backend: PlaneComputeBackendKind;
+  computeTimeMs: number;
+  marshalTimeMs: number;
+  result: PackedPlaneQueryResult;
+}
+
+export interface PlaneComputeBackend {
+  kind: PlaneComputeBackendKind;
+  run: (request: PlaneComputeRequest) => PlaneComputeResponse;
+}
+
+export interface PlaneComputePackResult {
+  packed: PackedPlaneQueryResult;
+  raw: PlaneQueryResult[];
+}
