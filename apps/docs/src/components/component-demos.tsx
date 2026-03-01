@@ -248,9 +248,17 @@ interface ContrastMetricSample {
   scheduleReason?: string;
   schedulerBucketCount?: number;
   wasmCircuitOpen?: boolean;
-  wasmParityStatus?: 'ok' | 'shape-mismatch' | 'no-wasm' | 'error';
+  wasmParityStatus?:
+    | 'ok'
+    | 'shape-mismatch'
+    | 'numeric-mismatch'
+    | 'no-wasm'
+    | 'error';
   wasmParityPathDelta?: number;
   wasmParityPointDelta?: number;
+  wasmInitStatus?: 'pending' | 'ready' | 'unavailable' | 'error';
+  wasmInitError?: string;
+  wasmBackendVersion?: string;
   quality: 'high' | 'medium' | 'low';
   isDragging: boolean;
 }
@@ -268,8 +276,12 @@ interface ContrastObservabilitySummary {
   parityProbeCount: number;
   parityOkCount: number;
   parityShapeMismatchCount: number;
+  parityNumericMismatchCount: number;
   parityNoWasmCount: number;
   parityErrorCount: number;
+  wasmInitReadyCount: number;
+  wasmInitUnavailableCount: number;
+  wasmInitErrorCount: number;
   lastParityPathDelta?: number;
   lastParityPointDelta?: number;
 }
@@ -298,8 +310,12 @@ function summarizeContrastObservability(
       parityProbeCount: 0,
       parityOkCount: 0,
       parityShapeMismatchCount: 0,
+      parityNumericMismatchCount: 0,
       parityNoWasmCount: 0,
       parityErrorCount: 0,
+      wasmInitReadyCount: 0,
+      wasmInitUnavailableCount: 0,
+      wasmInitErrorCount: 0,
     };
   }
 
@@ -349,11 +365,23 @@ function summarizeContrastObservability(
   const parityShapeMismatchCount = paritySamples.filter(
     (sample) => sample.wasmParityStatus === 'shape-mismatch',
   ).length;
+  const parityNumericMismatchCount = paritySamples.filter(
+    (sample) => sample.wasmParityStatus === 'numeric-mismatch',
+  ).length;
   const parityNoWasmCount = paritySamples.filter(
     (sample) => sample.wasmParityStatus === 'no-wasm',
   ).length;
   const parityErrorCount = paritySamples.filter(
     (sample) => sample.wasmParityStatus === 'error',
+  ).length;
+  const wasmInitReadyCount = samples.filter(
+    (sample) => sample.wasmInitStatus === 'ready',
+  ).length;
+  const wasmInitUnavailableCount = samples.filter(
+    (sample) => sample.wasmInitStatus === 'unavailable',
+  ).length;
+  const wasmInitErrorCount = samples.filter(
+    (sample) => sample.wasmInitStatus === 'error',
   ).length;
   const latestParitySample = [...paritySamples]
     .reverse()
@@ -378,8 +406,12 @@ function summarizeContrastObservability(
     parityProbeCount: paritySamples.length,
     parityOkCount,
     parityShapeMismatchCount,
+    parityNumericMismatchCount,
     parityNoWasmCount,
     parityErrorCount,
+    wasmInitReadyCount,
+    wasmInitUnavailableCount,
+    wasmInitErrorCount,
     lastParityPathDelta: latestParitySample?.wasmParityPathDelta,
     lastParityPointDelta: latestParitySample?.wasmParityPointDelta,
   };
@@ -1030,10 +1062,14 @@ export function ColorAreaDemo({
         {contrastObservability.parityProbeCount > 0 ? (
           <div>
             WASM parity probes {contrastObservability.parityProbeCount} · ok{' '}
-            {contrastObservability.parityOkCount} · mismatch{' '}
-            {contrastObservability.parityShapeMismatchCount} · no-wasm{' '}
+            {contrastObservability.parityOkCount} · shape mismatch{' '}
+            {contrastObservability.parityShapeMismatchCount} · numeric mismatch{' '}
+            {contrastObservability.parityNumericMismatchCount} · no-wasm{' '}
             {contrastObservability.parityNoWasmCount} · error{' '}
-            {contrastObservability.parityErrorCount}
+            {contrastObservability.parityErrorCount} · init ready{' '}
+            {contrastObservability.wasmInitReadyCount} / unavailable{' '}
+            {contrastObservability.wasmInitUnavailableCount} / init error{' '}
+            {contrastObservability.wasmInitErrorCount}
             {contrastObservability.lastParityPathDelta != null ||
             contrastObservability.lastParityPointDelta != null
               ? ` · last Δ paths ${contrastObservability.lastParityPathDelta ?? 0} / pts ${contrastObservability.lastParityPointDelta ?? 0}`

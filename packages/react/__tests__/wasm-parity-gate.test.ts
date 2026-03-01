@@ -62,6 +62,16 @@ describe('evaluateWasmParityGate()', () => {
       attempted: true,
       error: 'backend crashed',
     };
+    const numericMismatch = {
+      mode: 'numeric' as const,
+      status: 'numeric-mismatch' as const,
+      wasmAvailable: true,
+      attempted: true,
+      numericTolerance: 1e-4,
+      numericMismatchCount: 2,
+      maxAbsDelta: 0.00031,
+      meanAbsDelta: 0.00012,
+    };
 
     expect(evaluateWasmParityGate(mismatch, 'warn')).toEqual({
       mode: 'warn',
@@ -72,6 +82,16 @@ describe('evaluateWasmParityGate()', () => {
       mode: 'strict',
       status: 'fail',
       reason: 'shape-mismatch',
+    });
+    expect(evaluateWasmParityGate(numericMismatch, 'warn')).toEqual({
+      mode: 'warn',
+      status: 'warn',
+      reason: 'numeric-mismatch',
+    });
+    expect(evaluateWasmParityGate(numericMismatch, 'strict')).toEqual({
+      mode: 'strict',
+      status: 'fail',
+      reason: 'numeric-mismatch',
     });
 
     expect(evaluateWasmParityGate(error, 'warn')).toEqual({

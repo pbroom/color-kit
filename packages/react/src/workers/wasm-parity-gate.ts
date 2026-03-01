@@ -10,6 +10,7 @@ export interface WasmParityGateDecision {
     | 'parity-ok'
     | 'no-wasm-backend'
     | 'shape-mismatch'
+    | 'numeric-mismatch'
     | 'backend-error';
 }
 
@@ -43,6 +44,13 @@ export function evaluateWasmParityGate(
       mode,
       status: mode === 'strict' ? 'fail' : 'warn',
       reason: 'shape-mismatch',
+    };
+  }
+  if (parity.status === 'numeric-mismatch') {
+    return {
+      mode,
+      status: mode === 'strict' ? 'fail' : 'warn',
+      reason: 'numeric-mismatch',
     };
   }
   return {

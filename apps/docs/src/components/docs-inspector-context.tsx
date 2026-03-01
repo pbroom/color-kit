@@ -111,7 +111,7 @@ export interface ColorAreaInspectorState {
     contrastMetric: 'wcag' | 'apca';
     contrastApcaPolarity: 'absolute' | 'positive' | 'negative';
     contrastApcaRole: 'sample-text' | 'sample-background';
-    wasmParityMode: 'off' | 'shape';
+    wasmParityMode: 'off' | 'shape' | 'numeric';
     contrastEdgeInterpolation: 'linear' | 'midpoint';
     /** RDP simplification tolerance; undefined or 0 = off */
     simplifyTolerance?: number;
