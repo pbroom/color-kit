@@ -46,7 +46,14 @@ function pointInPolygon(point: PlanePoint, polygon: PlanePoint[]): boolean {
 }
 
 export function containsPoint(region: PlaneRegion, point: PlanePoint): boolean {
-  return region.paths.some((path) => pointInPolygon(point, path));
+  // Treat region paths as compound contours (even-odd fill) so holes work.
+  let inside = false;
+  for (const path of region.paths) {
+    if (pointInPolygon(point, path)) {
+      inside = !inside;
+    }
+  }
+  return inside;
 }
 
 export function pointDistance(a: PlanePoint, b: PlanePoint): number {
@@ -210,7 +217,7 @@ function buildContourPaths(
   for (const [node, neighbors] of adjacency) {
     if (neighbors.size !== 1) continue;
     const traced = trace(node);
-    if (traced.length > 2) {
+    if (traced.length > 2 && traced[0] === traced[traced.length - 1]) {
       paths.push(traced.map((key) => pointByKey.get(key)!).filter(Boolean));
     }
   }
@@ -219,7 +226,7 @@ function buildContourPaths(
     for (const neighbor of neighbors) {
       if (visited.has(edgeKey(node, neighbor))) continue;
       const traced = trace(node);
-      if (traced.length > 2) {
+      if (traced.length > 2 && traced[0] === traced[traced.length - 1]) {
         paths.push(traced.map((key) => pointByKey.get(key)!).filter(Boolean));
       }
     }
@@ -263,10 +270,19 @@ function booleanRegion(
   const resolution = Math.max(16, Math.min(256, options.resolution ?? 96));
   const aBounds = regionBounds(a);
   const bBounds = regionBounds(b);
-  const minX = Math.min(aBounds.minX, bBounds.minX);
-  const minY = Math.min(aBounds.minY, bBounds.minY);
-  const maxX = Math.max(aBounds.maxX, bBounds.maxX);
-  const maxY = Math.max(aBounds.maxY, bBounds.maxY);
+  const rawMinX = Math.min(aBounds.minX, bBounds.minX);
+  const rawMinY = Math.min(aBounds.minY, bBounds.minY);
+  const rawMaxX = Math.max(aBounds.maxX, bBounds.maxX);
+  const rawMaxY = Math.max(aBounds.maxY, bBounds.maxY);
+  const rawSpanX = Math.max(1e-6, rawMaxX - rawMinX);
+  const rawSpanY = Math.max(1e-6, rawMaxY - rawMinY);
+  // Expand the raster domain slightly to avoid clipping contours at bounds.
+  const padX = rawSpanX / resolution;
+  const padY = rawSpanY / resolution;
+  const minX = rawMinX - padX;
+  const minY = rawMinY - padY;
+  const maxX = rawMaxX + padX;
+  const maxY = rawMaxY + padY;
   const spanX = Math.max(1e-6, maxX - minX);
   const spanY = Math.max(1e-6, maxY - minY);
 

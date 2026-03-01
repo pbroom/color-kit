@@ -250,20 +250,25 @@ export function GamutBoundaryLayer({
   ]);
 
   const computedPoints = useMemo(
-    () =>
-      getColorAreaGamutBoundaryPoints(hue ?? requested.h, axes, {
+    () => {
+      if (pointsProp) {
+        return pointsProp;
+      }
+      return getColorAreaGamutBoundaryPoints(hue ?? requested.h, axes, {
         gamut,
         steps: effectiveSteps,
         simplifyTolerance,
         samplingMode,
         adaptiveTolerance: resolvedAdaptiveTolerance,
         adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
-      }),
+      });
+    },
     [
       axes,
       effectiveSteps,
       gamut,
       hue,
+      pointsProp,
       requested.h,
       simplifyTolerance,
       samplingMode,

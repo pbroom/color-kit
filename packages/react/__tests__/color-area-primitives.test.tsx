@@ -220,6 +220,30 @@ describe('ColorArea primitives', () => {
     expect(srgbPoint).toBeTruthy();
   });
 
+  it('skips expensive sampling when external points are provided', () => {
+    const requested: Color = { l: 0.7, c: 0.2, h: 240, alpha: 1 };
+    const points = [
+      { x: 0.1, y: 0.8 },
+      { x: 0.5, y: 0.2 },
+      { x: 0.9, y: 0.8 },
+    ];
+    const boundarySpy = vi.spyOn(
+      colorAreaApi,
+      'getColorAreaGamutBoundaryPoints',
+    );
+    const bandSpy = vi.spyOn(colorAreaApi, 'getColorAreaChromaBandPoints');
+
+    render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <GamutBoundaryLayer points={points} />
+        <ChromaBandLayer points={points} />
+      </ColorArea>,
+    );
+
+    expect(boundarySpy).not.toHaveBeenCalled();
+    expect(bandSpy).not.toHaveBeenCalled();
+  });
+
   it('renders sampled vector points for gamut and contrast overlays', () => {
     const requested: Color = { l: 0.72, c: 0.24, h: 220, alpha: 1 };
     const { container } = render(

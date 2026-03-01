@@ -246,8 +246,11 @@ export function ChromaBandLayer({
   ]);
 
   const computedPoints = useMemo(
-    () =>
-      getColorAreaChromaBandPoints(requested, hue ?? requested.h, axes, {
+    () => {
+      if (pointsProp) {
+        return pointsProp;
+      }
+      return getColorAreaChromaBandPoints(requested, hue ?? requested.h, axes, {
         gamut,
         mode: resolveMode(mode),
         steps: effectiveSteps,
@@ -256,13 +259,15 @@ export function ChromaBandLayer({
         adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
         selectedLightness: requested.l,
         alpha: requested.alpha,
-      }),
+      });
+    },
     [
       axes,
       effectiveSteps,
       gamut,
       hue,
       mode,
+      pointsProp,
       requested,
       samplingMode,
       resolvedAdaptiveTolerance,

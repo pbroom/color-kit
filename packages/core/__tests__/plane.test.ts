@@ -147,6 +147,21 @@ describe('plane api', () => {
     expect(intersection.paths.length).toBeGreaterThan(0);
     expect(difference.paths.length).toBeGreaterThan(0);
 
+    const hole = {
+      paths: [
+        [
+          { x: 0.35, y: 0.35 },
+          { x: 0.55, y: 0.35 },
+          { x: 0.55, y: 0.55 },
+          { x: 0.35, y: 0.55 },
+          { x: 0.35, y: 0.35 },
+        ],
+      ],
+    };
+    const donut = differenceRegions(squareA, hole, { resolution: 96 });
+    expect(containsPoint(donut, { x: 0.45, y: 0.45 })).toBe(false);
+    expect(containsPoint(donut, { x: 0.2, y: 0.4 })).toBe(true);
+
     const translated = translateRegion(squareA, 0.1, -0.05);
     const scaled = scaleRegion(squareA, 0.8);
     const rotated = rotateRegion(squareA, 15);
