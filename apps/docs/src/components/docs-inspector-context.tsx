@@ -108,11 +108,15 @@ export interface ColorAreaInspectorState {
     layerQuality: ColorAreaLayerQuality;
     lineSteps: number;
     contrastSteps: number;
+    contrastMetric: 'wcag' | 'apca';
+    contrastApcaPolarity: 'absolute' | 'positive' | 'negative';
+    contrastApcaRole: 'sample-text' | 'sample-background';
+    wasmParityMode: 'off' | 'shape';
     contrastEdgeInterpolation: 'linear' | 'midpoint';
     /** RDP simplification tolerance; undefined or 0 = off */
     simplifyTolerance?: number;
     lineSamplingMode?: 'uniform' | 'adaptive';
-    contrastSamplingMode?: 'uniform' | 'adaptive';
+    contrastSamplingMode?: 'hybrid' | 'uniform' | 'adaptive';
     /** Corner radius in 0-1 for path vertices; undefined = sharp */
     cornerRadius?: number;
   };
@@ -245,10 +249,14 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       layerQuality: 'auto',
       lineSteps: 128,
       contrastSteps: 96,
+      contrastMetric: 'wcag',
+      contrastApcaPolarity: 'absolute',
+      contrastApcaRole: 'sample-text',
+      wasmParityMode: 'off',
       contrastEdgeInterpolation: 'linear',
       simplifyTolerance: 0.001,
       lineSamplingMode: 'adaptive',
-      contrastSamplingMode: 'adaptive',
+      contrastSamplingMode: 'hybrid',
       cornerRadius: undefined,
     },
   };
@@ -351,10 +359,14 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       layerQuality: 'auto',
       lineSteps: 128,
       contrastSteps: 96,
+      contrastMetric: 'wcag',
+      contrastApcaPolarity: 'absolute',
+      contrastApcaRole: 'sample-text',
+      wasmParityMode: 'off',
       contrastEdgeInterpolation: 'linear',
       simplifyTolerance: 0.001,
       lineSamplingMode: 'adaptive',
-      contrastSamplingMode: 'adaptive',
+      contrastSamplingMode: 'hybrid',
       cornerRadius: undefined,
     },
   };

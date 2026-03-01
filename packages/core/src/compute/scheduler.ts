@@ -110,9 +110,39 @@ function estimateQueryBudget(request: PlaneComputeRequest): number {
       }
       case 'contrastBoundary':
       case 'contrastRegion': {
-        const lightness = query.lightnessSteps ?? query.adaptiveBaseSteps ?? 60;
-        const chroma = query.chromaSteps ?? query.adaptiveBaseSteps ?? 60;
-        budget += lightness * chroma;
+        const samplingMode = query.samplingMode ?? 'hybrid';
+        if (samplingMode === 'uniform') {
+          const lightness = query.lightnessSteps ?? 64;
+          const chroma = query.chromaSteps ?? 64;
+          budget += lightness * chroma;
+          break;
+        }
+        if (samplingMode === 'adaptive') {
+          const base = Math.max(8, query.adaptiveBaseSteps ?? 16);
+          const depth = Math.max(0, query.adaptiveMaxDepth ?? 3);
+          const refinementFactor = 1 + depth * 0.85;
+          budget += Math.round(base * base * refinementFactor);
+          break;
+        }
+        const lightness = query.lightnessSteps ?? 72;
+        const chromaBrackets = query.chromaSteps ?? 96;
+        const depth = Math.max(0, query.hybridMaxDepth ?? 7);
+        const errorTolerance =
+          query.hybridErrorTolerance != null && query.hybridErrorTolerance > 0
+            ? query.hybridErrorTolerance
+            : 0.0015;
+        const precisionFactor = Math.min(
+          3.2,
+          Math.max(1, 0.0015 / errorTolerance),
+        );
+        const metricFactor = query.metric === 'apca' ? 1.12 : 1;
+        budget += Math.round(
+          lightness *
+            Math.sqrt(chromaBrackets) *
+            (1 + depth * 0.24) *
+            precisionFactor *
+            metricFactor,
+        );
         break;
       }
       case 'fallbackPoint': {
@@ -140,11 +170,36 @@ function createBucketKey(request: PlaneComputeRequest): string {
   const kinds = [...new Set(request.queries.map((query) => query.kind))]
     .sort()
     .join('+');
+  const contrastSignature = [
+    ...new Set(
+      request.queries
+        .filter(
+          (
+            query,
+          ): query is Extract<
+            PlaneComputeRequest['queries'][number],
+            { kind: 'contrastBoundary' | 'contrastRegion' }
+          > =>
+            query.kind === 'contrastBoundary' ||
+            query.kind === 'contrastRegion',
+        )
+        .map((query) => {
+          const metric = query.metric ?? 'wcag';
+          const samplingMode = query.samplingMode ?? 'hybrid';
+          if (metric !== 'apca') {
+            return `${metric}:${samplingMode}`;
+          }
+          return `${metric}:${samplingMode}:${query.apcaPolarity ?? 'absolute'}:${query.apcaRole ?? 'sample-text'}`;
+        }),
+    ),
+  ]
+    .sort()
+    .join(',');
   const priority = request.priority ?? 'idle';
   const quality = request.quality ?? 'medium';
   const profile = request.performanceProfile ?? 'balanced';
   const budget = budgetBucketLabel(estimateQueryBudget(request));
-  return `${kinds}|priority:${priority}|quality:${quality}|profile:${profile}|budget:${budget}`;
+  return `${kinds}|contrast:${contrastSignature || 'none'}|priority:${priority}|quality:${quality}|profile:${profile}|budget:${budget}`;
 }
 
 function totalTimeMs(response: PlaneComputeResponse): number {

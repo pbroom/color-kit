@@ -139,3 +139,10 @@ export { ColorInput } from './color-input.js';
 export type { ColorInputProps } from './color-input.js';
 export { ColorStringInput } from './color-string-input.js';
 export type { ColorStringInputProps } from './color-string-input.js';
+
+// Worker observability helpers
+export { evaluateWasmParityGate } from './workers/wasm-parity-gate.js';
+export type {
+  WasmParityGateDecision,
+  WasmParityGateMode,
+} from './workers/wasm-parity-gate.js';

@@ -5,6 +5,10 @@ import {
   resolvePlaneDefinition,
   toP3Gamut,
   toSrgbGamut,
+  type ContrastApcaPolarity,
+  type ContrastApcaPreset,
+  type ContrastApcaRole,
+  type ContrastMetric,
   type ChromaBandMode,
   type ContrastRegionLevel,
   type GamutTarget,
@@ -87,8 +91,12 @@ export interface ColorAreaFallbackPoint {
 
 export interface ColorAreaContrastRegionOptions {
   gamut?: GamutTarget;
+  metric?: ContrastMetric;
   level?: ContrastRegionLevel;
   threshold?: number;
+  apcaPreset?: ContrastApcaPreset;
+  apcaPolarity?: ContrastApcaPolarity;
+  apcaRole?: ContrastApcaRole;
   lightnessSteps?: number;
   chromaSteps?: number;
   maxChroma?: number;
@@ -98,10 +106,12 @@ export interface ColorAreaContrastRegionOptions {
   edgeInterpolation?: 'linear' | 'midpoint';
   /** RDP simplification tolerance in (l,c) space; omit to disable */
   simplifyTolerance?: number;
-  /** 'uniform' (default) or 'adaptive' for contrast grid */
-  samplingMode?: 'uniform' | 'adaptive';
+  /** 'hybrid' (default), 'uniform', or 'adaptive' */
+  samplingMode?: 'hybrid' | 'uniform' | 'adaptive';
   adaptiveBaseSteps?: number;
   adaptiveMaxDepth?: number;
+  hybridMaxDepth?: number;
+  hybridErrorTolerance?: number;
 }
 
 export interface ColorAreaChromaBandOptions {
@@ -279,8 +289,12 @@ export function getColorAreaContrastRegionPaths(
     reference,
     gamut: options.gamut ?? 'srgb',
     hue,
+    metric: options.metric,
     level: options.level,
     threshold: options.threshold,
+    apcaPreset: options.apcaPreset,
+    apcaPolarity: options.apcaPolarity,
+    apcaRole: options.apcaRole,
     lightnessSteps: options.lightnessSteps,
     chromaSteps: options.chromaSteps,
     maxChroma: options.maxChroma,
@@ -292,6 +306,8 @@ export function getColorAreaContrastRegionPaths(
     samplingMode: options.samplingMode,
     adaptiveBaseSteps: options.adaptiveBaseSteps,
     adaptiveMaxDepth: options.adaptiveMaxDepth,
+    hybridMaxDepth: options.hybridMaxDepth,
+    hybridErrorTolerance: options.hybridErrorTolerance,
   });
 
   return region.paths.map((path) =>

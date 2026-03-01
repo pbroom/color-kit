@@ -21,6 +21,7 @@ import {
   type ColorAreaFormatRow,
   type ColorAreaLineWidth,
   type ColorAreaStrokeControl,
+  type ColorInputDemoChannel,
   type EditableColorAreaFormatRow,
 } from './docs-inspector-context.js';
 
@@ -136,9 +137,25 @@ const OVERLAY_QUALITY_OPTIONS = [
   { value: 'low', label: 'Low' },
 ] as const;
 
-const EDGE_INTERPOLATION_OPTIONS = [
-  { value: 'linear', label: 'Linear' },
-  { value: 'midpoint', label: 'Midpoint' },
+const CONTRAST_METRIC_OPTIONS = [
+  { value: 'wcag', label: 'WCAG' },
+  { value: 'apca', label: 'APCA' },
+] as const;
+
+const APCA_POLARITY_OPTIONS = [
+  { value: 'absolute', label: 'Abs' },
+  { value: 'positive', label: '+Lc' },
+  { value: 'negative', label: '-Lc' },
+] as const;
+
+const APCA_ROLE_OPTIONS = [
+  { value: 'sample-text', label: 'Text' },
+  { value: 'sample-background', label: 'Background' },
+] as const;
+
+const WASM_PARITY_MODE_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: 'shape', label: 'Shape' },
 ] as const;
 
 const SAMPLING_MODE_OPTIONS = [
@@ -576,6 +593,18 @@ function ColorAreaPropertiesPanel() {
       },
     });
   };
+  const contrastLabels =
+    colorAreaState.tuning.contrastMetric === 'apca'
+      ? {
+          aa3: '0.30 Lc (UI)',
+          aa45: '0.45 Lc (Large)',
+          aaa7: '0.60 Lc (Body)',
+        }
+      : {
+          aa3: '3:1 (AA)',
+          aa45: '4.5:1 (AA)',
+          aaa7: '7:1 (AAA)',
+        };
 
   return (
     <div className="docs-properties-panel docs-properties-panel-color-area">
@@ -1067,6 +1096,54 @@ function ColorAreaPropertiesPanel() {
       <section className="docs-properties-group">
         <h4>Contrast</h4>
 
+        <label className="docs-properties-label">Metric</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.contrastMetric}
+          onChange={(contrastMetric) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                contrastMetric,
+              },
+            })
+          }
+          options={[...CONTRAST_METRIC_OPTIONS]}
+          label="Contrast metric"
+        />
+
+        {colorAreaState.tuning.contrastMetric === 'apca' ? (
+          <>
+            <label className="docs-properties-label">APCA polarity</label>
+            <SegmentedOptions
+              value={colorAreaState.tuning.contrastApcaPolarity}
+              onChange={(contrastApcaPolarity) =>
+                setColorAreaState({
+                  tuning: {
+                    ...colorAreaState.tuning,
+                    contrastApcaPolarity,
+                  },
+                })
+              }
+              options={[...APCA_POLARITY_OPTIONS]}
+              label="APCA polarity"
+            />
+            <label className="docs-properties-label">APCA role</label>
+            <SegmentedOptions
+              value={colorAreaState.tuning.contrastApcaRole}
+              onChange={(contrastApcaRole) =>
+                setColorAreaState({
+                  tuning: {
+                    ...colorAreaState.tuning,
+                    contrastApcaRole,
+                  },
+                })
+              }
+              options={[...APCA_ROLE_OPTIONS]}
+              label="APCA score role"
+            />
+          </>
+        ) : null}
+
         <p className="docs-subgroup-label">Lines</p>
 
         <div className="docs-control-row">
@@ -1081,7 +1158,7 @@ function ColorAreaPropertiesPanel() {
                 )
               }
             />
-            3:1 (AA)
+            {contrastLabels.aa3}
           </label>
           <StrokeStylePills
             value={colorAreaState.contrast.lines.aa3}
@@ -1101,7 +1178,7 @@ function ColorAreaPropertiesPanel() {
                 )
               }
             />
-            4.5:1 (AA)
+            {contrastLabels.aa45}
           </label>
           <StrokeStylePills
             value={colorAreaState.contrast.lines.aa45}
@@ -1121,7 +1198,7 @@ function ColorAreaPropertiesPanel() {
                 )
               }
             />
-            7:1 (AAA)
+            {contrastLabels.aaa7}
           </label>
           <StrokeStylePills
             value={colorAreaState.contrast.lines.aaa7}
@@ -1151,7 +1228,7 @@ function ColorAreaPropertiesPanel() {
                 })
               }
             />
-            3:1 (AA)
+            {contrastLabels.aa3}
           </label>
           <DotOpacityPills
             opacityPercent={colorAreaState.contrast.regions.aa3.opacityPercent}
@@ -1192,7 +1269,7 @@ function ColorAreaPropertiesPanel() {
                 })
               }
             />
-            4.5:1 (AA)
+            {contrastLabels.aa45}
           </label>
           <DotOpacityPills
             opacityPercent={colorAreaState.contrast.regions.aa45.opacityPercent}
@@ -1233,7 +1310,7 @@ function ColorAreaPropertiesPanel() {
                 })
               }
             />
-            7:1 (AAA)
+            {contrastLabels.aaa7}
           </label>
           <DotOpacityPills
             opacityPercent={colorAreaState.contrast.regions.aaa7.opacityPercent}
@@ -1304,37 +1381,6 @@ function ColorAreaPropertiesPanel() {
           }
         />
 
-        <StepRangeControl
-          label="Contrast steps"
-          value={colorAreaState.tuning.contrastSteps}
-          min={12}
-          max={256}
-          step={4}
-          onChange={(contrastSteps) =>
-            setColorAreaState({
-              tuning: {
-                ...colorAreaState.tuning,
-                contrastSteps,
-              },
-            })
-          }
-        />
-
-        <label className="docs-properties-label">Contour interpolation</label>
-        <SegmentedOptions
-          value={colorAreaState.tuning.contrastEdgeInterpolation}
-          onChange={(contrastEdgeInterpolation) =>
-            setColorAreaState({
-              tuning: {
-                ...colorAreaState.tuning,
-                contrastEdgeInterpolation,
-              },
-            })
-          }
-          options={[...EDGE_INTERPOLATION_OPTIONS]}
-          label="Contrast contour interpolation"
-        />
-
         <label className="docs-properties-label">Simplify tolerance</label>
         <SegmentedOptions
           value={
@@ -1367,22 +1413,22 @@ function ColorAreaPropertiesPanel() {
             })
           }
           options={[...SAMPLING_MODE_OPTIONS]}
-          label="Gamut boundary sampling"
+          label="Boundary/chroma sampling"
         />
 
-        <label className="docs-properties-label">Contrast sampling</label>
+        <label className="docs-properties-label">WASM parity probe</label>
         <SegmentedOptions
-          value={colorAreaState.tuning.contrastSamplingMode ?? 'adaptive'}
-          onChange={(contrastSamplingMode) =>
+          value={colorAreaState.tuning.wasmParityMode}
+          onChange={(wasmParityMode) =>
             setColorAreaState({
               tuning: {
                 ...colorAreaState.tuning,
-                contrastSamplingMode,
+                wasmParityMode,
               },
             })
           }
-          options={[...SAMPLING_MODE_OPTIONS]}
-          label="Contrast contour sampling"
+          options={[...WASM_PARITY_MODE_OPTIONS]}
+          label="Contrast JS/WASM parity planning probe"
         />
 
         <label className="docs-properties-label">Corner radius</label>
@@ -1447,7 +1493,7 @@ function ColorSliderPropertiesPanel() {
 
 function ColorInputPropertiesPanel() {
   const { colorInputState, setColorInputState } = useDocsInspector();
-  const channelOptions =
+  const channelOptions: Array<{ value: ColorInputDemoChannel; label: string }> =
     colorInputState.model === 'rgb'
       ? [
           { value: 'r', label: 'R' },

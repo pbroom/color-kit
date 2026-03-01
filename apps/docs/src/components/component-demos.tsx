@@ -1,4 +1,10 @@
-import { parse, toCss, toP3Gamut, toSrgbGamut } from '@color-kit/core';
+import {
+  parse,
+  toCss,
+  toP3Gamut,
+  toSrgbGamut,
+  type ContrastMetric,
+} from '@color-kit/core';
 import {
   Background,
   ChromaBandLayer,
@@ -194,6 +200,17 @@ function pathPointProps(fill: string) {
 
 const COLOR_AREA_LINE_STEPS = 128;
 const COLOR_AREA_CONTRAST_STEPS = 72;
+const WCAG_THRESHOLDS = {
+  aa3: 3,
+  aa45: 4.5,
+  aaa7: 7,
+} as const;
+const APCA_THRESHOLDS = {
+  aa3: 0.3,
+  aa45: 0.45,
+  aaa7: 0.6,
+} as const;
+type ContrastTierKey = keyof typeof WCAG_THRESHOLDS;
 
 function percentile(values: number[], ratio: number): number {
   if (values.length === 0) {
@@ -225,8 +242,147 @@ interface ContrastMetricSample {
   pointCount: number;
   lightnessSteps: number;
   chromaSteps: number;
+  samplingMode: 'hybrid' | 'uniform' | 'adaptive';
+  contrastMetric: ContrastMetric;
+  backend?: 'js' | 'wasm' | 'webgpu';
+  scheduleReason?: string;
+  schedulerBucketCount?: number;
+  wasmCircuitOpen?: boolean;
+  wasmParityStatus?: 'ok' | 'shape-mismatch' | 'no-wasm' | 'error';
+  wasmParityPathDelta?: number;
+  wasmParityPointDelta?: number;
   quality: 'high' | 'medium' | 'low';
   isDragging: boolean;
+}
+
+interface ContrastObservabilitySummary {
+  sampleCount: number;
+  workerSampleCount: number;
+  workerJsFallbackCount: number;
+  workerJsFallbackRate: number;
+  syncFallbackCount: number;
+  syncFallbackRate: number;
+  topScheduleReasons: Array<{ reason: string; count: number }>;
+  latestSchedulerBucketCount: number;
+  wasmCircuitOpen: boolean;
+  parityProbeCount: number;
+  parityOkCount: number;
+  parityShapeMismatchCount: number;
+  parityNoWasmCount: number;
+  parityErrorCount: number;
+  lastParityPathDelta?: number;
+  lastParityPointDelta?: number;
+}
+
+const WORKER_JS_FALLBACK_REASONS = new Set([
+  'default-js',
+  'backend-error',
+  'circuit-open',
+  'telemetry-regression',
+]);
+
+function summarizeContrastObservability(
+  samples: ContrastMetricSample[],
+): ContrastObservabilitySummary {
+  if (samples.length === 0) {
+    return {
+      sampleCount: 0,
+      workerSampleCount: 0,
+      workerJsFallbackCount: 0,
+      workerJsFallbackRate: 0,
+      syncFallbackCount: 0,
+      syncFallbackRate: 0,
+      topScheduleReasons: [],
+      latestSchedulerBucketCount: 0,
+      wasmCircuitOpen: false,
+      parityProbeCount: 0,
+      parityOkCount: 0,
+      parityShapeMismatchCount: 0,
+      parityNoWasmCount: 0,
+      parityErrorCount: 0,
+    };
+  }
+
+  const workerSamples = samples.filter((sample) => sample.source === 'worker');
+  const syncSamples = samples.filter((sample) => sample.source === 'sync');
+  const workerFallbackCount = workerSamples.filter((sample) => {
+    if (sample.backend !== 'js') {
+      return false;
+    }
+    if (!sample.scheduleReason) {
+      return false;
+    }
+    return WORKER_JS_FALLBACK_REASONS.has(sample.scheduleReason);
+  }).length;
+  const syncFallbackCount = syncSamples.filter((sample) =>
+    (sample.scheduleReason ?? '').startsWith('worker-'),
+  ).length;
+
+  const reasonCounts = new Map<string, number>();
+  for (const sample of workerSamples) {
+    if (!sample.scheduleReason) {
+      continue;
+    }
+    reasonCounts.set(
+      sample.scheduleReason,
+      (reasonCounts.get(sample.scheduleReason) ?? 0) + 1,
+    );
+  }
+  const topScheduleReasons = [...reasonCounts.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 4)
+    .map(([reason, count]) => ({ reason, count }));
+
+  const latestWithTelemetry = [...samples]
+    .reverse()
+    .find(
+      (sample) =>
+        sample.schedulerBucketCount != null || sample.wasmCircuitOpen != null,
+    );
+
+  const paritySamples = samples.filter(
+    (sample) => sample.wasmParityStatus != null,
+  );
+  const parityOkCount = paritySamples.filter(
+    (sample) => sample.wasmParityStatus === 'ok',
+  ).length;
+  const parityShapeMismatchCount = paritySamples.filter(
+    (sample) => sample.wasmParityStatus === 'shape-mismatch',
+  ).length;
+  const parityNoWasmCount = paritySamples.filter(
+    (sample) => sample.wasmParityStatus === 'no-wasm',
+  ).length;
+  const parityErrorCount = paritySamples.filter(
+    (sample) => sample.wasmParityStatus === 'error',
+  ).length;
+  const latestParitySample = [...paritySamples]
+    .reverse()
+    .find(
+      (sample) =>
+        sample.wasmParityPathDelta != null ||
+        sample.wasmParityPointDelta != null,
+    );
+
+  return {
+    sampleCount: samples.length,
+    workerSampleCount: workerSamples.length,
+    workerJsFallbackCount: workerFallbackCount,
+    workerJsFallbackRate:
+      workerSamples.length > 0 ? workerFallbackCount / workerSamples.length : 0,
+    syncFallbackCount,
+    syncFallbackRate:
+      syncSamples.length > 0 ? syncFallbackCount / syncSamples.length : 0,
+    topScheduleReasons,
+    latestSchedulerBucketCount: latestWithTelemetry?.schedulerBucketCount ?? 0,
+    wasmCircuitOpen: latestWithTelemetry?.wasmCircuitOpen ?? false,
+    parityProbeCount: paritySamples.length,
+    parityOkCount,
+    parityShapeMismatchCount,
+    parityNoWasmCount,
+    parityErrorCount,
+    lastParityPathDelta: latestParitySample?.wasmParityPathDelta,
+    lastParityPointDelta: latestParitySample?.wasmParityPointDelta,
+  };
 }
 
 function summarizePerfFrames(
@@ -256,20 +412,29 @@ function summarizePerfFrames(
   };
 }
 
-function contrastMetricLabel(key: string): string {
+function resolveContrastThreshold(
+  metric: ContrastMetric,
+  tier: ContrastTierKey,
+): number {
+  return metric === 'apca' ? APCA_THRESHOLDS[tier] : WCAG_THRESHOLDS[tier];
+}
+
+function contrastMetricLabel(key: string, metric: ContrastMetric): string {
+  const thresholds = metric === 'apca' ? APCA_THRESHOLDS : WCAG_THRESHOLDS;
+  const suffix = metric === 'apca' ? 'Lc' : ':1';
   switch (key) {
     case 'line-aa3':
-      return 'Line 3:1';
+      return `Line ${thresholds.aa3}${suffix}`;
     case 'line-aa45':
-      return 'Line 4.5:1';
+      return `Line ${thresholds.aa45}${suffix}`;
     case 'line-aaa7':
-      return 'Line 7:1';
+      return `Line ${thresholds.aaa7}${suffix}`;
     case 'region-aa3':
-      return 'Region 3:1';
+      return `Region ${thresholds.aa3}${suffix}`;
     case 'region-aa45':
-      return 'Region 4.5:1';
+      return `Region ${thresholds.aa45}${suffix}`;
     case 'region-aaa7':
-      return 'Region 7:1';
+      return `Region ${thresholds.aaa7}${suffix}`;
     default:
       return key;
   }
@@ -351,19 +516,26 @@ function ColorAreaDemoScene({
       layerQuality: 'auto' as const,
       lineSteps: COLOR_AREA_LINE_STEPS,
       contrastSteps: COLOR_AREA_CONTRAST_STEPS,
+      contrastMetric: 'wcag' as const,
+      contrastApcaPolarity: 'absolute' as const,
+      contrastApcaRole: 'sample-text' as const,
+      wasmParityMode: 'off' as const,
       contrastEdgeInterpolation: 'linear' as const,
       simplifyTolerance: undefined,
       lineSamplingMode: 'adaptive' as const,
-      contrastSamplingMode: 'adaptive' as const,
+      contrastSamplingMode: 'hybrid' as const,
     },
   };
   const lineSteps = scene.tuning.lineSteps;
   const contrastSteps = scene.tuning.contrastSteps;
   const layerQuality = scene.tuning.layerQuality;
-  const contrastEdgeInterpolation = scene.tuning.contrastEdgeInterpolation;
+  const contrastMetric = scene.tuning.contrastMetric;
+  const contrastApcaPolarity = scene.tuning.contrastApcaPolarity;
+  const contrastApcaRole = scene.tuning.contrastApcaRole;
+  const wasmParityMode = scene.tuning.wasmParityMode ?? 'off';
+  const includeSchedulerTelemetry = inspectorState != null;
   const simplifyTolerance = scene.tuning.simplifyTolerance;
   const lineSamplingMode = scene.tuning.lineSamplingMode ?? 'adaptive';
-  const contrastSamplingMode = scene.tuning.contrastSamplingMode ?? 'adaptive';
   const cornerRadius =
     'cornerRadius' in scene.tuning ? scene.tuning.cornerRadius : undefined;
   const showPathPoints = scene.visualize.vectorPoints;
@@ -453,13 +625,16 @@ function ColorAreaDemoScene({
         {scene.contrast.lines.aa3.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
-            threshold={3}
+            metric={contrastMetric}
+            threshold={resolveContrastThreshold(contrastMetric, 'aa3')}
+            apcaPolarity={contrastApcaPolarity}
+            apcaRole={contrastApcaRole}
+            includeSchedulerTelemetry={includeSchedulerTelemetry}
+            wasmParityMode={wasmParityMode}
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
-            edgeInterpolation={contrastEdgeInterpolation}
             quality={layerQuality}
             simplifyTolerance={simplifyTolerance}
-            samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
               onContrastMetrics?.('line-aa3', metrics)
@@ -475,13 +650,16 @@ function ColorAreaDemoScene({
         {scene.contrast.lines.aa45.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
-            threshold={4.5}
+            metric={contrastMetric}
+            threshold={resolveContrastThreshold(contrastMetric, 'aa45')}
+            apcaPolarity={contrastApcaPolarity}
+            apcaRole={contrastApcaRole}
+            includeSchedulerTelemetry={includeSchedulerTelemetry}
+            wasmParityMode={wasmParityMode}
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
-            edgeInterpolation={contrastEdgeInterpolation}
             quality={layerQuality}
             simplifyTolerance={simplifyTolerance}
-            samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
               onContrastMetrics?.('line-aa45', metrics)
@@ -497,13 +675,16 @@ function ColorAreaDemoScene({
         {scene.contrast.lines.aaa7.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
-            threshold={7}
+            metric={contrastMetric}
+            threshold={resolveContrastThreshold(contrastMetric, 'aaa7')}
+            apcaPolarity={contrastApcaPolarity}
+            apcaRole={contrastApcaRole}
+            includeSchedulerTelemetry={includeSchedulerTelemetry}
+            wasmParityMode={wasmParityMode}
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
-            edgeInterpolation={contrastEdgeInterpolation}
             quality={layerQuality}
             simplifyTolerance={simplifyTolerance}
-            samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
               onContrastMetrics?.('line-aaa7', metrics)
@@ -520,13 +701,16 @@ function ColorAreaDemoScene({
         {scene.contrast.regions.aa3.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
-            threshold={3}
+            metric={contrastMetric}
+            threshold={resolveContrastThreshold(contrastMetric, 'aa3')}
+            apcaPolarity={contrastApcaPolarity}
+            apcaRole={contrastApcaRole}
+            includeSchedulerTelemetry={includeSchedulerTelemetry}
+            wasmParityMode={wasmParityMode}
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
-            edgeInterpolation={contrastEdgeInterpolation}
             quality={layerQuality}
             simplifyTolerance={simplifyTolerance}
-            samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
               onContrastMetrics?.('region-aa3', metrics)
@@ -546,13 +730,16 @@ function ColorAreaDemoScene({
         {scene.contrast.regions.aa45.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
-            threshold={4.5}
+            metric={contrastMetric}
+            threshold={resolveContrastThreshold(contrastMetric, 'aa45')}
+            apcaPolarity={contrastApcaPolarity}
+            apcaRole={contrastApcaRole}
+            includeSchedulerTelemetry={includeSchedulerTelemetry}
+            wasmParityMode={wasmParityMode}
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
-            edgeInterpolation={contrastEdgeInterpolation}
             quality={layerQuality}
             simplifyTolerance={simplifyTolerance}
-            samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
               onContrastMetrics?.('region-aa45', metrics)
@@ -572,13 +759,16 @@ function ColorAreaDemoScene({
         {scene.contrast.regions.aaa7.enabled && (
           <ContrastRegionLayer
             gamut={scene.gamut}
-            threshold={7}
+            metric={contrastMetric}
+            threshold={resolveContrastThreshold(contrastMetric, 'aaa7')}
+            apcaPolarity={contrastApcaPolarity}
+            apcaRole={contrastApcaRole}
+            includeSchedulerTelemetry={includeSchedulerTelemetry}
+            wasmParityMode={wasmParityMode}
             lightnessSteps={contrastSteps}
             chromaSteps={contrastSteps}
-            edgeInterpolation={contrastEdgeInterpolation}
             quality={layerQuality}
             simplifyTolerance={simplifyTolerance}
-            samplingMode={contrastSamplingMode}
             cornerRadius={cornerRadius}
             onMetrics={(metrics: ContrastRegionLayerMetrics) =>
               onContrastMetrics?.('region-aaa7', metrics)
@@ -691,10 +881,15 @@ export function ColorAreaDemo({
   const [contrastMetrics, setContrastMetrics] = useState<
     ContrastMetricSample[]
   >([]);
+  const [contrastObservability, setContrastObservability] =
+    useState<ContrastObservabilitySummary>(() =>
+      summarizeContrastObservability([]),
+    );
   const perfFramesRef = useRef<
     Array<ColorAreaInteractionFrameStats & { ts: number }>
   >([]);
   const contrastMetricsRef = useRef<Record<string, ContrastMetricSample>>({});
+  const contrastMetricHistoryRef = useRef<ContrastMetricSample[]>([]);
   const perfUiUpdateTsRef = useRef(0);
   const perfSummaryUpdateTsRef = useRef(0);
   const contrastMetricsUpdateTsRef = useRef(0);
@@ -741,11 +936,16 @@ export function ColorAreaDemo({
   const handleContrastMetrics = useCallback(
     (key: string, metrics: ContrastRegionLayerMetrics) => {
       const now = Date.now();
-      contrastMetricsRef.current[key] = {
+      const sample: ContrastMetricSample = {
         ...metrics,
         key,
         ts: now,
       };
+      contrastMetricsRef.current[key] = sample;
+      contrastMetricHistoryRef.current.push(sample);
+      if (contrastMetricHistoryRef.current.length > 360) {
+        contrastMetricHistoryRef.current.shift();
+      }
 
       if (now - contrastMetricsUpdateTsRef.current >= 160) {
         contrastMetricsUpdateTsRef.current = now;
@@ -753,6 +953,9 @@ export function ColorAreaDemo({
           Object.values(contrastMetricsRef.current).sort((a, b) =>
             a.key.localeCompare(b.key),
           ),
+        );
+        setContrastObservability(
+          summarizeContrastObservability(contrastMetricHistoryRef.current),
         );
       }
     },
@@ -788,8 +991,11 @@ export function ColorAreaDemo({
       <div className="ck-caption ck-perf-caption">
         <div>
           Profile: {state?.tuning.performanceProfile ?? 'auto'} · Overlay:{' '}
-          {state?.tuning.layerQuality ?? 'auto'} · Interp:{' '}
-          {state?.tuning.contrastEdgeInterpolation ?? 'linear'}
+          {state?.tuning.layerQuality ?? 'auto'} · Contrast:{' '}
+          {(state?.tuning.contrastMetric ?? 'wcag').toUpperCase()}
+          {(state?.tuning.contrastMetric ?? 'wcag') === 'apca'
+            ? ` (${state?.tuning.contrastApcaPolarity ?? 'absolute'})`
+            : ''}
         </div>
         <div>
           Quality: {perfFrame?.qualityLevel ?? 'high'} · frame p95{' '}
@@ -804,15 +1010,52 @@ export function ColorAreaDemo({
           {(perfSummary.longTaskRate * 100).toFixed(1)}% · coalesced{' '}
           {perfFrame?.coalescedCount ?? 0}
         </div>
+        {contrastObservability.sampleCount > 0 ? (
+          <div>
+            Worker JS fallback{' '}
+            {(contrastObservability.workerJsFallbackRate * 100).toFixed(1)}% (
+            {contrastObservability.workerJsFallbackCount}/
+            {contrastObservability.workerSampleCount}) · sync fallback{' '}
+            {(contrastObservability.syncFallbackRate * 100).toFixed(1)}% (
+            {contrastObservability.syncFallbackCount}) · reasons{' '}
+            {contrastObservability.topScheduleReasons.length > 0
+              ? contrastObservability.topScheduleReasons
+                  .map((entry) => `${entry.reason}:${entry.count}`)
+                  .join(', ')
+              : 'n/a'}{' '}
+            · buckets {contrastObservability.latestSchedulerBucketCount} · wasm
+            circuit {contrastObservability.wasmCircuitOpen ? 'open' : 'closed'}
+          </div>
+        ) : null}
+        {contrastObservability.parityProbeCount > 0 ? (
+          <div>
+            WASM parity probes {contrastObservability.parityProbeCount} · ok{' '}
+            {contrastObservability.parityOkCount} · mismatch{' '}
+            {contrastObservability.parityShapeMismatchCount} · no-wasm{' '}
+            {contrastObservability.parityNoWasmCount} · error{' '}
+            {contrastObservability.parityErrorCount}
+            {contrastObservability.lastParityPathDelta != null ||
+            contrastObservability.lastParityPointDelta != null
+              ? ` · last Δ paths ${contrastObservability.lastParityPathDelta ?? 0} / pts ${contrastObservability.lastParityPointDelta ?? 0}`
+              : ''}
+          </div>
+        ) : null}
         {contrastMetrics.length > 0 ? (
           <div className="ck-perf-list">
             {contrastMetrics.map((metric) => (
               <span key={metric.key} className="ck-perf-pill">
-                {contrastMetricLabel(metric.key)} {metric.quality}{' '}
-                {metric.lightnessSteps}x{metric.chromaSteps} ·{' '}
-                {metric.source === 'worker' ? 'worker' : 'sync'}{' '}
+                {contrastMetricLabel(metric.key, metric.contrastMetric)}{' '}
+                {metric.quality} · {metric.contrastMetric.toUpperCase()}/
+                {metric.samplingMode} ·{' '}
+                {metric.source === 'worker'
+                  ? `worker/${metric.backend ?? 'unknown'}`
+                  : 'sync/js'}{' '}
                 {metric.computeTimeMs.toFixed(2)}ms · {metric.pathCount} paths /{' '}
                 {metric.pointCount} pts
+                {metric.scheduleReason ? ` · ${metric.scheduleReason}` : ''}
+                {metric.wasmParityStatus
+                  ? ` · parity:${metric.wasmParityStatus}`
+                  : ''}
               </span>
             ))}
           </div>

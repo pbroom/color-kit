@@ -25,9 +25,13 @@ runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
 
 ## Shared Notes
 
-- `samplingMode` controls quality strategy:
-  - `uniform` &mdash; fixed stepping across the plane.
-  - `adaptive` &mdash; refines where geometry bends, producing fewer points for flat regions.
+- `samplingMode` controls contour extraction strategy:
+  - `hybrid` (default for contrast queries) &mdash; direct root solving + adaptive tracing for smoother boundaries.
+  - `uniform` &mdash; fixed stepping across the plane (legacy compatibility).
+  - `adaptive` &mdash; recursive marching refinement (legacy compatibility).
+- `metric` is available for `contrastBoundary` / `contrastRegion`:
+  - `wcag` &mdash; threshold uses ratio values such as `3`, `4.5`, `7`.
+  - `apca` &mdash; threshold uses normalized `Lc` values (for example `0.3`, `0.45`, `0.6`) and supports `apcaPolarity` + `apcaRole`.
 - On planes that do not use both lightness and chroma axes, some queries intentionally return empty geometry.
 
 ## `gamutBoundary`
@@ -69,9 +73,12 @@ Returns a contour where colors on the plane hit a given contrast threshold again
 ```ts
 const line = query.contrastBoundary({
   reference: parse('#ffffff'),
-  threshold: 4.5,
+  metric: 'apca',
+  threshold: 0.45,
+  apcaPolarity: 'absolute',
+  apcaRole: 'sample-text',
   gamut: 'display-p3',
-  samplingMode: 'adaptive',
+  samplingMode: 'hybrid',
 });
 ```
 
@@ -87,9 +94,10 @@ Returns filled region paths where all colors meet a contrast level against the r
 ```ts
 const region = query.contrastRegion({
   reference: parse('#111827'),
+  metric: 'wcag',
   level: 'AA',
   gamut: 'srgb',
-  samplingMode: 'adaptive',
+  samplingMode: 'hybrid',
 });
 ```
 
