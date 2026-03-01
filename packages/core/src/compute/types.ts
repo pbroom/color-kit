@@ -46,11 +46,25 @@ export interface PlaneComputeRequest {
   performanceProfile?: PlaneComputePerformanceProfile;
 }
 
+export interface PlaneComputeScheduleTrace {
+  bucketKey: string;
+  selectedBackend: PlaneComputeBackendKind;
+  reason:
+    | 'default-js'
+    | 'baseline-probe'
+    | 'warmup'
+    | 'telemetry-win'
+    | 'circuit-open'
+    | 'telemetry-regression'
+    | 'backend-error';
+}
+
 export interface PlaneComputeResponse {
   backend: PlaneComputeBackendKind;
   computeTimeMs: number;
   marshalTimeMs: number;
   result: PackedPlaneQueryResult;
+  schedule?: PlaneComputeScheduleTrace;
 }
 
 export interface PlaneComputeBackend {
@@ -61,4 +75,52 @@ export interface PlaneComputeBackend {
 export interface PlaneComputePackResult {
   packed: PackedPlaneQueryResult;
   raw: PlaneQueryResult[];
+}
+
+export interface PlaneComputeSchedulerOptions {
+  preferredBackends?: PlaneComputeBackendKind[];
+  minSamplesForDecision?: number;
+  warmupSamples?: number;
+  baselineProbeInterval?: number;
+  ewmaAlpha?: number;
+  dragRegressionRatio?: number;
+  idleRegressionRatio?: number;
+  hysteresisTrips?: number;
+  circuitBreakerCooldownMs?: number;
+  backendErrorTripCount?: number;
+  maxTelemetryBuckets?: number;
+}
+
+export interface PlaneComputeTelemetryBackendStats {
+  sampleCount: number;
+  averageTotalMs: number;
+  lastTotalMs: number;
+}
+
+export interface PlaneComputeTelemetryBucket {
+  key: string;
+  totalSamples: number;
+  lastUsedBackend?: PlaneComputeBackendKind;
+  backends: Partial<
+    Record<PlaneComputeBackendKind, PlaneComputeTelemetryBackendStats>
+  >;
+}
+
+export interface PlaneComputeCircuitBreakerState {
+  disabledUntilMs: number;
+  regressionStreak: number;
+  errorStreak: number;
+}
+
+export interface PlaneComputeTelemetrySnapshot {
+  buckets: PlaneComputeTelemetryBucket[];
+  circuitBreakers: Partial<
+    Record<PlaneComputeBackendKind, PlaneComputeCircuitBreakerState>
+  >;
+}
+
+export interface PlaneComputeScheduler {
+  run: (request: PlaneComputeRequest) => PlaneComputeResponse;
+  getTelemetrySnapshot: () => PlaneComputeTelemetrySnapshot;
+  resetTelemetry: () => void;
 }

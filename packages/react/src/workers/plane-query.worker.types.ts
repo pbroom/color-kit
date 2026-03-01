@@ -4,6 +4,7 @@ import type {
   PlaneComputePerformanceProfile,
   PlaneComputePriority,
   PlaneComputeQuality,
+  PlaneComputeScheduleTrace,
   PlaneDefinition,
   PlaneQuery,
 } from '@color-kit/core';
@@ -23,5 +24,6 @@ export interface PlaneQueryWorkerResponse {
   result?: PackedPlaneQueryResult;
   computeTimeMs?: number;
   marshalTimeMs?: number;
+  schedule?: PlaneComputeScheduleTrace;
   error?: string;
 }

@@ -133,10 +133,14 @@ export { clamp, round, normalizeHue, lerp } from './utils/index.js';
 // Compute backends
 export {
   createJsPlaneComputeBackend,
+  createPlaneComputeScheduler,
+  getDefaultPlaneComputeTelemetrySnapshot,
   getPackedPlaneQueryTransferables,
   packPlaneQueryResults,
   runPackedPlaneQueries,
   runPlaneCompute,
+  runScheduledPlaneCompute,
+  resetDefaultPlaneComputeTelemetry,
   unpackPlaneQueryResults,
 } from './compute/index.js';
 export type {
@@ -144,11 +148,18 @@ export type {
   PackedPlaneQueryResult,
   PlaneComputeBackend,
   PlaneComputeBackendKind,
+  PlaneComputeCircuitBreakerState,
   PlaneComputePerformanceProfile,
   PlaneComputePriority,
   PlaneComputeQuality,
   PlaneComputeRequest,
   PlaneComputeResponse,
+  PlaneComputeScheduleTrace,
+  PlaneComputeScheduler,
+  PlaneComputeSchedulerOptions,
+  PlaneComputeTelemetryBackendStats,
+  PlaneComputeTelemetryBucket,
+  PlaneComputeTelemetrySnapshot,
 } from './compute/index.js';
 
 // Plane geometry
