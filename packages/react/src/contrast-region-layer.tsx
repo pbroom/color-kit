@@ -10,11 +10,16 @@ import {
   type SVGAttributes,
 } from 'react';
 import {
+  contrastAPCA,
   oklabToLinearRgb,
   oklchToOklab,
   unpackPlaneQueryResults,
   toP3Gamut,
   toSrgbGamut,
+  type ContrastApcaPolarity,
+  type ContrastApcaPreset,
+  type ContrastApcaRole,
+  type ContrastMetric,
   type Color,
   type ContrastRegionLevel,
   type GamutTarget,
@@ -44,6 +49,15 @@ export interface ContrastRegionLayerMetrics {
   pointCount: number;
   lightnessSteps: number;
   chromaSteps: number;
+  samplingMode: 'hybrid' | 'uniform' | 'adaptive';
+  contrastMetric: ContrastMetric;
+  backend?: 'js' | 'wasm' | 'webgpu';
+  scheduleReason?: string;
+  schedulerBucketCount?: number;
+  wasmCircuitOpen?: boolean;
+  wasmParityStatus?: 'ok' | 'shape-mismatch' | 'no-wasm' | 'error';
+  wasmParityPathDelta?: number;
+  wasmParityPointDelta?: number;
   quality: 'high' | 'medium' | 'low';
   isDragging: boolean;
 }
@@ -52,8 +66,12 @@ export interface ContrastRegionLayerProps extends LayerProps {
   reference?: Color;
   hue?: number;
   gamut?: GamutTarget;
+  metric?: ContrastMetric;
   threshold?: number;
   level?: ColorAreaContrastRegionOptions['level'];
+  apcaPreset?: ColorAreaContrastRegionOptions['apcaPreset'];
+  apcaPolarity?: ColorAreaContrastRegionOptions['apcaPolarity'];
+  apcaRole?: ColorAreaContrastRegionOptions['apcaRole'];
   lightnessSteps?: number;
   chromaSteps?: number;
   maxChroma?: number;
@@ -68,10 +86,14 @@ export interface ContrastRegionLayerProps extends LayerProps {
   onMetrics?: (metrics: ContrastRegionLayerMetrics) => void;
   /** RDP simplification tolerance in (l,c) space; omit to disable */
   simplifyTolerance?: number;
-  /** 'uniform' (default) or 'adaptive' grid for contour extraction */
-  samplingMode?: 'uniform' | 'adaptive';
+  /** 'hybrid' (default), 'uniform', or 'adaptive' grid for contour extraction */
+  samplingMode?: 'hybrid' | 'uniform' | 'adaptive';
   adaptiveBaseSteps?: number;
   adaptiveMaxDepth?: number;
+  hybridMaxDepth?: number;
+  hybridErrorTolerance?: number;
+  includeSchedulerTelemetry?: boolean;
+  wasmParityMode?: 'off' | 'shape';
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
   /** Optional precomputed contour paths (for plane-driven overlays). */
@@ -395,12 +417,23 @@ function pointInPolygonLc(
   return inside;
 }
 
+const APCA_PRESET_THRESHOLDS: Record<ContrastApcaPreset, number> = {
+  body: 0.6,
+  'large-text': 0.45,
+  ui: 0.3,
+};
+
 function resolveContrastThresholdValue(
   threshold: number | undefined,
   level: ContrastRegionLevel | undefined,
+  metric: ContrastMetric | undefined,
+  apcaPreset: ContrastApcaPreset | undefined,
 ): number {
   if (typeof threshold === 'number') {
     return threshold;
+  }
+  if (metric === 'apca') {
+    return APCA_PRESET_THRESHOLDS[apcaPreset ?? 'body'];
   }
   if (level === 'AAA') return 7;
   if (level === 'AA-large') return 3;
@@ -431,12 +464,39 @@ function contrastRatioUnclamped(color1: Color, color2: Color): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+function evaluateContrastCriterionScore(
+  sample: Color,
+  mappedReference: Color,
+  metric: ContrastMetric | undefined,
+  threshold: number,
+  apcaPolarity: ContrastApcaPolarity | undefined,
+  apcaRole: ContrastApcaRole | undefined,
+): number {
+  if (metric === 'apca') {
+    const lc =
+      (apcaRole ?? 'sample-text') === 'sample-background'
+        ? contrastAPCA(mappedReference, sample)
+        : contrastAPCA(sample, mappedReference);
+    if (apcaPolarity === 'positive') {
+      return lc - threshold;
+    }
+    if (apcaPolarity === 'negative') {
+      return -lc - threshold;
+    }
+    return Math.abs(lc) - threshold;
+  }
+  return contrastRatioUnclamped(sample, mappedReference) - threshold;
+}
+
 function estimateRegionValidityScore(
   regionPath: ColorAreaContrastRegionPoint[],
   mappedReference: Color,
   hue: number,
   gamut: GamutTarget,
+  metric: ContrastMetric | undefined,
   threshold: number,
+  apcaPolarity: ContrastApcaPolarity | undefined,
+  apcaRole: ContrastApcaRole | undefined,
 ): number {
   if (regionPath.length < 3) return 0;
   let minL = Number.POSITIVE_INFINITY;
@@ -475,8 +535,15 @@ function estimateRegionValidityScore(
         },
         gamut,
       );
-      const ratio = contrastRatioUnclamped(mappedSample, mappedReference);
-      if (ratio >= threshold) {
+      const score = evaluateContrastCriterionScore(
+        mappedSample,
+        mappedReference,
+        metric,
+        threshold,
+        apcaPolarity,
+        apcaRole,
+      );
+      if (score >= 0) {
         validCount += 1;
       }
     }
@@ -794,8 +861,12 @@ export function ContrastRegionLayer({
   reference,
   hue,
   gamut = 'srgb',
+  metric,
   threshold,
   level,
+  apcaPreset,
+  apcaPolarity,
+  apcaRole,
   lightnessSteps,
   chromaSteps,
   maxChroma,
@@ -812,6 +883,10 @@ export function ContrastRegionLayer({
   samplingMode,
   adaptiveBaseSteps,
   adaptiveMaxDepth,
+  hybridMaxDepth,
+  hybridErrorTolerance,
+  includeSchedulerTelemetry = false,
+  wasmParityMode = 'off',
   cornerRadius,
   paths: pathsProp,
   children,
@@ -1048,12 +1123,18 @@ export function ContrastRegionLayer({
           baseSteps: resolvedAdaptiveBaseSteps,
           maxDepth: resolvedAdaptiveMaxDepth,
         };
+  const resolvedSamplingMode = samplingMode ?? 'hybrid';
+  const resolvedContrastMetric = metric ?? 'wcag';
 
   const options = useMemo<ColorAreaContrastRegionOptions>(
     () => ({
       gamut,
+      metric,
       threshold,
       level,
+      apcaPreset,
+      apcaPolarity,
+      apcaRole,
       lightnessSteps: stepsForOptions.lightness,
       chromaSteps: stepsForOptions.chroma,
       maxChroma,
@@ -1062,23 +1143,31 @@ export function ContrastRegionLayer({
       alpha,
       edgeInterpolation,
       simplifyTolerance,
-      samplingMode,
+      samplingMode: resolvedSamplingMode,
       adaptiveBaseSteps: adaptiveForOptions.baseSteps,
       adaptiveMaxDepth: adaptiveForOptions.maxDepth,
+      hybridMaxDepth,
+      hybridErrorTolerance,
     }),
     [
       alpha,
+      apcaPolarity,
+      apcaPreset,
+      apcaRole,
       edgeInterpolation,
       stepsForOptions.lightness,
       stepsForOptions.chroma,
       adaptiveForOptions.baseSteps,
       adaptiveForOptions.maxDepth,
       gamut,
+      hybridErrorTolerance,
+      hybridMaxDepth,
       level,
       maxChroma,
       maxIterations,
+      metric,
       simplifyTolerance,
-      samplingMode,
+      resolvedSamplingMode,
       threshold,
       tolerance,
     ],
@@ -1136,6 +1225,8 @@ export function ContrastRegionLayer({
       priority: isDragging ? 'drag' : 'idle',
       quality: resolvedQuality,
       performanceProfile,
+      includeSchedulerTelemetry,
+      wasmParityMode,
     }),
     [
       axes.x.channel,
@@ -1148,6 +1239,8 @@ export function ContrastRegionLayer({
       performanceProfile,
       resolvedHue,
       resolvedQuality,
+      includeSchedulerTelemetry,
+      wasmParityMode,
     ],
   );
 
@@ -1233,6 +1326,13 @@ export function ContrastRegionLayer({
       requestId: number;
       computeTimeMs: number;
       paths: ColorAreaContrastRegionPoint[][];
+      backend?: 'js' | 'wasm' | 'webgpu';
+      scheduleReason?: string;
+      schedulerBucketCount?: number;
+      wasmCircuitOpen?: boolean;
+      wasmParityStatus?: 'ok' | 'shape-mismatch' | 'no-wasm' | 'error';
+      wasmParityPathDelta?: number;
+      wasmParityPointDelta?: number;
     }) => {
       onMetrics?.({
         source: payload.source,
@@ -1242,6 +1342,15 @@ export function ContrastRegionLayer({
         pointCount: countPathPoints(payload.paths),
         lightnessSteps: effectiveLightnessSteps,
         chromaSteps: effectiveChromaSteps,
+        samplingMode: resolvedSamplingMode,
+        contrastMetric: resolvedContrastMetric,
+        backend: payload.backend,
+        scheduleReason: payload.scheduleReason,
+        schedulerBucketCount: payload.schedulerBucketCount,
+        wasmCircuitOpen: payload.wasmCircuitOpen,
+        wasmParityStatus: payload.wasmParityStatus,
+        wasmParityPathDelta: payload.wasmParityPathDelta,
+        wasmParityPointDelta: payload.wasmParityPointDelta,
         quality: resolvedQuality,
         isDragging,
       });
@@ -1251,7 +1360,9 @@ export function ContrastRegionLayer({
       effectiveLightnessSteps,
       isDragging,
       onMetrics,
+      resolvedContrastMetric,
       resolvedQuality,
+      resolvedSamplingMode,
     ],
   );
 
@@ -1264,6 +1375,8 @@ export function ContrastRegionLayer({
       requestId: requestIdRef.current,
       computeTimeMs: syncComputation.computeTimeMs,
       paths: syncComputation.paths,
+      backend: 'js',
+      scheduleReason: 'sync-inline',
     });
   }, [emitMetrics, syncComputation]);
 
@@ -1301,6 +1414,8 @@ export function ContrastRegionLayer({
             requestId: requestIdRef.current,
             computeTimeMs: syncComputation.computeTimeMs,
             paths: syncComputation.paths,
+            backend: 'js',
+            scheduleReason: 'worker-init-failed',
           });
         }
         return;
@@ -1315,6 +1430,8 @@ export function ContrastRegionLayer({
           requestId: requestIdRef.current,
           computeTimeMs: syncComputation.computeTimeMs,
           paths: syncComputation.paths,
+          backend: 'js',
+          scheduleReason: 'worker-unavailable',
         });
       }
       return;
@@ -1336,6 +1453,8 @@ export function ContrastRegionLayer({
             requestId: requestIdRef.current,
             computeTimeMs: syncComputation.computeTimeMs,
             paths: syncComputation.paths,
+            backend: 'js',
+            scheduleReason: 'worker-error-fallback',
           });
         }
         return;
@@ -1360,6 +1479,8 @@ export function ContrastRegionLayer({
           requestId: requestIdRef.current,
           computeTimeMs: syncComputation.computeTimeMs,
           paths: syncComputation.paths,
+          backend: 'js',
+          scheduleReason: 'worker-payload-fallback',
         });
         return;
       } else {
@@ -1371,12 +1492,23 @@ export function ContrastRegionLayer({
         payload: workerPayload,
         paths: nextPaths,
       });
+      const wasmDisabledUntilMs =
+        payload.schedulerTelemetry?.circuitBreakers.wasm?.disabledUntilMs ?? 0;
+      const nowMs =
+        typeof performance === 'undefined' ? Date.now() : performance.now();
       emitMetrics({
         source: 'worker',
         requestId: payload.id,
         computeTimeMs:
           (payload.computeTimeMs ?? 0) + (payload.marshalTimeMs ?? 0),
         paths: nextPaths,
+        backend: payload.backend,
+        scheduleReason: payload.schedule?.reason,
+        schedulerBucketCount: payload.schedulerTelemetry?.buckets.length,
+        wasmCircuitOpen: wasmDisabledUntilMs > nowMs,
+        wasmParityStatus: payload.wasmParity?.status,
+        wasmParityPathDelta: payload.wasmParity?.pathCountDelta,
+        wasmParityPointDelta: payload.wasmParity?.pointCountDelta,
       });
     };
 
@@ -1403,8 +1535,8 @@ export function ContrastRegionLayer({
   }, []);
 
   const resolvedThreshold = useMemo(
-    () => resolveContrastThresholdValue(threshold, level),
-    [level, threshold],
+    () => resolveContrastThresholdValue(threshold, level, metric, apcaPreset),
+    [apcaPreset, level, metric, threshold],
   );
   const mappedReference = contrastReference;
   const referencePoint = useMemo(
@@ -1447,14 +1579,20 @@ export function ContrastRegionLayer({
             mappedReference,
             resolvedHue,
             gamut,
+            metric,
             resolvedThreshold,
+            apcaPolarity,
+            apcaRole,
           );
           const backwardScore = estimateRegionValidityScore(
             backwardCandidate,
             mappedReference,
             resolvedHue,
             gamut,
+            metric,
             resolvedThreshold,
+            apcaPolarity,
+            apcaRole,
           );
           if (Math.abs(forwardScore - backwardScore) > 0.08) {
             return forwardScore >= backwardScore
@@ -1492,10 +1630,13 @@ export function ContrastRegionLayer({
     contrastFillBoundary,
     gamut,
     mappedReference,
+    metric,
     paths,
     referencePoint,
     resolvedHue,
     resolvedThreshold,
+    apcaPolarity,
+    apcaRole,
   ]);
 
   const regionPathData = useMemo(

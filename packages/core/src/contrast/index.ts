@@ -114,6 +114,10 @@ export function meetsAAA(
 }
 
 export type ContrastRegionLevel = 'AA' | 'AAA' | 'AA-large';
+export type ContrastMetric = 'wcag' | 'apca';
+export type ContrastApcaPolarity = 'absolute' | 'positive' | 'negative';
+export type ContrastApcaRole = 'sample-text' | 'sample-background';
+export type ContrastApcaPreset = 'body' | 'large-text' | 'ui';
 
 export interface ContrastRegionPoint {
   l: number;
@@ -123,7 +127,14 @@ export interface ContrastRegionPoint {
 export interface ContrastRegionPathOptions {
   gamut?: GamutTarget;
   /**
+   * Contrast metric used when evaluating region membership.
+   * @default 'wcag'
+   */
+  metric?: ContrastMetric;
+  /**
    * Explicit contrast threshold. If provided it overrides `level`.
+   * For metric='wcag' this is ratio threshold (>= 1).
+   * For metric='apca' this is Lc threshold (>= 0).
    */
   threshold?: number;
   /**
@@ -132,13 +143,37 @@ export interface ContrastRegionPathOptions {
    */
   level?: ContrastRegionLevel;
   /**
+   * APCA threshold preset used when metric='apca' and threshold is omitted.
+   * @default 'body' (Lc 60)
+   */
+  apcaPreset?: ContrastApcaPreset;
+  /**
+   * APCA polarity test mode used when metric='apca':
+   * - absolute: abs(Lc) >= threshold
+   * - positive: Lc >= threshold
+   * - negative: Lc <= -threshold
+   * @default 'absolute'
+   */
+  apcaPolarity?: ContrastApcaPolarity;
+  /**
+   * APCA sample/reference role used when metric='apca':
+   * - sample-text: Lc = APCA(sample, reference)
+   * - sample-background: Lc = APCA(reference, sample)
+   * @default 'sample-text'
+   */
+  apcaRole?: ContrastApcaRole;
+  /**
    * Number of sampled lightness cells.
    * The lightness axis has `lightnessSteps + 1` points.
+   *
+   * Legacy fallback hint. Hybrid mode uses this as an initial density guide.
    */
   lightnessSteps?: number;
   /**
    * Number of sampled chroma cells.
    * The chroma axis has `chromaSteps + 1` points.
+   *
+   * Legacy fallback hint. Hybrid mode uses this for root-bracketing density.
    */
   chromaSteps?: number;
   /**
@@ -162,6 +197,8 @@ export interface ContrastRegionPathOptions {
    * `linear` uses threshold interpolation and improves contour precision.
    * `midpoint` keeps legacy midpoint edge placement.
    * @default 'linear'
+   *
+   * Legacy fallback option; ignored by the hybrid solver.
    */
   edgeInterpolation?: 'linear' | 'midpoint';
   /**
@@ -171,11 +208,12 @@ export interface ContrastRegionPathOptions {
    */
   simplifyTolerance?: number;
   /**
-   * `uniform`: fixed grid (lightnessSteps × chromaSteps).
-   * `adaptive`: quadtree-style refinement only in cells that cross the threshold.
-   * @default 'uniform'
+   * Sampling mode selection.
+   * - hybrid: direct implicit tracing with adaptive refinement (default)
+   * - uniform/adaptive: legacy marching-squares fallback modes
+   * @default 'hybrid'
    */
-  samplingMode?: 'uniform' | 'adaptive';
+  samplingMode?: 'hybrid' | 'uniform' | 'adaptive';
   /**
    * In adaptive mode, base grid size per axis (subdivided where contour crosses).
    * @default 16
@@ -186,10 +224,47 @@ export interface ContrastRegionPathOptions {
    * @default 3
    */
   adaptiveMaxDepth?: number;
+  /**
+   * Hybrid solver: maximum adaptive lightness refinement depth.
+   * @default 7
+   */
+  hybridMaxDepth?: number;
+  /**
+   * Hybrid solver: maximum midpoint root deviation before splitting.
+   * Value is in chroma units.
+   * @default 0.0015
+   */
+  hybridErrorTolerance?: number;
 }
 
 const DEFAULT_LIGHTNESS_STEPS = 64;
 const DEFAULT_CHROMA_STEPS = 64;
+const DEFAULT_HYBRID_MAX_DEPTH = 7;
+const DEFAULT_HYBRID_ERROR_TOLERANCE = 0.0015;
+const DEFAULT_HYBRID_ROOT_ITERATIONS = 28;
+const DEFAULT_HYBRID_LIGHTNESS_STEPS = 72;
+const DEFAULT_HYBRID_CHROMA_BRACKETS = 96;
+const HYBRID_LIGHTNESS_EPSILON = 1e-6;
+const HYBRID_ROOT_EPSILON = 1e-7;
+const HYBRID_BRANCH_JOIN_EPSILON = 0.06;
+
+const APCA_PRESET_THRESHOLDS: Record<ContrastApcaPreset, number> = {
+  body: 0.6,
+  'large-text': 0.45,
+  ui: 0.3,
+};
+
+interface ResolvedContrastCriterion {
+  metric: ContrastMetric;
+  threshold: number;
+  evaluate: (sample: Color, reference: Color) => number;
+}
+
+interface HybridLightnessSample {
+  l: number;
+  cMax: number;
+  roots: number[];
+}
 
 function mapToGamut(color: Color, gamut: GamutTarget): Color {
   return gamut === 'display-p3' ? toP3Gamut(color) : toSrgbGamut(color);
@@ -234,6 +309,52 @@ function resolveContrastThreshold(options: ContrastRegionPathOptions): number {
     default:
       return 4.5;
   }
+}
+
+function resolveContrastCriterion(
+  options: ContrastRegionPathOptions,
+): ResolvedContrastCriterion {
+  const metric = options.metric ?? 'wcag';
+  if (metric === 'apca') {
+    const preset = options.apcaPreset ?? 'body';
+    const threshold =
+      typeof options.threshold === 'number'
+        ? options.threshold
+        : APCA_PRESET_THRESHOLDS[preset];
+    if (!Number.isFinite(threshold) || threshold <= 0) {
+      throw new Error('contrastRegionPaths() APCA threshold must be > 0');
+    }
+    const polarity = options.apcaPolarity ?? 'absolute';
+    const role = options.apcaRole ?? 'sample-text';
+    return {
+      metric,
+      threshold,
+      evaluate: (sample, reference) => {
+        const lc =
+          role === 'sample-background'
+            ? contrastAPCA(reference, sample)
+            : contrastAPCA(sample, reference);
+        if (polarity === 'positive') {
+          return lc - threshold;
+        }
+        if (polarity === 'negative') {
+          return -lc - threshold;
+        }
+        return Math.abs(lc) - threshold;
+      },
+    };
+  }
+
+  const threshold = resolveContrastThreshold(options);
+  if (!Number.isFinite(threshold) || threshold <= 1) {
+    throw new Error('contrastRegionPaths() requires threshold > 1');
+  }
+  return {
+    metric,
+    threshold,
+    evaluate: (sample, reference) =>
+      contrastRatioUnclamped(sample, reference) - threshold,
+  };
 }
 
 function validateSteps(name: string, value: number): number {
@@ -448,15 +569,12 @@ function segmentEdgesForCell(
  * Generate contour paths for the region that meets or exceeds
  * a WCAG contrast threshold at a fixed hue.
  */
-export function contrastRegionPaths(
+function contrastRegionPathsLegacy(
   reference: Color,
   hue: number,
   options: ContrastRegionPathOptions = {},
 ): ContrastRegionPoint[][] {
-  const threshold = resolveContrastThreshold(options);
-  if (!Number.isFinite(threshold) || threshold <= 1) {
-    throw new Error('contrastRegionPaths() requires threshold > 1');
-  }
+  const criterion = resolveContrastCriterion(options);
 
   const maxChroma = Math.max(0, options.maxChroma ?? 0.4);
   if (maxChroma === 0) return [];
@@ -474,10 +592,10 @@ export function contrastRegionPaths(
   const mode = options.samplingMode ?? 'uniform';
   let segments: Array<[ContrastRegionPoint, ContrastRegionPoint]>;
 
-  if (mode === 'adaptive') {
+  if (mode === 'adaptive' && criterion.metric === 'wcag') {
     segments = contrastRegionPathsAdaptive(
       hue,
-      threshold,
+      criterion.threshold,
       maxChroma,
       alpha,
       gamut,
@@ -521,9 +639,7 @@ export function contrastRegionPaths(
 
         const sample: Color = { l, c, h: hue, alpha };
         const mappedSample = mapToGamut(sample, gamut);
-        row.push(
-          contrastRatioUnclamped(mappedSample, mappedReference) - threshold,
-        );
+        row.push(criterion.evaluate(mappedSample, mappedReference));
       }
       scoreGrid.push(row);
     }
@@ -910,6 +1026,477 @@ function contrastRegionPathsAdaptive(
   }
 
   return segments;
+}
+
+function bisectHybridRoot(
+  evaluate: (chroma: number) => number,
+  loStart: number,
+  hiStart: number,
+  vLoStart: number,
+  vHiStart: number,
+): number {
+  let lo = loStart;
+  let hi = hiStart;
+  let vLo = vLoStart;
+  let vHi = vHiStart;
+  for (let index = 0; index < DEFAULT_HYBRID_ROOT_ITERATIONS; index += 1) {
+    const mid = (lo + hi) / 2;
+    const vMid = evaluate(mid);
+    if (
+      Math.abs(vMid) <= HYBRID_ROOT_EPSILON ||
+      hi - lo <= HYBRID_ROOT_EPSILON
+    ) {
+      return mid;
+    }
+    if ((vLo < 0 && vMid > 0) || (vLo > 0 && vMid < 0)) {
+      hi = mid;
+      vHi = vMid;
+    } else {
+      lo = mid;
+      vLo = vMid;
+    }
+    if (Math.abs(vLo) <= HYBRID_ROOT_EPSILON) return lo;
+    if (Math.abs(vHi) <= HYBRID_ROOT_EPSILON) return hi;
+  }
+  return (lo + hi) / 2;
+}
+
+function dedupeSortedRoots(values: number[]): number[] {
+  if (values.length === 0) return values;
+  const sorted = values.slice().sort((a, b) => a - b);
+  const deduped: number[] = [sorted[0]];
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (Math.abs(sorted[index] - deduped[deduped.length - 1]) > 2e-5) {
+      deduped.push(sorted[index]);
+    }
+  }
+  return deduped;
+}
+
+function dedupeSequentialPath(
+  path: ContrastRegionPoint[],
+): ContrastRegionPoint[] {
+  if (path.length < 2) return path;
+  const next = [path[0]];
+  for (let index = 1; index < path.length; index += 1) {
+    const prev = next[next.length - 1];
+    const point = path[index];
+    if (
+      Math.abs(prev.l - point.l) <= 1e-7 &&
+      Math.abs(prev.c - point.c) <= 1e-7
+    ) {
+      continue;
+    }
+    next.push(point);
+  }
+  return next;
+}
+
+function hybridLightnessKey(lightness: number): string {
+  return lightness.toFixed(8);
+}
+
+function buildHybridLightnessAnchors(
+  targetSteps: number,
+  cuspLightness: number,
+): number[] {
+  const anchors: number[] = [];
+  appendUniqueAdaptiveAxis(anchors, 0, 0, 1, HYBRID_LIGHTNESS_EPSILON);
+  appendUniqueAdaptiveAxis(anchors, 1, 0, 1, HYBRID_LIGHTNESS_EPSILON);
+  appendUniqueAdaptiveAxis(
+    anchors,
+    cuspLightness,
+    0,
+    1,
+    HYBRID_LIGHTNESS_EPSILON,
+  );
+  for (const probe of ADAPTIVE_EDGE_PROBES) {
+    appendUniqueAdaptiveAxis(anchors, probe, 0, 1, HYBRID_LIGHTNESS_EPSILON);
+    appendUniqueAdaptiveAxis(
+      anchors,
+      1 - probe,
+      0,
+      1,
+      HYBRID_LIGHTNESS_EPSILON,
+    );
+  }
+  for (let index = 1; index < targetSteps; index += 1) {
+    appendUniqueAdaptiveAxis(
+      anchors,
+      index / targetSteps,
+      0,
+      1,
+      HYBRID_LIGHTNESS_EPSILON,
+    );
+  }
+  anchors.sort((a, b) => a - b);
+  return anchors;
+}
+
+function contrastRegionPathsHybrid(
+  reference: Color,
+  hue: number,
+  options: ContrastRegionPathOptions,
+): ContrastRegionPoint[][] | null {
+  const criterion = resolveContrastCriterion(options);
+  const maxChroma = Math.max(0, options.maxChroma ?? 0.4);
+  if (maxChroma <= 0) return [];
+  const alpha = options.alpha ?? 1;
+  const gamut = options.gamut ?? 'srgb';
+  const mappedReference = mapToGamut(reference, gamut);
+  const maxDepth = Math.max(
+    0,
+    Math.min(
+      10,
+      Number.isInteger(options.hybridMaxDepth) && options.hybridMaxDepth! >= 0
+        ? options.hybridMaxDepth!
+        : DEFAULT_HYBRID_MAX_DEPTH,
+    ),
+  );
+  const errorTolerance =
+    Number.isFinite(options.hybridErrorTolerance) &&
+    options.hybridErrorTolerance! > 0
+      ? options.hybridErrorTolerance!
+      : DEFAULT_HYBRID_ERROR_TOLERANCE;
+  const initialLightnessSteps = Math.max(
+    12,
+    Math.min(
+      320,
+      Number.isInteger(options.lightnessSteps) && options.lightnessSteps! > 0
+        ? options.lightnessSteps!
+        : DEFAULT_HYBRID_LIGHTNESS_STEPS,
+    ),
+  );
+  const chromaBrackets = Math.max(
+    16,
+    Math.min(
+      768,
+      Number.isInteger(options.chromaSteps) && options.chromaSteps! > 0
+        ? options.chromaSteps!
+        : DEFAULT_HYBRID_CHROMA_BRACKETS,
+    ),
+  );
+  const maxChromaAtOptions = {
+    gamut,
+    tolerance: options.tolerance,
+    maxIterations: options.maxIterations,
+    maxChroma,
+    alpha,
+  };
+  const maxChromaCache = new Map<string, number>();
+  const getMaxInGamut = (lightness: number): number => {
+    const normalized = Math.max(0, Math.min(1, lightness));
+    const key = hybridLightnessKey(normalized);
+    const cached = maxChromaCache.get(key);
+    if (typeof cached === 'number') {
+      return cached;
+    }
+    const resolved = Math.max(
+      0,
+      Math.min(maxChroma, maxChromaAt(normalized, hue, maxChromaAtOptions)),
+    );
+    maxChromaCache.set(key, resolved);
+    return resolved;
+  };
+  const evaluateAt = (lightness: number, chroma: number): number => {
+    const sample: Color = {
+      l: lightness,
+      c: chroma,
+      h: hue,
+      alpha,
+    };
+    const mappedSample = mapToGamut(sample, gamut);
+    return criterion.evaluate(mappedSample, mappedReference);
+  };
+  const hasComplexTopology = { value: false };
+  const findRootsAtLightness = (lightness: number, cMax: number): number[] => {
+    if (cMax <= HYBRID_ROOT_EPSILON) return [];
+    const evaluateChroma = (chroma: number) => evaluateAt(lightness, chroma);
+    const stepCount = Math.max(8, chromaBrackets);
+    const roots: number[] = [];
+    let prevC = 0;
+    let prevV = evaluateChroma(0);
+    if (Math.abs(prevV) <= HYBRID_ROOT_EPSILON) {
+      roots.push(0);
+    }
+    for (let index = 1; index <= stepCount; index += 1) {
+      const c = (index / stepCount) * cMax;
+      const v = evaluateChroma(c);
+      if (Math.abs(v) <= HYBRID_ROOT_EPSILON) {
+        roots.push(c);
+      }
+      if ((prevV < 0 && v > 0) || (prevV > 0 && v < 0)) {
+        roots.push(bisectHybridRoot(evaluateChroma, prevC, c, prevV, v));
+      }
+      prevC = c;
+      prevV = v;
+    }
+    const deduped = dedupeSortedRoots(roots);
+    if (deduped.length > 6) {
+      hasComplexTopology.value = true;
+    }
+    return deduped;
+  };
+  const lightnessSampleCache = new Map<string, HybridLightnessSample>();
+  const getLightnessSample = (lightness: number): HybridLightnessSample => {
+    const normalized = Math.max(0, Math.min(1, lightness));
+    const key = hybridLightnessKey(normalized);
+    const cached = lightnessSampleCache.get(key);
+    if (cached) {
+      return cached;
+    }
+    const cMax = getMaxInGamut(normalized);
+    const roots = findRootsAtLightness(normalized, cMax);
+    const sample = {
+      l: normalized,
+      cMax,
+      roots,
+    };
+    lightnessSampleCache.set(key, sample);
+    return sample;
+  };
+
+  const cusp = maxChromaForHue(hue, {
+    gamut,
+    method: 'direct',
+  });
+  const anchors = buildHybridLightnessAnchors(initialLightnessSteps, cusp.l);
+  const seedSamples = anchors.map((anchor) => getLightnessSample(anchor));
+
+  const shouldSplitHybridInterval = (
+    left: HybridLightnessSample,
+    right: HybridLightnessSample,
+    midpoint: HybridLightnessSample,
+    depth: number,
+  ): boolean => {
+    if (depth >= maxDepth) {
+      return false;
+    }
+    if (Math.abs(right.l - left.l) <= HYBRID_LIGHTNESS_EPSILON * 2) {
+      return false;
+    }
+    if (
+      left.roots.length !== right.roots.length ||
+      left.roots.length !== midpoint.roots.length
+    ) {
+      return true;
+    }
+    const expectedCMid = (left.cMax + right.cMax) / 2;
+    if (Math.abs(midpoint.cMax - expectedCMid) > errorTolerance * 4) {
+      return true;
+    }
+    for (let index = 0; index < midpoint.roots.length; index += 1) {
+      const expectedRoot = (left.roots[index] + right.roots[index]) / 2;
+      if (Math.abs(midpoint.roots[index] - expectedRoot) > errorTolerance) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const refinedSamples: HybridLightnessSample[] = [seedSamples[0]];
+  const refineInterval = (
+    left: HybridLightnessSample,
+    right: HybridLightnessSample,
+    depth: number,
+  ): void => {
+    const midLightness = (left.l + right.l) / 2;
+    const midpoint = getLightnessSample(midLightness);
+    if (shouldSplitHybridInterval(left, right, midpoint, depth)) {
+      refineInterval(left, midpoint, depth + 1);
+      refineInterval(midpoint, right, depth + 1);
+      return;
+    }
+    refinedSamples.push(right);
+  };
+  for (let index = 0; index < seedSamples.length - 1; index += 1) {
+    refineInterval(seedSamples[index], seedSamples[index + 1], 0);
+  }
+
+  interface HybridBranch {
+    points: ContrastRegionPoint[];
+    lastC: number;
+  }
+
+  const finishedPaths: ContrastRegionPoint[][] = [];
+  let activeBranches: HybridBranch[] = [];
+  const matchThreshold = Math.max(
+    HYBRID_BRANCH_JOIN_EPSILON,
+    errorTolerance * 10,
+  );
+
+  for (
+    let sampleIndex = 0;
+    sampleIndex < refinedSamples.length;
+    sampleIndex += 1
+  ) {
+    const sample = refinedSamples[sampleIndex];
+    const rootPoints = sample.roots.map((chroma) => ({
+      l: sample.l,
+      c: chroma,
+    }));
+    if (sampleIndex === 0) {
+      activeBranches = rootPoints.map((point) => ({
+        points: [point],
+        lastC: point.c,
+      }));
+      continue;
+    }
+
+    const usedRoots = new Set<number>();
+    const nextActive: HybridBranch[] = [];
+    const sortedBranches = activeBranches
+      .slice()
+      .sort((a, b) => a.lastC - b.lastC);
+
+    for (const branch of sortedBranches) {
+      let bestIndex = -1;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (let rootIndex = 0; rootIndex < rootPoints.length; rootIndex += 1) {
+        if (usedRoots.has(rootIndex)) continue;
+        const distance = Math.abs(rootPoints[rootIndex].c - branch.lastC);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = rootIndex;
+        }
+      }
+
+      if (bestIndex >= 0 && bestDistance <= matchThreshold) {
+        const nextPoint = rootPoints[bestIndex];
+        usedRoots.add(bestIndex);
+        branch.points.push(nextPoint);
+        branch.lastC = nextPoint.c;
+        nextActive.push(branch);
+      } else if (branch.points.length > 1) {
+        finishedPaths.push(branch.points);
+      }
+    }
+
+    for (let rootIndex = 0; rootIndex < rootPoints.length; rootIndex += 1) {
+      if (usedRoots.has(rootIndex)) continue;
+      const point = rootPoints[rootIndex];
+      nextActive.push({
+        points: [point],
+        lastC: point.c,
+      });
+    }
+
+    activeBranches = nextActive;
+  }
+
+  for (const branch of activeBranches) {
+    if (branch.points.length > 1) {
+      finishedPaths.push(branch.points);
+    }
+  }
+
+  const cleaned = finishedPaths
+    .map((path) => dedupeSequentialPath(path))
+    .filter((path) => path.length > 1)
+    .filter((path) =>
+      path.every(
+        (point) =>
+          Number.isFinite(point.l) &&
+          Number.isFinite(point.c) &&
+          point.l >= -1e-6 &&
+          point.l <= 1 + 1e-6 &&
+          point.c >= -1e-6 &&
+          point.c <= maxChroma + 1e-6,
+      ),
+    );
+
+  if (hasComplexTopology.value) {
+    return null;
+  }
+
+  const hasRoots = refinedSamples.some((sample) => sample.roots.length > 0);
+  if (hasRoots && cleaned.length === 0) {
+    return null;
+  }
+  if (!hasRoots && cleaned.length === 0) {
+    let minScore = Number.POSITIVE_INFINITY;
+    let maxScore = Number.NEGATIVE_INFINITY;
+    for (const sample of refinedSamples) {
+      const probeChroma = [0, sample.cMax * 0.5, sample.cMax];
+      for (const c of probeChroma) {
+        const score = evaluateAt(sample.l, c);
+        minScore = Math.min(minScore, score);
+        maxScore = Math.max(maxScore, score);
+      }
+    }
+    if (minScore < 0 && maxScore > 0) {
+      return null;
+    }
+  }
+
+  const simplifyTolerance = options.simplifyTolerance;
+  const maybeSimplified =
+    simplifyTolerance != null &&
+    Number.isFinite(simplifyTolerance) &&
+    simplifyTolerance > 0
+      ? cleaned.map((path) => simplifyPolyline(path, simplifyTolerance, false))
+      : cleaned;
+
+  return maybeSimplified.sort((a, b) => b.length - a.length);
+}
+
+/**
+ * Generate contour paths for the region that meets/exceeds
+ * the configured contrast criterion at a fixed hue.
+ */
+export function contrastRegionPaths(
+  reference: Color,
+  hue: number,
+  options: ContrastRegionPathOptions = {},
+): ContrastRegionPoint[][] {
+  if (options.lightnessSteps != null) {
+    validateSteps(
+      'contrastRegionPaths() lightnessSteps',
+      options.lightnessSteps,
+    );
+  }
+  if (options.chromaSteps != null) {
+    validateSteps('contrastRegionPaths() chromaSteps', options.chromaSteps);
+  }
+  if (
+    options.edgeInterpolation != null &&
+    options.edgeInterpolation !== 'linear' &&
+    options.edgeInterpolation !== 'midpoint'
+  ) {
+    throw new Error(
+      "contrastRegionPaths() edgeInterpolation must be 'linear' or 'midpoint'",
+    );
+  }
+
+  const mode = options.samplingMode ?? 'hybrid';
+  const requestedLegacySamplingMode =
+    mode === 'uniform' || mode === 'adaptive';
+  const usesLegacyControls =
+    requestedLegacySamplingMode ||
+    options.edgeInterpolation != null ||
+    options.adaptiveBaseSteps != null ||
+    options.adaptiveMaxDepth != null;
+  if (usesLegacyControls) {
+    return contrastRegionPathsLegacy(reference, hue, {
+      ...options,
+      samplingMode:
+        requestedLegacySamplingMode
+          ? mode
+          : options.adaptiveBaseSteps != null ||
+              options.adaptiveMaxDepth != null
+            ? 'adaptive'
+            : 'uniform',
+    });
+  }
+
+  const hybridPaths = contrastRegionPathsHybrid(reference, hue, options);
+  if (hybridPaths) {
+    return hybridPaths;
+  }
+  return contrastRegionPathsLegacy(reference, hue, {
+    ...options,
+    samplingMode: 'adaptive',
+  });
 }
 
 /**

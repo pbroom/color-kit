@@ -294,4 +294,131 @@ describe('contrastRegionPaths()', () => {
     const uniformPoints = uniform.reduce((sum, path) => sum + path.length, 0);
     expect(adaptivePoints).toBeGreaterThan(uniformPoints * 4);
   });
+
+  it('supports APCA criteria in hybrid mode', () => {
+    const reference = fromHex('#ffffff');
+    const paths = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.6,
+      apcaPolarity: 'absolute',
+      lightnessSteps: 48,
+      chromaSteps: 48,
+    });
+    expect(paths.length).toBeGreaterThan(0);
+    for (const path of paths) {
+      for (const point of path) {
+        expect(point.l).toBeGreaterThanOrEqual(0);
+        expect(point.l).toBeLessThanOrEqual(1);
+        expect(point.c).toBeGreaterThanOrEqual(0);
+        expect(point.c).toBeLessThanOrEqual(0.4);
+      }
+    }
+  });
+
+  it('respects APCA legacy samplingMode overrides', () => {
+    const reference = fromHex('#ffffff');
+    const uniformMidpoint = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'absolute',
+      samplingMode: 'uniform',
+      lightnessSteps: 22,
+      chromaSteps: 22,
+      edgeInterpolation: 'midpoint',
+    });
+    const uniformLinear = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'absolute',
+      samplingMode: 'uniform',
+      lightnessSteps: 22,
+      chromaSteps: 22,
+      edgeInterpolation: 'linear',
+    });
+    const adaptiveMidpoint = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'absolute',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 12,
+      adaptiveMaxDepth: 2,
+      edgeInterpolation: 'midpoint',
+    });
+    const adaptiveLinear = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'absolute',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 12,
+      adaptiveMaxDepth: 2,
+      edgeInterpolation: 'linear',
+    });
+
+    expect(uniformMidpoint.length).toBeGreaterThan(0);
+    expect(uniformLinear.length).toBeGreaterThan(0);
+    expect(adaptiveMidpoint.length).toBeGreaterThan(0);
+    expect(adaptiveLinear.length).toBeGreaterThan(0);
+    expect(uniformMidpoint).not.toEqual(uniformLinear);
+    expect(adaptiveMidpoint).not.toEqual(adaptiveLinear);
+  });
+
+  it('supports APCA polarity-specific regions', () => {
+    const reference = fromHex('#ffffff');
+    const positive = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'positive',
+      lightnessSteps: 40,
+      chromaSteps: 40,
+    });
+    const negative = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'negative',
+      lightnessSteps: 40,
+      chromaSteps: 40,
+    });
+    const positivePoints = positive.reduce((sum, path) => sum + path.length, 0);
+    const negativePoints = negative.reduce((sum, path) => sum + path.length, 0);
+    expect(positivePoints).toBeGreaterThan(0);
+    expect(negativePoints).toBe(0);
+  });
+
+  it('validates APCA threshold constraints', () => {
+    const reference = fromHex('#ffffff');
+    expect(() =>
+      contrastRegionPaths(reference, 220, {
+        metric: 'apca',
+        threshold: 0,
+      }),
+    ).toThrow('contrastRegionPaths() APCA threshold must be > 0');
+  });
+
+  it('hybrid tracing remains deterministic with explicit refinement controls', () => {
+    const reference = fromHex('#f9fafb');
+    const options = {
+      metric: 'wcag' as const,
+      threshold: 4.5,
+      samplingMode: 'hybrid' as const,
+      lightnessSteps: 88,
+      chromaSteps: 180,
+      hybridMaxDepth: 8,
+      hybridErrorTolerance: 0.0009,
+    };
+    const first = contrastRegionPaths(reference, 230, options);
+    const second = contrastRegionPaths(reference, 230, options);
+
+    expect(first).toEqual(second);
+    expect(first.length).toBeGreaterThan(0);
+    for (const path of first) {
+      expect(path.length).toBeGreaterThan(1);
+      for (let index = 1; index < path.length; index += 1) {
+        const prev = path[index - 1];
+        const next = path[index];
+        expect(prev.l === next.l && prev.c === next.c).toBe(false);
+        // Hybrid branches are traced along ascending lightness anchors.
+        expect(next.l + 1e-6).toBeGreaterThanOrEqual(prev.l);
+      }
+    }
+  });
 });

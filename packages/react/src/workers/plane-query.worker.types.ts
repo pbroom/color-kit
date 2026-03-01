@@ -5,9 +5,24 @@ import type {
   PlaneComputePriority,
   PlaneComputeQuality,
   PlaneComputeScheduleTrace,
+  PlaneComputeTelemetrySnapshot,
   PlaneDefinition,
   PlaneQuery,
 } from '@color-kit/core';
+
+export type PlaneQueryWorkerWasmParityMode = 'off' | 'shape';
+
+export interface PlaneQueryWorkerWasmParityResult {
+  mode: Exclude<PlaneQueryWorkerWasmParityMode, 'off'>;
+  status: 'ok' | 'shape-mismatch' | 'no-wasm' | 'error';
+  wasmAvailable: boolean;
+  attempted: boolean;
+  jsTotalTimeMs?: number;
+  wasmTotalTimeMs?: number;
+  pathCountDelta?: number;
+  pointCountDelta?: number;
+  error?: string;
+}
 
 export interface PlaneQueryWorkerRequest {
   id: number;
@@ -16,6 +31,8 @@ export interface PlaneQueryWorkerRequest {
   priority?: PlaneComputePriority;
   quality?: PlaneComputeQuality;
   performanceProfile?: PlaneComputePerformanceProfile;
+  includeSchedulerTelemetry?: boolean;
+  wasmParityMode?: PlaneQueryWorkerWasmParityMode;
 }
 
 export interface PlaneQueryWorkerResponse {
@@ -25,5 +42,7 @@ export interface PlaneQueryWorkerResponse {
   computeTimeMs?: number;
   marshalTimeMs?: number;
   schedule?: PlaneComputeScheduleTrace;
+  schedulerTelemetry?: PlaneComputeTelemetrySnapshot;
+  wasmParity?: PlaneQueryWorkerWasmParityResult;
   error?: string;
 }
