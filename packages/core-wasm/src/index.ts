@@ -15,15 +15,25 @@ interface WasmBackendGlobal {
 }
 
 let registeredWasmBackendFactory: WasmPlaneComputeBackendFactory | null = null;
+let defaultWasmAwareScheduler: PlaneComputeScheduler | null = null;
+
+function getDefaultWasmAwareScheduler(): PlaneComputeScheduler {
+  if (!defaultWasmAwareScheduler) {
+    defaultWasmAwareScheduler = createWasmAwarePlaneComputeScheduler();
+  }
+  return defaultWasmAwareScheduler;
+}
 
 export function registerWasmPlaneComputeBackendFactory(
   factory: WasmPlaneComputeBackendFactory,
 ): void {
   registeredWasmBackendFactory = factory;
+  defaultWasmAwareScheduler = null;
 }
 
 export function clearWasmPlaneComputeBackendFactory(): void {
   registeredWasmBackendFactory = null;
+  defaultWasmAwareScheduler = null;
 }
 
 export function getRegisteredWasmPlaneComputeBackend(): PlaneComputeBackend | null {
@@ -71,11 +81,9 @@ export function createWasmAwarePlaneComputeScheduler(
   });
 }
 
-const defaultWasmAwareScheduler = createWasmAwarePlaneComputeScheduler();
-
 export function runWasmAwarePlaneCompute(
   request: PlaneComputeRequest,
-  scheduler: PlaneComputeScheduler = defaultWasmAwareScheduler,
+  scheduler?: PlaneComputeScheduler,
 ): PlaneComputeResponse {
-  return scheduler.run(request);
+  return (scheduler ?? getDefaultWasmAwareScheduler()).run(request);
 }
