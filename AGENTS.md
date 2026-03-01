@@ -28,8 +28,9 @@ This file defines top-level guidance for Codex in this repository.
 
 ## Reflection and Learnings
 
-- At the end of non-trivial tasks, record reusable lessons in `AGENTS.learnings.archive.md`.
-- Add every new reusable learning to archive first; only promote to Active if it is evergreen and broadly useful; keep Active capped at 10 and demote displaced entries to archive.
+- At the end of non-trivial tasks, record reusable lessons in `AGENTS.learnings.archive.md` by default.
+- Only mirror a learning into `AGENTS.md` when it is critical frontmatter guidance that should influence nearly every agent run.
+- Archive first, then selectively promote; keep mirrored learnings high-signal and compact.
 - Format:
   - `- **Short title**: One or two sentence actionable lesson.`
 
@@ -53,24 +54,8 @@ This file defines top-level guidance for Codex in this repository.
 - **Keep AGENTS memory high-signal**: Prefer compact, hard-to-rediscover lessons; archive or remove low-leverage run history and avoid metadata-only prefixes like dates.
 - **Rebase before push on diverged branch**: If your branch is ahead/behind remote, rebase first so push is fast-forward and your fixes stay on top of the latest upstream work.
 - **Dry-run Graphite submit before publish**: Use `gt submit --dry-run` to verify included branches; if unrelated descendants appear, submit without `--stack`.
-- **Fix CI formatting in one pass**: When `prettier --check .` reports multiple files, run `prettier --write` once over the full reported set (including lockfiles) to avoid repeated CI loops.
-- **Reuse existing PR worktrees for conflict fixes**: Before creating a new worktree for a conflicted branch, check for an existing clean worktree and resolve in-place to avoid branch drift.
+- **Stage all intended files before gt submit**: If `gt submit --stack --no-interactive` says the branch has no changes, run `git add`/`gt modify` first so the current work is actually committed and included.
+- **Reparent merged Graphite ancestors before submit**: If `gt submit` reports a merged parent branch as empty and blocks your branch, run `gt track --parent main` (or the correct live parent) so submission scopes to the active diff.
+- **Confirm stacked PR base targets parent branch**: After `gt submit --stack`, verify `baseRefName` with `gh pr view <branch> --json baseRefName` so stacked PRs review in dependency order instead of accidentally targeting `main`.
 - **Prefer Bash 3-compatible script primitives**: Avoid Bash 4+ built-ins (for example `mapfile`) so scripts run in both CI Linux images and default macOS Bash.
-- **Post complex PR review comments via one JSON payload**: For `gh api .../pulls/<n>/reviews`, send body + event + inline comments in a single `--input` JSON payload so comments attach to one review and avoid zsh form/globbing pitfalls.
 - **React Compiler disallows ref-driven render state**: Do not read/mutate refs in render to drive UI branching; keep render inputs in state and update via effects when needed.
-- **Contrast-region fills need domain closure and exclusion invariants**: Close open contours against the domain loop (not direct endpoint joins), process all open paths, and enforce reference exclusion using the gamut-mapped reference color for out-of-gamut drags.
-- **Preserve legacy props by consuming and mapping**: Keep deprecated props in component signatures, map them to new semantics, and let explicit modern props win so deprecated props do not leak to DOM attributes.
-- **Treat checkout-canceled matrix jobs as transient first**: If multiple jobs fail in `actions/checkout` with cancellation errors, retrigger with a fresh commit before chasing code-level regressions.
-- **Bridge new geometry APIs through adapter props first**: When introducing a new core geometry surface, add React adapter helpers and optional precomputed layer props (`points`/`paths`) so adoption can happen incrementally without breaking existing layer internals.
-- **2026-02-28 — Scope runtime Shiki imports**: For browser-side code highlighting, load `shiki/core` plus only required language/theme modules via lazy imports; importing full `shiki` in app code can explode docs bundles.
-
-- **2026-02-28 — Constrain sticky doc panels**: Set fixed viewport-based heights on sticky sidebar/right-rail containers before relying on ScrollArea internals, so vertical compression doesn’t disable internal scrolling.
-- **2026-02-28 — Stage all intended files before gt submit**: If `gt submit --stack --no-interactive` says the branch has no changes, run `git add`/`gt modify` first so the current work is actually committed and included.
-- **2026-03-01 — Validate contour closure in boolean geometry**: For marching-squares region ops, add a donut subtraction sanity check (`center` outside, ring inside) to catch open-contour regressions before shipping.
-- **2026-03-01 — Use PR-scoped reply endpoint for inline feedback**: Reply to review comments with `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`; the non-PR-scoped path returns 404.
-- **2026-03-01 — Avoid sync resets in effects**: Resolve React hook lint errors by moving "loading reset" state transitions into async effect flow and keying rendered output to the in-flight request.
-- **2026-03-01 — Prune registry when pruning components**: Removing public React primitives should also remove matching shadcn registry entries/files and docs nav pages in the same pass, or users will still discover deleted surfaces.
-- **2026-03-01 — Use float32-friendly parity checks**: When worker payloads are packed into `Float32Array`, compare decoded values with float32-appropriate tolerances (for example 1e-4) to avoid false precision regressions in parity tests.
-- **2026-03-01 — Reparent merged Graphite ancestors before submit**: If `gt submit` reports a merged parent branch as empty and blocks your branch, run `gt track --parent main` (or the correct live parent) so submission scopes to the active diff.
-- **2026-03-01 — Confirm stacked PR base targets parent branch**: After `gt submit --stack`, verify `baseRefName` with `gh pr view <branch> --json baseRefName` so stacked PRs review in dependency order instead of accidentally targeting `main`.
-- **2026-03-01 — Resolve review threads after posting fixes**: After replying to inline PR comments with commit references, run GraphQL `resolveReviewThread` on those thread IDs so the PR reflects zero unresolved threads.

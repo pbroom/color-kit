@@ -13,7 +13,7 @@ At the **end of every completion** (before your final message), briefly reflect:
 
 ## Recording learnings
 
-Append a short entry to the `## Agent Learnings` section of the nearest relevant `AGENTS.md` file. Create the file and section if they don't exist.
+Append a short entry to `AGENTS.learnings.archive.md` at the workspace root by default. This archive is the source of truth for reusable learnings.
 
 Use this format:
 
@@ -23,20 +23,22 @@ Use this format:
 
 ### Choosing the right file
 
-| Situation                             | Where to write                |
-| ------------------------------------- | ----------------------------- |
-| General workflow / tooling lesson     | `AGENTS.md` at workspace root |
-| Lesson specific to a directory's code | `AGENTS.md` in that directory |
+| Situation                             | Where to write                                                          |
+| ------------------------------------- | ----------------------------------------------------------------------- |
+| General workflow / tooling lesson     | `AGENTS.learnings.archive.md`                                           |
+| Lesson specific to a directory's code | `AGENTS.learnings.archive.md` (include path/context in the entry)       |
+| Critical run-shaping guidance         | Archive first, then mirror in `AGENTS.md` if truly frontmatter-critical |
 
-**Prefer the nearest existing `AGENTS.md` up the tree** — only create a new nested one when there are 3+ learnings specific to that directory.
+Only mirror into `AGENTS.md` when the learning is critical guidance that should influence nearly every agent run (for example, safety invariants or mandatory workflow constraints).
 
 ### Quality guardrails
 
 - **Be conservative** — only record genuinely useful, reusable insights. Skip if the lesson is trivial or too context-specific.
 - **No duplicates** — read the target file first. Don't repeat an existing lesson.
 - **Keep it brief** — one line per entry. The section should stay scannable.
-- **Instructions stay separate** — never mix learnings into the main body of `AGENTS.md`. The `## Agent Learnings` section is the only place for reflections.
+- **Archive by default** — do not add routine learnings directly to `AGENTS.md`.
+- **High-signal frontmatter only** — if mirrored into `AGENTS.md`, keep the critical list compact and demote non-critical entries back to archive-only.
 
 ## Reading learnings
 
-At the start of non-trivial tasks, read `AGENTS.md` files from the workspace root down to your working directory to benefit from past experience.
+At the start of non-trivial tasks, read `AGENTS.md` files from the workspace root down to your working directory. Consult `AGENTS.learnings.archive.md` when deeper historical context is needed or when deciding whether a lesson is critical enough to mirror into `AGENTS.md`.
