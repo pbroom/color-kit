@@ -162,8 +162,8 @@ const axes = ColorApi.resolveColorAreaAxes({
   y: { channel: 'c' },
 });
 
-const boundary = ColorApi.getColorAreaPlaneGamutBoundaryPoints(
-  referenceColor,
+const boundary = ColorApi.getColorAreaGamutBoundaryPoints(
+  referenceColor.h,
   axes,
   {
     gamut: 'display-p3',
@@ -185,4 +185,4 @@ const boundary = ColorApi.getColorAreaPlaneGamutBoundaryPoints(
 - **Transforms**
   - `translateRegion`, `scaleRegion`, `rotateRegion`, `projectRegionBetweenPlanes`
 - **React adapters**
-  - `ColorApi.createColorAreaPlane`, `ColorApi.getColorAreaPlaneGamutBoundaryPoints`, `ColorApi.getColorAreaPlaneContrastRegionPaths`, `ColorApi.getColorAreaPlaneChromaBandPoints`, `ColorApi.getColorAreaPlaneFallbackPoint`
+  - `ColorApi.getColorAreaGamutBoundaryPoints`, `ColorApi.getColorAreaContrastRegionPaths`, `ColorApi.getColorAreaChromaBandPoints`, `ColorApi.getColorAreaFallbackPoint`

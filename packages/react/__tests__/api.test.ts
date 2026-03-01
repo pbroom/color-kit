@@ -4,35 +4,20 @@ import {
   areColorAreaAxesDistinct,
   colorFromColorInputChannelValue,
   colorFromColorInputKey,
-  colorFromColorDialKey,
-  colorFromColorDialPosition,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
-  colorFromColorWheelKey,
-  colorFromColorWheelPosition,
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
-  colorsEqual,
   getColorSliderNormFromValue,
+  getColorAreaChromaBandPoints,
   getColorAreaContrastRegionPaths,
+  getColorAreaFallbackPoint,
   getColorAreaGamutBoundaryPoints,
-  getColorAreaPlaneChromaBandPoints,
-  getColorAreaPlaneContrastRegionPaths,
-  getColorAreaPlaneFallbackPoint,
-  getColorAreaPlaneGamutBoundaryPoints,
-  getColorAreaPlaneThumbPosition,
-  getColorWheelThumbPosition,
-  getColorDialThumbPosition,
-  getColorDisplayStyles,
-  getContrastBadgeSummary,
+  getColorAreaThumbPosition,
   getColorInputChannelValue,
-  normalizeColorDialPointer,
-  normalizeColorWheelPointer,
   parseColorInputExpression,
   parseColorStringInputValue,
   resolveColorInputDraftValue,
-  resolveColorDialAngles,
-  resolveColorWheelChromaRange,
   resolveColorAreaAxes,
 } from '../src/api/index.js';
 
@@ -120,39 +105,43 @@ describe('Color API helpers', () => {
     expect(paths).toEqual([]);
   });
 
-  it('returns normalized plane-driven boundary, region, band, and fallback data', () => {
+  it('returns normalized area-driven boundary, region, band, and fallback data', () => {
     const requested = parse('#3b82f6');
     const axes = resolveColorAreaAxes({
       x: { channel: 'l', range: [0, 1] },
       y: { channel: 'c', range: [0, 0.4] },
     });
-    const thumb = getColorAreaPlaneThumbPosition(requested, axes);
+    const thumb = getColorAreaThumbPosition(requested, axes);
     expect(thumb.x).toBeGreaterThanOrEqual(0);
     expect(thumb.x).toBeLessThanOrEqual(1);
     expect(thumb.y).toBeGreaterThanOrEqual(0);
     expect(thumb.y).toBeLessThanOrEqual(1);
 
-    const boundary = getColorAreaPlaneGamutBoundaryPoints(requested, axes, {
+    const boundary = getColorAreaGamutBoundaryPoints(requested.h, axes, {
       gamut: 'srgb',
       steps: 8,
     });
     expect(boundary.length).toBeGreaterThan(0);
 
-    const regions = getColorAreaPlaneContrastRegionPaths(requested, axes, {
-      reference: parse('#ffffff'),
-      threshold: 4.5,
-      lightnessSteps: 16,
-      chromaSteps: 16,
-    });
+    const regions = getColorAreaContrastRegionPaths(
+      parse('#ffffff'),
+      requested.h,
+      axes,
+      {
+        threshold: 4.5,
+        lightnessSteps: 16,
+        chromaSteps: 16,
+      },
+    );
     expect(regions.length).toBeGreaterThan(0);
 
-    const band = getColorAreaPlaneChromaBandPoints(requested, axes, {
-      requestedChroma: requested.c,
+    const band = getColorAreaChromaBandPoints(requested, requested.h, axes, {
+      mode: 'clamped',
       steps: 8,
     });
     expect(band).toHaveLength(9);
 
-    const fallback = getColorAreaPlaneFallbackPoint(axes, {
+    const fallback = getColorAreaFallbackPoint(axes, {
       color: requested,
       gamut: 'srgb',
     });
@@ -208,104 +197,6 @@ describe('Color API helpers', () => {
   it('normalizes slider values into channel coordinates', () => {
     const norm = getColorSliderNormFromValue(0.2, [0, 0.4]);
     expect(norm).toBeCloseTo(0.5, 6);
-  });
-
-  it('maps wheel pointer positions into hue/chroma values', () => {
-    const base = parse('#3b82f6');
-    const next = colorFromColorWheelPosition(base, 1, 0.5, [0, 0.4]);
-
-    expect(next.c).toBeCloseTo(0.4, 6);
-    expect(next.h).toBeCloseTo(0, 6);
-    expect(next.l).toBeCloseTo(base.l, 6);
-    expect(next.alpha).toBeCloseTo(base.alpha, 6);
-  });
-
-  it('preserves hue when wheel pointer lands at center', () => {
-    const base = {
-      l: 0.6,
-      c: 0.28,
-      h: 287,
-      alpha: 1,
-    };
-
-    const centered = colorFromColorWheelPosition(base, 0.5, 0.5, [0, 0.4]);
-    expect(centered.c).toBeCloseTo(0, 6);
-    expect(centered.h).toBeCloseTo(287, 6);
-  });
-
-  it('normalizes wheel pointer positions within a circular boundary', () => {
-    const normalized = normalizeColorWheelPointer(200, 50, 0, 0, 100, 100);
-    expect(normalized.x).toBeCloseTo(1, 6);
-    expect(normalized.y).toBeCloseTo(0.5, 6);
-  });
-
-  it('updates wheel channels from keyboard input', () => {
-    const base = {
-      l: 0.5,
-      c: 0.2,
-      h: 120,
-      alpha: 1,
-    };
-
-    const hueNext = colorFromColorWheelKey(
-      base,
-      'ArrowRight',
-      2,
-      0.01,
-      [0, 0.4],
-    );
-    expect(hueNext?.h).toBeCloseTo(122, 6);
-    expect(hueNext?.c).toBeCloseTo(base.c, 6);
-
-    const chromaNext = colorFromColorWheelKey(
-      base,
-      'ArrowUp',
-      2,
-      0.1,
-      [0, 0.4],
-    );
-    expect(chromaNext?.c).toBeCloseTo(0.24, 6);
-    expect(chromaNext?.h).toBeCloseTo(base.h, 6);
-  });
-
-  it('resolves wheel thumb position from hue/chroma state', () => {
-    const color = {
-      l: 0.5,
-      c: 0.2,
-      h: 180,
-      alpha: 1,
-    };
-    const thumb = getColorWheelThumbPosition(color, [0, 0.4]);
-    expect(thumb.radius).toBeCloseTo(0.5, 6);
-    expect(thumb.x).toBeCloseTo(0.25, 6);
-    expect(thumb.y).toBeCloseTo(0.5, 6);
-  });
-
-  it('falls back to default chroma range for invalid ranges', () => {
-    expect(resolveColorWheelChromaRange([1, 0.2])).toEqual([0, 0.4]);
-    expect(
-      resolveColorWheelChromaRange([NaN, 0.2] as [number, number]),
-    ).toEqual([0, 0.4]);
-  });
-
-  it('maps dial math for pointer and keyboard updates', () => {
-    const base = parse('#22c55e');
-    const angles = resolveColorDialAngles(0, 360);
-
-    const positioned = colorFromColorDialPosition(base, 'h', 0.5, [0, 360]);
-    expect(positioned.h).toBeCloseTo(180, 6);
-
-    const thumb = getColorDialThumbPosition(positioned, 'h', [0, 360], angles);
-    expect(thumb.norm).toBeCloseTo(0.5, 6);
-    expect(thumb.angle).toBeCloseTo(180, 6);
-
-    const norm = normalizeColorDialPointer(100, 50, 50, 50, angles);
-    expect(norm).toBeCloseTo(0, 6);
-
-    const keyed = colorFromColorDialKey(base, 'h', 'PageUp', 0.1, [0, 360], {
-      wrap: true,
-    });
-    expect(keyed?.h).toBeGreaterThan(base.h);
   });
 
   it('maps channel values for color input models', () => {
@@ -408,39 +299,5 @@ describe('Color API helpers', () => {
   it('parses legacy color-string input values', () => {
     expect(parseColorStringInputValue('#2563eb')).not.toBeNull();
     expect(parseColorStringInputValue('not-a-color')).toBeNull();
-  });
-
-  it('builds contrast summaries with pass/fail metadata', () => {
-    const summary = getContrastBadgeSummary(
-      parse('#111827'),
-      parse('#f8fafc'),
-      'AA',
-    );
-
-    expect(summary.ratio).toBeGreaterThan(4.5);
-    expect(summary.passes).toBe(true);
-    expect(summary.ratioText.endsWith(':1')).toBe(true);
-  });
-
-  it('compares swatches using epsilon tolerance', () => {
-    const a = { l: 0.6, c: 0.2, h: 200, alpha: 1 };
-    const b = { l: 0.6004, c: 0.2003, h: 200.0002, alpha: 1 };
-
-    expect(colorsEqual(a, b)).toBe(true);
-  });
-
-  it('builds deterministic display styles with p3 fallback', () => {
-    const translucent = parse('rgba(59, 130, 246, 0.5)');
-    const p3Styles = getColorDisplayStyles(
-      translucent,
-      translucent,
-      'display-p3',
-    );
-    const srgbStyles = getColorDisplayStyles(translucent, translucent, 'srgb');
-
-    expect(p3Styles.backgroundColor).toMatch(/^rgb\(/);
-    expect(p3Styles.background).toMatch(/^color\(display-p3 /);
-    expect(srgbStyles.backgroundColor).toMatch(/^rgb\(/);
-    expect(srgbStyles.background).toMatch(/^rgb\(/);
   });
 });

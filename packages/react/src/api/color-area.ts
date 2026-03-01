@@ -1,9 +1,10 @@
 import type { Color } from '@color-kit/core';
 import {
-  chromaBand,
   clamp,
-  contrastRegionPaths,
-  gamutBoundaryPath,
+  createPlaneQuery,
+  resolvePlaneDefinition,
+  toP3Gamut,
+  toSrgbGamut,
   type ChromaBandMode,
   type ContrastRegionLevel,
   type GamutTarget,
@@ -75,6 +76,13 @@ export interface ColorAreaContrastRegionPoint {
   c: number;
   x: number;
   y: number;
+}
+
+export interface ColorAreaFallbackPoint {
+  x: number;
+  y: number;
+  color: Color;
+  gamut: GamutTarget;
 }
 
 export interface ColorAreaContrastRegionOptions {
@@ -155,6 +163,36 @@ function usesLightnessAndChroma(axes: {
   );
 }
 
+function toPlaneDefinition(axes: ResolvedColorAreaAxes, reference: Color) {
+  return resolvePlaneDefinition({
+    model: 'oklch',
+    x: {
+      channel: axes.x.channel,
+      range: axes.x.range,
+    },
+    y: {
+      channel: axes.y.channel,
+      range: axes.y.range,
+    },
+    fixed: {
+      l: reference.l,
+      c: reference.c,
+      h: reference.h,
+      alpha: reference.alpha,
+    },
+  });
+}
+
+function planeToUiPoint(point: { x: number; y: number }): {
+  x: number;
+  y: number;
+} {
+  return {
+    x: point.x,
+    y: 1 - point.y,
+  };
+}
+
 export function getColorAreaThumbPosition(
   color: Color,
   axes: ResolvedColorAreaAxes,
@@ -196,8 +234,17 @@ export function getColorAreaGamutBoundaryPoints(
     return [];
   }
 
-  const boundary = gamutBoundaryPath(hue, {
+  const reference: Color = {
+    l: 0.5,
+    c: 0,
+    h: hue,
+    alpha: 1,
+  };
+  const boundary = createPlaneQuery(
+    toPlaneDefinition(axes, reference),
+  ).gamutBoundary({
     gamut: options.gamut ?? 'srgb',
+    hue,
     steps: options.steps,
     simplifyTolerance: options.simplifyTolerance,
     samplingMode: options.samplingMode,
@@ -205,12 +252,8 @@ export function getColorAreaGamutBoundaryPoints(
     adaptiveMaxDepth: options.adaptiveMaxDepth,
   });
 
-  return boundary.map((point) => {
-    const position = getColorAreaThumbPosition(
-      { l: point.l, c: point.c, h: hue, alpha: 1 },
-      axes,
-    );
-
+  return boundary.points.map((point) => {
+    const position = planeToUiPoint(point);
     return {
       l: point.l,
       c: point.c,
@@ -230,8 +273,12 @@ export function getColorAreaContrastRegionPaths(
     return [];
   }
 
-  const paths = contrastRegionPaths(reference, hue, {
+  const region = createPlaneQuery(
+    toPlaneDefinition(axes, reference),
+  ).contrastRegion({
+    reference,
     gamut: options.gamut ?? 'srgb',
+    hue,
     level: options.level,
     threshold: options.threshold,
     lightnessSteps: options.lightnessSteps,
@@ -247,12 +294,9 @@ export function getColorAreaContrastRegionPaths(
     adaptiveMaxDepth: options.adaptiveMaxDepth,
   });
 
-  return paths.map((path) =>
+  return region.paths.map((path) =>
     path.map((point) => {
-      const position = getColorAreaThumbPosition(
-        { l: point.l, c: point.c, h: hue, alpha: 1 },
-        axes,
-      );
+      const position = planeToUiPoint(point);
 
       return {
         l: point.l,
@@ -274,8 +318,10 @@ export function getColorAreaChromaBandPoints(
     return [];
   }
 
-  const colors = chromaBand(hue, reference.c, {
+  const band = createPlaneQuery(toPlaneDefinition(axes, reference)).chromaBand({
+    requestedChroma: reference.c,
     gamut: options.gamut ?? 'srgb',
+    hue,
     mode: options.mode ?? 'clamped',
     steps: options.steps,
     samplingMode: options.samplingMode,
@@ -288,15 +334,35 @@ export function getColorAreaChromaBandPoints(
     alpha: options.alpha ?? reference.alpha,
   });
 
-  return colors.map((sample) => {
-    const position = getColorAreaThumbPosition(sample, axes);
+  return band.points.map((point) => {
+    const position = planeToUiPoint(point);
     return {
-      l: sample.l,
-      c: sample.c,
+      l: point.l,
+      c: point.c,
       x: position.x,
       y: position.y,
     };
   });
+}
+
+export function getColorAreaFallbackPoint(
+  axes: ResolvedColorAreaAxes,
+  query: {
+    color: Color;
+    gamut: GamutTarget;
+  },
+): ColorAreaFallbackPoint {
+  const mapped =
+    query.gamut === 'display-p3'
+      ? toP3Gamut(query.color)
+      : toSrgbGamut(query.color);
+  const point = getColorAreaThumbPosition(mapped, axes);
+  return {
+    x: point.x,
+    y: point.y,
+    color: mapped,
+    gamut: query.gamut,
+  };
 }
 
 export function colorFromColorAreaKey(

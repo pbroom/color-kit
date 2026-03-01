@@ -13,13 +13,9 @@ import {
 
 import {
   ColorAreaDemo,
-  ColorDisplayDemo,
   ColorInputDemo,
   ColorProviderDemo,
   ColorSliderDemo,
-  ColorWheelDemo,
-  ContrastBadgeDemo,
-  SwatchGroupDemo,
 } from '../components/component-demos.js';
 import { ThemeSwitcher } from '../components/theme-switcher.js';
 
@@ -46,40 +42,16 @@ const cards: ShowcaseCard[] = [
     demo: <ColorProviderDemo />,
   },
   {
-    title: 'Color Wheel',
-    description: 'Circular hue/chroma control with requested intent semantics.',
-    href: '/docs/components/color-wheel',
-    demo: <ColorWheelDemo />,
-  },
-  {
     title: 'Color Slider',
     description: 'Single-axis channel control across lightness, hue, chroma.',
     href: '/docs/components/color-slider',
     demo: <ColorSliderDemo />,
   },
   {
-    title: 'Swatch Group',
-    description: 'Palette collections for design-tool workflows.',
-    href: '/docs/components/swatch-group',
-    demo: <SwatchGroupDemo />,
-  },
-  {
     title: 'Color Input',
     description: 'Channel-aware numeric editing with scrub and math parsing.',
     href: '/docs/components/color-input',
     demo: <ColorInputDemo />,
-  },
-  {
-    title: 'Color Display + Contrast',
-    description: 'Rendered output and WCAG validation surfaces.',
-    href: '/docs/components/contrast-badge',
-    className: 'span-2',
-    demo: (
-      <div className="landing-duo grid gap-4 md:grid-cols-2">
-        <ColorDisplayDemo />
-        <ContrastBadgeDemo />
-      </div>
-    ),
   },
 ];
 

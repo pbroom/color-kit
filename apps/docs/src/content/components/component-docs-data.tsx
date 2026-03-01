@@ -2,17 +2,10 @@ import type { ComponentType } from 'react';
 import type { ApiTableRow } from '@/components/api-table';
 import {
   ColorAreaDemo,
-  ColorDialDemo,
-  ColorDisplayDemo,
   ColorInputDemo,
   ColorStringInputDemo,
   ColorProviderDemo,
   ColorSliderDemo,
-  ColorWheelDemo,
-  ContrastBadgeDemo,
-  HueDialDemo,
-  SwatchDemo,
-  SwatchGroupDemo,
 } from '@/components/component-demos';
 import { componentApiDocs } from './component-api';
 
@@ -40,7 +33,7 @@ const docs: ComponentDocRegistry = {
     title: 'Color',
     summary: 'Shared state host for requested/displayed color workflows.',
     description:
-      'Use Color to coordinate ColorArea, sliders, input fields, and swatches around one canonical requested color state.',
+      'Use Color to coordinate ColorArea, sliders, and input fields around one canonical requested color state.',
     registryName: 'color',
     demo: ColorProviderDemo,
     usage: `import { Color, ColorArea, ColorSlider, ColorInput } from '@color-kit/react';
@@ -103,11 +96,7 @@ export function Picker() {
       'ColorApi.getColorAreaChromaBandPoints',
       'ColorApi.getColorAreaGamutBoundaryPoints',
       'ColorApi.getColorAreaContrastRegionPaths',
-      'ColorApi.createColorAreaPlane',
-      'ColorApi.getColorAreaPlaneGamutBoundaryPoints',
-      'ColorApi.getColorAreaPlaneContrastRegionPaths',
-      'ColorApi.getColorAreaPlaneChromaBandPoints',
-      'ColorApi.getColorAreaPlaneFallbackPoint',
+      'ColorApi.getColorAreaFallbackPoint',
     ],
     features: [
       'Composable primitive model: ColorArea + ColorPlane + Layer wrappers + Thumb.',
@@ -121,36 +110,6 @@ export function Picker() {
     props: componentApiDocs.colorArea,
     anatomy: `<ColorArea>\n  <Background />\n  <ColorPlane />\n  <Thumb />\n</ColorArea>`,
     supportsPropertiesPanel: true,
-  },
-  'color-wheel': {
-    slug: 'color-wheel',
-    title: 'Color Wheel',
-    summary: 'Circular hue/chroma control with requested-value geometry.',
-    description:
-      'ColorWheel maps angle to hue and radius to chroma while preserving requested intent and exposing displayed-gamut metadata for rendering.',
-    registryName: 'color-wheel',
-    demo: ColorWheelDemo,
-    usage: `import { ColorWheel } from '@color-kit/react';
-
-<ColorWheel />;`,
-    helperApis: [
-      'ColorApi.resolveColorWheelChromaRange',
-      'ColorApi.getColorWheelThumbPosition',
-      'ColorApi.normalizeColorWheelPointer',
-      'ColorApi.colorFromColorWheelPosition',
-      'ColorApi.colorFromColorWheelKey',
-    ],
-    features: [
-      'Angle-driven hue and radius-driven chroma editing in one primitive.',
-      'Requested geometry remains stable across gamut target changes.',
-      'Standalone mode and Color context mode share the same behavior.',
-    ],
-    accessibility: [
-      'Uses slider semantics with keyboard support for hue and chroma edits.',
-      'Exposes hue/chroma state via `aria-valuetext` for assistive technologies.',
-    ],
-    props: componentApiDocs.colorWheel,
-    anatomy: `<ColorWheel>\n  <div data-color-wheel-thumb />\n</ColorWheel>`,
   },
   'color-slider': {
     slug: 'color-slider',
@@ -190,110 +149,6 @@ export function Picker() {
     ],
     props: componentApiDocs.colorSlider,
     anatomy: `<ColorSlider>\n  <div data-color-slider-thumb />\n  <SliderMarker />\n  <ChromaMarkers />\n</ColorSlider>`,
-    supportsPropertiesPanel: true,
-  },
-  'color-dial': {
-    slug: 'color-dial',
-    title: 'Color Dial',
-    summary: 'Radial channel control for `l`, `c`, `h`, and `alpha`.',
-    description:
-      'ColorDial is a headless radial primitive that maps pointer angle and keyboard steps into requested channel updates.',
-    registryName: 'color-dial',
-    demo: ColorDialDemo,
-    usage: `import { ColorDial } from '@color-kit/react';
-
-<ColorDial channel="h" />;`,
-    helperApis: [
-      'ColorApi.resolveColorDialRange',
-      'ColorApi.resolveColorDialAngles',
-      'ColorApi.getColorDialThumbPosition',
-      'ColorApi.normalizeColorDialPointer',
-      'ColorApi.colorFromColorDialPosition',
-      'ColorApi.colorFromColorDialKey',
-    ],
-    features: [
-      'Pointer and keyboard interactions map deterministically into requested channel updates.',
-      'Configurable arcs via start/end angles with optional wrap-around keyboard behavior.',
-      'Supports provider context or standalone requested/onChangeRequested mode.',
-    ],
-    accessibility: [
-      'Uses `role="slider"` with keyboard arrow, PageUp/PageDown, Home, and End support.',
-      'Exposes current value through ARIA min/max/now/value text attributes.',
-    ],
-    props: componentApiDocs.colorDial,
-    anatomy: `<ColorDial>\n  <div data-color-dial-thumb />\n</ColorDial>`,
-  },
-  'hue-dial': {
-    slug: 'hue-dial',
-    title: 'Hue Dial',
-    summary: 'Specialized circular hue primitive built on ColorDial.',
-    description:
-      'HueDial wraps ColorDial with hue defaults (full-circle arc + wrap) for compact rotational hue controls.',
-    registryName: 'hue-dial',
-    demo: HueDialDemo,
-    usage: `import { HueDial } from '@color-kit/react';
-
-<HueDial />;`,
-    helperApis: ['ColorApi.colorFromColorDialPosition'],
-    features: [
-      'Thin wrapper around ColorDial tuned for circular hue workflows.',
-      'Works in standalone mode or within Color.',
-      'Arc angles can be overridden for partial dial variants.',
-    ],
-    accessibility: [
-      'Keyboard and pointer behavior inherited from ColorDial.',
-      'Slider semantics stay consistent for assistive technologies.',
-    ],
-    props: componentApiDocs.hueDial,
-    anatomy: `<HueDial>\n  <div data-color-dial-thumb />\n</HueDial>`,
-  },
-  swatch: {
-    slug: 'swatch',
-    title: 'Swatch',
-    summary: 'Selectable color tile primitive.',
-    description:
-      'Swatch renders a single color target with selected and interactive states for palette UIs.',
-    registryName: 'swatch',
-    demo: SwatchDemo,
-    usage: `import { Swatch } from '@color-kit/react';
-
-<Swatch color={{ l: 0.7, c: 0.18, h: 250, alpha: 1 }} />;`,
-    helperApis: [],
-    features: [
-      'Simple interactive hook (`onSelect`) for palette logic.',
-      'Selection metadata for styling and a11y states.',
-      'Works with Color-driven and standalone values.',
-    ],
-    accessibility: [
-      'Supports option/listbox usage patterns in composed collections.',
-      'Selection state can be announced via `aria-selected`.',
-    ],
-    props: componentApiDocs.swatch,
-    anatomy: `<Swatch data-swatch />`,
-  },
-  'swatch-group': {
-    slug: 'swatch-group',
-    title: 'Swatch Group',
-    summary: 'Grid primitive for selectable swatch collections.',
-    description:
-      'SwatchGroup manages keyboard-friendly swatch collections with controlled or provider-backed selection.',
-    registryName: 'swatch-group',
-    demo: SwatchGroupDemo,
-    usage: `import { SwatchGroup } from '@color-kit/react';
-
-<SwatchGroup colors={[{ l: 0.8, c: 0.15, h: 120, alpha: 1 }]} />;`,
-    helperApis: [],
-    features: [
-      'Collection-level selection with optional controlled value.',
-      'Grid layout hinting through `columns`.',
-      'Composable with surrounding provider state and inputs.',
-    ],
-    accessibility: [
-      'Grid/listbox-friendly keyboard navigation patterns.',
-      'Selected option state exposed for assistive tools.',
-    ],
-    props: componentApiDocs.swatchGroup,
-    anatomy: `<SwatchGroup>\n  <Swatch />\n</SwatchGroup>`,
     supportsPropertiesPanel: true,
   },
   'color-input': {
@@ -353,58 +208,6 @@ export function Picker() {
     ],
     props: componentApiDocs.colorStringInput,
     anatomy: `<ColorStringInput>\n  <input type="text" />\n</ColorStringInput>`,
-  },
-  'color-display': {
-    slug: 'color-display',
-    title: 'Color Display',
-    summary: 'Rendered swatch surface for mapped output color.',
-    description:
-      'ColorDisplay visualizes the active displayed color with deterministic fallback behavior for sRGB and Display-P3.',
-    registryName: 'color-display',
-    demo: ColorDisplayDemo,
-    usage: `import { ColorDisplay } from '@color-kit/react';
-
-<ColorDisplay gamut="display-p3" />;`,
-    helperApis: [
-      'ColorApi.getColorDisplayStyles',
-      'ColorApi.getColorDisplayHex',
-    ],
-    features: [
-      'P3-first rendering path with sRGB-safe fallback.',
-      'Standalone requested prop or provider-aware usage.',
-      'Pairs with sliders and input controls for live previews.',
-    ],
-    accessibility: [
-      'Can be annotated with labels and surrounding text to avoid color-only signals.',
-      'Supports deterministic metadata for a11y descriptions.',
-    ],
-    props: componentApiDocs.colorDisplay,
-    anatomy: `<ColorDisplay data-color-display />`,
-  },
-  'contrast-badge': {
-    slug: 'contrast-badge',
-    title: 'Contrast Badge',
-    summary: 'WCAG contrast helper for foreground/background pairs.',
-    description:
-      'ContrastBadge evaluates contrast ratios and surfaces conformance status for AA/AAA targets.',
-    registryName: 'contrast-badge',
-    demo: ContrastBadgeDemo,
-    usage: `import { ContrastBadge } from '@color-kit/react';
-
-<ContrastBadge foreground={fg} background={bg} level="AA" />;`,
-    helperApis: ['ColorApi.getContrastBadgeSummary'],
-    features: [
-      'Live contrast status for AA and AAA checks.',
-      'Intended for design-tool validation surfaces.',
-      'Composable with custom badges and status treatments.',
-    ],
-    accessibility: [
-      'Emits readable pass/fail text rather than color-only indicators.',
-      'Can be paired with semantic status regions for announcements.',
-    ],
-    props: componentApiDocs.contrastBadge,
-    anatomy: `<ContrastBadge />`,
-    supportsPropertiesPanel: true,
   },
 };
 

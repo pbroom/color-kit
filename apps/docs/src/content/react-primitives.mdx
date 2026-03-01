@@ -17,7 +17,6 @@ import {
   ColorSlider,
   ColorInput,
   ColorStringInput,
-  ColorDisplay,
 } from '@color-kit/react';
 
 export function Picker() {
@@ -28,7 +27,6 @@ export function Picker() {
       <ColorSlider channel="alpha" />
       <ColorInput model="oklch" channel="h" />
       <ColorStringInput format="oklch" />
-      <ColorDisplay />
     </Color>
   );
 }

@@ -1507,27 +1507,6 @@ html:not(.dark) .prose .shiki span {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
-.ck-wheel {
-  width: min(100%, 280px);
-  aspect-ratio: 1 / 1;
-  justify-self: center;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  overflow: hidden;
-}
-
-.ck-wheel [data-color-wheel-thumb] {
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  border: 2px solid #f7fcff;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(1px);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(0, 0, 0, 0.45);
-}
-
 .ck-slider {
   width: 100%;
   min-height: 44px;
@@ -1703,33 +1682,6 @@ html:not(.dark) .prose .shiki span {
   }
 }
 
-.ck-dial {
-  width: min(100%, 220px);
-  aspect-ratio: 1 / 1;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  margin-inline: auto;
-  position: relative;
-}
-
-.ck-dial::before {
-  content: '';
-  position: absolute;
-  inset: 18%;
-  border-radius: 999px;
-  background: rgba(7, 12, 22, 0.88);
-  pointer-events: none;
-}
-
-.ck-dial [data-color-dial-thumb] {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: #f6fdff;
-  border: 2px solid rgba(0, 0, 0, 0.32);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 .ck-input input[type='text'] {
   width: 100%;
   min-height: 44px;
@@ -1769,42 +1721,7 @@ html:not(.dark) .prose .shiki span {
     -8px 0;
 }
 
-.ck-swatch-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.ck-swatch {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-  transition:
-    transform 150ms ease,
-    box-shadow 150ms ease;
-}
-
-.ck-swatch[data-selected] {
-  box-shadow: 0 0 0 2px rgba(40, 195, 180, 0.95);
-}
-
-.ck-swatch-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--columns, 4), minmax(0, 44px));
-  gap: 0.5rem;
-}
-
-.ck-swatch-grid [role='option'] > [data-swatch] {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-}
-
-.ck-caption,
-.ck-contrast-badge {
+.ck-caption {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
@@ -1829,31 +1746,6 @@ html:not(.dark) .prose .shiki span {
   background: rgba(7, 12, 22, 0.6);
   color: #d9ebff;
   white-space: nowrap;
-}
-
-.ck-contrast-sample {
-  min-height: 70px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  line-height: 1.5;
-}
-
-.ck-contrast-badge {
-  width: fit-content;
-  padding: 0.4rem 0.6rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.17);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ck-swatch[data-interactive]:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
-  }
 }
 
 @media (max-width: 1280px) {
@@ -1963,7 +1855,6 @@ html:not(.dark) .prose .shiki span {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ck-swatch,
   .docs-top-link,
   .landing-nav a,
   .theme-switcher button {

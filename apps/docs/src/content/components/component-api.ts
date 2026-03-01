@@ -3,16 +3,9 @@ import type { ApiTableRow } from '@/components/api-table';
 interface ComponentApiDocs {
   color: ApiTableRow[];
   colorArea: ApiTableRow[];
-  colorWheel: ApiTableRow[];
-  colorDial: ApiTableRow[];
   colorSlider: ApiTableRow[];
-  hueDial: ApiTableRow[];
-  swatch: ApiTableRow[];
-  swatchGroup: ApiTableRow[];
   colorInput: ApiTableRow[];
   colorStringInput: ApiTableRow[];
-  colorDisplay: ApiTableRow[];
-  contrastBadge: ApiTableRow[];
 }
 
 export const componentApiDocs: ComponentApiDocs = {
@@ -161,78 +154,6 @@ export const componentApiDocs: ComponentApiDocs = {
         'Optional external fallback marker positions and colors for plane-driven overlays.',
     },
   ],
-  colorWheel: [
-    {
-      name: 'chromaRange',
-      type: '[number, number]',
-      defaultValue: '[0, 0.4]',
-      description:
-        'Radial chroma range, where center maps to min and outer edge maps to max.',
-    },
-    {
-      name: 'requested',
-      type: 'Color',
-      description: 'Standalone value when not using Color context.',
-    },
-    {
-      name: 'onChangeRequested',
-      type: '(requested: Color, options?: SetRequestedOptions) => void',
-      description: 'Standalone change handler when not using context.',
-    },
-    {
-      name: 'source',
-      type: "'requested' | 'displayed'",
-      defaultValue: "'displayed'",
-      description:
-        'Visual metadata source. Geometry always follows requested state.',
-    },
-    {
-      name: 'displayGamut',
-      type: "'srgb' | 'display-p3'",
-      description:
-        'Display target for displayed-source metadata. Falls back to provider gamut.',
-    },
-    {
-      name: 'maxUpdateHz',
-      type: 'number',
-      defaultValue: '60',
-      description:
-        'Upper bound for pointer-driven update cadence. Lower values reduce update churn.',
-    },
-    {
-      name: 'dragEpsilon',
-      type: 'number',
-      defaultValue: '0.0005',
-      description:
-        'Minimum normalized pointer delta required before another update commits.',
-    },
-    {
-      name: 'hueStep',
-      type: 'number',
-      defaultValue: '1',
-      description: 'Keyboard hue step in degrees for left/right arrows.',
-    },
-    {
-      name: 'shiftHueStep',
-      type: 'number',
-      defaultValue: '10',
-      description: 'Keyboard hue step in degrees while Shift is held.',
-    },
-    {
-      name: 'chromaStepRatio',
-      type: 'number',
-      defaultValue: '0.01',
-      description:
-        'Keyboard chroma step ratio (range span multiplier) for up/down arrows.',
-    },
-    {
-      name: 'shiftChromaStepRatio',
-      type: 'number',
-      defaultValue: '0.1',
-      description:
-        'Keyboard chroma step ratio while Shift is held for larger jumps.',
-    },
-  ],
   colorSlider: [
     {
       name: 'channel',
@@ -273,125 +194,6 @@ export const componentApiDocs: ComponentApiDocs = {
       name: 'onChangeRequested',
       type: '(requested: Color, options?: SetRequestedOptions) => void',
       description: 'Standalone change handler when not using context.',
-    },
-  ],
-  colorDial: [
-    {
-      name: 'channel',
-      type: "'l' | 'c' | 'h' | 'alpha'",
-      description: 'Required channel controlled by the radial dial.',
-    },
-    {
-      name: 'range',
-      type: '[number, number]',
-      description: 'Optional channel range override.',
-    },
-    {
-      name: 'startAngle',
-      type: 'number',
-      defaultValue: '-135',
-      description: 'Arc start angle in degrees.',
-    },
-    {
-      name: 'endAngle',
-      type: 'number',
-      defaultValue: '135',
-      description: 'Arc end angle in degrees.',
-    },
-    {
-      name: 'wrap',
-      type: 'boolean',
-      defaultValue: "channel === 'h'",
-      description:
-        'Wraps values across range boundaries during keyboard edits.',
-    },
-    {
-      name: 'maxUpdateHz',
-      type: 'number',
-      defaultValue: '60',
-      description:
-        'Upper bound for pointer-driven update cadence to reduce churn under load.',
-    },
-    {
-      name: 'dragEpsilon',
-      type: 'number',
-      defaultValue: '0.0005',
-      description:
-        'Minimum normalized pointer delta required before committing another update.',
-    },
-    {
-      name: 'requested',
-      type: 'Color',
-      description: 'Standalone value when not using Color context.',
-    },
-    {
-      name: 'onChangeRequested',
-      type: '(requested: Color, options?: SetRequestedOptions) => void',
-      description: 'Standalone change handler when not using context.',
-    },
-  ],
-  hueDial: [
-    {
-      name: 'startAngle',
-      type: 'number',
-      defaultValue: '0',
-      description: 'Arc start angle in degrees.',
-    },
-    {
-      name: 'endAngle',
-      type: 'number',
-      defaultValue: '360',
-      description: 'Arc end angle in degrees.',
-    },
-    {
-      name: 'requested',
-      type: 'Color',
-      description: 'Standalone value when not using Color context.',
-    },
-    {
-      name: 'onChangeRequested',
-      type: '(requested: Color, options?: SetRequestedOptions) => void',
-      description: 'Standalone hue change handler when not using context.',
-    },
-  ],
-  swatch: [
-    {
-      name: 'color',
-      type: 'Color',
-      description: 'Required swatch color value.',
-    },
-    {
-      name: 'isSelected',
-      type: 'boolean',
-      defaultValue: 'false',
-      description: 'Marks this swatch as selected for styling and a11y.',
-    },
-    {
-      name: 'onSelect',
-      type: '(color: Color) => void',
-      description: 'Makes the swatch interactive when provided.',
-    },
-  ],
-  swatchGroup: [
-    {
-      name: 'colors',
-      type: 'Color[]',
-      description: 'Required collection of swatch values.',
-    },
-    {
-      name: 'value',
-      type: 'Color',
-      description: 'Controlled selected value.',
-    },
-    {
-      name: 'onChange',
-      type: '(color: Color) => void',
-      description: 'Controlled selection handler.',
-    },
-    {
-      name: 'columns',
-      type: 'number',
-      description: 'Optional grid hint via the --columns CSS custom property.',
     },
   ],
   colorInput: [
@@ -482,37 +284,6 @@ export const componentApiDocs: ComponentApiDocs = {
       name: 'onChangeRequested',
       type: '(requested: Color, options?: SetRequestedOptions) => void',
       description: 'Standalone change handler when not using context.',
-    },
-  ],
-  colorDisplay: [
-    {
-      name: 'requested',
-      type: 'Color',
-      description: 'Standalone requested value when not using Color context.',
-    },
-    {
-      name: 'gamut',
-      type: "'srgb' | 'display-p3'",
-      defaultValue: "'display-p3'",
-      description: 'Display target used in standalone mode.',
-    },
-  ],
-  contrastBadge: [
-    {
-      name: 'foreground',
-      type: 'Color',
-      description: 'Required text/foreground color.',
-    },
-    {
-      name: 'background',
-      type: 'Color',
-      description: 'Required background color.',
-    },
-    {
-      name: 'level',
-      type: "'AA' | 'AAA'",
-      defaultValue: "'AA'",
-      description: 'Conformance level used for pass/fail state.',
     },
   ],
 };

@@ -40,8 +40,6 @@ export type ColorInputDemoChannel =
   | 'g'
   | 'b'
   | 's';
-export type SwatchGroupDemoPalette = 'spectrum' | 'nature' | 'neon';
-export type ContrastBadgeDemoPreset = 'interface' | 'editorial' | 'alert';
 
 export interface ColorAreaStrokeControl {
   enabled: boolean;
@@ -129,16 +127,6 @@ export interface ColorInputInspectorState {
   model: ColorInputDemoModel;
   channel: ColorInputDemoChannel;
   gamut: DocsInspectorGamut;
-}
-
-export interface SwatchGroupInspectorState {
-  palette: SwatchGroupDemoPalette;
-  columns: 3 | 4 | 5;
-}
-
-export interface ContrastBadgeInspectorState {
-  preset: ContrastBadgeDemoPreset;
-  level: 'AA' | 'AAA';
 }
 
 const COLOR_AREA_DEMOS: Array<{ id: ColorAreaDemoId; label: string }> = [
@@ -401,16 +389,6 @@ const COLOR_INPUT_CHANNELS: Record<
   hsl: ['h', 's', 'l', 'alpha'],
 };
 
-const DEFAULT_SWATCH_GROUP_STATE: SwatchGroupInspectorState = {
-  palette: 'spectrum',
-  columns: 4,
-};
-
-const DEFAULT_CONTRAST_BADGE_STATE: ContrastBadgeInspectorState = {
-  preset: 'interface',
-  level: 'AA',
-};
-
 function normalizeColorAreaState(
   state: ColorAreaInspectorState,
 ): ColorAreaInspectorState {
@@ -462,10 +440,6 @@ interface DocsInspectorContextValue {
   setColorSliderState: (patch: Partial<ColorSliderInspectorState>) => void;
   colorInputState: ColorInputInspectorState;
   setColorInputState: (patch: Partial<ColorInputInspectorState>) => void;
-  swatchGroupState: SwatchGroupInspectorState;
-  setSwatchGroupState: (patch: Partial<SwatchGroupInspectorState>) => void;
-  contrastBadgeState: ContrastBadgeInspectorState;
-  setContrastBadgeState: (patch: Partial<ContrastBadgeInspectorState>) => void;
 }
 
 const DocsInspectorContext = createContext<DocsInspectorContextValue | null>(
@@ -482,12 +456,6 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
   );
   const [colorInputState, setColorInputStateInternal] = useState(
     DEFAULT_COLOR_INPUT_STATE,
-  );
-  const [swatchGroupState, setSwatchGroupStateInternal] = useState(
-    DEFAULT_SWATCH_GROUP_STATE,
-  );
-  const [contrastBadgeState, setContrastBadgeStateInternal] = useState(
-    DEFAULT_CONTRAST_BADGE_STATE,
   );
 
   const setColorAreaState = useCallback(
@@ -576,26 +544,6 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const setSwatchGroupState = useCallback(
-    (patch: Partial<SwatchGroupInspectorState>) => {
-      setSwatchGroupStateInternal((current) => ({
-        ...current,
-        ...patch,
-      }));
-    },
-    [],
-  );
-
-  const setContrastBadgeState = useCallback(
-    (patch: Partial<ContrastBadgeInspectorState>) => {
-      setContrastBadgeStateInternal((current) => ({
-        ...current,
-        ...patch,
-      }));
-    },
-    [],
-  );
-
   const value = useMemo<DocsInspectorContextValue>(
     () => ({
       activeTab,
@@ -610,10 +558,6 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
       setColorSliderState,
       colorInputState,
       setColorInputState,
-      swatchGroupState,
-      setSwatchGroupState,
-      contrastBadgeState,
-      setContrastBadgeState,
     }),
     [
       activeTab,
@@ -626,10 +570,6 @@ export function DocsInspectorProvider({ children }: { children: ReactNode }) {
       setColorSliderState,
       colorInputState,
       setColorInputState,
-      swatchGroupState,
-      setSwatchGroupState,
-      contrastBadgeState,
-      setContrastBadgeState,
     ],
   );
 

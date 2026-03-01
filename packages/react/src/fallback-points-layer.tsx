@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'react';
-import { toHex, toP3Gamut, toSrgbGamut, type Color } from '@color-kit/core';
+import { toHex, type Color } from '@color-kit/core';
 import { getColorDisplayStyles } from './api/color-display.js';
-import { getColorAreaThumbPosition } from './api/color-area.js';
+import { getColorAreaFallbackPoint } from './api/color-area.js';
 import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Point } from './point.js';
@@ -30,13 +30,19 @@ export function FallbackPointsLayer({
 }: FallbackPointsLayerProps) {
   const { requested, axes } = useColorAreaContext();
 
-  const srgb = toSrgbGamut(requested);
-  const p3 = toP3Gamut(requested);
+  const srgb = getColorAreaFallbackPoint(axes, {
+    color: requested,
+    gamut: 'srgb',
+  });
+  const p3 = getColorAreaFallbackPoint(axes, {
+    color: requested,
+    gamut: 'display-p3',
+  });
 
-  const srgbColor = srgbPoint?.color ?? srgb;
-  const p3Color = p3Point?.color ?? p3;
-  const srgbPos = srgbPoint ?? getColorAreaThumbPosition(srgbColor, axes);
-  const p3Pos = p3Point ?? getColorAreaThumbPosition(p3Color, axes);
+  const srgbColor = srgbPoint?.color ?? srgb.color;
+  const p3Color = p3Point?.color ?? p3.color;
+  const srgbPos = srgbPoint ?? srgb;
+  const p3Pos = p3Point ?? p3;
   const p3Styles = getColorDisplayStyles(p3Color, srgbColor, 'display-p3');
   const srgbStyles = getColorDisplayStyles(srgbColor, srgbColor, 'srgb');
 
