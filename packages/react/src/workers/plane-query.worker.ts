@@ -1,7 +1,9 @@
 import {
+  createPlaneComputeScheduler,
   createJsPlaneComputeBackend,
   getPackedPlaneQueryTransferables,
 } from '@color-kit/core';
+import type { PlaneComputeBackend } from '@color-kit/core';
 import type {
   PlaneQueryWorkerRequest,
   PlaneQueryWorkerResponse,
@@ -16,13 +18,46 @@ interface MinimalWorkerScope {
 }
 
 const workerScope = self as unknown as MinimalWorkerScope;
-const backend = createJsPlaneComputeBackend();
+const jsBackend = createJsPlaneComputeBackend();
+const scheduler = createPlaneComputeScheduler({
+  backends: {
+    js: jsBackend,
+    wasm: resolveInstalledWasmBackend(),
+  },
+  options: {
+    preferredBackends: ['wasm', 'js'],
+    minSamplesForDecision: 3,
+    warmupSamples: 2,
+    baselineProbeInterval: 8,
+    dragRegressionRatio: 1.1,
+    idleRegressionRatio: 1.25,
+    hysteresisTrips: 3,
+    circuitBreakerCooldownMs: 20_000,
+  },
+});
+
+function resolveInstalledWasmBackend(): PlaneComputeBackend | undefined {
+  const maybeBackend = (
+    globalThis as unknown as {
+      __COLOR_KIT_WASM_PLANE_BACKEND__?: unknown;
+    }
+  ).__COLOR_KIT_WASM_PLANE_BACKEND__;
+  if (
+    maybeBackend &&
+    typeof maybeBackend === 'object' &&
+    'kind' in maybeBackend &&
+    'run' in maybeBackend
+  ) {
+    return maybeBackend as PlaneComputeBackend;
+  }
+  return undefined;
+}
 
 workerScope.onmessage = (event): void => {
   const payload = event.data;
 
   try {
-    const response = backend.run({
+    const response = scheduler.run({
       plane: payload.plane,
       queries: payload.queries,
       priority: payload.priority,
@@ -37,6 +72,7 @@ workerScope.onmessage = (event): void => {
         result: response.result,
         computeTimeMs: response.computeTimeMs,
         marshalTimeMs: response.marshalTimeMs,
+        schedule: response.schedule,
       },
       getPackedPlaneQueryTransferables(response.result),
     );
