@@ -1,12 +1,15 @@
 import { createJsPlaneComputeBackend } from './backends/js-backend.js';
+import { createPlaneComputeScheduler } from './scheduler.js';
 import type {
   PackedPlaneQueryResult,
   PlaneComputeBackend,
   PlaneComputeRequest,
   PlaneComputeResponse,
+  PlaneComputeScheduler,
 } from './types.js';
 
 export { createJsPlaneComputeBackend } from './backends/js-backend.js';
+export { createPlaneComputeScheduler } from './scheduler.js';
 export {
   getPackedPlaneQueryTransferables,
   packPlaneQueryResults,
@@ -17,14 +20,26 @@ export type {
   PackedPlaneQueryResult,
   PlaneComputeBackend,
   PlaneComputeBackendKind,
+  PlaneComputeCircuitBreakerState,
   PlaneComputePerformanceProfile,
   PlaneComputePriority,
   PlaneComputeQuality,
   PlaneComputeRequest,
   PlaneComputeResponse,
+  PlaneComputeScheduleTrace,
+  PlaneComputeScheduler,
+  PlaneComputeSchedulerOptions,
+  PlaneComputeTelemetryBackendStats,
+  PlaneComputeTelemetryBucket,
+  PlaneComputeTelemetrySnapshot,
 } from './types.js';
 
 const defaultPlaneComputeBackend = createJsPlaneComputeBackend();
+const defaultPlaneComputeScheduler = createPlaneComputeScheduler({
+  backends: {
+    js: defaultPlaneComputeBackend,
+  },
+});
 
 export function runPlaneCompute(
   request: PlaneComputeRequest,
@@ -38,4 +53,19 @@ export function runPackedPlaneQueries(
   backend?: PlaneComputeBackend,
 ): PackedPlaneQueryResult {
   return runPlaneCompute(request, backend).result;
+}
+
+export function runScheduledPlaneCompute(
+  request: PlaneComputeRequest,
+  scheduler: PlaneComputeScheduler = defaultPlaneComputeScheduler,
+): PlaneComputeResponse {
+  return scheduler.run(request);
+}
+
+export function getDefaultPlaneComputeTelemetrySnapshot() {
+  return defaultPlaneComputeScheduler.getTelemetrySnapshot();
+}
+
+export function resetDefaultPlaneComputeTelemetry(): void {
+  defaultPlaneComputeScheduler.resetTelemetry();
 }

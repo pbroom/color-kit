@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SVGAttributes } from 'react';
-import type { GamutTarget } from '@color-kit/core';
+import {
+  unpackPlaneQueryResults,
+  type GamutTarget,
+  type PlaneGamutBoundaryResult,
+} from '@color-kit/core';
 import {
   getColorAreaGamutBoundaryPoints,
   type ResolvedColorAreaAxes,
@@ -10,6 +14,10 @@ import { Layer, type LayerProps } from './layer.js';
 import { Line } from './line.js';
 import { PathPointsOverlay } from './path-points-overlay.js';
 import type { LinePoint } from './line.js';
+import type {
+  PlaneQueryWorkerRequest,
+  PlaneQueryWorkerResponse,
+} from './workers/plane-query.worker.types.js';
 
 export type ColorAreaLayerQuality = 'auto' | 'high' | 'medium' | 'low';
 
@@ -32,6 +40,8 @@ export interface GamutBoundaryLayerProps extends LayerProps {
   /** Optional precomputed path points (for plane-driven overlays). */
   points?: LinePoint[];
 }
+
+type PlaneQueryWorkerPayload = Omit<PlaneQueryWorkerRequest, 'id'>;
 
 function resolveQuality(
   quality: ColorAreaLayerQuality,
@@ -110,6 +120,19 @@ function autoAdaptiveMaxDepth(
   );
 }
 
+function canUseWorkerOffload(): boolean {
+  return typeof window !== 'undefined' && typeof Worker !== 'undefined';
+}
+
+function toLinePointsFromBoundary(
+  result: PlaneGamutBoundaryResult,
+): LinePoint[] {
+  return result.points.map((point) => ({
+    x: point.x,
+    y: 1 - point.y,
+  }));
+}
+
 /**
  * Precomposed Layer wrapper for drawing a gamut boundary path.
  */
@@ -130,7 +153,14 @@ export function GamutBoundaryLayer({
   children,
   ...props
 }: GamutBoundaryLayerProps) {
-  const { areaRef, requested, axes, qualityLevel } = useColorAreaContext();
+  const {
+    areaRef,
+    requested,
+    axes,
+    performanceProfile,
+    qualityLevel,
+    isDragging,
+  } = useColorAreaContext();
   const [areaSize, setAreaSize] = useState({
     width: 0,
     height: 0,
@@ -249,31 +279,203 @@ export function GamutBoundaryLayer({
     samplingMode,
   ]);
 
-  const computedPoints = useMemo(() => {
+  const [workerPoints, setWorkerPoints] = useState<{
+    requestId: number;
+    points: LinePoint[];
+  } | null>(null);
+  const [activeWorkerRequestId, setActiveWorkerRequestId] = useState<
+    number | null
+  >(null);
+  const workerRef = useRef<Worker | null>(null);
+  const requestIdRef = useRef(0);
+
+  const syncComputation = useMemo(() => {
     if (pointsProp) {
-      return pointsProp;
+      return {
+        points: pointsProp,
+      };
     }
-    return getColorAreaGamutBoundaryPoints(hue ?? requested.h, axes, {
-      gamut,
-      steps: effectiveSteps,
-      simplifyTolerance,
-      samplingMode,
-      adaptiveTolerance: resolvedAdaptiveTolerance,
-      adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
-    });
+    if (isDragging && canUseWorkerOffload() && workerPoints != null) {
+      return null;
+    }
+    return {
+      points: getColorAreaGamutBoundaryPoints(hue ?? requested.h, axes, {
+        gamut,
+        steps: effectiveSteps,
+        simplifyTolerance,
+        samplingMode,
+        adaptiveTolerance: resolvedAdaptiveTolerance,
+        adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
+      }),
+    };
   }, [
     axes,
     effectiveSteps,
     gamut,
     hue,
+    isDragging,
     pointsProp,
     requested.h,
+    workerPoints,
     simplifyTolerance,
     samplingMode,
     resolvedAdaptiveTolerance,
     resolvedAdaptiveMaxDepth,
   ]);
-  const points = pointsProp ?? computedPoints;
+
+  const workerPayload = useMemo<PlaneQueryWorkerPayload>(
+    () => ({
+      plane: {
+        model: 'oklch',
+        x: {
+          channel: axes.x.channel,
+          range: axes.x.range,
+        },
+        y: {
+          channel: axes.y.channel,
+          range: axes.y.range,
+        },
+        fixed: {
+          l: requested.l,
+          c: requested.c,
+          h: requested.h,
+          alpha: requested.alpha,
+        },
+      },
+      queries: [
+        {
+          kind: 'gamutBoundary',
+          gamut,
+          hue: hue ?? requested.h,
+          steps: effectiveSteps,
+          simplifyTolerance,
+          samplingMode,
+          adaptiveTolerance: resolvedAdaptiveTolerance,
+          adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
+        },
+      ],
+      priority: isDragging ? 'drag' : 'idle',
+      quality: resolvedQuality,
+      performanceProfile,
+    }),
+    [
+      axes.x.channel,
+      axes.x.range,
+      axes.y.channel,
+      axes.y.range,
+      effectiveSteps,
+      gamut,
+      hue,
+      isDragging,
+      performanceProfile,
+      requested.alpha,
+      requested.c,
+      requested.h,
+      requested.l,
+      resolvedAdaptiveMaxDepth,
+      resolvedAdaptiveTolerance,
+      resolvedQuality,
+      samplingMode,
+      simplifyTolerance,
+    ],
+  );
+
+  const hasCurrentWorkerResponse = useMemo(
+    () =>
+      activeWorkerRequestId != null &&
+      workerPoints != null &&
+      workerPoints.requestId === activeWorkerRequestId,
+    [activeWorkerRequestId, workerPoints],
+  );
+
+  useEffect(() => {
+    if (pointsProp || !canUseWorkerOffload() || !isDragging) {
+      queueMicrotask(() => setActiveWorkerRequestId(null));
+      return;
+    }
+
+    if (!workerRef.current) {
+      workerRef.current = new Worker(
+        new URL('./workers/plane-query.worker.js', import.meta.url),
+        {
+          type: 'module',
+        },
+      );
+    }
+
+    const worker = workerRef.current;
+    if (!worker) {
+      return;
+    }
+
+    const nextRequestId = requestIdRef.current + 1;
+    requestIdRef.current = nextRequestId;
+    queueMicrotask(() => setActiveWorkerRequestId(nextRequestId));
+
+    const onMessage = (event: MessageEvent<PlaneQueryWorkerResponse>) => {
+      const payload = event.data;
+      if (!payload || payload.id !== nextRequestId) {
+        return;
+      }
+      if (payload.error || !payload.result) {
+        return;
+      }
+
+      const unpacked = unpackPlaneQueryResults(payload.result);
+      const boundaryResult = unpacked.find(
+        (entry): entry is PlaneGamutBoundaryResult =>
+          entry.kind === 'gamutBoundary',
+      );
+      const nextPoints = boundaryResult
+        ? toLinePointsFromBoundary(boundaryResult)
+        : [];
+
+      setWorkerPoints({
+        requestId: payload.id,
+        points: nextPoints,
+      });
+    };
+
+    worker.addEventListener('message', onMessage);
+
+    const message: PlaneQueryWorkerRequest = {
+      id: nextRequestId,
+      ...workerPayload,
+    };
+    worker.postMessage(message);
+
+    return () => {
+      worker.removeEventListener('message', onMessage);
+    };
+  }, [isDragging, pointsProp, workerPayload]);
+
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    };
+  }, []);
+
+  const points = useMemo(() => {
+    if (pointsProp) {
+      return pointsProp;
+    }
+    if (!(isDragging && canUseWorkerOffload())) {
+      return syncComputation?.points ?? [];
+    }
+    if (hasCurrentWorkerResponse && workerPoints != null) {
+      return workerPoints.points;
+    }
+    return workerPoints?.points ?? syncComputation?.points ?? [];
+  }, [
+    hasCurrentWorkerResponse,
+    isDragging,
+    pointsProp,
+    syncComputation,
+    workerPoints,
+  ]);
 
   return (
     <Layer
