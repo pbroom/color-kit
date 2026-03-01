@@ -85,11 +85,12 @@ export function CodeBlock({
   className,
 }: CodeBlockProps) {
   const { resolvedTheme } = useTheme();
+  const requestKey = `${resolvedTheme}:${language}:${code}`;
   const [html, setHtml] = useState<string | null>(null);
+  const [renderedFor, setRenderedFor] = useState(requestKey);
 
   useEffect(() => {
     let cancelled = false;
-    setHtml(null);
 
     const highlight = async () => {
       try {
@@ -100,10 +101,12 @@ export function CodeBlock({
         });
         if (!cancelled) {
           setHtml(nextHtml);
+          setRenderedFor(requestKey);
         }
       } catch {
         if (!cancelled) {
           setHtml(null);
+          setRenderedFor(requestKey);
         }
       }
     };
@@ -112,12 +115,12 @@ export function CodeBlock({
     return () => {
       cancelled = true;
     };
-  }, [code, language, resolvedTheme]);
+  }, [code, language, resolvedTheme, requestKey]);
 
   return (
     <div className={cn('docs-code-block not-prose my-6', className)}>
       {label ? <p className="docs-code-label">{label}</p> : null}
-      {html ? (
+      {html && renderedFor === requestKey ? (
         <div
           className="docs-shiki-block"
           // HTML comes from Shiki and only renders trusted local snippets.

@@ -68,3 +68,4 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-02-28 — Stage all intended files before gt submit**: If `gt submit --stack --no-interactive` says the branch has no changes, run `git add`/`gt modify` first so the current work is actually committed and included.
 - **2026-03-01 — Validate contour closure in boolean geometry**: For marching-squares region ops, add a donut subtraction sanity check (`center` outside, ring inside) to catch open-contour regressions before shipping.
 - **2026-03-01 — Use PR-scoped reply endpoint for inline feedback**: Reply to review comments with `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`; the non-PR-scoped path returns 404.
+- **2026-03-01 — Avoid sync resets in effects**: Resolve React hook lint errors by moving "loading reset" state transitions into async effect flow and keying rendered output to the in-flight request.

@@ -245,35 +245,32 @@ export function ChromaBandLayer({
     samplingMode,
   ]);
 
-  const computedPoints = useMemo(
-    () => {
-      if (pointsProp) {
-        return pointsProp;
-      }
-      return getColorAreaChromaBandPoints(requested, hue ?? requested.h, axes, {
-        gamut,
-        mode: resolveMode(mode),
-        steps: effectiveSteps,
-        samplingMode,
-        adaptiveTolerance: resolvedAdaptiveTolerance,
-        adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
-        selectedLightness: requested.l,
-        alpha: requested.alpha,
-      });
-    },
-    [
-      axes,
-      effectiveSteps,
+  const computedPoints = useMemo(() => {
+    if (pointsProp) {
+      return pointsProp;
+    }
+    return getColorAreaChromaBandPoints(requested, hue ?? requested.h, axes, {
       gamut,
-      hue,
-      mode,
-      pointsProp,
-      requested,
+      mode: resolveMode(mode),
+      steps: effectiveSteps,
       samplingMode,
-      resolvedAdaptiveTolerance,
-      resolvedAdaptiveMaxDepth,
-    ],
-  );
+      adaptiveTolerance: resolvedAdaptiveTolerance,
+      adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
+      selectedLightness: requested.l,
+      alpha: requested.alpha,
+    });
+  }, [
+    axes,
+    effectiveSteps,
+    gamut,
+    hue,
+    mode,
+    pointsProp,
+    requested,
+    samplingMode,
+    resolvedAdaptiveTolerance,
+    resolvedAdaptiveMaxDepth,
+  ]);
   const points = pointsProp ?? computedPoints;
 
   return (
