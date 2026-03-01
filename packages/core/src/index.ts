@@ -130,6 +130,27 @@ export type {
 // Utilities
 export { clamp, round, normalizeHue, lerp } from './utils/index.js';
 
+// Compute backends
+export {
+  createJsPlaneComputeBackend,
+  getPackedPlaneQueryTransferables,
+  packPlaneQueryResults,
+  runPackedPlaneQueries,
+  runPlaneCompute,
+  unpackPlaneQueryResults,
+} from './compute/index.js';
+export type {
+  PackedPlaneQueryDescriptor,
+  PackedPlaneQueryResult,
+  PlaneComputeBackend,
+  PlaneComputeBackendKind,
+  PlaneComputePerformanceProfile,
+  PlaneComputePriority,
+  PlaneComputeQuality,
+  PlaneComputeRequest,
+  PlaneComputeResponse,
+} from './compute/index.js';
+
 // Plane geometry
 export {
   colorAtPlanePoint,

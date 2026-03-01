@@ -6,6 +6,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     'workers/contrast-region.worker': 'src/workers/contrast-region.worker.ts',
+    'workers/plane-query.worker': 'src/workers/plane-query.worker.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

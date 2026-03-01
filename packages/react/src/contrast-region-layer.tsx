@@ -12,11 +12,13 @@ import {
 import {
   oklabToLinearRgb,
   oklchToOklab,
+  unpackPlaneQueryResults,
   toP3Gamut,
   toSrgbGamut,
   type Color,
   type ContrastRegionLevel,
   type GamutTarget,
+  type PlaneContrastRegionResult,
 } from '@color-kit/core';
 import {
   getColorAreaContrastRegionPaths,
@@ -30,9 +32,9 @@ import { Line, pathWithRoundedCorners } from './line.js';
 import { PathPointsOverlay } from './path-points-overlay.js';
 import type { ColorAreaLayerQuality } from './gamut-boundary-layer.js';
 import type {
-  ContrastRegionWorkerRequest,
-  ContrastRegionWorkerResponse,
-} from './workers/contrast-region.worker.types.js';
+  PlaneQueryWorkerRequest,
+  PlaneQueryWorkerResponse,
+} from './workers/plane-query.worker.types.js';
 
 export interface ContrastRegionLayerMetrics {
   source: 'sync' | 'worker';
@@ -81,6 +83,8 @@ interface ContrastRegionPathContextValue {
   regionPathData: string;
   cornerRadius?: number;
 }
+
+type PlaneQueryWorkerPayload = Omit<PlaneQueryWorkerRequest, 'id'>;
 
 const ContrastRegionPathContext =
   createContext<ContrastRegionPathContextValue | null>(null);
@@ -295,6 +299,27 @@ function nowMs(): number {
 
 function countPathPoints(paths: ColorAreaContrastRegionPoint[][]): number {
   return paths.reduce((total, path) => total + path.length, 0);
+}
+
+function toColorAreaContrastRegionPaths(
+  result: PlaneContrastRegionResult,
+): ColorAreaContrastRegionPoint[][] {
+  return result.paths.map((path) =>
+    path.map((point) => ({
+      l: point.l,
+      c: point.c,
+      x: point.x,
+      y: 1 - point.y,
+    })),
+  );
+}
+
+function hasLegacyWorkerPaths(
+  payload: PlaneQueryWorkerResponse,
+): payload is PlaneQueryWorkerResponse & {
+  paths: ColorAreaContrastRegionPoint[][];
+} {
+  return Array.isArray((payload as unknown as { paths?: unknown }).paths);
 }
 
 const CLOSED_PATH_TOLERANCE = 1e-6;
@@ -792,8 +817,14 @@ export function ContrastRegionLayer({
   children,
   ...props
 }: ContrastRegionLayerProps) {
-  const { areaRef, requested, axes, qualityLevel, isDragging } =
-    useColorAreaContext();
+  const {
+    areaRef,
+    requested,
+    axes,
+    performanceProfile,
+    qualityLevel,
+    isDragging,
+  } = useColorAreaContext();
   const [areaSize, setAreaSize] = useState({
     width: 0,
     height: 0,
@@ -1075,14 +1106,49 @@ export function ContrastRegionLayer({
       computeTimeMs: nowMs() - start,
     };
   }, [axes, contrastReference, isDragging, options, pathsProp, resolvedHue]);
-  const workerPayload = useMemo(
+  const workerPayload = useMemo<PlaneQueryWorkerPayload>(
     () => ({
-      reference: contrastReference,
-      hue: resolvedHue,
-      axes,
-      options,
+      plane: {
+        model: 'oklch' as const,
+        x: {
+          channel: axes.x.channel,
+          range: axes.x.range,
+        },
+        y: {
+          channel: axes.y.channel,
+          range: axes.y.range,
+        },
+        fixed: {
+          l: contrastReference.l,
+          c: contrastReference.c,
+          h: contrastReference.h,
+          alpha: contrastReference.alpha,
+        },
+      },
+      queries: [
+        {
+          kind: 'contrastRegion' as const,
+          reference: contrastReference,
+          ...options,
+          hue: resolvedHue,
+        },
+      ],
+      priority: isDragging ? 'drag' : 'idle',
+      quality: resolvedQuality,
+      performanceProfile,
     }),
-    [axes, contrastReference, options, resolvedHue],
+    [
+      axes.x.channel,
+      axes.x.range,
+      axes.y.channel,
+      axes.y.range,
+      contrastReference,
+      isDragging,
+      options,
+      performanceProfile,
+      resolvedHue,
+      resolvedQuality,
+    ],
   );
 
   const [workerPaths, setWorkerPaths] = useState<{
@@ -1223,7 +1289,7 @@ export function ContrastRegionLayer({
     if (!workerRef.current) {
       try {
         workerRef.current = new Worker(
-          new URL('./workers/contrast-region.worker.js', import.meta.url),
+          new URL('./workers/plane-query.worker.js', import.meta.url),
           {
             type: 'module',
           },
@@ -1258,7 +1324,7 @@ export function ContrastRegionLayer({
     requestIdRef.current = nextRequestId;
     queueMicrotask(() => setActiveWorkerRequestId(nextRequestId));
 
-    const onMessage = (event: MessageEvent<ContrastRegionWorkerResponse>) => {
+    const onMessage = (event: MessageEvent<PlaneQueryWorkerResponse>) => {
       const payload = event.data;
       if (!payload || payload.id !== nextRequestId) {
         return;
@@ -1274,22 +1340,49 @@ export function ContrastRegionLayer({
         }
         return;
       }
+
+      let nextPaths: ColorAreaContrastRegionPoint[][];
+      if (payload.result) {
+        const unpacked = unpackPlaneQueryResults(payload.result);
+        const contrastRegionResult = unpacked.find(
+          (entry): entry is PlaneContrastRegionResult =>
+            entry.kind === 'contrastRegion',
+        );
+        nextPaths = contrastRegionResult
+          ? toColorAreaContrastRegionPaths(contrastRegionResult)
+          : [];
+      } else if (hasLegacyWorkerPaths(payload)) {
+        // Legacy worker payload compatibility during rollout.
+        nextPaths = payload.paths;
+      } else if (syncComputation) {
+        emitMetrics({
+          source: 'sync',
+          requestId: requestIdRef.current,
+          computeTimeMs: syncComputation.computeTimeMs,
+          paths: syncComputation.paths,
+        });
+        return;
+      } else {
+        nextPaths = [];
+      }
+
       setWorkerPaths({
         requestId: payload.id,
         payload: workerPayload,
-        paths: payload.paths,
+        paths: nextPaths,
       });
       emitMetrics({
         source: 'worker',
         requestId: payload.id,
-        computeTimeMs: payload.computeTimeMs ?? 0,
-        paths: payload.paths,
+        computeTimeMs:
+          (payload.computeTimeMs ?? 0) + (payload.marshalTimeMs ?? 0),
+        paths: nextPaths,
       });
     };
 
     worker.addEventListener('message', onMessage);
 
-    const message: ContrastRegionWorkerRequest = {
+    const message: PlaneQueryWorkerRequest = {
       id: nextRequestId,
       ...workerPayload,
     };
