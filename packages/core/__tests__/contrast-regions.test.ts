@@ -315,6 +315,53 @@ describe('contrastRegionPaths()', () => {
     }
   });
 
+  it('respects APCA legacy samplingMode overrides', () => {
+    const reference = fromHex('#ffffff');
+    const uniformMidpoint = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'absolute',
+      samplingMode: 'uniform',
+      lightnessSteps: 22,
+      chromaSteps: 22,
+      edgeInterpolation: 'midpoint',
+    });
+    const uniformLinear = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'absolute',
+      samplingMode: 'uniform',
+      lightnessSteps: 22,
+      chromaSteps: 22,
+      edgeInterpolation: 'linear',
+    });
+    const adaptiveMidpoint = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'absolute',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 12,
+      adaptiveMaxDepth: 2,
+      edgeInterpolation: 'midpoint',
+    });
+    const adaptiveLinear = contrastRegionPaths(reference, 210, {
+      metric: 'apca',
+      threshold: 0.45,
+      apcaPolarity: 'absolute',
+      samplingMode: 'adaptive',
+      adaptiveBaseSteps: 12,
+      adaptiveMaxDepth: 2,
+      edgeInterpolation: 'linear',
+    });
+
+    expect(uniformMidpoint.length).toBeGreaterThan(0);
+    expect(uniformLinear.length).toBeGreaterThan(0);
+    expect(adaptiveMidpoint.length).toBeGreaterThan(0);
+    expect(adaptiveLinear.length).toBeGreaterThan(0);
+    expect(uniformMidpoint).not.toEqual(uniformLinear);
+    expect(adaptiveMidpoint).not.toEqual(adaptiveLinear);
+  });
+
   it('supports APCA polarity-specific regions', () => {
     const reference = fromHex('#ffffff');
     const positive = contrastRegionPaths(reference, 210, {
