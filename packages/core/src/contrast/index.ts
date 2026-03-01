@@ -1469,8 +1469,7 @@ export function contrastRegionPaths(
   }
 
   const mode = options.samplingMode ?? 'hybrid';
-  const requestedLegacySamplingMode =
-    mode === 'uniform' || mode === 'adaptive';
+  const requestedLegacySamplingMode = mode === 'uniform' || mode === 'adaptive';
   const usesLegacyControls =
     requestedLegacySamplingMode ||
     options.edgeInterpolation != null ||
@@ -1479,13 +1478,11 @@ export function contrastRegionPaths(
   if (usesLegacyControls) {
     return contrastRegionPathsLegacy(reference, hue, {
       ...options,
-      samplingMode:
-        requestedLegacySamplingMode
-          ? mode
-          : options.adaptiveBaseSteps != null ||
-              options.adaptiveMaxDepth != null
-            ? 'adaptive'
-            : 'uniform',
+      samplingMode: requestedLegacySamplingMode
+        ? mode
+        : options.adaptiveBaseSteps != null || options.adaptiveMaxDepth != null
+          ? 'adaptive'
+          : 'uniform',
     });
   }
 
