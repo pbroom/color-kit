@@ -395,12 +395,17 @@ export function GamutBoundaryLayer({
     }
 
     if (!workerRef.current) {
-      workerRef.current = new Worker(
-        new URL('./workers/plane-query.worker.js', import.meta.url),
-        {
-          type: 'module',
-        },
-      );
+      try {
+        workerRef.current = new Worker(
+          new URL('./workers/plane-query.worker.js', import.meta.url),
+          {
+            type: 'module',
+          },
+        );
+      } catch {
+        queueMicrotask(() => setActiveWorkerRequestId(null));
+        return;
+      }
     }
 
     const worker = workerRef.current;
