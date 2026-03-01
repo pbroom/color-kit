@@ -115,6 +115,50 @@ function createParityNumericMismatchWasmBackend(): PlaneComputeBackend {
   };
 }
 
+function createParityNumericLengthMismatchWasmBackend(): PlaneComputeBackend {
+  const jsBackend = createJsPlaneComputeBackend();
+  return {
+    kind: 'wasm',
+    run(request: PlaneComputeRequest): PlaneComputeResponse {
+      const response = jsBackend.run(request);
+      const pointLC =
+        response.result.pointLC.length > 0
+          ? response.result.pointLC.slice(0, -1)
+          : response.result.pointLC;
+      return {
+        ...response,
+        backend: 'wasm',
+        result: {
+          ...response.result,
+          pointLC,
+        },
+      };
+    },
+  };
+}
+
+function createParityNumericNaNMismatchWasmBackend(): PlaneComputeBackend {
+  const jsBackend = createJsPlaneComputeBackend();
+  return {
+    kind: 'wasm',
+    run(request: PlaneComputeRequest): PlaneComputeResponse {
+      const response = jsBackend.run(request);
+      const pointLC = response.result.pointLC.slice();
+      if (pointLC.length > 0) {
+        pointLC[0] = Number.NaN;
+      }
+      return {
+        ...response,
+        backend: 'wasm',
+        result: {
+          ...response.result,
+          pointLC,
+        },
+      };
+    },
+  };
+}
+
 function createParityErrorWasmBackend(): PlaneComputeBackend {
   return {
     kind: 'wasm',
@@ -265,6 +309,38 @@ describe('plane-query worker wasm parity', () => {
     expect(evaluateWasmParityGate(response.wasmParity, 'warn').status).toBe(
       'warn',
     );
+    expect(evaluateWasmParityGate(response.wasmParity, 'strict').status).toBe(
+      'fail',
+    );
+  });
+
+  it('reports numeric mismatches when compared numeric buffers differ in length', async () => {
+    const response = await runWorkerOnce(
+      createParityNumericLengthMismatchWasmBackend(),
+      {
+        wasmParityMode: 'numeric',
+      },
+    );
+    expect(response.error).toBeUndefined();
+    expect(response.wasmParity?.mode).toBe('numeric');
+    expect(response.wasmParity?.status).toBe('numeric-mismatch');
+    expect(response.wasmParity?.numericMismatchCount ?? 0).toBeGreaterThan(0);
+    expect(evaluateWasmParityGate(response.wasmParity, 'strict').status).toBe(
+      'fail',
+    );
+  });
+
+  it('reports numeric mismatches when one side emits NaN', async () => {
+    const response = await runWorkerOnce(
+      createParityNumericNaNMismatchWasmBackend(),
+      {
+        wasmParityMode: 'numeric',
+      },
+    );
+    expect(response.error).toBeUndefined();
+    expect(response.wasmParity?.mode).toBe('numeric');
+    expect(response.wasmParity?.status).toBe('numeric-mismatch');
+    expect(response.wasmParity?.numericMismatchCount ?? 0).toBeGreaterThan(0);
     expect(evaluateWasmParityGate(response.wasmParity, 'strict').status).toBe(
       'fail',
     );

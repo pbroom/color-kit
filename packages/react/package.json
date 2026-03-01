@@ -25,7 +25,8 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "pretest": "pnpm --filter @color-kit/core-wasm build",
+    "pretest:wasm-parity": "pnpm --filter @color-kit/core-wasm build:all",
+    "pretest:wasm-parity:strict": "pnpm --filter @color-kit/core-wasm build:all",
     "test": "vitest run --passWithNoTests",
     "test:wasm-parity": "vitest run __tests__/plane-query-worker-parity.test.ts __tests__/wasm-parity-gate.test.ts __tests__/plane-query-worker-real-wasm.test.ts",
     "test:wasm-parity:strict": "COLOR_KIT_WASM_PARITY_GATE=strict COLOR_KIT_REQUIRE_REAL_WASM=1 vitest run __tests__/plane-query-worker-parity.test.ts __tests__/wasm-parity-gate.test.ts __tests__/plane-query-worker-real-wasm.test.ts",

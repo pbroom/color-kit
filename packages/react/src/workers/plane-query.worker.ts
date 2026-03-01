@@ -108,20 +108,28 @@ function compareNumericParity(
   meanAbsDelta: number;
 } {
   const compared = Math.min(jsValues.length, wasmValues.length);
+  const extraValueCount = Math.abs(jsValues.length - wasmValues.length);
   if (compared === 0) {
     return {
-      mismatchCount: 0,
+      mismatchCount: extraValueCount,
       maxAbsDelta: 0,
       meanAbsDelta: 0,
     };
   }
-  let mismatchCount = 0;
+  let mismatchCount = extraValueCount;
   let maxAbsDelta = 0;
   let sumAbsDelta = 0;
   for (let index = 0; index < compared; index += 1) {
     const left = jsValues[index];
     const right = wasmValues[index];
-    if (Number.isNaN(left) && Number.isNaN(right)) {
+    const leftFinite = Number.isFinite(left);
+    const rightFinite = Number.isFinite(right);
+    if (!leftFinite || !rightFinite) {
+      const bothNaN = Number.isNaN(left) && Number.isNaN(right);
+      const bothSameInfinity = !leftFinite && !rightFinite && left === right;
+      if (!bothNaN && !bothSameInfinity) {
+        mismatchCount += 1;
+      }
       continue;
     }
     const delta = Math.abs(left - right);
