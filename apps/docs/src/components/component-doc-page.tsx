@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import type { ComponentDocData } from '@/content/components/component-docs-data';
 import { ApiTable } from './api-table.js';
+import { CodeBlock } from './code-block.js';
 import { ComponentPreview } from './component-preview.js';
 
 function CommandCard({ label, command }: { label: string; command: string }) {
@@ -14,9 +15,7 @@ function CommandCard({ label, command }: { label: string; command: string }) {
         </p>
       </CardHeader>
       <CardContent>
-        <pre className="m-0 overflow-x-auto rounded-lg border bg-muted/40 p-3 text-sm">
-          <code>{command}</code>
-        </pre>
+        <CodeBlock code={command} language="bash" className="my-0" />
       </CardContent>
     </Card>
   );
@@ -78,16 +77,12 @@ export function ComponentDocPage({ doc }: { doc: ComponentDocData }) {
 
       <section id="anatomy" className="scroll-mt-24 space-y-4">
         <h2>Anatomy</h2>
-        <pre>
-          <code>{doc.anatomy}</code>
-        </pre>
+        <CodeBlock code={doc.anatomy} language="tsx" className="my-0" />
       </section>
 
       <section id="usage" className="scroll-mt-24 space-y-4">
         <h2>Usage</h2>
-        <pre>
-          <code>{doc.usage}</code>
-        </pre>
+        <CodeBlock code={doc.usage} language="tsx" className="my-0" />
       </section>
 
       <section id="api-reference" className="scroll-mt-24 space-y-4">

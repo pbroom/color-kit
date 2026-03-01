@@ -14,6 +14,7 @@
 
   .ck-docs-sidebar,
   .ck-docs-rightrail {
+    height: calc(100vh - 5rem);
     min-height: calc(100vh - 5rem);
   }
 
@@ -21,7 +22,9 @@
   .ck-docs-rightrail-sticky {
     position: sticky;
     top: 4.5rem;
+    height: calc(100vh - 5.5rem);
     max-height: calc(100vh - 5.5rem);
+    overflow: hidden;
   }
 
   .ck-docs-main {

@@ -21,6 +21,11 @@ This file defines top-level guidance for Codex in this repository.
 - Use `git worktree` isolation for parallel or potentially conflicting development tracks.
 - Skip worktrees for read-only exploration and trivial, low-conflict edits.
 
+## Subagents
+
+- Use subagents liberally to preserve the agent context window and run tasks in parallel.
+- Always include subagent utilization strategy as part of plans.
+
 ## Reflection and Learnings
 
 - At the end of non-trivial tasks, record reusable lessons in `AGENTS.learnings.archive.md`.
@@ -56,3 +61,11 @@ This file defines top-level guidance for Codex in this repository.
 - **Contrast-region fills need domain closure and exclusion invariants**: Close open contours against the domain loop (not direct endpoint joins), process all open paths, and enforce reference exclusion using the gamut-mapped reference color for out-of-gamut drags.
 - **Preserve legacy props by consuming and mapping**: Keep deprecated props in component signatures, map them to new semantics, and let explicit modern props win so deprecated props do not leak to DOM attributes.
 - **Treat checkout-canceled matrix jobs as transient first**: If multiple jobs fail in `actions/checkout` with cancellation errors, retrigger with a fresh commit before chasing code-level regressions.
+- **Bridge new geometry APIs through adapter props first**: When introducing a new core geometry surface, add React adapter helpers and optional precomputed layer props (`points`/`paths`) so adoption can happen incrementally without breaking existing layer internals.
+- **2026-02-28 — Scope runtime Shiki imports**: For browser-side code highlighting, load `shiki/core` plus only required language/theme modules via lazy imports; importing full `shiki` in app code can explode docs bundles.
+
+- **2026-02-28 — Constrain sticky doc panels**: Set fixed viewport-based heights on sticky sidebar/right-rail containers before relying on ScrollArea internals, so vertical compression doesn’t disable internal scrolling.
+- **2026-02-28 — Stage all intended files before gt submit**: If `gt submit --stack --no-interactive` says the branch has no changes, run `git add`/`gt modify` first so the current work is actually committed and included.
+- **2026-03-01 — Validate contour closure in boolean geometry**: For marching-squares region ops, add a donut subtraction sanity check (`center` outside, ring inside) to catch open-contour regressions before shipping.
+- **2026-03-01 — Use PR-scoped reply endpoint for inline feedback**: Reply to review comments with `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`; the non-PR-scoped path returns 404.
+- **2026-03-01 — Avoid sync resets in effects**: Resolve React hook lint errors by moving "loading reset" state transitions into async effect flow and keying rendered output to the in-flight request.

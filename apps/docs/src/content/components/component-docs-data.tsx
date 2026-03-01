@@ -77,10 +77,8 @@ export function Picker() {
     demo: ColorAreaDemo,
     usage: `import {
   Background,
-  ChromaBandLayer,
   ColorArea,
   ColorPlane,
-  OutOfGamutLayer,
   ContrastRegionLayer,
   ContrastRegionFill,
   FallbackPointsLayer,
@@ -90,18 +88,9 @@ export function Picker() {
 <ColorArea axes={{ x: { channel: 'l' }, y: { channel: 'c' } }}>
   <Background checkerboard />
   <ColorPlane edgeBehavior="clamp" />
-  <OutOfGamutLayer
-    outOfP3FillColor="#1f1f1f"
-    outOfP3FillOpacity={0.2}
-    dotPatternOpacity={0.2}
-    dotPatternSize={2}
-    dotPatternGap={3}
-  />
-  <ChromaBandLayer mode="closest" gamut="srgb" />
-  <GamutBoundaryLayer gamut="display-p3" showPathPoints />
-  <ContrastRegionLayer threshold={4.5} showPathPoints />
-  <ContrastRegionLayer threshold={4.5} showPathPoints>
-    <ContrastRegionFill fillColor="#c0e1ff" fillOpacity={0.14} dotOpacity={0.2} />
+  <GamutBoundaryLayer gamut="display-p3" />
+  <ContrastRegionLayer threshold={4.5}>
+    <ContrastRegionFill fillColor="#c0e1ff" fillOpacity={0.14} />
   </ContrastRegionLayer>
   <FallbackPointsLayer />
 </ColorArea>;`,
@@ -114,6 +103,11 @@ export function Picker() {
       'ColorApi.getColorAreaChromaBandPoints',
       'ColorApi.getColorAreaGamutBoundaryPoints',
       'ColorApi.getColorAreaContrastRegionPaths',
+      'ColorApi.createColorAreaPlane',
+      'ColorApi.getColorAreaPlaneGamutBoundaryPoints',
+      'ColorApi.getColorAreaPlaneContrastRegionPaths',
+      'ColorApi.getColorAreaPlaneChromaBandPoints',
+      'ColorApi.getColorAreaPlaneFallbackPoint',
     ],
     features: [
       'Composable primitive model: ColorArea + ColorPlane + Layer wrappers + Thumb.',

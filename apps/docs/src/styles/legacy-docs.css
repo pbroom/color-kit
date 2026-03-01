@@ -3,6 +3,15 @@
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', 'Menlo', monospace;
 }
 
+:root {
+  --border-hairline: 1px;
+
+  @media only screen and (min-device-pixel-ratio: 2),
+    only screen and (min-resolution: 192dpi) {
+    --border-hairline: 0.5px;
+  }
+}
+
 :root,
 :root[data-theme='dark'] {
   --color-background: #07090d;
@@ -1166,25 +1175,39 @@ a {
   max-width: 72ch;
 }
 
+.prose h1,
+.prose h2,
+.prose h3 {
+  text-wrap: balance;
+  scroll-margin-top: 5rem;
+}
+
 .prose h1 {
   margin: 0;
   font-size: clamp(2rem, 4vw, 2.7rem);
   line-height: 1.08;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
 }
 
 .prose h2 {
-  margin-top: 2.25rem;
+  margin-top: 2.8rem;
   margin-bottom: 0.55rem;
   font-size: 1.32rem;
   line-height: 1.2;
   letter-spacing: -0.02em;
+  padding-bottom: 0.55rem;
+  border-bottom: var(--border-hairline, 1px) solid var(--color-border);
 }
 
 .prose h3 {
-  margin-top: 1.3rem;
+  margin-top: 1.65rem;
   margin-bottom: 0.42rem;
   font-size: 1.1rem;
+  letter-spacing: -0.01em;
+}
+
+.prose h2 + h3 {
+  margin-top: 1rem;
 }
 
 .prose p {
@@ -1203,6 +1226,10 @@ a {
   line-height: 1.65;
 }
 
+.prose li code {
+  font-size: 0.84em;
+}
+
 .prose pre {
   margin: 0.7rem 0;
   border: 1px solid var(--color-border);
@@ -1210,26 +1237,132 @@ a {
   background: var(--color-prose-pre-bg);
   padding: 0.8rem 0.95rem;
   overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
 }
 
-.prose code {
+.prose :not(pre) > code {
   font-family: var(--font-mono);
-  font-size: 0.86em;
+  font-size: 0.84em;
   border-radius: 0.36rem;
   background: var(--color-inline-code-bg);
-  padding: 0.08rem 0.32rem;
+  padding: 0.12rem 0.38rem;
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.06);
 }
 
 .prose pre code {
   background: transparent;
   padding: 0;
   color: var(--color-pre-code);
+  font-size: inherit;
+}
+
+.prose pre.shiki,
+.docs-shiki-block .shiki {
+  margin: 0.7rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.72rem;
+  padding: 0.8rem 0.95rem;
+  overflow-x: auto;
+  background: var(--color-prose-pre-bg);
+}
+
+.docs-shiki-block .shiki {
+  margin: 0;
+}
+
+.docs-shiki-block .shiki code {
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.dark .prose .shiki,
+.dark .prose .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
+html:not(.dark) .prose .shiki,
+html:not(.dark) .prose .shiki span {
+  color: var(--shiki-light) !important;
+  background-color: var(--shiki-light-bg) !important;
 }
 
 .prose a {
   color: var(--color-prose-link);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: currentColor;
+  transition: text-decoration-color 160ms ease;
+}
+
+.prose a:hover {
+  text-decoration-color: transparent;
+}
+
+:root[data-theme='light'] .prose :not(pre) > code {
+  box-shadow: 0 0 0 0.5px rgba(17, 42, 71, 0.1);
+}
+
+.prose-api h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  color: var(--color-heading-soft);
+}
+
+.prose-api h2 code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  letter-spacing: 0;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  padding: 0.1rem 0.44rem;
+  border-radius: 0.36rem;
+}
+
+.prose-api .api-returns {
+  margin-top: 0.4rem;
+  font-size: 0.86rem;
+  color: var(--color-muted-foreground);
+  line-height: 1.5;
+}
+
+.prose-api .api-returns code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--color-foreground);
+  background: var(--color-inline-code-bg);
+  padding: 0.08rem 0.3rem;
+  border-radius: 0.28rem;
+}
+
+.prose-api .api-field-list {
+  margin: 0.3rem 0 0.6rem;
+  padding-left: 1.2rem;
+  list-style: none;
+}
+
+.prose-api .api-field-list li {
+  position: relative;
+  padding-left: 0.1rem;
+  margin: 0.2rem 0;
+  font-size: 1rem;
+  color: var(--color-prose-list);
+  line-height: 1.6;
+}
+
+.prose-api .api-field-list li::before {
+  content: '';
+  position: absolute;
+  left: -0.9rem;
+  top: 0.62em;
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--color-muted-foreground);
+  opacity: 0.5;
 }
 
 .docs-kicker {

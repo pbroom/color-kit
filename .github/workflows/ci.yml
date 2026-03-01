@@ -60,3 +60,32 @@ jobs:
 
       - name: Run lint (including React Compiler hooks rules)
         run: pnpm lint
+
+  plane-bench:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build core package
+        run: pnpm --filter @color-kit/core build
+
+      - name: Run plane benchmark
+        run: pnpm --filter @color-kit/core bench:plane > plane-bench-results.json
+
+      - name: Upload plane benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plane-bench-results
+          path: plane-bench-results.json

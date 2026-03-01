@@ -142,6 +142,24 @@ export const componentApiDocs: ComponentApiDocs = {
       description:
         'Optional sampled vertex overlay for each computed contrast contour.',
     },
+    {
+      name: 'GamutBoundaryLayer.points / ChromaBandLayer.points',
+      type: 'LinePoint[]',
+      description:
+        'Optional external precomputed points (for example from Plane API) used instead of internal sampling.',
+    },
+    {
+      name: 'ContrastRegionLayer.paths',
+      type: 'ColorAreaContrastRegionPoint[][]',
+      description:
+        'Optional external precomputed contour paths (for example from Plane API) used instead of internal sampling.',
+    },
+    {
+      name: 'FallbackPointsLayer.p3Point / srgbPoint',
+      type: '{ x: number; y: number; color?: Color }',
+      description:
+        'Optional external fallback marker positions and colors for plane-driven overlays.',
+    },
   ],
   colorWheel: [
     {

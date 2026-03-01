@@ -72,6 +72,8 @@ export interface ContrastRegionLayerProps extends LayerProps {
   adaptiveMaxDepth?: number;
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
+  /** Optional precomputed contour paths (for plane-driven overlays). */
+  paths?: ColorAreaContrastRegionPoint[][];
 }
 
 interface ContrastRegionPathContextValue {
@@ -786,6 +788,7 @@ export function ContrastRegionLayer({
   adaptiveBaseSteps,
   adaptiveMaxDepth,
   cornerRadius,
+  paths: pathsProp,
   children,
   ...props
 }: ContrastRegionLayerProps) {
@@ -1051,6 +1054,12 @@ export function ContrastRegionLayer({
   );
 
   const syncComputation = useMemo(() => {
+    if (pathsProp) {
+      return {
+        paths: pathsProp,
+        computeTimeMs: 0,
+      };
+    }
     if (isDragging && canUseWorkerOffload()) {
       return null;
     }
@@ -1065,7 +1074,7 @@ export function ContrastRegionLayer({
       paths,
       computeTimeMs: nowMs() - start,
     };
-  }, [axes, contrastReference, isDragging, options, resolvedHue]);
+  }, [axes, contrastReference, isDragging, options, pathsProp, resolvedHue]);
   const workerPayload = useMemo(
     () => ({
       reference: contrastReference,
@@ -1096,11 +1105,15 @@ export function ContrastRegionLayer({
   );
 
   const rawPathsAreFresh = useMemo(() => {
+    if (pathsProp) return true;
     if (!(isDragging && canUseWorkerOffload())) return true;
     return hasCurrentWorkerResponse;
-  }, [hasCurrentWorkerResponse, isDragging]);
+  }, [hasCurrentWorkerResponse, isDragging, pathsProp]);
 
   const rawPaths = useMemo(() => {
+    if (pathsProp) {
+      return pathsProp;
+    }
     if (isDragging && canUseWorkerOffload()) {
       if (hasCurrentWorkerResponse && workerPaths != null) {
         return workerPaths.paths;
@@ -1115,6 +1128,7 @@ export function ContrastRegionLayer({
     isDragging,
     lastStablePaths,
     hasCurrentWorkerResponse,
+    pathsProp,
     syncComputation,
     workerPaths,
   ]);
@@ -1201,7 +1215,7 @@ export function ContrastRegionLayer({
   }, [hasCurrentWorkerResponse, isDragging, syncComputation, workerPaths]);
 
   useEffect(() => {
-    if (!canUseWorkerOffload() || !isDragging) {
+    if (pathsProp || !canUseWorkerOffload() || !isDragging) {
       queueMicrotask(() => setActiveWorkerRequestId(null));
       return;
     }
@@ -1284,7 +1298,7 @@ export function ContrastRegionLayer({
     return () => {
       worker.removeEventListener('message', onMessage);
     };
-  }, [emitMetrics, isDragging, syncComputation, workerPayload]);
+  }, [emitMetrics, isDragging, pathsProp, syncComputation, workerPayload]);
 
   useEffect(() => {
     return () => {
@@ -1425,7 +1439,13 @@ export function ContrastRegionLayer({
       interactive={props.interactive ?? false}
       data-color-area-contrast-region-layer=""
       data-quality={resolvedQuality}
-      data-worker={isDragging && canUseWorkerOffload() ? 'async' : 'sync'}
+      data-worker={
+        pathsProp
+          ? 'external'
+          : isDragging && canUseWorkerOffload()
+            ? 'async'
+            : 'sync'
+      }
     >
       <ContrastRegionPathContext.Provider value={pathContextValue}>
         {children}

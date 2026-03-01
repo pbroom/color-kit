@@ -1,0 +1,188 @@
+import { ComponentPreview } from '@/components/component-preview';
+import { PlaneLayerIntegrationDemo } from '@/components/plane-api-demos';
+
+# Plane API
+
+The Plane API is a geometry-first layer for color tooling. It lets you:
+
+- define a normalized 2D plane in OKLCH
+- run deterministic geometry queries
+- compile points and paths into SVG-ready output
+- reuse query results with stable cache keys
+
+It is intentionally UI-agnostic and pairs with `@color-kit/react` adapters.
+
+## Live Preview
+
+<ComponentPreview>
+  <PlaneLayerIntegrationDemo />
+</ComponentPreview>
+
+## Quick Start
+
+```ts
+import {
+  createPlaneQuery,
+  resolvePlaneDefinition,
+  toSvgPath,
+} from '@color-kit/core';
+
+const plane = resolvePlaneDefinition({
+  model: 'oklch',
+  x: { channel: 'l', range: [0, 1] },
+  y: { channel: 'c', range: [0, 0.4] },
+  fixed: { h: 250, alpha: 1 },
+});
+
+const query = createPlaneQuery(plane);
+const p3Boundary = query.gamutBoundary({
+  gamut: 'display-p3',
+  samplingMode: 'adaptive',
+});
+
+const d = toSvgPath(p3Boundary.points, { closeLoop: true, precision: 2 });
+```
+
+## Plane Definition and Mapping
+
+Use `resolvePlaneDefinition()` to normalize ranges and fixed channels.
+
+```ts
+import {
+  colorToPlane,
+  planeToColor,
+  resolvePlaneDefinition,
+} from '@color-kit/core';
+
+const plane = resolvePlaneDefinition({
+  x: { channel: 'l', range: [0.1, 0.95] },
+  y: { channel: 'c', range: [0, 0.32] },
+  fixed: { h: 280, alpha: 1 },
+});
+
+const point = colorToPlane(plane, { l: 0.6, c: 0.2, h: 280, alpha: 1 });
+const color = planeToColor(plane, point);
+```
+
+## Query Execution Patterns
+
+Use either the fluent API (`createPlaneQuery`) or stateless helpers (`runPlaneQuery` / `runPlaneQueries`).
+
+```ts
+import { createPlaneQuery, runPlaneQueries } from '@color-kit/core';
+
+const query = createPlaneQuery(plane);
+const boundary = query.gamutBoundary({ gamut: 'srgb' });
+
+const results = runPlaneQueries(plane, [
+  { kind: 'chromaBand', requestedChroma: 0.22, gamut: 'display-p3' },
+  {
+    kind: 'fallbackPoint',
+    color: { l: 0.7, c: 0.28, h: 280, alpha: 1 },
+    gamut: 'srgb',
+  },
+]);
+```
+
+For per-query details, see [Plane Queries](/docs/api/plane-queries).
+
+## Compile and Cache
+
+Use compile helpers to convert points/paths to deterministic SVG `d` strings.
+
+```ts
+import {
+  PlaneQueryCache,
+  createPlaneQuery,
+  runCachedPlaneQuery,
+  runPlaneQuery,
+  toSvgCompoundPath,
+  toSvgPath,
+} from '@color-kit/core';
+
+const cache = new PlaneQueryCache();
+const boundaryQuery = {
+  kind: 'gamutBoundary',
+  gamut: 'display-p3',
+  samplingMode: 'adaptive',
+} as const;
+
+const boundary = runCachedPlaneQuery(cache, plane, boundaryQuery, () =>
+  runPlaneQuery(plane, boundaryQuery),
+);
+const query = createPlaneQuery(plane);
+const region = query.contrastRegion({
+  reference: { l: 1, c: 0, h: 0, alpha: 1 },
+  threshold: 4.5,
+});
+
+const boundaryD = toSvgPath(boundary.points, { closeLoop: true });
+const regionD = toSvgCompoundPath(region.paths, { closeLoop: true });
+```
+
+## Region Geometry Operations
+
+Region utilities are useful when you need set operations or post-processing.
+
+```ts
+import { parse } from '@color-kit/core';
+import {
+  differenceRegions,
+  rotateRegion,
+  scaleRegion,
+  unionRegions,
+} from '@color-kit/core';
+
+const reference = parse('#ffffff');
+const aa = runPlaneQuery(plane, {
+  kind: 'contrastRegion',
+  reference,
+  threshold: 4.5,
+});
+const aaa = runPlaneQuery(plane, {
+  kind: 'contrastRegion',
+  reference,
+  threshold: 7,
+});
+
+const aaOnly = differenceRegions(aa, aaa, { resolution: 96 });
+const merged = unionRegions(aaOnly, aaa, { resolution: 96 });
+const transformed = rotateRegion(scaleRegion(merged, 0.96), 6);
+```
+
+## React Bridge (`ColorApi`)
+
+`@color-kit/react` exposes adapter helpers that map Plane API results into ColorArea UI coordinates.
+
+```ts
+import { ColorApi } from '@color-kit/react';
+
+const axes = ColorApi.resolveColorAreaAxes({
+  x: { channel: 'l' },
+  y: { channel: 'c' },
+});
+
+const boundary = ColorApi.getColorAreaPlaneGamutBoundaryPoints(
+  referenceColor,
+  axes,
+  {
+    gamut: 'display-p3',
+    samplingMode: 'adaptive',
+  },
+);
+```
+
+## API Surface (Grouped)
+
+- **Definition + mapping**
+  - `resolvePlaneDefinition`, `resolvePlaneHue`, `colorToPlane`, `planeToColor`
+- **Queries**
+  - `createPlaneQuery`, `runPlaneQuery`, `runPlaneQueries`, `colorAtPlanePoint`
+- **Compile + cache**
+  - `toSvgPath`, `toSvgCompoundPath`, `createPlaneQueryKey`, `PlaneQueryCache`, `runCachedPlaneQuery`
+- **Geometry operations**
+  - `unionRegions`, `intersectRegions`, `differenceRegions`, `containsPoint`, `nearestPointOnPath`, `pointDistance`
+- **Transforms**
+  - `translateRegion`, `scaleRegion`, `rotateRegion`, `projectRegionBetweenPlanes`
+- **React adapters**
+  - `ColorApi.createColorAreaPlane`, `ColorApi.getColorAreaPlaneGamutBoundaryPoints`, `ColorApi.getColorAreaPlaneContrastRegionPaths`, `ColorApi.getColorAreaPlaneChromaBandPoints`, `ColorApi.getColorAreaPlaneFallbackPoint`

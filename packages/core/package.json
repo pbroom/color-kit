@@ -28,7 +28,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "bench:max-chroma-for-hue": "node bench/max-chroma-for-hue-bench.mjs",
-    "bench:overlay": "node bench/overlay-interpolation-bench.mjs"
+    "bench:overlay": "node bench/overlay-interpolation-bench.mjs",
+    "bench:plane": "node bench/plane-bench.mjs"
   },
   "keywords": [
     "color",

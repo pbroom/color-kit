@@ -127,3 +127,18 @@ export { getContrastBadgeSummary } from './contrast-badge.js';
 export type { ContrastBadgeSummary } from './contrast-badge.js';
 
 export { SWATCH_COLOR_EQUAL_EPSILON, colorsEqual } from './swatch-group.js';
+
+export {
+  colorFromColorAreaPlanePosition,
+  createColorAreaPlane,
+  getColorAreaPlaneChromaBandPoints,
+  getColorAreaPlaneContrastRegionPaths,
+  getColorAreaPlaneFallbackPoint,
+  getColorAreaPlaneGamutBoundaryPoints,
+  getColorAreaPlaneThumbPosition,
+} from './plane.js';
+export type {
+  ColorAreaPlaneBoundaryPoint,
+  ColorAreaPlaneFallbackPoint,
+  ColorAreaPlanePoint,
+} from './plane.js';

@@ -9,6 +9,7 @@ import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Line } from './line.js';
 import { PathPointsOverlay } from './path-points-overlay.js';
+import type { LinePoint } from './line.js';
 
 export type ColorAreaLayerQuality = 'auto' | 'high' | 'medium' | 'low';
 
@@ -28,6 +29,8 @@ export interface GamutBoundaryLayerProps extends LayerProps {
   pointProps?: SVGAttributes<SVGCircleElement>;
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
+  /** Optional precomputed path points (for plane-driven overlays). */
+  points?: LinePoint[];
 }
 
 function resolveQuality(
@@ -123,6 +126,7 @@ export function GamutBoundaryLayer({
   showPathPoints = false,
   pointProps,
   cornerRadius,
+  points: pointsProp,
   children,
   ...props
 }: GamutBoundaryLayerProps) {
@@ -245,28 +249,31 @@ export function GamutBoundaryLayer({
     samplingMode,
   ]);
 
-  const points = useMemo(
-    () =>
-      getColorAreaGamutBoundaryPoints(hue ?? requested.h, axes, {
-        gamut,
-        steps: effectiveSteps,
-        simplifyTolerance,
-        samplingMode,
-        adaptiveTolerance: resolvedAdaptiveTolerance,
-        adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
-      }),
-    [
-      axes,
-      effectiveSteps,
+  const computedPoints = useMemo(() => {
+    if (pointsProp) {
+      return pointsProp;
+    }
+    return getColorAreaGamutBoundaryPoints(hue ?? requested.h, axes, {
       gamut,
-      hue,
-      requested.h,
+      steps: effectiveSteps,
       simplifyTolerance,
       samplingMode,
-      resolvedAdaptiveTolerance,
-      resolvedAdaptiveMaxDepth,
-    ],
-  );
+      adaptiveTolerance: resolvedAdaptiveTolerance,
+      adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
+    });
+  }, [
+    axes,
+    effectiveSteps,
+    gamut,
+    hue,
+    pointsProp,
+    requested.h,
+    simplifyTolerance,
+    samplingMode,
+    resolvedAdaptiveTolerance,
+    resolvedAdaptiveMaxDepth,
+  ]);
+  const points = pointsProp ?? computedPoints;
 
   return (
     <Layer
