@@ -75,3 +75,4 @@ This file defines top-level guidance for Codex in this repository.
 - **Document query helpers where behavior diverges by axis support**: In plane query docs, call out empty-result behavior for non-lightness/chroma axes so API consumers understand intentional no-op outputs.
 - **Encode defaults directly on API input fields**: For discoverability in editor hovers, put `@default`-style guidance on input interface properties (for example `PlaneDefinition`/`PlaneAxis`) in addition to function-level docs.
 - **Keep plane multi-model support adapter-first**: Expand models by converting at `colorToPlane`/`planeToColor` boundaries while keeping LC query kernels and packed/WASM payloads canonical; add explicit non-OKLCH tests to lock schema stability.
+- **Fallback preflight when Turbo is unavailable**: If `pnpm turbo` fails due missing `turbo.json`, run equivalent checks with `pnpm lint`, `pnpm -r exec tsc --noEmit`, and `pnpm build` before submitting stacks.
