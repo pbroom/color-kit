@@ -1,5 +1,5 @@
 import type { PlaneDefinition, PlanePoint, PlaneRegion } from './types.js';
-import { colorToPlane, planeToColor, resolvePlaneDefinition } from './plane.js';
+import { colorToPlane, plane, planeToColor } from './plane.js';
 
 function mapRegion(
   region: PlaneRegion,
@@ -56,8 +56,8 @@ export function projectRegionBetweenPlanes(
   targetPlaneDefinition: PlaneDefinition,
   region: PlaneRegion,
 ): PlaneRegion {
-  const sourcePlane = resolvePlaneDefinition(sourcePlaneDefinition);
-  const targetPlane = resolvePlaneDefinition(targetPlaneDefinition);
+  const sourcePlane = plane(sourcePlaneDefinition);
+  const targetPlane = plane(targetPlaneDefinition);
   return mapRegion(region, (point) => {
     const color = planeToColor(sourcePlane, point);
     return colorToPlane(targetPlane, color);

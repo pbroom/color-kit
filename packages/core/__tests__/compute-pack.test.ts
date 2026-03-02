@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   getPackedPlaneQueryTransferables,
   packPlaneQueryResults,
+  plane,
   parse,
-  resolvePlaneDefinition,
   runPackedPlaneQueries,
   runPlaneQueries,
   unpackPlaneQueryResults,
@@ -105,7 +105,7 @@ function expectQueryResultClose(
 
 describe('plane compute packing', () => {
   it('round-trips batched plane query results through packed transfer format', () => {
-    const plane = resolvePlaneDefinition({
+    const resolvedPlane = plane({
       model: 'oklch',
       x: { channel: 'l', range: [0, 1] },
       y: { channel: 'c', range: [0, 0.4] },
@@ -150,7 +150,7 @@ describe('plane compute packing', () => {
       },
     ];
 
-    const expected = runPlaneQueries(plane, queries);
+    const expected = runPlaneQueries(resolvedPlane, queries);
     const packed = packPlaneQueryResults(expected);
     const unpacked = unpackPlaneQueryResults(packed);
 
@@ -160,8 +160,47 @@ describe('plane compute packing', () => {
     }
   });
 
+  it('keeps packed LC/LCHA schema stable for non-OKLCH planes', () => {
+    const rgbPlane = plane({
+      model: 'rgb',
+      x: { channel: 'r', range: [0, 255] },
+      y: { channel: 'g', range: [0, 255] },
+      fixed: { b: 180, alpha: 1 },
+    });
+
+    const results = runPlaneQueries(rgbPlane, [
+      {
+        kind: 'gamutBoundary',
+        gamut: 'srgb',
+      },
+      {
+        kind: 'fallbackPoint',
+        color: parse('#ef4444'),
+        gamut: 'display-p3',
+      },
+      {
+        kind: 'gradient',
+        from: parse('#2563eb'),
+        to: parse('#ef4444'),
+        steps: 5,
+      },
+    ]);
+
+    const packed = packPlaneQueryResults(results);
+    expect(packed.pointLC.length).toBe(packed.pointXY.length);
+    for (let index = 0; index < packed.pointLC.length; index += 1) {
+      expect(Number.isNaN(packed.pointLC[index])).toBe(true);
+    }
+
+    const unpacked = unpackPlaneQueryResults(packed);
+    expect(unpacked).toHaveLength(3);
+    expect(unpacked[0]).toMatchObject({ kind: 'gamutBoundary', points: [] });
+    expect(unpacked[1]).toMatchObject({ kind: 'fallbackPoint' });
+    expect(unpacked[2]).toMatchObject({ kind: 'gradient' });
+  });
+
   it('returns transferable buffers for worker postMessage', () => {
-    const plane = resolvePlaneDefinition({
+    const resolvedPlane = plane({
       model: 'oklch',
       x: { channel: 'l', range: [0, 1] },
       y: { channel: 'c', range: [0, 0.4] },
@@ -169,7 +208,7 @@ describe('plane compute packing', () => {
     });
 
     const packed = runPackedPlaneQueries({
-      plane,
+      plane: resolvedPlane,
       queries: [
         {
           kind: 'gamutBoundary',

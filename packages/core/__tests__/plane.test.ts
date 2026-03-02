@@ -7,32 +7,96 @@ import {
   createPlaneQuery,
   differenceRegions,
   intersectRegions,
+  plane,
   planeToColor,
   pointDistance,
   projectRegionBetweenPlanes,
-  resolvePlaneDefinition,
   rotateRegion,
   runCachedPlaneQuery,
   scaleRegion,
+  toHct,
+  toHsl,
+  toHsv,
+  toOklab,
+  toOklch,
+  toP3,
+  toRgb,
   toSvgCompoundPath,
   toSvgPath,
   translateRegion,
   unionRegions,
 } from '../src/index.js';
 
-const basePlane = resolvePlaneDefinition({
+const basePlane = plane({
   model: 'oklch',
   x: { channel: 'l', range: [0, 1] },
   y: { channel: 'c', range: [0, 0.4] },
   fixed: { h: 250, alpha: 1 },
 });
 
+function expectUnitInterval(value: number): void {
+  expect(value).toBeGreaterThanOrEqual(0);
+  expect(value).toBeLessThanOrEqual(1);
+}
+
+function expectRgbApprox(
+  actual: { r: number; g: number; b: number; alpha: number },
+  expected: { r: number; g: number; b: number; alpha: number },
+  tolerance: number,
+): void {
+  expect(Math.abs(actual.r - expected.r)).toBeLessThanOrEqual(tolerance);
+  expect(Math.abs(actual.g - expected.g)).toBeLessThanOrEqual(tolerance);
+  expect(Math.abs(actual.b - expected.b)).toBeLessThanOrEqual(tolerance);
+  expect(actual.alpha).toBeCloseTo(expected.alpha, 3);
+}
+
 describe('plane api', () => {
+  it('uses default x/y axes when omitted', () => {
+    const defaulted = plane();
+    expect(defaulted.x.channel).toBe('l');
+    expect(defaulted.y.channel).toBe('c');
+    expect(defaulted.x.range).toEqual([0, 1]);
+    expect(defaulted.y.range).toEqual([0.4, 0]);
+
+    const partial = plane({ fixed: { h: 250 } });
+    expect(partial.x.channel).toBe('l');
+    expect(partial.y.channel).toBe('c');
+    expect(partial.fixed.h).toBe(250);
+  });
+
+  it('resolves model-specific default channels/ranges and validates model channels', () => {
+    const rgbPlane = plane({ model: 'rgb' });
+    expect(rgbPlane.x.channel).toBe('r');
+    expect(rgbPlane.y.channel).toBe('g');
+    expect(rgbPlane.x.range).toEqual([0, 255]);
+    expect(rgbPlane.y.range).toEqual([0, 255]);
+
+    const hslPlane = plane({ model: 'hsl' });
+    expect(hslPlane.x.channel).toBe('h');
+    expect(hslPlane.y.channel).toBe('s');
+    expect(hslPlane.x.range).toEqual([0, 360]);
+    expect(hslPlane.y.range).toEqual([100, 0]);
+
+    const p3Plane = plane({ model: 'display-p3' });
+    expect(p3Plane.x.channel).toBe('r');
+    expect(p3Plane.y.channel).toBe('g');
+    expect(p3Plane.x.range).toEqual([0, 1]);
+    expect(p3Plane.y.range).toEqual([0, 1]);
+
+    expect(() =>
+      plane({
+        model: 'rgb',
+        x: { channel: 'l' },
+        y: { channel: 'g' },
+      }),
+    ).toThrowError(/not supported by model "rgb"/);
+  });
+
   it('resolves and validates plane definitions', () => {
     expect(basePlane.model).toBe('oklch');
     expect(basePlane.fixed.h).toBe(250);
     expect(() =>
-      resolvePlaneDefinition({
+      plane({
         x: { channel: 'l' },
         y: { channel: 'l' },
       }),
@@ -49,6 +113,100 @@ describe('plane api', () => {
     expect(point.y).toBeLessThanOrEqual(1);
     expect(roundtrip.l).toBeCloseTo(color.l, 6);
     expect(roundtrip.c).toBeCloseTo(color.c, 6);
+  });
+
+  it('maps points through adapters for all supported models', () => {
+    const color = parse('#3b82f6');
+    const expectedRgb = toRgb(color);
+    const oklch = toOklch(color);
+    const rgb = toRgb(color);
+    const hsl = toHsl(color);
+    const hsv = toHsv(color);
+    const oklab = toOklab(color);
+    const hct = toHct(color);
+    const p3 = toP3(color);
+
+    const cases = [
+      {
+        name: 'oklch',
+        definition: {
+          model: 'oklch' as const,
+          x: { channel: 'l' as const },
+          y: { channel: 'c' as const },
+          fixed: { h: oklch.h, alpha: oklch.alpha },
+        },
+        tolerance: 2,
+      },
+      {
+        name: 'rgb',
+        definition: {
+          model: 'rgb' as const,
+          x: { channel: 'r' as const },
+          y: { channel: 'g' as const },
+          fixed: { b: rgb.b, alpha: rgb.alpha },
+        },
+        tolerance: 2,
+      },
+      {
+        name: 'hsl',
+        definition: {
+          model: 'hsl' as const,
+          x: { channel: 'h' as const },
+          y: { channel: 's' as const },
+          fixed: { l: hsl.l, alpha: hsl.alpha },
+        },
+        tolerance: 3,
+      },
+      {
+        name: 'hsv',
+        definition: {
+          model: 'hsv' as const,
+          x: { channel: 'h' as const },
+          y: { channel: 's' as const },
+          fixed: { v: hsv.v, alpha: hsv.alpha },
+        },
+        tolerance: 3,
+      },
+      {
+        name: 'oklab',
+        definition: {
+          model: 'oklab' as const,
+          x: { channel: 'a' as const },
+          y: { channel: 'b' as const },
+          fixed: { L: oklab.L, alpha: oklab.alpha },
+        },
+        tolerance: 2,
+      },
+      {
+        name: 'hct',
+        definition: {
+          model: 'hct' as const,
+          x: { channel: 'h' as const },
+          y: { channel: 'c' as const },
+          fixed: { t: hct.t, alpha: hct.alpha },
+        },
+        tolerance: 10,
+      },
+      {
+        name: 'display-p3',
+        definition: {
+          model: 'display-p3' as const,
+          x: { channel: 'r' as const },
+          y: { channel: 'g' as const },
+          fixed: { b: p3.b, alpha: p3.alpha },
+        },
+        tolerance: 2,
+      },
+    ];
+
+    for (const entry of cases) {
+      const resolvedPlane = plane(entry.definition);
+      const point = colorToPlane(resolvedPlane, color);
+      expectUnitInterval(point.x);
+      expectUnitInterval(point.y);
+      const roundtrip = planeToColor(resolvedPlane, point);
+      expectRgbApprox(toRgb(roundtrip), expectedRgb, entry.tolerance);
+    }
   });
 
   it('executes mvp plane queries', () => {
@@ -92,6 +250,57 @@ describe('plane api', () => {
       steps: 9,
     });
     expect(gradient.points).toHaveLength(9);
+  });
+
+  it('keeps LC-only queries gated for non-OKLCH planes', () => {
+    const rgbPlane = plane({
+      model: 'rgb',
+      x: { channel: 'r' },
+      y: { channel: 'g' },
+      fixed: { b: 180, alpha: 1 },
+    });
+    const query = createPlaneQuery(rgbPlane);
+
+    const boundary = query.gamutBoundary({ gamut: 'srgb', steps: 12 });
+    expect(boundary.points).toEqual([]);
+    expect(boundary.hue).toBeGreaterThanOrEqual(0);
+    expect(boundary.hue).toBeLessThan(360);
+
+    const contrastBoundary = query.contrastBoundary({
+      reference: parse('#ffffff'),
+      threshold: 4.5,
+      lightnessSteps: 12,
+      chromaSteps: 12,
+    });
+    expect(contrastBoundary.points).toEqual([]);
+
+    const contrastRegion = query.contrastRegion({
+      reference: parse('#111827'),
+      threshold: 3,
+      lightnessSteps: 12,
+      chromaSteps: 12,
+    });
+    expect(contrastRegion.paths).toEqual([]);
+
+    const chromaBand = query.chromaBand({
+      requestedChroma: 0.2,
+      steps: 8,
+    });
+    expect(chromaBand.points).toEqual([]);
+
+    const fallback = query.fallbackPoint({
+      color: parse('#ef4444'),
+      gamut: 'srgb',
+    });
+    expectUnitInterval(fallback.point.x);
+    expectUnitInterval(fallback.point.y);
+
+    const gradient = query.gradient({
+      from: parse('#2563eb'),
+      to: parse('#ef4444'),
+      steps: 7,
+    });
+    expect(gradient.points).toHaveLength(7);
   });
 
   it('compiles deterministic svg path output and caches query results', () => {

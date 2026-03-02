@@ -8,19 +8,88 @@ import type {
 import type { ChromaBandMode, GamutTarget } from '../gamut/index.js';
 import type { Color } from '../types.js';
 
-export type PlaneModel = 'oklch';
-export type PlaneChannel = 'l' | 'c' | 'h';
+/**
+ * Color models supported by plane geometry.
+ */
+export type PlaneModel =
+  | 'oklch'
+  | 'rgb'
+  | 'hsl'
+  | 'hsv'
+  | 'oklab'
+  | 'hct'
+  | 'display-p3';
 
+/**
+ * Channel identifiers supported by plane axes across all models.
+ */
+export type PlaneChannel =
+  | 'l'
+  | 'c'
+  | 'h'
+  | 'r'
+  | 'g'
+  | 'b'
+  | 's'
+  | 'v'
+  | 'L'
+  | 'a'
+  | 't';
+
+/**
+ * Partial channel bag used for model-relative fixed values.
+ */
+export type PlaneFixedInput = Partial<Record<PlaneChannel, number>> & {
+  alpha?: number;
+};
+
+/**
+ * Resolved model-relative channel bag.
+ */
+export type PlaneModelColor = Partial<Record<PlaneChannel, number>> & {
+  alpha: number;
+};
+
+/**
+ * Axis descriptor used in `plane()` input.
+ */
 export interface PlaneAxis {
+  /**
+   * Channel projected on this axis.
+   */
   channel: PlaneChannel;
+  /**
+   * Optional channel range for this axis.
+   *
+   * Defaults to `PLANE_DEFAULT_RANGES[channel]` when omitted.
+   */
   range?: [number, number];
 }
 
+/**
+ * Input shape accepted by `plane()`.
+ */
 export interface PlaneDefinition {
+  /**
+   * Plane model.
+   *
+   * Defaults to `'oklch'` when omitted.
+   */
   model?: PlaneModel;
-  x: PlaneAxis;
-  y: PlaneAxis;
-  fixed?: Partial<Pick<Color, 'l' | 'c' | 'h' | 'alpha'>>;
+  /**
+   * Horizontal axis. Defaults to `{ channel: 'l' }` when omitted.
+   */
+  x?: PlaneAxis;
+  /**
+   * Vertical axis. Defaults to `{ channel: 'c' }` when omitted.
+   */
+  y?: PlaneAxis;
+  /**
+   * Optional fixed channels for non-axis dimensions.
+   *
+   * Channels are interpreted relative to `model` and defaults are model-specific.
+   */
+  fixed?: PlaneFixedInput;
 }
 
 export interface ResolvedPlaneAxis {
@@ -32,8 +101,13 @@ export interface ResolvedPlaneDefinition {
   model: PlaneModel;
   x: ResolvedPlaneAxis;
   y: ResolvedPlaneAxis;
-  fixed: Pick<Color, 'l' | 'c' | 'h' | 'alpha'>;
+  fixed: PlaneModelColor;
 }
+
+/**
+ * Resolved plane returned by `plane()`.
+ */
+export type Plane = ResolvedPlaneDefinition;
 
 export interface PlanePoint {
   x: number;
