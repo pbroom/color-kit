@@ -1,9 +1,14 @@
 export {
   colorToPlane,
+  plane,
+  planeHue,
+  planeModelChannels,
+  planeModelDefaultRange,
   planeToColor,
   PLANE_DEFAULT_RANGES,
-  resolvePlaneDefinition,
-  resolvePlaneHue,
+  PLANE_MODEL_CHANNELS,
+  PLANE_MODEL_DEFAULT_AXES,
+  PLANE_MODEL_DEFAULT_RANGES,
   usesLightnessAndChroma,
 } from './plane.js';
 
@@ -45,9 +50,10 @@ export {
   scaleRegion,
   translateRegion,
 } from './transforms.js';
-export type { PlaneQueryApi } from './query.js';
+export type { PlaneQueries, PlaneQueryApi, PlaneWithQueries } from './query.js';
 
 export type {
+  Plane,
   PlaneAxis,
   PlaneBoundaryPoint,
   PlaneChromaBandQuery,
@@ -58,12 +64,14 @@ export type {
   PlaneContrastRegionQuery,
   PlaneContrastRegionResult,
   PlaneDefinition,
+  PlaneFixedInput,
   PlaneFallbackPointQuery,
   PlaneFallbackPointResult,
   PlaneGamutBoundaryQuery,
   PlaneGamutBoundaryResult,
   PlaneGradientQuery,
   PlaneGradientResult,
+  PlaneModelColor,
   PlaneModel,
   PlanePoint,
   PlaneQuery,

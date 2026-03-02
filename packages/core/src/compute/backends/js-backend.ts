@@ -1,4 +1,4 @@
-import { resolvePlaneDefinition } from '../../plane/plane.js';
+import { plane } from '../../plane/plane.js';
 import { runPlaneQueries } from '../../plane/query.js';
 import { packPlaneQueryResults } from '../pack.js';
 import type { PlaneComputeBackend } from '../types.js';
@@ -11,10 +11,10 @@ export function createJsPlaneComputeBackend(): PlaneComputeBackend {
   return {
     kind: 'js',
     run(request) {
-      const plane = resolvePlaneDefinition(request.plane);
+      const resolvedPlane = plane(request.plane);
 
       const computeStart = nowMs();
-      const raw = runPlaneQueries(plane, request.queries);
+      const raw = runPlaneQueries(resolvedPlane, request.queries);
       const computeEnd = nowMs();
 
       const marshalStart = nowMs();

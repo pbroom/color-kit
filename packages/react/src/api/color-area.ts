@@ -2,7 +2,8 @@ import type { Color } from '@color-kit/core';
 import {
   clamp,
   createPlaneQuery,
-  resolvePlaneDefinition,
+  plane,
+  PLANE_DEFAULT_RANGES,
   toP3Gamut,
   toSrgbGamut,
   type ContrastApcaPolarity,
@@ -16,6 +17,7 @@ import {
 
 export type ColorAreaChannel = 'l' | 'c' | 'h';
 export type ColorAreaKey = 'ArrowRight' | 'ArrowLeft' | 'ArrowUp' | 'ArrowDown';
+const COLOR_AREA_PLANE_MODEL = 'oklch' as const;
 
 export interface ColorAreaAxis {
   channel: ColorAreaChannel;
@@ -41,9 +43,10 @@ export const COLOR_AREA_DEFAULT_RANGES: Record<
   ColorAreaChannel,
   [number, number]
 > = {
-  l: [0, 1],
-  c: [0, 0.4],
-  h: [0, 360],
+  l: [PLANE_DEFAULT_RANGES.l[0], PLANE_DEFAULT_RANGES.l[1]],
+  // UI Y coordinates are flipped, so keep chroma ascending here.
+  c: [PLANE_DEFAULT_RANGES.c[1], PLANE_DEFAULT_RANGES.c[0]],
+  h: [PLANE_DEFAULT_RANGES.h[0], PLANE_DEFAULT_RANGES.h[1]],
 };
 
 const COLOR_AREA_DEFAULT_AXES: ResolvedColorAreaAxes = {
@@ -174,8 +177,8 @@ function usesLightnessAndChroma(axes: {
 }
 
 function toPlaneDefinition(axes: ResolvedColorAreaAxes, reference: Color) {
-  return resolvePlaneDefinition({
-    model: 'oklch',
+  return plane({
+    model: COLOR_AREA_PLANE_MODEL,
     x: {
       channel: axes.x.channel,
       range: axes.x.range,

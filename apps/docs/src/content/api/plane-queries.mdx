@@ -32,7 +32,18 @@ runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
 - `metric` is available for `contrastBoundary` / `contrastRegion`:
   - `wcag` &mdash; threshold uses ratio values such as `3`, `4.5`, `7`.
   - `apca` &mdash; threshold uses normalized `Lc` values (for example `0.3`, `0.45`, `0.6`) and supports `apcaPolarity` + `apcaRole`.
-- On planes that do not use both lightness and chroma axes, some queries intentionally return empty geometry.
+- On planes that are not `oklch` with `l/c` (or `c/l`) axes, LC-specific queries intentionally return empty geometry.
+
+## Query Capability Matrix
+
+| Query              | Multi-model mapping support        | Requires `oklch` + `l/c` axes            |
+| ------------------ | ---------------------------------- | ---------------------------------------- |
+| `gamutBoundary`    | Returns typed result for any model | Yes (`points` is empty when unsupported) |
+| `contrastBoundary` | Returns typed result for any model | Yes (`points` is empty when unsupported) |
+| `contrastRegion`   | Returns typed result for any model | Yes (`paths` is empty when unsupported)  |
+| `chromaBand`       | Returns typed result for any model | Yes (`points` is empty when unsupported) |
+| `fallbackPoint`    | Yes                                | No                                       |
+| `gradient`         | Yes                                | No                                       |
 
 ## `gamutBoundary`
 
@@ -112,7 +123,7 @@ Samples a band of colors at a given chroma level, useful for showing achievable 
 
 ```ts
 const band = query.chromaBand({
-  mode: 'percentage',
+  mode: 'proportional',
   requestedChroma: 0.2,
   selectedLightness: 0.56,
   gamut: 'display-p3',
