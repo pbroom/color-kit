@@ -1,5 +1,4 @@
-import { ComponentPreview } from '@/components/component-preview';
-import { PlaneLayerIntegrationDemo } from '@/components/plane-api-demos';
+import { PlaneQuickStartDemo } from '@/components/plane-api-demos';
 
 # Plane API
 
@@ -11,12 +10,6 @@ The Plane API is a geometry-first layer for color tooling. It lets you:
 - reuse query results with stable cache keys
 
 It is intentionally UI-agnostic and pairs with `@color-kit/react` adapters.
-
-## Live Preview
-
-<ComponentPreview>
-  <PlaneLayerIntegrationDemo />
-</ComponentPreview>
 
 ## Quick Start
 
@@ -42,6 +35,8 @@ const p3Boundary = query.gamutBoundary({
 
 const d = toSvgPath(p3Boundary.points, { closeLoop: true, precision: 2 });
 ```
+
+<PlaneQuickStartDemo />
 
 ## Plane Definition and Mapping
 

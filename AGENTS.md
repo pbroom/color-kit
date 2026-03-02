@@ -60,3 +60,4 @@ This file defines top-level guidance for Codex in this repository.
 - **Prefer Bash 3-compatible script primitives**: Avoid Bash 4+ built-ins (for example `mapfile`) so scripts run in both CI Linux images and default macOS Bash.
 - **React Compiler disallows ref-driven render state**: Do not read/mutate refs in render to drive UI branching; keep render inputs in state and update via effects when needed.
 - **Source-branch discovery beats assumptions**: Verify whether a requested helper branch still exists before proceeding; if it does not, use the nearest equivalent AGENTS source branch to keep guidance updates moving without guessing.
+- **2026-03-01 — Keep API demos snippet-aligned**: When docs include runnable API demos, derive demo inputs from the adjacent code example and render raw outputs (SVG/JSON) so docs stay implementation-accurate even if UI wrapper components drift.
