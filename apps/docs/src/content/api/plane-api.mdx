@@ -4,7 +4,7 @@ import { PlaneQuickStartDemo } from '@/components/plane-api-demos';
 
 The Plane API is a geometry-first layer for color tooling. It lets you:
 
-- define a normalized 2D plane in OKLCH
+- define a normalized 2D plane in multiple color models
 - run deterministic geometry queries
 - compile points and paths into SVG-ready output
 - reuse query results with stable cache keys
@@ -14,20 +14,11 @@ It is intentionally UI-agnostic and pairs with `@color-kit/react` adapters.
 ## Quick Start
 
 ```ts
-import {
-  createPlaneQuery,
-  resolvePlaneDefinition,
-  toSvgPath,
-} from '@color-kit/core';
+import { createPlaneQuery, plane, toSvgPath } from '@color-kit/core';
 
-const plane = resolvePlaneDefinition({
-  model: 'oklch',
-  x: { channel: 'l', range: [0, 1] },
-  y: { channel: 'c', range: [0, 0.4] },
-  fixed: { h: 250, alpha: 1 },
-});
+const resolvedPlane = plane({ fixed: { h: 250, alpha: 1 } });
 
-const query = createPlaneQuery(plane);
+const query = createPlaneQuery(resolvedPlane);
 const p3Boundary = query.gamutBoundary({
   gamut: 'display-p3',
   samplingMode: 'adaptive',
@@ -38,25 +29,39 @@ const d = toSvgPath(p3Boundary.points, { closeLoop: true, precision: 2 });
 
 <PlaneQuickStartDemo />
 
+## Model Support
+
+`plane({ model })` supports these models:
+
+- `oklch` (`l`, `c`, `h`)
+- `rgb` (`r`, `g`, `b`)
+- `hsl` (`h`, `s`, `l`)
+- `hsv` (`h`, `s`, `v`)
+- `oklab` (`L`, `a`, `b`)
+- `hct` (`h`, `c`, `t`)
+- `display-p3` (`r`, `g`, `b`)
+
+Internally, query computation remains canonical in OKLCH. Mapping helpers (`colorToPlane`, `planeToColor`, `projectRegionBetweenPlanes`, `fallbackPoint`, `gradient`) convert through model adapters, while LC-specific geometry queries remain capability-gated.
+
 ## Plane Definition and Mapping
 
-Use `resolvePlaneDefinition()` to normalize ranges and fixed channels.
+Use `plane()` to normalize ranges and fixed channels. All inputs are optional. Defaults are model-specific:
+
+- axis channels use model defaults (for example `oklch` defaults to `x: l`, `y: c`)
+- ranges use model defaults (for `oklch`, `PLANE_DEFAULT_RANGES`)
+- `fixed` channels are interpreted in the selected model
 
 ```ts
-import {
-  colorToPlane,
-  planeToColor,
-  resolvePlaneDefinition,
-} from '@color-kit/core';
+import { colorToPlane, plane, planeToColor } from '@color-kit/core';
 
-const plane = resolvePlaneDefinition({
+const resolvedPlane = plane({
   x: { channel: 'l', range: [0.1, 0.95] },
   y: { channel: 'c', range: [0, 0.32] },
   fixed: { h: 280, alpha: 1 },
 });
 
-const point = colorToPlane(plane, { l: 0.6, c: 0.2, h: 280, alpha: 1 });
-const color = planeToColor(plane, point);
+const point = colorToPlane(resolvedPlane, { l: 0.6, c: 0.2, h: 280, alpha: 1 });
+const color = planeToColor(resolvedPlane, point);
 ```
 
 ## Query Execution Patterns
@@ -170,7 +175,7 @@ const boundary = ColorApi.getColorAreaGamutBoundaryPoints(
 ## API Surface (Grouped)
 
 - **Definition + mapping**
-  - `resolvePlaneDefinition`, `resolvePlaneHue`, `colorToPlane`, `planeToColor`
+  - `plane`, `planeHue`, `colorToPlane`, `planeToColor`
 - **Queries**
   - `createPlaneQuery`, `runPlaneQuery`, `runPlaneQueries`, `colorAtPlanePoint`
 - **Compile + cache**

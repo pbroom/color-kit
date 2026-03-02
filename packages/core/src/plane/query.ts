@@ -8,6 +8,7 @@ import { contrastRegionPath, contrastRegionPaths } from '../contrast/index.js';
 import { generateScale } from '../scale/index.js';
 import type { Color } from '../types.js';
 import type {
+  Plane,
   PlaneChromaBandQuery,
   PlaneChromaBandResult,
   PlaneContrastBoundaryQuery,
@@ -23,29 +24,30 @@ import type {
   PlaneGradientResult,
   PlaneQuery,
   PlaneQueryResult,
-  ResolvedPlaneDefinition,
 } from './types.js';
 import {
   colorToPlane,
+  plane,
+  planeHue,
   planeToColor,
-  resolvePlaneDefinition,
-  resolvePlaneHue,
   usesLightnessAndChroma,
 } from './plane.js';
 
+/**
+ * Converts an `(l, c)` boundary point into normalized plane coordinates.
+ */
 function toPlaneBoundaryPoint(
-  plane: ResolvedPlaneDefinition,
+  resolvedPlane: Plane,
   hue: number,
   point: { l: number; c: number },
 ) {
   const color: Color = {
-    ...plane.fixed,
     l: point.l,
     c: point.c,
     h: hue,
-    alpha: plane.fixed.alpha,
+    alpha: resolvedPlane.fixed.alpha,
   };
-  const planePoint = colorToPlane(plane, color);
+  const planePoint = colorToPlane(resolvedPlane, color);
   return {
     l: point.l,
     c: point.c,
@@ -54,21 +56,26 @@ function toPlaneBoundaryPoint(
   };
 }
 
+/**
+ * Computes a gamut boundary contour projected into the target plane.
+ *
+ * Returns an empty point list when the plane is not a lightness/chroma pairing.
+ */
 export function getPlaneGamutBoundary(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneGamutBoundaryQuery, 'kind'> = {},
 ): PlaneGamutBoundaryResult {
-  const plane = resolvePlaneDefinition(planeDefinition);
-  if (!usesLightnessAndChroma(plane)) {
+  const resolvedPlane = plane(planeDefinition);
+  if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'gamutBoundary',
       gamut: query.gamut ?? 'srgb',
-      hue: resolvePlaneHue(plane, query.hue),
+      hue: planeHue(resolvedPlane, query.hue),
       points: [],
     };
   }
 
-  const hue = resolvePlaneHue(plane, query.hue);
+  const hue = planeHue(resolvedPlane, query.hue);
   const boundary = gamutBoundaryPath(hue, {
     gamut: query.gamut ?? 'srgb',
     steps: query.steps,
@@ -82,24 +89,31 @@ export function getPlaneGamutBoundary(
     kind: 'gamutBoundary',
     gamut: query.gamut ?? 'srgb',
     hue,
-    points: boundary.map((point) => toPlaneBoundaryPoint(plane, hue, point)),
+    points: boundary.map((point) =>
+      toPlaneBoundaryPoint(resolvedPlane, hue, point),
+    ),
   };
 }
 
+/**
+ * Computes a contrast-threshold contour projected into the target plane.
+ *
+ * Returns an empty point list when the plane is not a lightness/chroma pairing.
+ */
 export function getPlaneContrastBoundary(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneContrastBoundaryQuery, 'kind'>,
 ): PlaneContrastBoundaryResult {
-  const plane = resolvePlaneDefinition(planeDefinition);
-  if (!usesLightnessAndChroma(plane)) {
+  const resolvedPlane = plane(planeDefinition);
+  if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'contrastBoundary',
-      hue: resolvePlaneHue(plane, query.hue),
+      hue: planeHue(resolvedPlane, query.hue),
       points: [],
     };
   }
 
-  const hue = resolvePlaneHue(plane, query.hue);
+  const hue = planeHue(resolvedPlane, query.hue);
   const path = contrastRegionPath(query.reference, hue, {
     gamut: query.gamut,
     metric: query.metric,
@@ -126,24 +140,31 @@ export function getPlaneContrastBoundary(
   return {
     kind: 'contrastBoundary',
     hue,
-    points: path.map((point) => toPlaneBoundaryPoint(plane, hue, point)),
+    points: path.map((point) =>
+      toPlaneBoundaryPoint(resolvedPlane, hue, point),
+    ),
   };
 }
 
+/**
+ * Computes one or more filled contrast regions projected into the target plane.
+ *
+ * Returns an empty path list when the plane is not a lightness/chroma pairing.
+ */
 export function getPlaneContrastRegion(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneContrastRegionQuery, 'kind'>,
 ): PlaneContrastRegionResult {
-  const plane = resolvePlaneDefinition(planeDefinition);
-  if (!usesLightnessAndChroma(plane)) {
+  const resolvedPlane = plane(planeDefinition);
+  if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'contrastRegion',
-      hue: resolvePlaneHue(plane, query.hue),
+      hue: planeHue(resolvedPlane, query.hue),
       paths: [],
     };
   }
 
-  const hue = resolvePlaneHue(plane, query.hue);
+  const hue = planeHue(resolvedPlane, query.hue);
   const paths = contrastRegionPaths(query.reference, hue, {
     gamut: query.gamut,
     metric: query.metric,
@@ -171,27 +192,33 @@ export function getPlaneContrastRegion(
     kind: 'contrastRegion',
     hue,
     paths: paths.map((path) =>
-      path.map((point) => toPlaneBoundaryPoint(plane, hue, point)),
+      path.map((point) => toPlaneBoundaryPoint(resolvedPlane, hue, point)),
     ),
   };
 }
 
+/**
+ * Samples a chroma band and projects the resulting points into the target plane.
+ *
+ * Returns an empty point list when the plane is not a lightness/chroma pairing.
+ */
 export function getPlaneChromaBand(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneChromaBandQuery, 'kind'> = {},
 ): PlaneChromaBandResult {
-  const plane = resolvePlaneDefinition(planeDefinition);
-  if (!usesLightnessAndChroma(plane)) {
+  const resolvedPlane = plane(planeDefinition);
+  if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'chromaBand',
-      hue: resolvePlaneHue(plane, query.hue),
+      hue: planeHue(resolvedPlane, query.hue),
       points: [],
     };
   }
 
-  const hue = resolvePlaneHue(plane, query.hue);
-  const selectedLightness = query.selectedLightness ?? plane.fixed.l;
-  const requestedChroma = query.requestedChroma ?? plane.fixed.c;
+  const hue = planeHue(resolvedPlane, query.hue);
+  const selectedLightness =
+    query.selectedLightness ?? resolvedPlane.fixed.l ?? 0.5;
+  const requestedChroma = query.requestedChroma ?? resolvedPlane.fixed.c ?? 0;
   const band = chromaBand(hue, requestedChroma, {
     gamut: query.gamut,
     mode: query.mode,
@@ -203,28 +230,31 @@ export function getPlaneChromaBand(
     maxChroma: query.maxChroma,
     tolerance: query.tolerance,
     maxIterations: query.maxIterations,
-    alpha: query.alpha ?? plane.fixed.alpha,
+    alpha: query.alpha ?? resolvedPlane.fixed.alpha,
   });
 
   return {
     kind: 'chromaBand',
     hue,
     points: band.map((color) =>
-      toPlaneBoundaryPoint(plane, hue, { l: color.l, c: color.c }),
+      toPlaneBoundaryPoint(resolvedPlane, hue, { l: color.l, c: color.c }),
     ),
   };
 }
 
+/**
+ * Maps a color into the requested gamut and returns its projected plane point.
+ */
 export function getPlaneFallbackPoint(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneFallbackPointQuery, 'kind'>,
 ): PlaneFallbackPointResult {
-  const plane = resolvePlaneDefinition(planeDefinition);
+  const resolvedPlane = plane(planeDefinition);
   const mapped =
     query.gamut === 'display-p3'
       ? toP3Gamut(query.color)
       : toSrgbGamut(query.color);
-  const point = colorToPlane(plane, mapped);
+  const point = colorToPlane(resolvedPlane, mapped);
 
   return {
     kind: 'fallbackPoint',
@@ -237,15 +267,18 @@ export function getPlaneFallbackPoint(
   };
 }
 
+/**
+ * Samples evenly spaced gradient points and projects each color to the plane.
+ */
 export function samplePlaneGradient(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneGradientQuery, 'kind'>,
 ): PlaneGradientResult {
-  const plane = resolvePlaneDefinition(planeDefinition);
+  const resolvedPlane = plane(planeDefinition);
   const steps = query.steps ?? 16;
   const colors = generateScale(query.from, query.to, Math.max(2, steps));
   const points = colors.map((color) => {
-    const point = colorToPlane(plane, color);
+    const point = colorToPlane(resolvedPlane, color);
     return {
       x: point.x,
       y: point.y,
@@ -259,6 +292,9 @@ export function samplePlaneGradient(
   };
 }
 
+/**
+ * Executes one stateless plane query and returns a typed result payload.
+ */
 export function runPlaneQuery(
   planeDefinition: PlaneDefinition,
   query: PlaneQuery,
@@ -283,6 +319,9 @@ export function runPlaneQuery(
   }
 }
 
+/**
+ * Executes a list of stateless plane queries in order.
+ */
 export function runPlaneQueries(
   planeDefinition: PlaneDefinition,
   queries: PlaneQuery[],
@@ -290,7 +329,7 @@ export function runPlaneQueries(
   return queries.map((query) => runPlaneQuery(planeDefinition, query));
 }
 
-export interface PlaneQueryApi {
+export interface PlaneQueries {
   gamutBoundary: (
     query?: Omit<PlaneGamutBoundaryQuery, 'kind'>,
   ) => PlaneGamutBoundaryResult;
@@ -309,9 +348,16 @@ export interface PlaneQueryApi {
   gradient: (query: Omit<PlaneGradientQuery, 'kind'>) => PlaneGradientResult;
 }
 
+export type PlaneQueryApi = PlaneQueries;
+
+export interface PlaneWithQueries extends PlaneQueries, Plane {}
+
+/**
+ * Creates a fluent query helper bound to a single plane definition.
+ */
 export function createPlaneQuery(
   planeDefinition: PlaneDefinition,
-): PlaneQueryApi {
+): PlaneQueries {
   return {
     gamutBoundary: (query = {}) =>
       getPlaneGamutBoundary(planeDefinition, query),
@@ -324,10 +370,13 @@ export function createPlaneQuery(
   };
 }
 
+/**
+ * Converts a normalized plane point directly into a color for the given plane.
+ */
 export function colorAtPlanePoint(
   planeDefinition: PlaneDefinition,
   point: { x: number; y: number },
 ): Color {
-  const plane = resolvePlaneDefinition(planeDefinition);
-  return planeToColor(plane, point);
+  const resolvedPlane = plane(planeDefinition);
+  return planeToColor(resolvedPlane, point);
 }

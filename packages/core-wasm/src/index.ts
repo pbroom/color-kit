@@ -3,7 +3,7 @@ import {
   createJsPlaneComputeBackend,
   createPlaneComputeScheduler,
   packPlaneQueryResults,
-  resolvePlaneDefinition,
+  plane,
   runPlaneQuery,
   type Color,
   type PlaneComputeBackend,
@@ -13,8 +13,8 @@ import {
   type PlaneComputeSchedulerOptions,
   type PlaneContrastBoundaryResult,
   type PlaneContrastRegionResult,
+  type Plane,
   type PlaneQueryResult,
-  type ResolvedPlaneDefinition,
 } from '@color-kit/core';
 import {
   decodeContrastKernelResponse,
@@ -154,12 +154,11 @@ function toKernelPayloadFromResult(
 }
 
 function toPlaneRegionPoint(
-  plane: ResolvedPlaneDefinition,
+  plane: Plane,
   hue: number,
   point: WasmContrastKernelPoint,
 ): { x: number; y: number; l: number; c: number } {
   const color: Color = {
-    ...plane.fixed,
     l: point[0],
     c: point[1],
     h: hue,
@@ -175,7 +174,7 @@ function toPlaneRegionPoint(
 }
 
 function applyKernelNormalizationToResults(
-  plane: ResolvedPlaneDefinition,
+  plane: Plane,
   rawResults: PlaneQueryResult[],
   mappings: WasmContrastResultMapping[],
   normalized: WasmContrastKernelQueryPayload[],
@@ -254,13 +253,13 @@ export function createWasmPlaneComputeBackendFromKernel(
   return {
     kind: 'wasm',
     run(request) {
-      const plane = resolvePlaneDefinition(request.plane);
+      const resolvedPlane = plane(request.plane);
       const computeStart = nowMs();
       const rawResults: PlaneQueryResult[] = [];
       const contrastQueries: WasmContrastKernelQueryPayload[] = [];
       const contrastMappings: WasmContrastResultMapping[] = [];
       for (const query of request.queries) {
-        const result = runPlaneQuery(plane, query);
+        const result = runPlaneQuery(resolvedPlane, query);
         const rawResultIndex = rawResults.length;
         rawResults.push(result);
         if (
@@ -292,7 +291,7 @@ export function createWasmPlaneComputeBackendFromKernel(
           );
         }
         applyKernelNormalizationToResults(
-          plane,
+          resolvedPlane,
           rawResults,
           contrastMappings,
           normalized.results,
