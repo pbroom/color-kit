@@ -51,7 +51,7 @@ export type PlaneModelColor = Partial<Record<PlaneChannel, number>> & {
 };
 
 /**
- * Axis descriptor used in `plane()` input.
+ * Axis descriptor used in `definePlane()` input.
  */
 export interface PlaneAxis {
   /**
@@ -67,7 +67,7 @@ export interface PlaneAxis {
 }
 
 /**
- * Input shape accepted by `plane()`.
+ * Input shape accepted by `definePlane()`.
  */
 export interface PlaneDefinition {
   /**
@@ -105,7 +105,7 @@ export interface ResolvedPlaneDefinition {
 }
 
 /**
- * Resolved plane returned by `plane()`.
+ * Resolved plane returned by `definePlane()`.
  */
 export type Plane = ResolvedPlaneDefinition;
 

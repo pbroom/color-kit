@@ -1,14 +1,13 @@
-import { createPlaneQuery, plane, toSvgPath } from '@color-kit/core';
+import { definePlane, sense, toSvgPath } from '@color-kit/core';
 
-const resolvedPlane = plane({ fixed: { h: 250, alpha: 1 } });
+const plane = definePlane({ fixed: { h: 250, alpha: 1 } });
 
-const query = createPlaneQuery(resolvedPlane);
+const query = sense(plane);
 const p3Boundary = query.gamutBoundary({
   gamut: 'display-p3',
   samplingMode: 'adaptive',
 });
 const boundaryPath = toSvgPath(p3Boundary.points, {
-  closeLoop: true,
   precision: 2,
 });
 

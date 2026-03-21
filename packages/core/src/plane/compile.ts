@@ -6,15 +6,20 @@ import type {
 } from './types.js';
 
 export interface SvgPathCompileOptions {
+  /** Appends `Z` to close the generated path. */
   closeLoop?: boolean;
+  /** Decimal precision used when formatting SVG coordinates. */
   precision?: number;
+  /** Multiplier applied to normalized plane coordinates before formatting. */
   scale?: number;
 }
 
+/** Formats a numeric coordinate with a fixed decimal precision. */
 function format(value: number, precision: number): string {
   return value.toFixed(precision);
 }
 
+/** Compiles a sequence of plane points into a single SVG path segment. */
 function pathForPoints(
   points: PlanePoint[],
   options: SvgPathCompileOptions = {},
@@ -33,6 +38,15 @@ function pathForPoints(
   return commands.join(' ');
 }
 
+/**
+ * Compiles one point sequence into an SVG path string.
+ *
+ * @param points Ordered point list in normalized plane coordinates.
+ * @param options SVG path formatting options.
+ * @param options.closeLoop Appends `Z` to close the generated path.
+ * @param options.precision Decimal precision used for coordinate formatting.
+ * @param options.scale Multiplier applied to normalized point coordinates.
+ */
 export function toSvgPath(
   points: PlanePoint[],
   options: SvgPathCompileOptions = {},
@@ -40,6 +54,15 @@ export function toSvgPath(
   return pathForPoints(points, options);
 }
 
+/**
+ * Compiles multiple point sequences into one compound SVG path string.
+ *
+ * @param paths Collection of point lists in normalized plane coordinates.
+ * @param options SVG path formatting options applied to each subpath.
+ * @param options.closeLoop Appends `Z` to close each generated subpath.
+ * @param options.precision Decimal precision used for coordinate formatting.
+ * @param options.scale Multiplier applied to normalized point coordinates.
+ */
 export function toSvgCompoundPath(
   paths: PlanePoint[][],
   options: SvgPathCompileOptions = {},
@@ -50,6 +73,7 @@ export function toSvgCompoundPath(
     .join(' ');
 }
 
+/** Deterministically serializes values for stable cache keys. */
 function stableStringify(value: unknown): string {
   if (value == null || typeof value !== 'object') {
     return JSON.stringify(value);
@@ -67,6 +91,12 @@ function stableStringify(value: unknown): string {
     .join(',')}}`;
 }
 
+/**
+ * Creates a deterministic cache key for a plane/query pair.
+ *
+ * @param plane Plane definition used for the query.
+ * @param query Query definition run against the plane.
+ */
 export function createPlaneQueryKey(
   plane: PlaneDefinition,
   query: PlaneQuery,
@@ -74,13 +104,16 @@ export function createPlaneQueryKey(
   return `${stableStringify(plane)}:${stableStringify(query)}`;
 }
 
+/** Caches plane query results by a deterministic plane/query key. */
 export class PlaneQueryCache {
   private entries = new Map<string, PlaneQueryResult>();
 
+  /** Gets a cached query result for the given plane/query pair. */
   get(plane: PlaneDefinition, query: PlaneQuery): PlaneQueryResult | undefined {
     return this.entries.get(createPlaneQueryKey(plane, query));
   }
 
+  /** Stores a query result for the given plane/query pair. */
   set(
     plane: PlaneDefinition,
     query: PlaneQuery,
@@ -89,14 +122,17 @@ export class PlaneQueryCache {
     this.entries.set(createPlaneQueryKey(plane, query), result);
   }
 
+  /** Returns `true` when a cached value exists for the plane/query pair. */
   has(plane: PlaneDefinition, query: PlaneQuery): boolean {
     return this.entries.has(createPlaneQueryKey(plane, query));
   }
 
+  /** Clears all cached query entries. */
   clear(): void {
     this.entries.clear();
   }
 
+  /** Deletes all entries whose key starts with `prefix`. */
   invalidateByPrefix(prefix: string): number {
     let removed = 0;
     for (const key of this.entries.keys()) {
@@ -108,6 +144,14 @@ export class PlaneQueryCache {
   }
 }
 
+/**
+ * Executes a plane query with cache lookup and cache write-through.
+ *
+ * @param cache Cache instance used for reads and writes.
+ * @param plane Plane definition used for the query.
+ * @param query Query definition run against the plane.
+ * @param execute Function invoked only on cache miss.
+ */
 export function runCachedPlaneQuery(
   cache: PlaneQueryCache,
   plane: PlaneDefinition,

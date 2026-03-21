@@ -16,7 +16,8 @@ const [demoSource, pageSource] = await Promise.all([
 const checks = [
   {
     label: 'quick-start fixed channels',
-    pattern: /plane\(\{\s*fixed:\s*\{\s*h:\s*250,\s*alpha:\s*1\s*\}\s*\}\)/,
+    pattern:
+      /definePlane\(\{\s*fixed:\s*\{\s*h:\s*250,\s*alpha:\s*1\s*\}\s*\}\)/,
   },
   {
     label: 'quick-start svg output options',
