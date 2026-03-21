@@ -142,19 +142,19 @@ palette.setActiveGamut('srgb');
 
 ### Plane Geometry
 
-`plane()` `createPlaneQuery()` `runPlaneQuery()` `toSvgPath()` `toSvgCompoundPath()` `PlaneQueryCache()`
+`definePlane()` `sense()` `runPlaneQuery()` `toSvgPath()` `toSvgCompoundPath()` `PlaneQueryCache()`
 
 ```ts
-import { createPlaneQuery, plane, toSvgPath } from '@color-kit/core';
+import { definePlane, sense, toSvgPath } from '@color-kit/core';
 
-const resolvedPlane = plane({
+const resolvedPlane = definePlane({
   model: 'oklch',
   x: { channel: 'l', range: [0, 1] },
   y: { channel: 'c', range: [0, 0.4] },
   fixed: { h: 250, alpha: 1 },
 });
 
-const query = createPlaneQuery(resolvedPlane);
+const query = sense(resolvedPlane);
 const boundary = query.gamutBoundary({ gamut: 'display-p3' });
 const d = toSvgPath(boundary.points);
 ```

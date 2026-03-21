@@ -4,10 +4,9 @@ import {
   PlaneQueryCache,
   colorToPlane,
   containsPoint,
-  createPlaneQuery,
+  definePlane,
   differenceRegions,
   intersectRegions,
-  plane,
   planeToColor,
   pointDistance,
   projectRegionBetweenPlanes,
@@ -25,9 +24,10 @@ import {
   toSvgPath,
   translateRegion,
   unionRegions,
+  sense,
 } from '../src/index.js';
 
-const basePlane = plane({
+const basePlane = definePlane({
   model: 'oklch',
   x: { channel: 'l', range: [0, 1] },
   y: { channel: 'c', range: [0, 0.4] },
@@ -52,39 +52,39 @@ function expectRgbApprox(
 
 describe('plane api', () => {
   it('uses default x/y axes when omitted', () => {
-    const defaulted = plane();
+    const defaulted = definePlane();
     expect(defaulted.x.channel).toBe('l');
     expect(defaulted.y.channel).toBe('c');
     expect(defaulted.x.range).toEqual([0, 1]);
     expect(defaulted.y.range).toEqual([0.4, 0]);
 
-    const partial = plane({ fixed: { h: 250 } });
+    const partial = definePlane({ fixed: { h: 250 } });
     expect(partial.x.channel).toBe('l');
     expect(partial.y.channel).toBe('c');
     expect(partial.fixed.h).toBe(250);
   });
 
   it('resolves model-specific default channels/ranges and validates model channels', () => {
-    const rgbPlane = plane({ model: 'rgb' });
+    const rgbPlane = definePlane({ model: 'rgb' });
     expect(rgbPlane.x.channel).toBe('r');
     expect(rgbPlane.y.channel).toBe('g');
     expect(rgbPlane.x.range).toEqual([0, 255]);
     expect(rgbPlane.y.range).toEqual([0, 255]);
 
-    const hslPlane = plane({ model: 'hsl' });
+    const hslPlane = definePlane({ model: 'hsl' });
     expect(hslPlane.x.channel).toBe('h');
     expect(hslPlane.y.channel).toBe('s');
     expect(hslPlane.x.range).toEqual([0, 360]);
     expect(hslPlane.y.range).toEqual([100, 0]);
 
-    const p3Plane = plane({ model: 'display-p3' });
+    const p3Plane = definePlane({ model: 'display-p3' });
     expect(p3Plane.x.channel).toBe('r');
     expect(p3Plane.y.channel).toBe('g');
     expect(p3Plane.x.range).toEqual([0, 1]);
     expect(p3Plane.y.range).toEqual([0, 1]);
 
     expect(() =>
-      plane({
+      definePlane({
         model: 'rgb',
         x: { channel: 'l' },
         y: { channel: 'g' },
@@ -96,7 +96,7 @@ describe('plane api', () => {
     expect(basePlane.model).toBe('oklch');
     expect(basePlane.fixed.h).toBe(250);
     expect(() =>
-      plane({
+      definePlane({
         x: { channel: 'l' },
         y: { channel: 'l' },
       }),
@@ -200,7 +200,7 @@ describe('plane api', () => {
     ];
 
     for (const entry of cases) {
-      const resolvedPlane = plane(entry.definition);
+      const resolvedPlane = definePlane(entry.definition);
       const point = colorToPlane(resolvedPlane, color);
       expectUnitInterval(point.x);
       expectUnitInterval(point.y);
@@ -210,7 +210,7 @@ describe('plane api', () => {
   });
 
   it('executes mvp plane queries', () => {
-    const query = createPlaneQuery(basePlane);
+    const query = sense(basePlane);
     const boundary = query.gamutBoundary({ gamut: 'srgb', steps: 16 });
     expect(boundary.points.length).toBeGreaterThan(8);
 
@@ -253,13 +253,13 @@ describe('plane api', () => {
   });
 
   it('keeps LC-only queries gated for non-OKLCH planes', () => {
-    const rgbPlane = plane({
+    const rgbPlane = definePlane({
       model: 'rgb',
       x: { channel: 'r' },
       y: { channel: 'g' },
       fixed: { b: 180, alpha: 1 },
     });
-    const query = createPlaneQuery(rgbPlane);
+    const query = sense(rgbPlane);
 
     const boundary = query.gamutBoundary({ gamut: 'srgb', steps: 12 });
     expect(boundary.points).toEqual([]);
@@ -304,7 +304,7 @@ describe('plane api', () => {
   });
 
   it('compiles deterministic svg path output and caches query results', () => {
-    const query = createPlaneQuery(basePlane);
+    const query = sense(basePlane);
     const boundaryQuery = {
       kind: 'gamutBoundary' as const,
       gamut: 'display-p3' as const,

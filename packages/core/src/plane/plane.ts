@@ -29,6 +29,8 @@ import type {
 
 /**
  * Channel sets supported by each plane model.
+ *
+ * Use this to validate channel names before constructing model-specific axes.
  */
 export const PLANE_MODEL_CHANNELS: Record<PlaneModel, readonly PlaneChannel[]> =
   {
@@ -43,6 +45,8 @@ export const PLANE_MODEL_CHANNELS: Record<PlaneModel, readonly PlaneChannel[]> =
 
 /**
  * Default x/y axis channels for each plane model.
+ *
+ * `definePlane()` falls back to these defaults when explicit axes are omitted.
  */
 export const PLANE_MODEL_DEFAULT_AXES: Record<
   PlaneModel,
@@ -65,12 +69,17 @@ const OKLCH_DEFAULT_RANGES: Record<'l' | 'c' | 'h', [number, number]> = {
 
 /**
  * Backwards-compatible OKLCH defaults (`l`, `c`, `h`).
+ *
+ * Prefer `PLANE_MODEL_DEFAULT_RANGES` for model-aware usage.
  */
 export const PLANE_DEFAULT_RANGES: Record<'l' | 'c' | 'h', [number, number]> =
   OKLCH_DEFAULT_RANGES;
 
 /**
  * Default axis ranges for each model's channels.
+ *
+ * Ranges may be descending (for example `[100, 0]`) to intentionally invert an
+ * axis direction in normalized space.
  */
 export const PLANE_MODEL_DEFAULT_RANGES: Record<
   PlaneModel,
@@ -401,12 +410,16 @@ const PLANE_MODEL_SPECS: Record<PlaneModel, PlaneModelSpec> = {
   },
 };
 
+/** Returns conversion/range behavior for a specific plane model. */
 function planeModelSpec(model: PlaneModel): PlaneModelSpec {
   return PLANE_MODEL_SPECS[model];
 }
 
 /**
  * Returns the channels supported by a plane model.
+ *
+ * @param model Plane model to inspect.
+ * @returns Ordered channel list for the model.
  */
 export function planeModelChannels(model: PlaneModel): readonly PlaneChannel[] {
   return planeModelSpec(model).channels;
@@ -414,6 +427,10 @@ export function planeModelChannels(model: PlaneModel): readonly PlaneChannel[] {
 
 /**
  * Resolves the model default range for a channel.
+ *
+ * @param model Plane model to inspect.
+ * @param channel Channel whose default range should be read.
+ * @returns Model default range, or `undefined` when the channel is unsupported.
  */
 export function planeModelDefaultRange(
   model: PlaneModel,
@@ -425,6 +442,9 @@ export function planeModelDefaultRange(
 
 /**
  * Resolves and validates an axis range.
+ *
+ * Uses the provided range when present; otherwise falls back to the model's
+ * channel default range.
  */
 function planeRange(
   model: PlaneModel,
@@ -434,14 +454,16 @@ function planeRange(
 ): [number, number] {
   if (range) {
     if (!isFiniteNumber(range[0]) || !isFiniteNumber(range[1])) {
-      throw new Error('plane() axis ranges must contain finite numeric values');
+      throw new Error(
+        'definePlane() axis ranges must contain finite numeric values',
+      );
     }
     return [range[0], range[1]];
   }
   const fallback = modelSpec.defaultRanges[channel];
   if (!fallback) {
     throw new Error(
-      `plane() channel "${channel}" is not supported by model "${model}"`,
+      `definePlane() channel "${channel}" is not supported by model "${model}"`,
     );
   }
   return [fallback[0], fallback[1]];
@@ -449,6 +471,9 @@ function planeRange(
 
 /**
  * Normalizes a single plane axis descriptor into a fully-resolved axis object.
+ *
+ * Validates that the channel exists for the selected model and resolves the
+ * final axis range.
  */
 function planeAxis(
   model: PlaneModel,
@@ -460,7 +485,7 @@ function planeAxis(
 ): ResolvedPlaneAxis {
   if (!modelSpec.channels.includes(axis.channel)) {
     throw new Error(
-      `plane() channel "${axis.channel}" is not supported by model "${model}"`,
+      `definePlane() channel "${axis.channel}" is not supported by model "${model}"`,
     );
   }
   return {
@@ -481,7 +506,9 @@ function fixedColor(modelSpec: PlaneModelSpec, fixed?: PlaneFixedInput) {
  */
 function validateDistinctAxes(definition: Plane): void {
   if (definition.x.channel === definition.y.channel) {
-    throw new Error('plane() requires distinct channels for x and y axes');
+    throw new Error(
+      'definePlane() requires distinct channels for x and y axes',
+    );
   }
 }
 
@@ -504,10 +531,14 @@ function denormalizeInRange(norm: number, range: [number, number]): number {
 /**
  * Resolves plane input into a normalized plane object.
  *
- * @param planeObject - Plane definition. All fields optional; see {@link PlaneDefinition} for defaults.
- * @returns Normalized plane safe for query and projection.
+ * @param planeObject Plane input object.
+ * @param planeObject.model Target model (`oklch`, `rgb`, `hsl`, `hsv`, `oklab`, `hct`, `display-p3`).
+ * @param planeObject.x Optional x-axis descriptor; defaults to model defaults.
+ * @param planeObject.y Optional y-axis descriptor; defaults to model defaults.
+ * @param planeObject.fixed Optional fixed channel values clamped for the model.
+ * @returns Fully-resolved plane safe for query and projection.
  */
-export function plane(planeObject: PlaneDefinition = {}): Plane {
+export function definePlane(planeObject: PlaneDefinition = {}): Plane {
   const model = planeObject.model ?? 'oklch';
   const modelSpec = planeModelSpec(model);
   const defaultAxes = modelSpec.defaultAxes;
@@ -525,8 +556,8 @@ export function plane(planeObject: PlaneDefinition = {}): Plane {
 /**
  * Projects a normalized point on the plane back into a color value.
  *
- * @param resolvedPlane - Fully-resolved plane descriptor.
- * @param point - Normalized plane point (`x`, `y` in `[0..1]`).
+ * @param resolvedPlane Fully-resolved plane descriptor.
+ * @param point Normalized plane point (`x`, `y` in `[0..1]`).
  * @returns A color with plane channels denormalized into channel ranges.
  */
 export function planeToColor(resolvedPlane: Plane, point: PlanePoint): Color {
@@ -549,8 +580,8 @@ export function planeToColor(resolvedPlane: Plane, point: PlanePoint): Color {
 /**
  * Projects a color value into normalized plane coordinates.
  *
- * @param resolvedPlane - Fully-resolved plane descriptor.
- * @param color - Color to project.
+ * @param resolvedPlane Fully-resolved plane descriptor.
+ * @param color Color to project.
  * @returns A normalized plane point (`x`, `y` in `[0..1]`).
  */
 export function colorToPlane(resolvedPlane: Plane, color: Color): PlanePoint {
@@ -575,7 +606,7 @@ export function colorToPlane(resolvedPlane: Plane, color: Color): PlanePoint {
 /**
  * Returns whether a plane's two axes are exactly the lightness/chroma pair.
  *
- * @param resolvedPlane - Fully-resolved plane descriptor.
+ * @param resolvedPlane Fully-resolved plane descriptor.
  * @returns `true` when axes are `l/c` or `c/l`; otherwise `false`.
  */
 export function usesLightnessAndChroma(resolvedPlane: Plane): boolean {
@@ -589,8 +620,11 @@ export function usesLightnessAndChroma(resolvedPlane: Plane): boolean {
 /**
  * Resolves the effective hue angle for a plane query.
  *
- * @param resolvedPlane - Fully-resolved plane descriptor.
- * @param hue - Optional explicit hue override.
+ * Resolution order: explicit `hue` override -> fixed plane hue -> model color
+ * hue derived from fixed channels.
+ *
+ * @param resolvedPlane Fully-resolved plane descriptor.
+ * @param hue Optional explicit hue override.
  * @returns Normalized hue in `[0, 360)`.
  */
 export function planeHue(resolvedPlane: Plane, hue?: number): number {

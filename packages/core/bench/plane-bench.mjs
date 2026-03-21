@@ -15,7 +15,7 @@ if (!existsSync(distEntry)) {
   process.exit(1);
 }
 
-const { createPlaneQuery, plane, parse, toSvgPath, toSvgCompoundPath } =
+const { definePlane, parse, sense, toSvgPath, toSvgCompoundPath } =
   await import(distEntry);
 
 const WARMUP = 2;
@@ -52,13 +52,13 @@ function runCase(label, fn) {
   };
 }
 
-const resolvedPlane = plane({
+const resolvedPlane = definePlane({
   model: 'oklch',
   x: { channel: 'l', range: [0, 1] },
   y: { channel: 'c', range: [0, 0.4] },
   fixed: { h: 0, alpha: 1 },
 });
-const query = createPlaneQuery(resolvedPlane);
+const query = sense(resolvedPlane);
 const reference = parse('#ffffff');
 
 const boundary = runCase('plane.gamutBoundary adaptive', () =>

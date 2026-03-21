@@ -14,11 +14,11 @@ It is intentionally UI-agnostic and pairs with `@color-kit/react` adapters.
 ## Quick Start
 
 ```ts
-import { createPlaneQuery, plane, toSvgPath } from '@color-kit/core';
+import { definePlane, sense, toSvgPath } from '@color-kit/core';
 
-const resolvedPlane = plane({ fixed: { h: 250, alpha: 1 } });
+const resolvedPlane = definePlane({ fixed: { h: 250, alpha: 1 } });
 
-const query = createPlaneQuery(resolvedPlane);
+const query = sense(resolvedPlane);
 const p3Boundary = query.gamutBoundary({
   gamut: 'display-p3',
   samplingMode: 'adaptive',
@@ -31,7 +31,7 @@ const d = toSvgPath(p3Boundary.points, { closeLoop: true, precision: 2 });
 
 ## Model Support
 
-`plane({ model })` supports these models:
+`definePlane({ model })` supports these models:
 
 - `oklch` (`l`, `c`, `h`)
 - `rgb` (`r`, `g`, `b`)
@@ -45,16 +45,16 @@ Internally, query computation remains canonical in OKLCH. Mapping helpers (`colo
 
 ## Plane Definition and Mapping
 
-Use `plane()` to normalize ranges and fixed channels. All inputs are optional. Defaults are model-specific:
+Use `definePlane()` to normalize ranges and fixed channels. All inputs are optional. Defaults are model-specific:
 
 - axis channels use model defaults (for example `oklch` defaults to `x: l`, `y: c`)
 - ranges use model defaults (for `oklch`, `PLANE_DEFAULT_RANGES`)
 - `fixed` channels are interpreted in the selected model
 
 ```ts
-import { colorToPlane, plane, planeToColor } from '@color-kit/core';
+import { colorToPlane, definePlane, planeToColor } from '@color-kit/core';
 
-const resolvedPlane = plane({
+const resolvedPlane = definePlane({
   x: { channel: 'l', range: [0.1, 0.95] },
   y: { channel: 'c', range: [0, 0.32] },
   fixed: { h: 280, alpha: 1 },
@@ -66,12 +66,12 @@ const color = planeToColor(resolvedPlane, point);
 
 ## Query Execution Patterns
 
-Use either the fluent API (`createPlaneQuery`) or stateless helpers (`runPlaneQuery` / `runPlaneQueries`).
+Use either the fluent API (`sense`) or stateless helpers (`runPlaneQuery` / `runPlaneQueries`).
 
 ```ts
-import { createPlaneQuery, runPlaneQueries } from '@color-kit/core';
+import { runPlaneQueries, sense } from '@color-kit/core';
 
-const query = createPlaneQuery(plane);
+const query = sense(plane);
 const boundary = query.gamutBoundary({ gamut: 'srgb' });
 
 const results = runPlaneQueries(plane, [
@@ -93,9 +93,9 @@ Use compile helpers to convert points/paths to deterministic SVG `d` strings.
 ```ts
 import {
   PlaneQueryCache,
-  createPlaneQuery,
   runCachedPlaneQuery,
   runPlaneQuery,
+  sense,
   toSvgCompoundPath,
   toSvgPath,
 } from '@color-kit/core';
@@ -110,7 +110,7 @@ const boundaryQuery = {
 const boundary = runCachedPlaneQuery(cache, plane, boundaryQuery, () =>
   runPlaneQuery(plane, boundaryQuery),
 );
-const query = createPlaneQuery(plane);
+const query = sense(plane);
 const region = query.contrastRegion({
   reference: { l: 1, c: 0, h: 0, alpha: 1 },
   threshold: 4.5,
@@ -175,9 +175,9 @@ const boundary = ColorApi.getColorAreaGamutBoundaryPoints(
 ## API Surface (Grouped)
 
 - **Definition + mapping**
-  - `plane`, `planeHue`, `colorToPlane`, `planeToColor`
+  - `definePlane`, `planeHue`, `colorToPlane`, `planeToColor`
 - **Queries**
-  - `createPlaneQuery`, `runPlaneQuery`, `runPlaneQueries`, `colorAtPlanePoint`
+  - `sense`, `runPlaneQuery`, `runPlaneQueries`, `colorAtPlanePoint`
 - **Compile + cache**
   - `toSvgPath`, `toSvgCompoundPath`, `createPlaneQueryKey`, `PlaneQueryCache`, `runCachedPlaneQuery`
 - **Geometry operations**

@@ -1,6 +1,6 @@
 export {
   colorToPlane,
-  plane,
+  definePlane,
   planeHue,
   planeModelChannels,
   planeModelDefaultRange,
@@ -14,7 +14,6 @@ export {
 
 export {
   colorAtPlanePoint,
-  createPlaneQuery,
   getPlaneChromaBand,
   getPlaneContrastBoundary,
   getPlaneContrastRegion,
@@ -23,6 +22,7 @@ export {
   runPlaneQueries,
   runPlaneQuery,
   samplePlaneGradient,
+  sense,
 } from './query.js';
 
 export {
@@ -50,7 +50,7 @@ export {
   scaleRegion,
   translateRegion,
 } from './transforms.js';
-export type { PlaneQueries, PlaneQueryApi, PlaneWithQueries } from './query.js';
+export type { PlaneSense, PlaneSenseApi, PlaneWithSense } from './query.js';
 
 export type {
   Plane,

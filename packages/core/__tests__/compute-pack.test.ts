@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  definePlane,
   getPackedPlaneQueryTransferables,
   packPlaneQueryResults,
-  plane,
   parse,
   runPackedPlaneQueries,
   runPlaneQueries,
@@ -105,7 +105,7 @@ function expectQueryResultClose(
 
 describe('plane compute packing', () => {
   it('round-trips batched plane query results through packed transfer format', () => {
-    const resolvedPlane = plane({
+    const resolvedPlane = definePlane({
       model: 'oklch',
       x: { channel: 'l', range: [0, 1] },
       y: { channel: 'c', range: [0, 0.4] },
@@ -161,7 +161,7 @@ describe('plane compute packing', () => {
   });
 
   it('keeps packed LC/LCHA schema stable for non-OKLCH planes', () => {
-    const rgbPlane = plane({
+    const rgbPlane = definePlane({
       model: 'rgb',
       x: { channel: 'r', range: [0, 255] },
       y: { channel: 'g', range: [0, 255] },
@@ -200,7 +200,7 @@ describe('plane compute packing', () => {
   });
 
   it('returns transferable buffers for worker postMessage', () => {
-    const resolvedPlane = plane({
+    const resolvedPlane = definePlane({
       model: 'oklch',
       x: { channel: 'l', range: [0, 1] },
       y: { channel: 'c', range: [0, 0.4] },

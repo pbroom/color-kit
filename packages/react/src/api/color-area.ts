@@ -1,9 +1,9 @@
 import type { Color } from '@color-kit/core';
 import {
   clamp,
-  createPlaneQuery,
-  plane,
+  definePlane,
   PLANE_DEFAULT_RANGES,
+  sense,
   toP3Gamut,
   toSrgbGamut,
   type ContrastApcaPolarity,
@@ -177,7 +177,7 @@ function usesLightnessAndChroma(axes: {
 }
 
 function toPlaneDefinition(axes: ResolvedColorAreaAxes, reference: Color) {
-  return plane({
+  return definePlane({
     model: COLOR_AREA_PLANE_MODEL,
     x: {
       channel: axes.x.channel,
@@ -253,9 +253,7 @@ export function getColorAreaGamutBoundaryPoints(
     h: hue,
     alpha: 1,
   };
-  const boundary = createPlaneQuery(
-    toPlaneDefinition(axes, reference),
-  ).gamutBoundary({
+  const boundary = sense(toPlaneDefinition(axes, reference)).gamutBoundary({
     gamut: options.gamut ?? 'srgb',
     hue,
     steps: options.steps,
@@ -286,9 +284,7 @@ export function getColorAreaContrastRegionPaths(
     return [];
   }
 
-  const region = createPlaneQuery(
-    toPlaneDefinition(axes, reference),
-  ).contrastRegion({
+  const region = sense(toPlaneDefinition(axes, reference)).contrastRegion({
     reference,
     gamut: options.gamut ?? 'srgb',
     hue,
@@ -337,7 +333,7 @@ export function getColorAreaChromaBandPoints(
     return [];
   }
 
-  const band = createPlaneQuery(toPlaneDefinition(axes, reference)).chromaBand({
+  const band = sense(toPlaneDefinition(axes, reference)).chromaBand({
     requestedChroma: reference.c,
     gamut: options.gamut ?? 'srgb',
     hue,
