@@ -8,6 +8,7 @@ const p3Boundary = query.gamutBoundary({
   samplingMode: 'adaptive',
 });
 const boundaryPath = toSvgPath(p3Boundary.points, {
+  closeLoop: true,
   precision: 2,
 });
 
