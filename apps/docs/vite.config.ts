@@ -36,6 +36,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      '@color-kit/core': resolve(__dirname, '../../packages/core/src/index.ts'),
+      '@color-kit/react': resolve(__dirname, '../../packages/react/src/index.ts'),
+      '@color-kit/core-wasm': resolve(
+        __dirname,
+        '../../packages/core-wasm/src/index.ts',
+      ),
     },
   },
   worker: {
