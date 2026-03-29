@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev:prepare": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/react build",
+    "dev:prepare": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/core-wasm build && pnpm --filter @color-kit/react build",
     "dev": "pnpm dev:prepare && pnpm --parallel --filter @color-kit/core --filter @color-kit/react --filter @color-kit/docs dev",
     "test": "pnpm -r test",
     "ci:wasm": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/core-wasm check:wasm",

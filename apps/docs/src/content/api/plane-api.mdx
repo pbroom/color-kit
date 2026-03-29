@@ -1,4 +1,7 @@
-import { PlaneQuickStartDemo } from '@/components/plane-api-demos';
+import {
+  PlaneQuickStartPlayground,
+  PlaneQuickStartSnippet,
+} from '@/components/plane-api-demos';
 
 # Plane API
 
@@ -13,21 +16,9 @@ It is intentionally UI-agnostic and pairs with `@color-kit/react` adapters.
 
 ## Quick Start
 
-```ts
-import { definePlane, sense, toSvgPath } from '@color-kit/core';
+<PlaneQuickStartSnippet />
 
-const resolvedPlane = definePlane({ fixed: { h: 250, alpha: 1 } });
-
-const query = sense(resolvedPlane);
-const p3Boundary = query.gamutBoundary({
-  gamut: 'display-p3',
-  samplingMode: 'adaptive',
-});
-
-const d = toSvgPath(p3Boundary.points, { closeLoop: true, precision: 2 });
-```
-
-<PlaneQuickStartDemo />
+<PlaneQuickStartPlayground />
 
 ## Model Support
 
