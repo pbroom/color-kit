@@ -1,16 +1,51 @@
-import { definePlane, sense, toSvgPath } from '@color-kit/core';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { planeApiQuickStartSnippet } from '@/lib/plane-api-playground-source';
+import { CodeBlock } from './code-block.js';
+import PlaneApiPlaygroundDemo from './plane-api-playground.demo.js';
 
-const plane = definePlane({ fixed: { h: 250, alpha: 1 } });
+const PlaneApiPlaygroundSandpack = lazy(
+  () => import('./plane-api-playground.sandpack.js'),
+);
 
-const query = sense(plane);
-const p3Boundary = query.gamutBoundary({
-  gamut: 'display-p3',
-  samplingMode: 'adaptive',
-});
-const boundaryPath = toSvgPath(p3Boundary.points, {
-  closeLoop: true,
-  precision: 2,
-});
+const PLAYGROUND_WIDTH = 'min(80rem, max(100%, calc(100vw - 6rem)))';
+
+function PlaneQuickStartStaticPreview() {
+  return (
+    <div
+      style={{
+        width: 320,
+        height: 320,
+        maxWidth: '100%',
+        border: '1px solid oklch(50% 0 0 / 0.1)',
+        borderRadius: '0.5rem',
+        overflow: 'hidden',
+      }}
+    >
+      <PlaneApiPlaygroundDemo />
+    </div>
+  );
+}
+
+function PlaneQuickStartPlaygroundFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="not-prose my-6">
+      <div
+        className="relative left-1/2 -translate-x-1/2 overflow-hidden rounded-xl border border-border/70 bg-card/40 shadow-xs"
+        style={{ width: PLAYGROUND_WIDTH }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function PlaneQuickStartPlaygroundFallback() {
+  return (
+    <div className="flex min-h-[520px] items-center justify-center bg-card/60 p-8">
+      <PlaneQuickStartStaticPreview />
+    </div>
+  );
+}
 
 export function PlaneQuickStartDemo() {
   return (
@@ -27,32 +62,30 @@ export function PlaneQuickStartDemo() {
           padding: '2rem',
         }}
       >
-        <div
-          style={{
-            width: 320,
-            height: 320,
-            maxWidth: '100%',
-            border: '1px solid oklch(50% 0 0 / 0.1)',
-            borderRadius: '0.5rem',
-            overflow: 'hidden',
-          }}
-        >
-          <svg
-            viewBox="0 0 100 100"
-            role="img"
-            aria-label="Display P3 gamut boundary projected to a plane"
-            style={{ display: 'block', width: '100%', height: '100%' }}
-          >
-            <rect x="0" y="0" width="100" height="100" fill="#121314" />
-            <path
-              d={boundaryPath}
-              fill="oklch(82.8% 0.111 230.318 / 0.08)"
-              stroke="oklch(68.5% 0.169 237.323)"
-              strokeWidth="0.5"
-            />
-          </svg>
-        </div>
+        <PlaneQuickStartStaticPreview />
       </div>
     </div>
+  );
+}
+
+export function PlaneQuickStartSnippet() {
+  return (
+    <div className="not-prose my-6 rounded-xl border border-border/70 bg-card/40 p-3">
+      <CodeBlock
+        code={planeApiQuickStartSnippet}
+        language="ts"
+        className="my-0"
+      />
+    </div>
+  );
+}
+
+export function PlaneQuickStartPlayground() {
+  return (
+    <PlaneQuickStartPlaygroundFrame>
+      <Suspense fallback={<PlaneQuickStartPlaygroundFallback />}>
+        <PlaneApiPlaygroundSandpack />
+      </Suspense>
+    </PlaneQuickStartPlaygroundFrame>
   );
 }

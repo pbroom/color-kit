@@ -12,6 +12,8 @@
     "test:color-area-drag": "node scripts/test-color-area-drag.mjs"
   },
   "dependencies": {
+    "@codesandbox/sandpack-react": "file:../../vendor/sandpack/sandpack-react",
+    "@codesandbox/sandpack-themes": "file:../../vendor/sandpack/sandpack-themes",
     "@color-kit/core": "workspace:*",
     "@color-kit/react": "workspace:*",
     "@mdx-js/rollup": "^3.0.0",
@@ -27,6 +29,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.575.0",
+    "lz-string": "^1.5.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router": "^7.0.0",
