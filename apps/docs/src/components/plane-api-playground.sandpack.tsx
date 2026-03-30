@@ -247,7 +247,7 @@ function PlaneApiPlaygroundActions({ onRefresh }: { onRefresh: () => void }) {
   const handleOpenSandbox = useCallback(() => {
     openInCodeSandbox(
       sandpack.files as Record<string, SandpackFileValue>,
-      sandpack.environment,
+      sandpack.environment ?? 'create-react-app',
       sandpack.activeFile,
     );
   }, [sandpack.activeFile, sandpack.environment, sandpack.files]);
