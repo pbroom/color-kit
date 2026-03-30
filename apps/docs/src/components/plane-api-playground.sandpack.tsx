@@ -68,6 +68,48 @@ const coreSourceBySandboxPath = Object.fromEntries(
 
 const coreSandboxPaths = new Set(Object.keys(coreSourceBySandboxPath));
 const SANDBOX_INSTANCE_ID = Math.random().toString(36).slice(2);
+const PLAYGROUND_INDEX_HTML = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plane API Playground</title>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`;
+const PLAYGROUND_STYLES = `:root {
+  color-scheme: dark;
+  font-family:
+    Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #0f1114;
+  color: #f5f7fa;
+}
+
+#root {
+  box-sizing: border-box;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+svg {
+  display: block;
+  height: auto;
+  max-width: 100%;
+}`;
 
 function resolveCoreImport(fromFile: string, specifier: string): string {
   const baseDir = dirnamePosix(fromFile);
@@ -100,6 +142,8 @@ function rewriteCoreSourceImports(source: string, fromFile: string): string {
 
 const PLAYGROUND_FILES = {
   '/App.tsx': planeApiSandpackSource,
+  '/public/index.html': PLAYGROUND_INDEX_HTML,
+  '/styles.css': PLAYGROUND_STYLES,
   ...Object.fromEntries(
     Object.entries(coreSourceBySandboxPath).map(([filePath, code]) => [
       filePath,
@@ -203,7 +247,7 @@ function PlaneApiPlaygroundActions({ onRefresh }: { onRefresh: () => void }) {
   const handleOpenSandbox = useCallback(() => {
     openInCodeSandbox(
       sandpack.files as Record<string, SandpackFileValue>,
-      sandpack.environment,
+      sandpack.environment ?? 'create-react-app',
       sandpack.activeFile,
     );
   }, [sandpack.activeFile, sandpack.environment, sandpack.files]);
@@ -266,7 +310,7 @@ export default function PlaneApiPlaygroundSandpack() {
       files={PLAYGROUND_FILES}
       options={{
         activeFile: '/App.tsx',
-        visibleFiles: ['/App.tsx'],
+        visibleFiles: ['/App.tsx', '/public/index.html', '/styles.css'],
         autorun: true,
         bundlerTimeOut: 120000,
         initMode: 'immediate',
