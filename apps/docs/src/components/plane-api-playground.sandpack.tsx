@@ -6,9 +6,10 @@ import {
   SandpackProvider,
   useSandpack,
 } from '@codesandbox/sandpack-react';
-import { githubLight, sandpackDark } from '@codesandbox/sandpack-themes';
+import { githubLight } from '@codesandbox/sandpack-themes';
 import { compressToBase64 } from 'lz-string';
 import { planeApiSandpackSource } from '@/lib/plane-api-playground-source';
+import { githubDarkSandpackTheme } from '@/lib/sandpack-themes';
 import { useTheme } from './theme-context.js';
 
 const CORE_SOURCE_PREFIX = '../../../../packages/core/src/';
@@ -306,7 +307,7 @@ export default function PlaneApiPlaygroundSandpack() {
           '@material/material-color-utilities': '^0.3.0',
         },
       }}
-      theme={resolvedTheme === 'dark' ? sandpackDark : githubLight}
+      theme={resolvedTheme === 'dark' ? githubDarkSandpackTheme : githubLight}
       files={PLAYGROUND_FILES}
       options={{
         activeFile: '/App.tsx',
