@@ -33,9 +33,9 @@ function createGitHubSandpackTheme(
 
 export const githubDarkSandpackTheme = createGitHubSandpackTheme({
   colors: {
-    surface1: '#0D1117',
+    surface1: '#0D0D0D',
     surface2: '#161B22',
-    surface3: '#30363D',
+    surface3: '#303339',
     clickable: '#8B949E',
     base: '#C9D1D9',
     disabled: '#6E7681',
