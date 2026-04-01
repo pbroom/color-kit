@@ -54,7 +54,7 @@
     "README.md"
   ],
   "scripts": {
-    "prebuild": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/react build && pnpm --filter @color-kit/core-wasm build:all",
+    "prebuild": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/core-wasm build:all && pnpm --filter @color-kit/react build",
     "build": "node ./scripts/build.mjs",
     "dev": "node --watch-path ../core/dist --watch-path ../react/dist --watch-path ../core-wasm/dist --watch-path ./scripts ./scripts/build.mjs",
     "pretest": "pnpm run build",
