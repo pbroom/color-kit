@@ -9,7 +9,7 @@ import {
   type Color,
   type Hsl,
   type Rgb,
-} from '@color-kit/core';
+} from 'color-kit';
 import {
   forwardRef,
   useCallback,

@@ -181,7 +181,7 @@ const gradient = query.gradient({
 `runPlaneQuery` and `runPlaneQueries` accept plain objects instead of fluent method calls. This is useful for queueing work, caching, and passing queries across worker boundaries.
 
 ```ts
-import { runPlaneQueries } from '@color-kit/core';
+import { runPlaneQueries } from 'color-kit';
 
 const [boundary, fallback] = runPlaneQueries(plane, [
   { kind: 'gamutBoundary', gamut: 'display-p3', samplingMode: 'adaptive' },

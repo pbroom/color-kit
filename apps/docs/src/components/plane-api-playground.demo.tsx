@@ -1,4 +1,4 @@
-import { definePlane, sense, toSvgPath } from '@color-kit/core';
+import { definePlane, sense, toSvgPath } from 'color-kit';
 
 // @ck-snippet-start
 const plane = definePlane({ fixed: { h: 250, alpha: 1 } });

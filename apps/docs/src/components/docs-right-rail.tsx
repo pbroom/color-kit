@@ -10,7 +10,7 @@ import {
   toHsv,
   toRgb,
   type Color,
-} from '@color-kit/core';
+} from 'color-kit';
 import { useLocation } from 'react-router';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';

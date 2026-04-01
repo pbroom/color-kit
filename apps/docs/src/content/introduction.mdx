@@ -2,8 +2,8 @@
 
 Color Kit is an open-source toolkit for building color interfaces. It provides:
 
-- **`@color-kit/core`** — Pure TypeScript color utilities with zero dependencies. Conversions, contrast checking, harmony generation, scale creation, and gamut mapping — all built on the OKLCH color space.
-- **`@color-kit/react`** — Headless, accessible React primitives for color areas, sliders, and inputs. Completely unstyled so you can bring your own design system.
+- **`color-kit`** — Pure TypeScript color utilities. Conversions, contrast checking, harmony generation, scale creation, and gamut mapping — all built on the OKLCH color space.
+- **`color-kit/react`** — Headless, accessible React primitives for color areas, sliders, and inputs. Completely unstyled so you can bring your own design system.
 
 ## Why OKLCH?
 
@@ -19,11 +19,12 @@ Traditional color spaces like HSL produce uneven results — a "50% lightness" y
 ## Architecture
 
 ```
-@color-kit/core          (zero deps, any JS runtime)
-  └── @color-kit/react   (React 18+, peer dependency)
+color-kit              (core API at root, any JS runtime)
+  ├── color-kit/core    (alias of the root core API)
+  └── color-kit/react   (React 19+, optional peer dependency)
 ```
 
-The core package works in any JavaScript environment — Node.js, Deno, Bun, browsers, edge functions. The React package depends on core and adds headless UI primitives.
+The root package works in any JavaScript environment — Node.js, Deno, Bun, browsers, edge functions. The React subpath depends on the same core API and adds headless UI primitives.
 
 ## Features
 

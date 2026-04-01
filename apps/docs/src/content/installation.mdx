@@ -2,14 +2,10 @@
 
 ## Package Manager
 
-Install the packages you need:
+Install the package:
 
 ```bash
-# Core utilities only
-pnpm add @color-kit/core
-
-# Core + React components
-pnpm add @color-kit/core @color-kit/react
+pnpm add color-kit
 ```
 
 ## shadcn CLI
@@ -27,7 +23,7 @@ This copies the component source into your project, giving you full ownership of
 ### Using core utilities
 
 ```tsx
-import { parse, toHex, lighten, contrastRatio } from '@color-kit/core';
+import { parse, toHex, lighten, contrastRatio } from 'color-kit';
 
 // Parse any CSS color string
 const blue = parse('#3b82f6');
@@ -44,7 +40,7 @@ console.log(contrastRatio(blue, white)); // ~4.5
 ### Using React components
 
 ```tsx
-import { Color, ColorArea, useColor } from '@color-kit/react';
+import { Color, ColorArea, useColor } from 'color-kit/react';
 
 function MyPicker() {
   const color = useColor({ defaultColor: '#3b82f6' });

@@ -4,7 +4,7 @@ import {
   toP3Gamut,
   toSrgbGamut,
   type ContrastMetric,
-} from '@color-kit/core';
+} from 'color-kit';
 import {
   Background,
   ChromaBandLayer,
@@ -30,7 +30,7 @@ import {
   type ColorSliderChannel,
   type SliderHueGradientMode,
   useColor,
-} from '@color-kit/react';
+} from 'color-kit/react';
 import {
   useCallback,
   useEffect,

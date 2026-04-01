@@ -8,13 +8,13 @@ interface ParsedPlaygroundSource {
   snippet: string;
 }
 
-const SANDBOX_CORE_PACKAGE_ROOT = '/node_modules/@color-kit/core';
-const SANDBOX_CORE_PACKAGE_ENTRY = '../../../color-kit-core/index.ts' as const;
+const SANDBOX_PACKAGE_ROOT = '/node_modules/color-kit';
+const SANDBOX_PACKAGE_ENTRY = '../../color-kit-core/index.ts' as const;
 
-export const planeApiPlaygroundSandboxPackageJsonFile = `${SANDBOX_CORE_PACKAGE_ROOT}/package.json`;
+export const planeApiPlaygroundSandboxPackageJsonFile = `${SANDBOX_PACKAGE_ROOT}/package.json`;
 export const planeApiPlaygroundSandboxPackageJsonSource = JSON.stringify(
   {
-    name: '@color-kit/core',
+    name: 'color-kit',
     private: true,
     type: 'module',
     main: './index.js',
@@ -23,13 +23,16 @@ export const planeApiPlaygroundSandboxPackageJsonSource = JSON.stringify(
       '.': {
         default: './index.js',
       },
+      './core': {
+        default: './index.js',
+      },
     },
   },
   null,
   2,
 );
-export const planeApiPlaygroundSandboxPackageEntryFile = `${SANDBOX_CORE_PACKAGE_ROOT}/index.js`;
-export const planeApiPlaygroundSandboxPackageEntrySource = `export * from '${SANDBOX_CORE_PACKAGE_ENTRY}';`;
+export const planeApiPlaygroundSandboxPackageEntryFile = `${SANDBOX_PACKAGE_ROOT}/index.js`;
+export const planeApiPlaygroundSandboxPackageEntrySource = `export * from '${SANDBOX_PACKAGE_ENTRY}';`;
 
 function trimBlankEdges(text: string): string {
   return text.replace(/^\s*\n/, '').replace(/\n\s*$/, '');

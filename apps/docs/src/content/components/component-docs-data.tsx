@@ -36,7 +36,7 @@ const docs: ComponentDocRegistry = {
       'Use Color to coordinate ColorArea, sliders, and input fields around one canonical requested color state.',
     registryName: 'color',
     demo: ColorProviderDemo,
-    usage: `import { Color, ColorArea, ColorSlider, ColorInput } from '@color-kit/react';
+    usage: `import { Color, ColorArea, ColorSlider, ColorInput } from 'color-kit/react';
 
 export function Picker() {
   return (
@@ -76,7 +76,7 @@ export function Picker() {
   ContrastRegionFill,
   FallbackPointsLayer,
   GamutBoundaryLayer,
-} from '@color-kit/react';
+} from 'color-kit/react';
 
 <ColorArea axes={{ x: { channel: 'l' }, y: { channel: 'c' } }}>
   <Background checkerboard />
@@ -119,7 +119,7 @@ export function Picker() {
       'ColorSlider is the generic primitive for horizontal or vertical channel manipulation across models.',
     registryName: 'color-slider',
     demo: ColorSliderDemo,
-    usage: `import { ColorSlider } from '@color-kit/react';
+    usage: `import { ColorSlider } from 'color-kit/react';
 
 <>
   <ColorSlider channel="h" />
@@ -159,7 +159,7 @@ export function Picker() {
       'ColorInput edits a single channel in oklch/rgb/hsl using typed math expressions, keyboard stepping, and left-edge scrubbing.',
     registryName: 'color-input',
     demo: ColorInputDemo,
-    usage: `import { ColorInput } from '@color-kit/react';
+    usage: `import { ColorInput } from 'color-kit/react';
 
 <ColorInput model="oklch" channel="h" />;`,
     helperApis: [
@@ -189,7 +189,7 @@ export function Picker() {
       'ColorStringInput preserves the original hex/rgb/hsl/oklch text parsing workflow while ColorInput focuses on channel editing.',
     registryName: 'color-string-input',
     demo: ColorStringInputDemo,
-    usage: `import { ColorStringInput } from '@color-kit/react';
+    usage: `import { ColorStringInput } from 'color-kit/react';
 
 <ColorStringInput format="oklch" />;`,
     helperApis: [

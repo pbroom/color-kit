@@ -1,6 +1,7 @@
 {
   "name": "@color-kit/react",
   "version": "0.0.1",
+  "private": true,
   "description": "Headless React primitives for building color interfaces",
   "type": "module",
   "main": "./dist/index.cjs",

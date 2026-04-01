@@ -1,6 +1,7 @@
 {
   "name": "@color-kit/core-wasm",
   "version": "0.0.1",
+  "private": true,
   "description": "Experimental WASM compute backends for @color-kit/core",
   "type": "module",
   "main": "./dist/index.cjs",

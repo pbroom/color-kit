@@ -9,8 +9,8 @@ import {
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import type { Color } from '@color-kit/core';
-import { parse, toCss } from '@color-kit/core';
+import type { Color } from 'color-kit';
+import { parse, toCss } from 'color-kit';
 import { useOptionalColorContext } from '@/hooks/color-context';
 import type { SetRequestedOptions } from '@/hooks/use-color';
 

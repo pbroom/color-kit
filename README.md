@@ -6,10 +6,9 @@ Built on **OKLCH** for perceptually uniform color manipulation. Headless React p
 
 ## Packages
 
-| Package                                | Description                                                                                          |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [`@color-kit/core`](./packages/core)   | Pure TypeScript color utilities — conversion, contrast, harmony, scales, manipulation, gamut mapping |
-| [`@color-kit/react`](./packages/react) | Headless React primitives — color areas, sliders, and inputs                                         |
+| Package                             | Description                                                                             |
+| ----------------------------------- | --------------------------------------------------------------------------------------- |
+| [`color-kit`](./packages/color-kit) | Unified consumer package with the core API at the root plus `react` and `wasm` subpaths |
 
 ## Stability Policy
 
@@ -22,20 +21,16 @@ This project is intentionally in a pre-production phase:
 
 ## React Baseline
 
-- `@color-kit/react` targets React `19+`.
+- `color-kit/react` targets React `19+`.
 - Workspace defaults pin React and React DOM to the latest `19.x`.
 - Docs builds run the React Compiler (`babel-plugin-react-compiler`) by default.
 - Repo lint enforces compiler-safe patterns (`react-hooks` recommended-latest + `react-compiler` rule).
-- Decision: `@color-kit/react` stays lint-enforced (not compiler-precompiled) for now, since the current `tsup` library pipeline does not run Babel compiler transforms.
+- Decision: `color-kit/react` stays lint-enforced (not compiler-precompiled) for now, since the current `tsup` library pipeline does not run Babel compiler transforms.
 
 ## Install
 
 ```bash
-# Core utilities only
-pnpm add @color-kit/core@next
-
-# Core + React components
-pnpm add @color-kit/core@next @color-kit/react@next
+pnpm add color-kit@next
 ```
 
 ### shadcn Registry
@@ -49,13 +44,7 @@ npx shadcn add color-area --registry color-kit
 ### Core
 
 ```typescript
-import {
-  parse,
-  toHex,
-  lighten,
-  contrastRatio,
-  complementary,
-} from '@color-kit/core';
+import { parse, toHex, lighten, contrastRatio, complementary } from 'color-kit';
 
 // Parse any CSS color
 const blue = parse('#3b82f6');
@@ -75,7 +64,7 @@ const comp = complementary(blue);
 ### React
 
 ```tsx
-import { Color, ColorArea, useColor } from '@color-kit/react';
+import { Color, ColorArea, useColor } from 'color-kit/react';
 
 function ColorPicker() {
   return (
@@ -145,7 +134,7 @@ palette.setActiveGamut('srgb');
 `definePlane()` `sense()` `runPlaneQuery()` `toSvgPath()` `toSvgCompoundPath()` `PlaneQueryCache()`
 
 ```ts
-import { definePlane, sense, toSvgPath } from '@color-kit/core';
+import { definePlane, sense, toSvgPath } from 'color-kit';
 
 const resolvedPlane = definePlane({
   model: 'oklch',
