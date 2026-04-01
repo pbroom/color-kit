@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import {
-  SandpackCodeEditor,
-  SandpackLayout,
-  SandpackPreview,
-  SandpackProvider,
+  SandpackCodeEditor as SandpackCodeEditorBase,
+  SandpackLayout as SandpackLayoutBase,
+  SandpackPreview as SandpackPreviewBase,
+  SandpackProvider as SandpackProviderBase,
   useSandpack,
 } from '@codesandbox/sandpack-react';
 import { githubLight } from '@codesandbox/sandpack-themes';
@@ -15,6 +16,22 @@ import { useTheme } from './theme-context.js';
 const CORE_SOURCE_PREFIX = '../../../../packages/core/src/';
 const CORE_SANDBOX_ROOT = '/color-kit-core';
 const CODESANDBOX_DEFINE_URL = 'https://codesandbox.io/api/v1/sandboxes/define';
+
+type SandpackCompatProps = {
+  children?: ReactNode;
+  [prop: string]: unknown;
+};
+
+// The vendored Sandpack package exposes React component types that do not
+// satisfy this app's React 19 JSX checker, so adapt them at the usage boundary.
+const SandpackProvider =
+  SandpackProviderBase as unknown as ComponentType<SandpackCompatProps>;
+const SandpackLayout =
+  SandpackLayoutBase as unknown as ComponentType<SandpackCompatProps>;
+const SandpackCodeEditor =
+  SandpackCodeEditorBase as unknown as ComponentType<SandpackCompatProps>;
+const SandpackPreview =
+  SandpackPreviewBase as unknown as ComponentType<SandpackCompatProps>;
 
 interface SandpackFileDescriptor {
   code: string;
