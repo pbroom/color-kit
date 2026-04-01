@@ -8,12 +8,16 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDir, '..');
 const repoRoot = path.resolve(packageRoot, '..', '..');
 const distRoot = path.join(packageRoot, 'dist');
+const skipWasmGenerated = /^(1|true)$/i.test(
+  process.env.COLOR_KIT_SKIP_WASM_GENERATED ?? '',
+);
 
 const coreDistRoot = path.join(repoRoot, 'packages', 'core', 'dist');
 const reactDistRoot = path.join(repoRoot, 'packages', 'react', 'dist');
@@ -77,14 +81,16 @@ async function main() {
   await assertPathExists(coreDistRoot, 'core build output');
   await assertPathExists(reactDistRoot, 'react build output');
   await assertPathExists(wasmDistRoot, 'wasm build output');
-  await assertPathExists(
-    path.join(wasmDistRoot, 'generated', 'color_kit_core_wasm.js'),
-    'wasm generated bindings',
-  );
-  await assertPathExists(
-    path.join(wasmDistRoot, 'generated', 'color_kit_core_wasm_bg.wasm'),
-    'wasm binary',
-  );
+  if (!skipWasmGenerated) {
+    await assertPathExists(
+      path.join(wasmDistRoot, 'generated', 'color_kit_core_wasm.js'),
+      'wasm generated bindings',
+    );
+    await assertPathExists(
+      path.join(wasmDistRoot, 'generated', 'color_kit_core_wasm_bg.wasm'),
+      'wasm binary',
+    );
+  }
 
   await rm(distRoot, { recursive: true, force: true });
   await mkdir(distRoot, { recursive: true });
