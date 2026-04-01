@@ -8,7 +8,7 @@
       "type": "registry:component",
       "title": "Color Area",
       "description": "A 2D color picker area. Headless, accessible, and fully composable.",
-      "dependencies": ["@color-kit/core"],
+      "dependencies": ["color-kit@next"],
       "files": [
         {
           "path": "registry/components/color-area.tsx",
@@ -22,7 +22,7 @@
       "type": "registry:hook",
       "title": "useColor",
       "description": "Core dual-state hook for requested vs displayed color management with deterministic sRGB/P3 mapping.",
-      "dependencies": ["@color-kit/core"],
+      "dependencies": ["color-kit@next"],
       "files": [
         {
           "path": "registry/hooks/use-color.ts",
@@ -36,7 +36,7 @@
       "type": "registry:component",
       "title": "Color",
       "description": "React context provider for sharing dual-state color contracts between color-kit components.",
-      "dependencies": ["@color-kit/core"],
+      "dependencies": ["color-kit@next"],
       "registryDependencies": ["use-color"],
       "files": [
         {
@@ -55,7 +55,7 @@
       "type": "registry:component",
       "title": "Color Slider",
       "description": "A 1D color slider for requested channel edits with interaction metadata and keyboard support.",
-      "dependencies": ["@color-kit/core"],
+      "dependencies": ["color-kit@next"],
       "files": [
         {
           "path": "registry/components/color-slider.tsx",
@@ -69,7 +69,7 @@
       "type": "registry:component",
       "title": "Color Input",
       "description": "A channel-based value input with expression parsing and left-edge scrubbing.",
-      "dependencies": ["@color-kit/core"],
+      "dependencies": ["color-kit@next"],
       "files": [
         {
           "path": "registry/components/color-input.tsx",
@@ -83,7 +83,7 @@
       "type": "registry:component",
       "title": "Color String Input",
       "description": "Legacy free-form text input for full color strings (hex, rgb, hsl, oklch).",
-      "dependencies": ["@color-kit/core"],
+      "dependencies": ["color-kit@next"],
       "files": [
         {
           "path": "registry/components/color-string-input.tsx",

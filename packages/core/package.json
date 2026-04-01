@@ -1,6 +1,7 @@
 {
   "name": "@color-kit/core",
   "version": "0.0.1",
+  "private": true,
   "description": "Color space conversions, manipulation, contrast, harmony, and scale generation",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -62,7 +62,7 @@ Display P3 is the **primary** output target; sRGB is the fallback when P3 is not
 
 ### Zero-dependency core
 
-`@color-kit/core` has **no external color library**. All conversion and gamut math is implemented in-house.
+`color-kit` has **no external color library**. All conversion and gamut math is implemented in-house.
 
 > **Why:** Keeps bundle size minimal and allows full control over precision, gamut mapping behavior, and edge cases (e.g. degenerate L/C/H). Tree-shaking stays effective because consumers only pay for what they import. The main alternative, [culori](https://github.com/nicksrandall/culori), is excellent but would delegate gamut mapping and conversion details; color-kit needs those to stay fixed for the requested/displayed contract and for consistent overlay geometry.
 
@@ -321,7 +321,7 @@ The public API favors **fewer, stable entry points** and **composition** over la
 
 ### Dual-track distribution: npm + shadcn
 
-Packages are published to **npm** (`@color-kit/core`, `@color-kit/react`). React components are also available via a **shadcn-style registry** so consumers can copy source into their app.
+The public package is published to **npm** as `color-kit`, with `color-kit/react` as the React subpath. React components are also available via a **shadcn-style registry** so consumers can copy source into their app.
 
 > **Why:** Library consumers get versioned dependencies and tree-shaking; copy-paste consumers get full control over the code and styling. Both tracks are first-class.
 

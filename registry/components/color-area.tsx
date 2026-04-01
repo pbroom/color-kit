@@ -19,7 +19,7 @@ import {
   type ReactNode,
   type SVGAttributes,
 } from 'react';
-import type { Color } from '@color-kit/core';
+import type { Color } from 'color-kit';
 import {
   clamp,
   contrastRegionPaths,
@@ -29,7 +29,7 @@ import {
   toSrgbGamut,
   type ContrastRegionLevel,
   type GamutTarget,
-} from '@color-kit/core';
+} from 'color-kit';
 import { useOptionalColorContext } from '@/hooks/color-context';
 import type { SetRequestedOptions } from '@/hooks/use-color';
 

@@ -1,4 +1,4 @@
-import demoSourceRaw from '@/components/plane-api-playground.demo.tsx?raw';
+import demoSourceRaw from './plane-api-playground.demo.tsx?raw';
 
 const SNIPPET_START = '@ck-snippet-start';
 const SNIPPET_END = '@ck-snippet-end';
@@ -8,8 +8,31 @@ interface ParsedPlaygroundSource {
   snippet: string;
 }
 
-const CORE_IMPORT_PATTERN = /(['"])@color-kit\/core\1/;
-const SANDBOX_CORE_IMPORT = "'./color-kit-core/index.ts'";
+const SANDBOX_PACKAGE_ROOT = '/node_modules/color-kit';
+const SANDBOX_PACKAGE_ENTRY = '../../color-kit-core/index.ts' as const;
+
+export const planeApiPlaygroundSandboxPackageJsonFile = `${SANDBOX_PACKAGE_ROOT}/package.json`;
+export const planeApiPlaygroundSandboxPackageJsonSource = JSON.stringify(
+  {
+    name: 'color-kit',
+    private: true,
+    type: 'module',
+    main: './index.js',
+    module: './index.js',
+    exports: {
+      '.': {
+        default: './index.js',
+      },
+      './core': {
+        default: './index.js',
+      },
+    },
+  },
+  null,
+  2,
+);
+export const planeApiPlaygroundSandboxPackageEntryFile = `${SANDBOX_PACKAGE_ROOT}/index.js`;
+export const planeApiPlaygroundSandboxPackageEntrySource = `export * from '${SANDBOX_PACKAGE_ENTRY}';`;
 
 function trimBlankEdges(text: string): string {
   return text.replace(/^\s*\n/, '').replace(/\n\s*$/, '');
@@ -67,18 +90,5 @@ function parsePlaygroundSource(source: string): ParsedPlaygroundSource {
 
 const parsedPlaygroundSource = parsePlaygroundSource(demoSourceRaw);
 
-function toSandpackSource(source: string): string {
-  if (!CORE_IMPORT_PATTERN.test(source)) {
-    throw new Error(
-      'plane-api-playground.demo.tsx must import from @color-kit/core.',
-    );
-  }
-
-  return source.replace(CORE_IMPORT_PATTERN, SANDBOX_CORE_IMPORT);
-}
-
 export const planeApiPlaygroundSource = parsedPlaygroundSource.full;
 export const planeApiQuickStartSnippet = parsedPlaygroundSource.snippet;
-export const planeApiSandpackSource = toSandpackSource(
-  parsedPlaygroundSource.full,
-);

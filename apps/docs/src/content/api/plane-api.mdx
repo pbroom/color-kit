@@ -12,7 +12,7 @@ The Plane API is a geometry-first layer for color tooling. It lets you:
 - compile points and paths into SVG-ready output
 - reuse query results with stable cache keys
 
-It is intentionally UI-agnostic and pairs with `@color-kit/react` adapters.
+It is intentionally UI-agnostic and pairs with `color-kit/react` adapters.
 
 ## Quick Start
 
@@ -43,7 +43,7 @@ Use `definePlane()` to normalize ranges and fixed channels. All inputs are optio
 - `fixed` channels are interpreted in the selected model
 
 ```ts
-import { colorToPlane, definePlane, planeToColor } from '@color-kit/core';
+import { colorToPlane, definePlane, planeToColor } from 'color-kit';
 
 const resolvedPlane = definePlane({
   x: { channel: 'l', range: [0.1, 0.95] },
@@ -60,7 +60,7 @@ const color = planeToColor(resolvedPlane, point);
 Use either the fluent API (`sense`) or stateless helpers (`runPlaneQuery` / `runPlaneQueries`).
 
 ```ts
-import { runPlaneQueries, sense } from '@color-kit/core';
+import { runPlaneQueries, sense } from 'color-kit';
 
 const query = sense(plane);
 const boundary = query.gamutBoundary({ gamut: 'srgb' });
@@ -89,7 +89,7 @@ import {
   sense,
   toSvgCompoundPath,
   toSvgPath,
-} from '@color-kit/core';
+} from 'color-kit';
 
 const cache = new PlaneQueryCache();
 const boundaryQuery = {
@@ -116,13 +116,13 @@ const regionD = toSvgCompoundPath(region.paths, { closeLoop: true });
 Region utilities are useful when you need set operations or post-processing.
 
 ```ts
-import { parse } from '@color-kit/core';
+import { parse } from 'color-kit';
 import {
   differenceRegions,
   rotateRegion,
   scaleRegion,
   unionRegions,
-} from '@color-kit/core';
+} from 'color-kit';
 
 const reference = parse('#ffffff');
 const aa = runPlaneQuery(plane, {
@@ -143,10 +143,10 @@ const transformed = rotateRegion(scaleRegion(merged, 0.96), 6);
 
 ## React Bridge (`ColorApi`)
 
-`@color-kit/react` exposes adapter helpers that map Plane API results into ColorArea UI coordinates.
+`color-kit/react` exposes adapter helpers that map Plane API results into ColorArea UI coordinates.
 
 ```ts
-import { ColorApi } from '@color-kit/react';
+import { ColorApi } from 'color-kit/react';
 
 const axes = ColorApi.resolveColorAreaAxes({
   x: { channel: 'l' },

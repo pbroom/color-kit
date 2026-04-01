@@ -9,8 +9,8 @@ import {
   forwardRef,
   type HTMLAttributes,
 } from 'react';
-import type { Color } from '@color-kit/core';
-import { clamp } from '@color-kit/core';
+import type { Color } from 'color-kit';
+import { clamp } from 'color-kit';
 import { useOptionalColorContext } from '@/hooks/color-context';
 import type { SetRequestedOptions } from '@/hooks/use-color';
 

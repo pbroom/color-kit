@@ -1,10 +1,12 @@
 import { Hct as MaterialHct } from '@material/material-color-utilities';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   maxHctChromaForHue,
   maxHctPeakToneForHue,
   type MaxHctChromaForHueMethod,
 } from '../src/index.js';
+
+const HCT_TEST_LUT_SIZE = 4096;
 
 function normalizeHueLocal(hue: number): number {
   return ((hue % 360) + 360) % 360;
@@ -46,6 +48,11 @@ function bruteForceHuePeak(hue: number): { c: number; t: number } {
 }
 
 describe('maxHctChromaForHue()', () => {
+  beforeAll(() => {
+    // Warm the expensive LUT outside individual test timeouts for slower CI runners.
+    maxHctChromaForHue(0, { method: 'lut', lutSize: HCT_TEST_LUT_SIZE });
+  }, 15_000);
+
   it('returns bounded direct-mode hue peaks and wrapper-consistent tones', () => {
     for (const hue of [0, 35, 90, 145, 215, 275, 320]) {
       const peak = maxHctChromaForHue(hue, { method: 'direct' });
@@ -73,7 +80,10 @@ describe('maxHctChromaForHue()', () => {
   it('returns LUT results close to direct mode for representative hues', () => {
     for (const hue of [0, 27, 73, 145, 199, 251, 319]) {
       const direct = maxHctChromaForHue(hue, { method: 'direct' });
-      const lut = maxHctChromaForHue(hue, { method: 'lut', lutSize: 4096 });
+      const lut = maxHctChromaForHue(hue, {
+        method: 'lut',
+        lutSize: HCT_TEST_LUT_SIZE,
+      });
 
       expect(Math.abs(lut.t - direct.t)).toBeLessThan(0.75);
       expect(Math.abs(lut.c - direct.c)).toBeLessThan(0.75);
@@ -91,20 +101,32 @@ describe('maxHctChromaForHue()', () => {
     for (const [aHue, bHue] of cases) {
       const aDirect = maxHctChromaForHue(aHue, { method: 'direct' });
       const bDirect = maxHctChromaForHue(bHue, { method: 'direct' });
-      const aLut = maxHctChromaForHue(aHue, { method: 'lut', lutSize: 4096 });
-      const bLut = maxHctChromaForHue(bHue, { method: 'lut', lutSize: 4096 });
+      const aLut = maxHctChromaForHue(aHue, {
+        method: 'lut',
+        lutSize: HCT_TEST_LUT_SIZE,
+      });
+      const bLut = maxHctChromaForHue(bHue, {
+        method: 'lut',
+        lutSize: HCT_TEST_LUT_SIZE,
+      });
 
       expect(aDirect).toEqual(bDirect);
       expect(aLut).toEqual(bLut);
 
       expect(maxHctPeakToneForHue(aHue, { method: 'direct' })).toBe(aDirect.t);
       expect(maxHctPeakToneForHue(bHue, { method: 'direct' })).toBe(bDirect.t);
-      expect(maxHctPeakToneForHue(aHue, { method: 'lut', lutSize: 4096 })).toBe(
-        aLut.t,
-      );
-      expect(maxHctPeakToneForHue(bHue, { method: 'lut', lutSize: 4096 })).toBe(
-        bLut.t,
-      );
+      expect(
+        maxHctPeakToneForHue(aHue, {
+          method: 'lut',
+          lutSize: HCT_TEST_LUT_SIZE,
+        }),
+      ).toBe(aLut.t);
+      expect(
+        maxHctPeakToneForHue(bHue, {
+          method: 'lut',
+          lutSize: HCT_TEST_LUT_SIZE,
+        }),
+      ).toBe(bLut.t);
     }
   });
 
@@ -113,15 +135,24 @@ describe('maxHctChromaForHue()', () => {
     const directA = maxHctChromaForHue(hue, { method: 'direct' });
     const directB = maxHctChromaForHue(hue, { method: 'direct' });
 
-    const lutA = maxHctChromaForHue(hue, { method: 'lut', lutSize: 4096 });
-    const lutB = maxHctChromaForHue(hue, { method: 'lut', lutSize: 4096 });
+    const lutA = maxHctChromaForHue(hue, {
+      method: 'lut',
+      lutSize: HCT_TEST_LUT_SIZE,
+    });
+    const lutB = maxHctChromaForHue(hue, {
+      method: 'lut',
+      lutSize: HCT_TEST_LUT_SIZE,
+    });
 
     expect(directA).toEqual(directB);
     expect(lutA).toEqual(lutB);
     expect(maxHctPeakToneForHue(hue, { method: 'direct' })).toBe(directA.t);
-    expect(maxHctPeakToneForHue(hue, { method: 'lut', lutSize: 4096 })).toBe(
-      lutA.t,
-    );
+    expect(
+      maxHctPeakToneForHue(hue, {
+        method: 'lut',
+        lutSize: HCT_TEST_LUT_SIZE,
+      }),
+    ).toBe(lutA.t);
   });
 
   it('keeps the tone-only helper exactly aligned with the full peak helper', () => {
@@ -130,7 +161,7 @@ describe('maxHctChromaForHue()', () => {
       for (const hue of [0, 30, 90, 145, 180, 240, 330]) {
         const options =
           method === 'lut'
-            ? ({ method, lutSize: 4096 } as const)
+            ? ({ method, lutSize: HCT_TEST_LUT_SIZE } as const)
             : ({ method } as const);
 
         expect(maxHctPeakToneForHue(hue, options)).toBe(

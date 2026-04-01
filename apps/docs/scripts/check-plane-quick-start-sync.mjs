@@ -51,8 +51,8 @@ const demoComponentChecks = [
     pattern: /plane-api-playground\.demo/,
   },
   {
-    label: 'shared playground source import',
-    pattern: /plane-api-playground-source/,
+    label: 'colocated playground source import',
+    pattern: /plane-api-playground\.source/,
   },
   {
     label: 'lazy sandpack import',

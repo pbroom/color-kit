@@ -1,19 +1,45 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import {
-  SandpackCodeEditor,
-  SandpackLayout,
-  SandpackPreview,
-  SandpackProvider,
+  SandpackCodeEditor as SandpackCodeEditorBase,
+  SandpackLayout as SandpackLayoutBase,
+  SandpackPreview as SandpackPreviewBase,
+  SandpackProvider as SandpackProviderBase,
   useSandpack,
 } from '@codesandbox/sandpack-react';
-import { githubLight, sandpackDark } from '@codesandbox/sandpack-themes';
+import { githubLight } from '@codesandbox/sandpack-themes';
 import { compressToBase64 } from 'lz-string';
-import { planeApiSandpackSource } from '@/lib/plane-api-playground-source';
+import { githubDarkSandpackTheme } from '@/lib/sandpack-themes';
+import {
+  planeApiPlaygroundSandboxPackageEntryFile,
+  planeApiPlaygroundSandboxPackageEntrySource,
+  planeApiPlaygroundSandboxPackageJsonFile,
+  planeApiPlaygroundSandboxPackageJsonSource,
+  planeApiPlaygroundSource,
+} from './plane-api-playground.source.js';
 import { useTheme } from './theme-context.js';
 
 const CORE_SOURCE_PREFIX = '../../../../packages/core/src/';
 const CORE_SANDBOX_ROOT = '/color-kit-core';
 const CODESANDBOX_DEFINE_URL = 'https://codesandbox.io/api/v1/sandboxes/define';
+const PLAYGROUND_APP_FILE = '/App.js';
+const PLAYGROUND_ENTRY_FILE = '/index.tsx';
+
+type SandpackCompatProps = {
+  children?: ReactNode;
+  [prop: string]: unknown;
+};
+
+// The vendored Sandpack package exposes React component types that do not
+// satisfy this app's React 19 JSX checker, so adapt them at the usage boundary.
+const SandpackProvider =
+  SandpackProviderBase as unknown as ComponentType<SandpackCompatProps>;
+const SandpackLayout =
+  SandpackLayoutBase as unknown as ComponentType<SandpackCompatProps>;
+const SandpackCodeEditor =
+  SandpackCodeEditorBase as unknown as ComponentType<SandpackCompatProps>;
+const SandpackPreview =
+  SandpackPreviewBase as unknown as ComponentType<SandpackCompatProps>;
 
 interface SandpackFileDescriptor {
   code: string;
@@ -110,6 +136,33 @@ svg {
   height: auto;
   max-width: 100%;
 }`;
+const PLAYGROUND_ENTRY = `import React, { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './styles.css';
+
+import App from './App.js';
+
+const root = createRoot(document.getElementById('root'));
+root.render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);`;
+const PLAYGROUND_TSCONFIG = JSON.stringify(
+  {
+    include: ['./**/*'],
+    compilerOptions: {
+      strict: true,
+      esModuleInterop: true,
+      lib: ['dom', 'es2015'],
+      jsx: 'react-jsx',
+      allowJs: true,
+      checkJs: false,
+    },
+  },
+  null,
+  2,
+);
 
 function resolveCoreImport(fromFile: string, specifier: string): string {
   const baseDir = dirnamePosix(fromFile);
@@ -141,9 +194,19 @@ function rewriteCoreSourceImports(source: string, fromFile: string): string {
 }
 
 const PLAYGROUND_FILES = {
-  '/App.tsx': planeApiSandpackSource,
+  [PLAYGROUND_APP_FILE]: planeApiPlaygroundSource,
+  [PLAYGROUND_ENTRY_FILE]: PLAYGROUND_ENTRY,
+  [planeApiPlaygroundSandboxPackageJsonFile]: {
+    code: planeApiPlaygroundSandboxPackageJsonSource,
+    hidden: true,
+  },
+  [planeApiPlaygroundSandboxPackageEntryFile]: {
+    code: planeApiPlaygroundSandboxPackageEntrySource,
+    hidden: true,
+  },
   '/public/index.html': PLAYGROUND_INDEX_HTML,
   '/styles.css': PLAYGROUND_STYLES,
+  '/tsconfig.json': PLAYGROUND_TSCONFIG,
   ...Object.fromEntries(
     Object.entries(coreSourceBySandboxPath).map(([filePath, code]) => [
       filePath,
@@ -306,11 +369,15 @@ export default function PlaneApiPlaygroundSandpack() {
           '@material/material-color-utilities': '^0.3.0',
         },
       }}
-      theme={resolvedTheme === 'dark' ? sandpackDark : githubLight}
+      theme={resolvedTheme === 'dark' ? githubDarkSandpackTheme : githubLight}
       files={PLAYGROUND_FILES}
       options={{
-        activeFile: '/App.tsx',
-        visibleFiles: ['/App.tsx', '/public/index.html', '/styles.css'],
+        activeFile: PLAYGROUND_APP_FILE,
+        visibleFiles: [
+          PLAYGROUND_APP_FILE,
+          '/public/index.html',
+          '/styles.css',
+        ],
         autorun: true,
         bundlerTimeOut: 120000,
         initMode: 'immediate',

@@ -6,13 +6,13 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { parse, type Color } from '@color-kit/core';
+import { parse, type Color } from 'color-kit';
 import {
   createColorState,
   type ColorAreaLayerQuality,
   type ColorAreaPerformanceProfile,
   type ColorState,
-} from '@color-kit/react';
+} from 'color-kit/react';
 import { COLOR_AREA_DOT_PATTERN } from './color-area-dot-pattern.js';
 
 export type DocsInspectorTab = 'outline' | 'properties';

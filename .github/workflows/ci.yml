@@ -31,9 +31,13 @@ jobs:
         run: pnpm check:preprod
 
       - name: Build packages
+        env:
+          COLOR_KIT_SKIP_WASM_GENERATED: '1'
         run: pnpm build
 
       - name: Run tests
+        env:
+          COLOR_KIT_SKIP_WASM_GENERATED: '1'
         run: pnpm test
 
   lint:

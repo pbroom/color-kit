@@ -1,0 +1,98 @@
+{
+  "name": "color-kit",
+  "version": "0.0.1",
+  "description": "Unified Color Kit package with root core exports and React/WASM subpaths",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/core/index.d.ts",
+        "default": "./dist/core/index.js"
+      },
+      "require": {
+        "types": "./dist/core/index.d.cts",
+        "default": "./dist/core/index.cjs"
+      }
+    },
+    "./react": {
+      "import": {
+        "types": "./dist/react/index.d.ts",
+        "default": "./dist/react/index.js"
+      },
+      "require": {
+        "types": "./dist/react/index.d.cts",
+        "default": "./dist/react/index.cjs"
+      }
+    },
+    "./wasm": {
+      "import": {
+        "types": "./dist/wasm/index.d.ts",
+        "default": "./dist/wasm/index.js"
+      },
+      "require": {
+        "types": "./dist/wasm/index.d.cts",
+        "default": "./dist/wasm/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "prebuild": "node ./scripts/prebuild.mjs",
+    "build": "node ./scripts/build.mjs",
+    "dev": "node --watch-path ../core/dist --watch-path ../react/dist --watch-path ../core-wasm/dist --watch-path ./scripts ./scripts/build.mjs",
+    "pretest": "pnpm run build",
+    "test": "node ./scripts/test-exports.mjs"
+  },
+  "keywords": [
+    "color",
+    "color-picker",
+    "oklch",
+    "ui-components",
+    "react",
+    "headless",
+    "accessibility"
+  ],
+  "author": "pbroom",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pbroom/color-kit.git",
+    "directory": "packages/color-kit"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "next"
+  },
+  "dependencies": {
+    "@legendapp/state": "^2.1.15"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  }
+}

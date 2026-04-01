@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import type { Color, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
+import type { Color, Hsl, Hsv, Oklch, Rgb } from 'color-kit';
 import {
   fromHsl,
   fromHsv,
@@ -17,7 +17,7 @@ import {
   toP3Gamut,
   toRgb,
   toSrgbGamut,
-} from '@color-kit/core';
+} from 'color-kit';
 
 export type GamutTarget = 'srgb' | 'display-p3';
 export type ViewModel = 'oklch' | 'oklab' | 'rgb' | 'hex' | 'hsl' | 'hsv';
