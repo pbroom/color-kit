@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import * as SandpackReact from '@codesandbox/sandpack-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import {
   SandpackCodeEditor as SandpackCodeEditorBase,
@@ -8,8 +9,10 @@ import {
   useSandpack,
 } from '@codesandbox/sandpack-react';
 import { githubLight } from '@codesandbox/sandpack-themes';
+import { ExternalLink, ListOrdered, RefreshCw, RotateCcw } from 'lucide-react';
 import { compressToBase64 } from 'lz-string';
-import { githubDarkSandpackTheme } from '@/lib/sandpack-themes';
+import { githubDarkSandpackTheme } from '../lib/sandpack-themes.js';
+import { cn } from '../lib/utils.js';
 import {
   planeApiPlaygroundSandboxPackageEntryFile,
   planeApiPlaygroundSandboxPackageEntrySource,
@@ -24,6 +27,7 @@ const CORE_SANDBOX_ROOT = '/color-kit-core';
 const CODESANDBOX_DEFINE_URL = 'https://codesandbox.io/api/v1/sandboxes/define';
 const PLAYGROUND_APP_FILE = '/App.js';
 const PLAYGROUND_ENTRY_FILE = '/index.tsx';
+const PLAYGROUND_PANEL_HEIGHT = 520;
 
 type SandpackCompatProps = {
   children?: ReactNode;
@@ -40,6 +44,11 @@ const SandpackCodeEditor =
   SandpackCodeEditorBase as unknown as ComponentType<SandpackCompatProps>;
 const SandpackPreview =
   SandpackPreviewBase as unknown as ComponentType<SandpackCompatProps>;
+const SandpackFileTabs = (
+  SandpackReact as unknown as {
+    FileTabs: ComponentType<SandpackCompatProps>;
+  }
+).FileTabs;
 
 interface SandpackFileDescriptor {
   code: string;
@@ -304,8 +313,57 @@ function SandpackAutoRun() {
   return null;
 }
 
-function PlaneApiPlaygroundActions({ onRefresh }: { onRefresh: () => void }) {
+function PlaygroundToolbarButton({
+  icon,
+  label,
+  onClick,
+  pressed = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+  pressed?: boolean;
+}) {
+  return (
+    <div className="group relative flex">
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={pressed || undefined}
+        title={label}
+        className={cn(
+          'flex h-(--sp-layout-headerHeight) w-(--sp-layout-headerHeight) shrink-0 items-center justify-center border-l border-(--sp-colors-surface2) bg-transparent text-(--sp-colors-clickable) transition-colors hover:bg-(--sp-colors-surface2) hover:text-(--sp-syntax-color-plain) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-(--sp-colors-accent)',
+          pressed && 'bg-(--sp-colors-surface2) text-(--sp-syntax-color-plain)',
+        )}
+        onClick={onClick}
+      >
+        {icon}
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute right-0 top-full z-20 mt-2 whitespace-nowrap rounded-md border border-border/70 bg-background/95 px-2 py-1 text-xs text-foreground opacity-0 shadow-md backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function PlaneApiPlaygroundToolbar({
+  onRefresh,
+  showLineNumbers,
+  onToggleLineNumbers,
+}: {
+  onRefresh: () => void;
+  showLineNumbers: boolean;
+  onToggleLineNumbers: () => void;
+}) {
   const { sandpack } = useSandpack();
+
+  const handleResetCode = useCallback(() => {
+    sandpack.resetAllFiles();
+    onRefresh();
+  }, [onRefresh, sandpack]);
 
   const handleOpenSandbox = useCallback(() => {
     openInCodeSandbox(
@@ -316,47 +374,120 @@ function PlaneApiPlaygroundActions({ onRefresh }: { onRefresh: () => void }) {
   }, [sandpack.activeFile, sandpack.environment, sandpack.files]);
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        className="inline-flex h-8 items-center rounded-md border border-border/70 bg-card/60 px-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+    <div className="flex shrink-0 items-stretch [background:var(--sp-colors-surface1)]">
+      <PlaygroundToolbarButton
+        icon={<RefreshCw className="size-4" />}
+        label="Refresh preview"
         onClick={onRefresh}
-      >
-        Refresh
-      </button>
-      <button
-        type="button"
-        className="inline-flex h-8 items-center rounded-md border border-border/70 bg-card/60 px-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      />
+      <PlaygroundToolbarButton
+        icon={<RotateCcw className="size-4" />}
+        label="Reset code"
+        onClick={handleResetCode}
+      />
+      <PlaygroundToolbarButton
+        icon={<ListOrdered className="size-4" />}
+        label={showLineNumbers ? 'Hide line numbers' : 'Show line numbers'}
+        onClick={onToggleLineNumbers}
+        pressed={showLineNumbers}
+      />
+      <PlaygroundToolbarButton
+        icon={<ExternalLink className="size-4" />}
+        label="Open in CodeSandbox"
         onClick={handleOpenSandbox}
-      >
-        Open Sandbox
-      </button>
+      />
     </div>
   );
 }
 
-function PlaneApiPlaygroundPreview() {
-  const [refreshNonce, setRefreshNonce] = useState(0);
+function PlaneApiPlaygroundEditor({
+  showLineNumbers,
+}: {
+  showLineNumbers: boolean;
+}) {
+  const { sandpack } = useSandpack();
+  const activeFileUniqueId = useId();
 
   return (
-    <SandpackPreview
-      key={refreshNonce}
-      actionsChildren={
-        <PlaneApiPlaygroundActions
-          onRefresh={() => setRefreshNonce((value) => value + 1)}
+    <div
+      className="sp-stack sp-editor flex min-w-0 flex-1 flex-col overflow-hidden [background:var(--sp-colors-surface1)]"
+      style={{ height: PLAYGROUND_PANEL_HEIGHT }}
+    >
+      <div className="flex min-w-0 items-stretch border-b border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
+        <SandpackFileTabs
+          activeFileUniqueId={activeFileUniqueId}
+          className="min-w-0 flex-1 overflow-hidden border-b-0 bg-transparent"
         />
-      }
-      showNavigator={false}
-      showOpenInCodeSandbox={false}
-      showRefreshButton={false}
-      showSandpackErrorOverlay
-      style={{ height: 520 }}
-    />
+      </div>
+      <div
+        id={`${sandpack.activeFile}-${activeFileUniqueId}-tab-panel`}
+        role="tabpanel"
+        aria-labelledby={`${sandpack.activeFile}-${activeFileUniqueId}-tab`}
+        className="min-h-0 flex-1"
+      >
+        <SandpackCodeEditor
+          className="h-full min-h-0"
+          showInlineErrors
+          showLineNumbers={showLineNumbers}
+          showRunButton={false}
+          showTabs={false}
+          style={{ height: '100%' }}
+          wrapContent
+        />
+      </div>
+    </div>
+  );
+}
+
+function PlaneApiPlaygroundPreview({
+  refreshNonce,
+  onRefresh,
+  showLineNumbers,
+  onToggleLineNumbers,
+}: {
+  refreshNonce: number;
+  onRefresh: () => void;
+  showLineNumbers: boolean;
+  onToggleLineNumbers: () => void;
+}) {
+  return (
+    <div
+      className="sp-stack sp-preview flex min-w-0 flex-1 flex-col overflow-hidden [background:var(--sp-colors-surface1)]"
+      style={{ height: PLAYGROUND_PANEL_HEIGHT }}
+    >
+      <div className="flex min-w-0 items-stretch justify-end border-b border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
+        <PlaneApiPlaygroundToolbar
+          onRefresh={onRefresh}
+          showLineNumbers={showLineNumbers}
+          onToggleLineNumbers={onToggleLineNumbers}
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <SandpackPreview
+          key={refreshNonce}
+          showNavigator={false}
+          showOpenInCodeSandbox={false}
+          showRefreshButton={false}
+          showSandpackErrorOverlay
+          style={{ height: '100%' }}
+        />
+      </div>
+    </div>
   );
 }
 
 export default function PlaneApiPlaygroundSandpack() {
   const { resolvedTheme } = useTheme();
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [showLineNumbers, setShowLineNumbers] = useState(false);
+  const handleRefresh = useCallback(
+    () => setRefreshNonce((value) => value + 1),
+    [],
+  );
+  const handleToggleLineNumbers = useCallback(
+    () => setShowLineNumbers((value) => !value),
+    [],
+  );
 
   return (
     <SandpackProvider
@@ -385,16 +516,14 @@ export default function PlaneApiPlaygroundSandpack() {
         recompileMode: 'delayed',
       }}
     >
-      <SandpackLayout style={{ minHeight: 520 }}>
-        <SandpackCodeEditor
-          showInlineErrors
-          showLineNumbers
-          showRunButton={false}
-          showTabs
-          style={{ height: 520 }}
-          wrapContent
+      <SandpackLayout style={{ minHeight: PLAYGROUND_PANEL_HEIGHT }}>
+        <PlaneApiPlaygroundEditor showLineNumbers={showLineNumbers} />
+        <PlaneApiPlaygroundPreview
+          refreshNonce={refreshNonce}
+          onRefresh={handleRefresh}
+          showLineNumbers={showLineNumbers}
+          onToggleLineNumbers={handleToggleLineNumbers}
         />
-        <PlaneApiPlaygroundPreview />
       </SandpackLayout>
       <SandpackAutoRun />
     </SandpackProvider>

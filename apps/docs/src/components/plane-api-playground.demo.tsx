@@ -4,6 +4,7 @@ import { definePlane, sense, toSvgPath } from 'color-kit';
 const plane = definePlane({ fixed: { h: 250, alpha: 1 } });
 
 const query = sense(plane);
+
 const p3Boundary = query.gamutBoundary({
   gamut: 'display-p3',
   samplingMode: 'adaptive',
