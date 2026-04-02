@@ -1590,11 +1590,23 @@ export function DocsRightRail({
             className="w-full"
           >
             <TabsList
-              className="grid h-9 w-full grid-cols-2"
+              className="flex h-auto min-h-9 w-full min-w-0 items-stretch gap-0.5 rounded-lg p-1"
               aria-label="Docs side panels"
             >
-              <TabsTrigger value="outline">On this page</TabsTrigger>
-              <TabsTrigger value="properties">Properties</TabsTrigger>
+              <TabsTrigger
+                value="outline"
+                title="On this page"
+                className="min-h-9 min-w-0 flex-1 gap-0 whitespace-normal px-1 py-1.5 text-center text-xs font-medium leading-snug"
+              >
+                On this page
+              </TabsTrigger>
+              <TabsTrigger
+                value="properties"
+                title="Properties"
+                className="min-h-9 min-w-0 flex-1 gap-0 whitespace-normal px-1 py-1.5 text-center text-xs font-medium leading-snug"
+              >
+                Properties
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

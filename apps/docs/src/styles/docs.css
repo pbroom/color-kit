@@ -3,28 +3,13 @@
     background: var(--background);
   }
 
-  .ck-docs-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(0, 340px);
-    gap: 1.25rem;
-    width: min(1560px, 100%);
-    margin: 0 auto;
-    padding: 1rem 1rem 2rem;
-  }
-
-  .ck-docs-sidebar,
-  .ck-docs-rightrail {
-    height: calc(100vh - 5rem);
-    min-height: calc(100vh - 5rem);
-  }
-
-  .ck-docs-sidebar-sticky,
-  .ck-docs-rightrail-sticky {
-    position: sticky;
-    top: 4.5rem;
-    height: calc(100vh - 5.5rem);
-    max-height: calc(100vh - 5.5rem);
-    overflow: hidden;
+  /*
+   * Main column between nav and right rail: acts like a full-width “container”
+   * inside the 1fr grid track (width: 100% + min-width: 0 for grid overflow).
+   */
+  .ck-docs-main-column {
+    width: 100%;
+    min-width: 0;
   }
 
   .ck-docs-main {
@@ -33,12 +18,38 @@
 
   .ck-docs-article {
     @apply rounded-none border-0 bg-transparent shadow-none;
+    width: 100%;
+    max-width: none;
+    margin: 0;
     backdrop-filter: none;
   }
 
   .ck-docs-article .prose,
   .ck-docs-article.prose {
     max-width: none;
+  }
+
+  /*
+   * Inner grid: keep prose in a ~700px center track with flexible side tracks
+   * so blocks marked .ck-docs-content-bleed can span the full main column
+   * without overlapping the outer sidebars.
+   */
+  @media (min-width: 1024px) {
+    .ck-docs-article--gridded {
+      display: grid;
+      grid-template-columns: 1fr min(700px, 100%) 1fr;
+      align-items: start;
+    }
+
+    .ck-docs-article--gridded > * {
+      grid-column: 2;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .ck-docs-article--gridded > .ck-docs-content-bleed {
+      grid-column: 1 / -1;
+    }
   }
 
   .ck-nav-section-title {
@@ -149,16 +160,8 @@
     @apply pl-4;
   }
 
-  @media (max-width: 1279px) {
-    .ck-docs-grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .ck-docs-sidebar,
-    .ck-docs-rightrail {
-      display: none;
-    }
-
+  @media (max-width: 1023px) {
+    .ck-docs-main-column,
     .ck-docs-main {
       width: 100%;
     }

@@ -501,7 +501,7 @@ export default function PlaneApiPlaygroundSandpack() {
 
   return (
     <SandpackProvider
-      key={`plane-api-playground-${resolvedTheme}-${SANDBOX_INSTANCE_ID}`}
+      key={`plane-api-playground-${SANDBOX_INSTANCE_ID}`}
       template="react-ts"
       customSetup={{
         dependencies: {
@@ -526,7 +526,10 @@ export default function PlaneApiPlaygroundSandpack() {
         recompileMode: 'delayed',
       }}
     >
-      <SandpackLayout style={{ minHeight: PLAYGROUND_PANEL_HEIGHT }}>
+      <SandpackLayout
+        className="w-full min-w-0"
+        style={{ minHeight: PLAYGROUND_PANEL_HEIGHT }}
+      >
         <PlaneApiPlaygroundEditor showLineNumbers={showLineNumbers} />
         <PlaneApiPlaygroundPreview
           refreshNonce={refreshNonce}

@@ -168,7 +168,7 @@ function DocsLayoutInner() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="xl:hidden"
+                  className="lg:hidden"
                   aria-label="Open docs navigation"
                 >
                   <Menu className="size-4" />
@@ -232,7 +232,7 @@ function DocsLayoutInner() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="xl:hidden"
+                  className="2xl:hidden"
                 >
                   <PanelRightOpen className="size-4" />
                   Panels
@@ -259,36 +259,50 @@ function DocsLayoutInner() {
         </div>
       </header>
 
-      <div className="ck-docs-grid">
+      <div
+        className={cn(
+          'mx-auto w-full max-w-[1560px] border-t border-border/60',
+          'lg:grid lg:grid-cols-[260px_1fr] 2xl:grid-cols-[260px_1fr_260px]',
+        )}
+      >
         <aside
-          className="ck-docs-sidebar"
           aria-label="Documentation navigation"
+          className={cn(
+            'sticky top-14 hidden h-[calc(100vh-3.5rem)] max-h-[calc(100vh-3.5rem)] min-h-0 w-full min-w-0',
+            'flex-col overflow-x-visible overflow-y-hidden p-6 lg:flex',
+          )}
         >
-          <div className="ck-docs-sidebar-sticky">
-            <div className="flex h-full min-h-0 flex-col">
-              <div className="min-h-0 flex-1 pt-2">
-                <ScrollArea className="h-full pr-2">
-                  <DocsSidebarNav pathname={location.pathname} />
-                </ScrollArea>
-              </div>
-            </div>
-          </div>
+          <ScrollArea className="h-full min-h-0 flex-1 pr-2">
+            <DocsSidebarNav pathname={location.pathname} />
+          </ScrollArea>
         </aside>
 
-        <main className="ck-docs-main" id="docs-content">
-          <article
-            className={cn(
-              'ck-docs-article prose docs-article px-5 py-6 md:px-8 md:py-8',
-            )}
-            data-doc-content=""
-          >
-            <Outlet />
-          </article>
-        </main>
+        <div className="ck-docs-main-column container 2xl:col-span-2">
+          <div className="w-full min-w-0 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_260px]">
+            <main className="ck-docs-main min-w-0" id="docs-content">
+              <article
+                className={cn(
+                  'ck-docs-article ck-docs-article--gridded prose docs-article m-0! w-full! max-w-none! px-5 py-6 md:px-8 md:py-8',
+                )}
+                data-doc-content=""
+              >
+                <Outlet />
+              </article>
+            </main>
 
-        <div className="ck-docs-rightrail" aria-label="Page tools and outline">
-          <div className="ck-docs-rightrail-sticky">
-            <DocsRightRail headings={headings} />
+            <div
+              role="complementary"
+              aria-label="Page tools and outline"
+              className={cn(
+                'sticky top-14 hidden h-[calc(100vh-3.5rem)] min-h-0 w-full min-w-0 -translate-x-2 p-6',
+                '2xl:flex 2xl:flex-col',
+              )}
+            >
+              <DocsRightRail
+                headings={headings}
+                className="min-h-0 flex-1 overflow-hidden"
+              />
+            </div>
           </div>
         </div>
       </div>
