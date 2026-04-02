@@ -17,12 +17,7 @@ const boundaryPath = toSvgPath(p3Boundary.points, {
 
 export default function PlaneApiPlaygroundDemo() {
   return (
-    <svg
-      viewBox="0 0 100 100"
-      role="img"
-      aria-label="Display P3 gamut boundary projected to a plane"
-      style={{ display: 'block', width: '100%', height: 'auto' }}
-    >
+    <svg viewBox="0 0 100 100" role="img">
       <rect x="0" y="0" width="100" height="100" fill="#121314" />
       <path
         d={boundaryPath}

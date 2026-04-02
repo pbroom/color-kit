@@ -330,7 +330,6 @@ function PlaygroundToolbarButton({
         type="button"
         aria-label={label}
         aria-pressed={pressed || undefined}
-        title={label}
         className={cn(
           'flex h-(--sp-layout-headerHeight) w-(--sp-layout-headerHeight) shrink-0 items-center justify-center border-l border-(--sp-colors-surface2) bg-transparent text-(--sp-colors-clickable) transition-colors hover:bg-(--sp-colors-surface2) hover:text-(--sp-syntax-color-plain) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-(--sp-colors-accent)',
           pressed && 'bg-(--sp-colors-surface2) text-(--sp-syntax-color-plain)',
