@@ -331,7 +331,7 @@ function PlaygroundToolbarButton({
         aria-label={label}
         aria-pressed={pressed || undefined}
         className={cn(
-          'flex h-(--sp-layout-headerHeight) w-(--sp-layout-headerHeight) shrink-0 items-center justify-center border-l border-(--sp-colors-surface2) bg-transparent text-(--sp-colors-clickable) transition-colors hover:bg-(--sp-colors-surface2) hover:text-(--sp-syntax-color-plain) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-(--sp-colors-accent)',
+          'flex size-[41px] shrink-0 items-center justify-center bg-transparent text-(--sp-colors-clickable) transition-colors hover:bg-(--sp-colors-surface2) hover:text-(--sp-syntax-color-plain) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-(--sp-colors-accent)',
           pressed && 'bg-(--sp-colors-surface2) text-(--sp-syntax-color-plain)',
         )}
         onClick={onClick}
@@ -454,7 +454,7 @@ function PlaneApiPlaygroundPreview({
       className="sp-stack sp-preview flex min-w-0 flex-1 flex-col overflow-hidden [background:var(--sp-colors-surface1)]"
       style={{ height: PLAYGROUND_PANEL_HEIGHT }}
     >
-      <div className="flex min-w-0 items-stretch justify-end border-b border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
+      <div className="flex min-w-0 items-stretch justify-end border-b-2 border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
         <PlaneApiPlaygroundToolbar
           onRefresh={onRefresh}
           showLineNumbers={showLineNumbers}

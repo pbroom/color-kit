@@ -1,6 +1,4 @@
 import { lazy, Suspense, type ReactNode } from 'react';
-import { planeApiQuickStartSnippet } from './plane-api-playground.source.js';
-import { CodeBlock } from './code-block.js';
 import PlaneApiPlaygroundDemo from './plane-api-playground.demo.js';
 
 const PlaneApiPlaygroundSandpack = lazy(
@@ -64,18 +62,6 @@ export function PlaneQuickStartDemo() {
       >
         <PlaneQuickStartStaticPreview />
       </div>
-    </div>
-  );
-}
-
-export function PlaneQuickStartSnippet() {
-  return (
-    <div className="not-prose my-6 rounded-xl border border-border/70 bg-card/40 p-3">
-      <CodeBlock
-        code={planeApiQuickStartSnippet}
-        language="js"
-        className="my-0"
-      />
     </div>
   );
 }

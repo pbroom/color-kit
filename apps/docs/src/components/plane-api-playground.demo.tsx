@@ -1,6 +1,5 @@
 import { definePlane, sense, toSvgPath } from 'color-kit';
 
-// @ck-snippet-start
 const plane = definePlane({ fixed: { h: 250, alpha: 1 } });
 
 const query = sense(plane);
@@ -13,7 +12,6 @@ const boundaryPath = toSvgPath(p3Boundary.points, {
   closeLoop: true,
   precision: 2,
 });
-// @ck-snippet-end
 
 export default function PlaneApiPlaygroundDemo() {
   return (

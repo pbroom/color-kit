@@ -13,13 +13,19 @@ const playgroundSourcePath = path.join(
   docsRoot,
   'src/components/plane-api-playground.demo.tsx',
 );
+const sandpackPath = path.join(
+  docsRoot,
+  'src/components/plane-api-playground.sandpack.tsx',
+);
 const pagePath = path.join(docsRoot, 'src/content/api/plane-api.mdx');
 
-const [demoComponentSource, playgroundSource, pageSource] = await Promise.all([
-  readFile(demoComponentPath, 'utf8'),
-  readFile(playgroundSourcePath, 'utf8'),
-  readFile(pagePath, 'utf8'),
-]);
+const [demoComponentSource, playgroundSource, sandpackSource, pageSource] =
+  await Promise.all([
+    readFile(demoComponentPath, 'utf8'),
+    readFile(playgroundSourcePath, 'utf8'),
+    readFile(sandpackPath, 'utf8'),
+    readFile(pagePath, 'utf8'),
+  ]);
 
 const playgroundChecks = [
   {
@@ -40,7 +46,7 @@ const playgroundChecks = [
 function assertPatternInSource(source, sourceLabel, patternLabel, pattern) {
   if (!pattern.test(source)) {
     throw new Error(
-      `Missing ${patternLabel} in ${sourceLabel}. Keep quick-start demo and snippet aligned.`,
+      `Missing ${patternLabel} in ${sourceLabel}. Keep quick-start demo and playground aligned.`,
     );
   }
 }
@@ -51,12 +57,15 @@ const demoComponentChecks = [
     pattern: /plane-api-playground\.demo/,
   },
   {
-    label: 'colocated playground source import',
-    pattern: /plane-api-playground\.source/,
-  },
-  {
     label: 'lazy sandpack import',
     pattern: /plane-api-playground\.sandpack/,
+  },
+];
+
+const sandpackChecks = [
+  {
+    label: 'playground source bundle import',
+    pattern: /plane-api-playground\.source/,
   },
 ];
 
@@ -64,10 +73,6 @@ const pageChecks = [
   {
     label: 'quick-start demo import',
     pattern: /from\s*['"]@\/components\/plane-api-demos['"]/,
-  },
-  {
-    label: 'quick-start snippet component',
-    pattern: /<PlaneQuickStartSnippet\s*\/>/,
   },
   {
     label: 'quick-start playground component',
@@ -88,6 +93,15 @@ for (const { label, pattern } of demoComponentChecks) {
   assertPatternInSource(
     demoComponentSource,
     'plane-api-demos.tsx',
+    label,
+    pattern,
+  );
+}
+
+for (const { label, pattern } of sandpackChecks) {
+  assertPatternInSource(
+    sandpackSource,
+    'plane-api-playground.sandpack.tsx',
     label,
     pattern,
   );
