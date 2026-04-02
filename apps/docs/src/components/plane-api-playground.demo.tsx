@@ -10,8 +10,10 @@ const boundaryPath = toSvgPath(p3Boundary.points);
 
 export default function PlaneApiPlaygroundDemo() {
   return (
-    <svg viewBox="0 0 100 100" role="img">
-      <path d={boundaryPath} />
-    </svg>
+    <div className="demo-container">
+      <svg viewBox="0 0 100 100" role="img">
+        <path d={boundaryPath} />
+      </svg>
+    </div>
   );
 }

@@ -140,10 +140,6 @@ body {
   padding: 24px;
 }
 
-#root > * {
-  width: min(100%, 300px);
-}
-
 svg {
   display: block;
   height: auto;
@@ -154,6 +150,17 @@ svg path {
   stroke-width: 0.5px;
   fill: oklch(82.8% 0.111 230.318 / 0.08);
   stroke: oklch(68.5% 0.169 237.323);
+}
+
+.demo-container {
+  border: 0.5px solid #222222;
+
+  overflow: hidden;
+  width: 300px;
+  height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 `;
 const PLAYGROUND_ENTRY = `import React, { StrictMode } from 'react';
