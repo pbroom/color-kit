@@ -128,7 +128,7 @@ body,
 }
 
 body {
-  background: #0f1114;
+  background: #0d0d0d;
   color: #f5f7fa;
 }
 
@@ -140,11 +140,22 @@ body {
   padding: 24px;
 }
 
+#root > * {
+  width: min(100%, 300px);
+}
+
 svg {
   display: block;
   height: auto;
   max-width: 100%;
-}`;
+}
+  
+svg path {
+  stroke-width: 0.5px;
+  fill: oklch(82.8% 0.111 230.318 / 0.08);
+  stroke: oklch(68.5% 0.169 237.323);
+}
+`;
 const PLAYGROUND_ENTRY = `import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';

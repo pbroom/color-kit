@@ -132,11 +132,11 @@ export interface ChromaBandOptions extends MaxChromaAtOptions {
    */
   steps?: number;
   /**
-   * `uniform`: fixed lightness steps (default).
+   * `uniform`: fixed lightness steps.
    * `adaptive`: reuse adaptive boundary sampling and project to chroma mode.
-   * @default 'uniform'
+   * @default 'adaptive'
    */
-  samplingMode?: 'uniform' | 'adaptive';
+  samplingMode?: 'adaptive' | 'uniform';
   /**
    * Max perpendicular error in (l, c) before subdividing in adaptive mode.
    * @default 0.001

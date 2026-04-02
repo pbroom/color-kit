@@ -1,28 +1,17 @@
 import { definePlane, sense, toSvgPath } from 'color-kit';
 
-const plane = definePlane({ fixed: { h: 250, alpha: 1 } });
+const plane = definePlane();
 
-const query = sense(plane);
+const extract = sense(plane);
 
-const p3Boundary = query.gamutBoundary({
-  gamut: 'display-p3',
-  samplingMode: 'adaptive',
-});
-const boundaryPath = toSvgPath(p3Boundary.points, {
-  closeLoop: true,
-  precision: 2,
-});
+const p3Boundary = extract.gamutBoundary();
+
+const boundaryPath = toSvgPath(p3Boundary.points);
 
 export default function PlaneApiPlaygroundDemo() {
   return (
     <svg viewBox="0 0 100 100" role="img">
-      <rect x="0" y="0" width="100" height="100" fill="#121314" />
-      <path
-        d={boundaryPath}
-        fill="oklch(82.8% 0.111 230.318 / 0.08)"
-        stroke="oklch(68.5% 0.169 237.323)"
-        strokeWidth="0.5"
-      />
+      <path d={boundaryPath} />
     </svg>
   );
 }
