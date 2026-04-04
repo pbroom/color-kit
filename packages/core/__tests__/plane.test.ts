@@ -85,6 +85,13 @@ describe('plane api', () => {
     expect(p3Plane.x.range).toEqual([0, 1]);
     expect(p3Plane.y.range).toEqual([0, 1]);
 
+    const displayP3Plane = definePlane({ model: 'display-p3' });
+    expect(displayP3Plane.model).toBe('p3');
+    expect(displayP3Plane.x.channel).toBe('r');
+    expect(displayP3Plane.y.channel).toBe('g');
+    expect(displayP3Plane.x.range).toEqual([0, 1]);
+    expect(displayP3Plane.y.range).toEqual([0, 1]);
+
     expect(() =>
       definePlane({
         model: 'rgb',
@@ -149,6 +156,15 @@ describe('plane api', () => {
     });
     expect(overriddenRgbPlane.fixed.b).toBe(12);
     expect(overriddenRgbPlane.fixed.r).toBeCloseTo(rgb.r, 6);
+
+    const undefinedOverrideRgbPlane = definePlane({
+      model: 'rgb',
+      x: { channel: 'r' },
+      y: { channel: 'g' },
+      color,
+      fixed: { b: undefined },
+    });
+    expect(undefinedOverrideRgbPlane.fixed.b).toBeCloseTo(rgb.b, 6);
 
     const anchoredHslPlane = definePlaneFromColor(color, {
       model: 'hsl',
@@ -418,6 +434,26 @@ describe('plane api', () => {
           x: { channel: 'r' },
           y: { channel: 'g' },
           fixed: { r: rgb.r, g: rgb.g, b: rgb.b, alpha: rgb.alpha },
+        },
+        query,
+      ),
+    );
+
+    expect(
+      createPlaneQueryKey(
+        {
+          model: 'display-p3',
+          x: { channel: 'r' },
+          y: { channel: 'g' },
+        },
+        query,
+      ),
+    ).toBe(
+      createPlaneQueryKey(
+        {
+          model: 'p3',
+          x: { channel: 'r' },
+          y: { channel: 'g' },
         },
         query,
       ),

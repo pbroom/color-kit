@@ -33,6 +33,17 @@ const rgbDefinition: PlaneDefinitionFor<'rgb'> = {
 
 definePlane(rgbDefinition);
 
+const displayP3Definition: PlaneDefinitionFor<'display-p3'> = {
+  model: 'display-p3',
+  x: { channel: 'r' },
+  y: { channel: 'g' },
+  fixed: { b: 0.25 },
+};
+
+const displayP3Plane = definePlane(displayP3Definition);
+const canonicalDisplayP3Model: 'p3' = displayP3Plane.model;
+void canonicalDisplayP3Model;
+
 definePlane({
   model: 'rgb',
   // @ts-expect-error rgb planes do not accept oklch channels

@@ -34,6 +34,19 @@ describe('chromaBand()', () => {
     }
   });
 
+  it('uses uniform sampling by default', () => {
+    expect(
+      chromaBand(210, 0.2, {
+        steps: 10,
+      }),
+    ).toEqual(
+      chromaBand(210, 0.2, {
+        steps: 10,
+        samplingMode: 'uniform',
+      }),
+    );
+  });
+
   it('clamped mode preserves requested chroma when possible and clamps near boundaries', () => {
     const hue = 145;
     const requested = 0.14;

@@ -365,10 +365,12 @@ const d = toSvgPath(boundary.points, {
 - `oklab` (`L`, `a`, `b`)
 - `hct` (`h`, `c`, `t`)
 - `p3` (Display P3; `r`, `g`, `b`)
+- `display-p3` (legacy alias for `p3`)
 
-For clarity, `definePlane({ model: 'p3' })` selects the plane model, while
-query options such as `gamutBoundary({ gamut: 'display-p3' })` still use the
-full `display-p3` gamut token.
+`definePlane({ model: 'p3' })` and `definePlane({ model: 'display-p3' })` both
+select the Display P3 plane model. Resolved planes canonicalize that alias back
+to `p3`, while query options such as `gamutBoundary({ gamut: 'display-p3' })`
+still use the full `display-p3` gamut token.
 
 Internally, query computation remains canonical in OKLCH. Mapping helpers (`colorToPlane`, `planeToColor`, `projectRegionBetweenPlanes`, `fallbackPoint`, `gradient`) convert through model adapters, while LC-specific geometry queries remain capability-gated.
 

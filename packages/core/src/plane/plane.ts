@@ -42,6 +42,7 @@ export const PLANE_MODEL_CHANNELS: Record<PlaneModel, readonly PlaneChannel[]> =
     oklab: ['L', 'a', 'b'],
     hct: ['h', 'c', 't'],
     p3: ['r', 'g', 'b'],
+    'display-p3': ['r', 'g', 'b'],
   };
 
 /**
@@ -60,6 +61,7 @@ export const PLANE_MODEL_DEFAULT_AXES: Record<
   oklab: { x: 'a', y: 'b' },
   hct: { x: 'h', y: 'c' },
   p3: { x: 'r', y: 'g' },
+  'display-p3': { x: 'r', y: 'g' },
 };
 
 const OKLCH_DEFAULT_RANGES: Record<'l' | 'c' | 'h', [number, number]> = {
@@ -117,6 +119,11 @@ export const PLANE_MODEL_DEFAULT_RANGES: Record<
     g: [0, 1],
     b: [0, 1],
   },
+  'display-p3': {
+    r: [0, 1],
+    g: [0, 1],
+    b: [0, 1],
+  },
 };
 
 interface PlaneModelSpec {
@@ -130,6 +137,10 @@ interface PlaneModelSpec {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function normalizePlaneModel(model: PlaneModel): Exclude<PlaneModel, 'display-p3'> {
+  return model === 'display-p3' ? 'p3' : model;
 }
 
 function readChannel(
@@ -409,6 +420,14 @@ const PLANE_MODEL_SPECS: Record<PlaneModel, PlaneModelSpec> = {
     fromColor: toP3ModelColor,
     toColor: fromP3ModelColor,
   },
+  'display-p3': {
+    channels: PLANE_MODEL_CHANNELS.p3,
+    defaultAxes: PLANE_MODEL_DEFAULT_AXES.p3,
+    defaultRanges: PLANE_MODEL_DEFAULT_RANGES.p3,
+    normalizeFixed: normalizeP3Fixed,
+    fromColor: toP3ModelColor,
+    toColor: fromP3ModelColor,
+  },
 };
 
 /** Returns conversion/range behavior for a specific plane model. */
@@ -537,9 +556,17 @@ function fixedColor(
   const anchoredFixed = options.color
     ? modelSpec.fromColor(options.color)
     : undefined;
-  return modelSpec.normalizeFixed(
-    anchoredFixed ? { ...anchoredFixed, ...options.fixed } : options.fixed,
-  );
+  if (!anchoredFixed) {
+    return modelSpec.normalizeFixed(options.fixed);
+  }
+
+  const mergedFixed: PlaneFixedInput = { ...anchoredFixed };
+  for (const [key, value] of Object.entries(options.fixed ?? {})) {
+    if (value !== undefined) {
+      (mergedFixed as Record<string, number | undefined>)[key] = value;
+    }
+  }
+  return modelSpec.normalizeFixed(mergedFixed);
 }
 
 /**
@@ -576,7 +603,7 @@ function denormalizeInRange(norm: number, range: [number, number]): number {
  * because its overloads provide model-aware TypeScript narrowing.
  *
  * @param planeObject Plane input object.
- * @param planeObject.model Target model (`oklch`, `rgb`, `hsl`, `hsv`, `oklab`, `hct`, `p3`).
+ * @param planeObject.model Target model (`oklch`, `rgb`, `hsl`, `hsv`, `oklab`, `hct`, `p3`; legacy `display-p3` also works).
  * @param planeObject.x Optional x-axis descriptor; defaults to model defaults.
  * @param planeObject.y Optional y-axis descriptor; defaults to model defaults.
  * @param planeObject.color Optional anchor color converted into the selected
@@ -587,8 +614,9 @@ function denormalizeInRange(norm: number, range: [number, number]): number {
 export function resolvePlaneDefinition(
   planeObject: PlaneDefinition = {},
 ): Plane {
-  const model = planeObject.model ?? 'oklch';
-  const modelSpec = planeModelSpec(model);
+  const requestedModel = planeObject.model ?? 'oklch';
+  const model = normalizePlaneModel(requestedModel);
+  const modelSpec = planeModelSpec(requestedModel);
   const defaultAxes = modelSpec.defaultAxes;
 
   validateFixedChannels(model, modelSpec, planeObject.fixed);

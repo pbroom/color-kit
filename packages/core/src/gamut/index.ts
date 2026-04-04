@@ -134,7 +134,7 @@ export interface ChromaBandOptions extends MaxChromaAtOptions {
   /**
    * `uniform`: fixed lightness steps.
    * `adaptive`: reuse adaptive boundary sampling and project to chroma mode.
-   * @default 'adaptive'
+   * @default 'uniform'
    */
   samplingMode?: 'adaptive' | 'uniform';
   /**
