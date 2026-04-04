@@ -10,6 +10,9 @@ import type { Color } from '../types.js';
 
 /**
  * Color models supported by plane geometry.
+ *
+ * The legacy `display-p3` token remains accepted and resolves to the canonical
+ * `p3` model.
  */
 export type PlaneModel =
   | 'oklch'
@@ -18,6 +21,7 @@ export type PlaneModel =
   | 'hsv'
   | 'oklab'
   | 'hct'
+  | 'p3'
   | 'display-p3';
 
 /**
@@ -37,27 +41,58 @@ export type PlaneChannel =
   | 't';
 
 /**
- * Partial channel bag used for model-relative fixed values.
+ * Model-relative channel mapping used for type-safe plane inputs.
  */
-export type PlaneFixedInput = Partial<Record<PlaneChannel, number>> & {
+export interface PlaneModelChannelMap {
+  oklch: 'l' | 'c' | 'h';
+  rgb: 'r' | 'g' | 'b';
+  hsl: 'h' | 's' | 'l';
+  hsv: 'h' | 's' | 'v';
+  oklab: 'L' | 'a' | 'b';
+  hct: 'h' | 'c' | 't';
+  p3: 'r' | 'g' | 'b';
+  'display-p3': 'r' | 'g' | 'b';
+}
+
+type ResolvedPlaneModel<Model extends PlaneModel> = Model extends 'display-p3'
+  ? 'p3'
+  : Model;
+
+/**
+ * Channel identifiers supported by a specific plane model.
+ */
+export type PlaneChannelFor<Model extends PlaneModel> =
+  PlaneModelChannelMap[Model];
+
+/**
+ * Partial channel bag used for model-relative fixed values.
+ *
+ * Channel names must be valid for the selected plane model when passed to
+ * `definePlane()`.
+ */
+export type PlaneFixedInput<Model extends PlaneModel = PlaneModel> = Partial<
+  Record<PlaneChannelFor<Model>, number>
+> & {
   alpha?: number;
 };
 
 /**
  * Resolved model-relative channel bag.
  */
-export type PlaneModelColor = Partial<Record<PlaneChannel, number>> & {
+export type PlaneModelColor<Model extends PlaneModel = PlaneModel> = Partial<
+  Record<PlaneChannelFor<Model>, number>
+> & {
   alpha: number;
 };
 
 /**
  * Axis descriptor used in `definePlane()` input.
  */
-export interface PlaneAxis {
+export interface PlaneAxis<Model extends PlaneModel = PlaneModel> {
   /**
    * Channel projected on this axis.
    */
-  channel: PlaneChannel;
+  channel: PlaneChannelFor<Model>;
   /**
    * Optional channel range for this axis.
    *
@@ -69,45 +104,74 @@ export interface PlaneAxis {
 /**
  * Input shape accepted by `definePlane()`.
  */
-export interface PlaneDefinition {
+export interface PlaneDefinition<Model extends PlaneModel = PlaneModel> {
   /**
    * Plane model.
    *
    * Defaults to `'oklch'` when omitted.
    */
-  model?: PlaneModel;
+  model?: Model;
   /**
    * Horizontal axis. Defaults to `{ channel: 'l' }` when omitted.
    */
-  x?: PlaneAxis;
+  x?: PlaneAxis<Model>;
   /**
    * Vertical axis. Defaults to `{ channel: 'c' }` when omitted.
    */
-  y?: PlaneAxis;
+  y?: PlaneAxis<Model>;
   /**
    * Optional fixed channels for non-axis dimensions.
    *
-   * Channels are interpreted relative to `model` and defaults are model-specific.
+   * Channels are interpreted relative to `model`, unsupported names throw, and
+   * defaults are model-specific.
    */
-  fixed?: PlaneFixedInput;
+  fixed?: PlaneFixedInput<Model>;
+  /**
+   * Optional anchor color converted into the selected model before resolving
+   * `fixed`.
+   *
+   * Useful when switching models: omitted fixed channels are derived from this
+   * color, while explicitly provided `fixed` values still win.
+   */
+  color?: Color;
 }
 
-export interface ResolvedPlaneAxis {
-  channel: PlaneChannel;
+type PlaneDefinitionWithRequiredModel<Model extends PlaneModel> = Omit<
+  PlaneDefinition<Model>,
+  'model'
+> & {
+  model: Model;
+};
+
+/**
+ * Model-aware `definePlane()` input.
+ *
+ * This is useful for TypeScript callers that want model-specific channel
+ * narrowing even when they store the definition in a variable first.
+ */
+export type PlaneDefinitionFor<Model extends PlaneModel> = Model extends 'oklch'
+  ? PlaneDefinition<'oklch'>
+  : PlaneDefinitionWithRequiredModel<Model>;
+
+export interface ResolvedPlaneAxis<Model extends PlaneModel = PlaneModel> {
+  channel: PlaneChannelFor<Model>;
   range: [number, number];
 }
 
-export interface ResolvedPlaneDefinition {
-  model: PlaneModel;
-  x: ResolvedPlaneAxis;
-  y: ResolvedPlaneAxis;
-  fixed: PlaneModelColor;
+export interface ResolvedPlaneDefinition<
+  Model extends PlaneModel = PlaneModel,
+> {
+  model: ResolvedPlaneModel<Model>;
+  x: ResolvedPlaneAxis<Model>;
+  y: ResolvedPlaneAxis<Model>;
+  fixed: PlaneModelColor<Model>;
 }
 
 /**
  * Resolved plane returned by `definePlane()`.
  */
-export type Plane = ResolvedPlaneDefinition;
+export type Plane<Model extends PlaneModel = PlaneModel> =
+  ResolvedPlaneDefinition<Model>;
 
 export interface PlanePoint {
   x: number;

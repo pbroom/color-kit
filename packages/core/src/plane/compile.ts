@@ -4,6 +4,7 @@ import type {
   PlaneQuery,
   PlaneQueryResult,
 } from './types.js';
+import { resolvePlaneDefinition } from './plane.js';
 
 export interface SvgPathCompileOptions {
   /** Appends `Z` to close the generated path. */
@@ -101,7 +102,7 @@ export function createPlaneQueryKey(
   plane: PlaneDefinition,
   query: PlaneQuery,
 ): string {
-  return `${stableStringify(plane)}:${stableStringify(query)}`;
+  return `${stableStringify(resolvePlaneDefinition(plane))}:${stableStringify(query)}`;
 }
 
 /** Caches plane query results by a deterministic plane/query key. */

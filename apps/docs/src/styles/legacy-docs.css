@@ -14,7 +14,7 @@
 
 :root,
 :root[data-theme='dark'] {
-  --color-background: #07090d;
+  --color-background: #0a0a0b;
   --color-surface: #0d1119;
   --color-surface-raised: #121825;
   --color-foreground: #eff3f8;
@@ -24,7 +24,7 @@
   --color-accent: #28c3b4;
   --color-accent-soft: rgba(40, 195, 180, 0.15);
 
-  --color-header-scrim: rgba(7, 9, 13, 0.84);
+  --color-header-scrim: rgba(10, 10, 11, 0.84);
   --color-brand-dot-ring: rgba(255, 255, 255, 0.14);
   --color-surface-ghost: rgba(255, 255, 255, 0.02);
   --color-surface-ghost-2: rgba(255, 255, 255, 0.03);
@@ -57,7 +57,7 @@
   --color-card-link: #defaf7;
   --color-prose-copy: #c3d0e1;
   --color-prose-list: #bfcee1;
-  --color-prose-pre-bg: rgba(5, 9, 16, 0.85);
+  --color-prose-pre-bg: #0d0d0d;
   --color-inline-code-bg: rgba(255, 255, 255, 0.06);
   --color-pre-code: #e7f0fc;
   --color-prose-link: #8cd8ff;
@@ -80,7 +80,7 @@
 }
 
 :root[data-theme='light'] {
-  --color-background: #f5f8fd;
+  --color-background: #f5f5f5;
   --color-surface: #ffffff;
   --color-surface-raised: #e9eff9;
   --color-foreground: #142033;
@@ -90,7 +90,7 @@
   --color-accent: #0d8f83;
   --color-accent-soft: rgba(13, 143, 131, 0.16);
 
-  --color-header-scrim: rgba(245, 248, 253, 0.84);
+  --color-header-scrim: rgba(245, 245, 245, 0.84);
   --color-brand-dot-ring: rgba(17, 42, 71, 0.16);
   --color-surface-ghost: rgba(17, 42, 71, 0.05);
   --color-surface-ghost-2: rgba(17, 42, 71, 0.08);
@@ -123,7 +123,7 @@
   --color-card-link: #0b6d66;
   --color-prose-copy: #334968;
   --color-prose-list: #3a4f6f;
-  --color-prose-pre-bg: #e9eff9;
+  --color-prose-pre-bg: #e8eaed;
   --color-inline-code-bg: rgba(17, 42, 71, 0.08);
   --color-pre-code: #1f334f;
   --color-prose-link: #006cb8;
@@ -1232,7 +1232,8 @@ a {
 
 .prose pre {
   margin: 0.7rem 0;
-  border: 1px solid var(--color-border);
+  /* Match PlaneQuickStartPlaygroundFrame: border border-border/70 */
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   border-radius: 0.72rem;
   background: var(--color-prose-pre-bg);
   padding: 0.8rem 0.95rem;
@@ -1260,11 +1261,13 @@ a {
 .prose pre.shiki,
 .docs-shiki-block .shiki {
   margin: 0.7rem 0;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   border-radius: 0.72rem;
   padding: 0.8rem 0.95rem;
   overflow-x: auto;
-  background: var(--color-prose-pre-bg);
+  /* Shiki injects inline background-color; neutralize to match doc surface. */
+  background: var(--color-prose-pre-bg) !important;
+  background-color: var(--color-prose-pre-bg) !important;
 }
 
 .docs-shiki-block .shiki {
@@ -1279,13 +1282,13 @@ a {
 .dark .prose .shiki,
 .dark .prose .shiki span {
   color: var(--shiki-dark) !important;
-  background-color: var(--shiki-dark-bg) !important;
+  background-color: var(--color-prose-pre-bg) !important;
 }
 
 html:not(.dark) .prose .shiki,
 html:not(.dark) .prose .shiki span {
   color: var(--shiki-light) !important;
-  background-color: var(--shiki-light-bg) !important;
+  background-color: var(--color-prose-pre-bg) !important;
 }
 
 .prose a {
@@ -1415,6 +1418,7 @@ html:not(.dark) .prose .shiki span {
   padding: 0.54rem 0.62rem;
   text-align: left;
   vertical-align: top;
+  line-height: 1.75;
 }
 
 .docs-api-table th {
@@ -1424,6 +1428,18 @@ html:not(.dark) .prose .shiki span {
 
 .docs-api-table td {
   color: var(--color-table-cell-text);
+}
+
+/*
+ * API tables live under article.prose; prose shrinks inline code with 0.84em.
+ * Match monospace snippets to the same size as plain text in sibling cells.
+ * Line-height + box-decoration-break avoid stacked backgrounds when code wraps.
+ */
+.docs-api-table :not(pre) > code {
+  font-size: inherit;
+  line-height: 1.75;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .ck-demo-stack {

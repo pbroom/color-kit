@@ -1,7 +1,12 @@
+import { PlaneQuickStartPlayground } from '@/components/plane-api-demos';
 import {
-  PlaneQuickStartPlayground,
-  PlaneQuickStartSnippet,
-} from '@/components/plane-api-demos';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 # Plane API
 
@@ -16,9 +21,338 @@ It is intentionally UI-agnostic and pairs with `color-kit/react` adapters.
 
 ## Quick Start
 
-<PlaneQuickStartSnippet />
-
 <PlaneQuickStartPlayground />
+
+## definePlane()
+
+`definePlane()` maps a plane onto a model space we can work with. AI really wants me to use the word "normalized" here to indicate the plane works with whatever color model is selected.
+
+```ts
+import { definePlane } from 'color-kit';
+
+const plane = definePlane();
+
+// Equivalent to:
+const plane = definePlane({
+  model: 'oklch',
+  x: { channel: 'l', range: [0, 1] },
+  y: { channel: 'c', range: [0.4, 0] },
+  fixed: { l: 0.5, c: 0, h: 0, alpha: 1 },
+});
+```
+
+### model
+
+<div className="not-prose my-6">
+  <Table className="docs-api-table">
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-[14ch]">Prop</TableHead>
+        <TableHead className="w-[26ch]">Options</TableHead>
+        <TableHead className="w-[18ch]">Default</TableHead>
+        <TableHead>Description</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>model</code>
+        </TableCell>
+        <TableCell className="align-top">
+          <code>oklch | rgb | hsl | hsv | oklab | hct | p3</code>
+        </TableCell>
+        <TableCell className="align-top">
+          <code>oklch</code>
+        </TableCell>
+        <TableCell>
+          Plane model to resolve. Use <code>p3</code> for the Display P3 plane
+          model.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>color</code>
+        </TableCell>
+        <TableCell className="align-top">
+          source <code>Color</code>
+        </TableCell>
+        <TableCell className="align-top">unset</TableCell>
+        <TableCell>
+          Optional anchor color. When present, Color Kit converts this color
+          into the selected <code>model</code> first, then applies any explicit
+          <code>fixed</code> overrides.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>x</code>
+        </TableCell>
+        <TableCell className="align-top">
+          <code>channel</code>, <code>range</code>
+        </TableCell>
+        <TableCell className="align-top">model default x-axis</TableCell>
+        <TableCell>
+          Horizontal axis descriptor. Use <code>channel</code> to choose the
+          projected channel and <code>range</code> to override the default
+          channel range.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>y</code>
+        </TableCell>
+        <TableCell className="align-top">
+          <code>channel</code>, <code>range</code>
+        </TableCell>
+        <TableCell className="align-top">model default y-axis</TableCell>
+        <TableCell>
+          Vertical axis descriptor. Use <code>channel</code> to choose the
+          projected channel and <code>range</code> to override the default
+          channel range.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>fixed</code>
+        </TableCell>
+        <TableCell className="align-top">
+          model-relative channels, <code>alpha</code>
+        </TableCell>
+        <TableCell className="align-top">model-specific</TableCell>
+        <TableCell>
+          Fixed values for the non-axis dimensions. Supported channel names
+          depend on the selected model, invalid names throw, and values are
+          normalized per model.
+        </TableCell>
+      </TableRow>
+    </TableBody>
+  </Table>
+</div>
+
+When you need to preserve intent across model switches, prefer anchoring the
+plane to a real color instead of manually carrying model-relative fixed values:
+
+```ts
+import { definePlane, definePlaneFromColor, parse } from 'color-kit';
+
+const color = parse('#7c3aed');
+
+const hslPlane = definePlane({
+  model: 'hsl',
+  color,
+  x: { channel: 'h' },
+  y: { channel: 's' },
+});
+
+const rgbPlane = definePlaneFromColor(color, {
+  model: 'rgb',
+  x: { channel: 'r' },
+  y: { channel: 'g' },
+  fixed: { b: 64 },
+});
+```
+
+`color` fills in model-relative defaults from the selected model, and explicit
+`fixed` values still win. This is especially useful in UIs where the user can
+switch between `oklch`, `hsl`, `rgb`, or `p3` without rebuilding every fixed
+channel bag by hand.
+
+If you use TypeScript, `definePlane()` now narrows `x`, `y`, and `fixed` to the
+selected `model`, so invalid channel/model combinations are caught before
+runtime.
+
+### `sense()`
+
+Use `sense()` when you want a fluent query API bound to one plane definition. It is the ergonomic option for running multiple queries against the same plane.
+
+```ts
+import { definePlane, sense } from 'color-kit';
+
+const plane = definePlane({
+  fixed: { h: 280 },
+});
+
+const query = sense(plane);
+
+const boundary = query.gamutBoundary({ gamut: 'display-p3' });
+const band = query.chromaBand({ requestedChroma: 0.22 });
+```
+
+<div className="not-prose my-6">
+  <Table className="docs-api-table">
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-[16ch]">Prop</TableHead>
+        <TableHead className="w-[24ch]">Options</TableHead>
+        <TableHead className="w-[12ch]">Default</TableHead>
+        <TableHead>Description</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>planeDefinition</code>
+        </TableCell>
+        <TableCell className="align-top">
+          raw <code>PlaneDefinition</code> or resolved plane
+        </TableCell>
+        <TableCell className="align-top">required</TableCell>
+        <TableCell>
+          Plane input captured by all returned helper methods.
+        </TableCell>
+      </TableRow>
+    </TableBody>
+  </Table>
+</div>
+
+The returned helper exposes these query methods:
+
+<div className="not-prose my-6">
+  <Table className="docs-api-table">
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-[20ch]">Method</TableHead>
+        <TableHead>Description</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>gamutBoundary()</code>
+        </TableCell>
+        <TableCell>
+          Samples an in-gamut contour projected into the plane.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>contrastBoundary()</code>
+        </TableCell>
+        <TableCell>
+          Computes a contrast-threshold contour for a reference color.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>contrastRegion()</code>
+        </TableCell>
+        <TableCell>Computes one or more filled contrast regions.</TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>chromaBand()</code>
+        </TableCell>
+        <TableCell>
+          Samples a tonal strip for a requested chroma at the current hue.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>fallbackPoint()</code>
+        </TableCell>
+        <TableCell>
+          Maps a color into a target gamut and projects the mapped color into
+          the plane.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>gradient()</code>
+        </TableCell>
+        <TableCell>
+          Samples a gradient between two colors and projects each sample into
+          the plane.
+        </TableCell>
+      </TableRow>
+    </TableBody>
+  </Table>
+</div>
+
+### `toSvgPath()`
+
+Use `toSvgPath()` to compile an ordered list of normalized plane points into an SVG `d` string. It is the last step after running a query that returns a single point sequence.
+
+```ts
+import { definePlane, sense, toSvgPath } from 'color-kit';
+
+const plane = definePlane({
+  fixed: { h: 280 },
+});
+
+const boundary = sense(plane).gamutBoundary({ gamut: 'srgb' });
+
+const d = toSvgPath(boundary.points, {
+  closeLoop: true,
+  scale: 100,
+  precision: 3,
+});
+```
+
+<div className="not-prose my-6">
+  <Table className="docs-api-table">
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-[18ch]">Prop</TableHead>
+        <TableHead className="w-[24ch]">Options</TableHead>
+        <TableHead className="w-[12ch]">Default</TableHead>
+        <TableHead>Description</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>points</code>
+        </TableCell>
+        <TableCell className="align-top">
+          ordered <code>PlanePoint[]</code>
+        </TableCell>
+        <TableCell className="align-top">required</TableCell>
+        <TableCell>
+          Ordered list of normalized plane coordinates. At least 2 points are
+          required to produce a path.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>options.closeLoop</code>
+        </TableCell>
+        <TableCell className="align-top">
+          <code>true</code> | <code>false</code>
+        </TableCell>
+        <TableCell className="align-top">
+          <code>false</code>
+        </TableCell>
+        <TableCell>Appends Z to close the path.</TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>options.scale</code>
+        </TableCell>
+        <TableCell className="align-top">number</TableCell>
+        <TableCell className="align-top">
+          <code>100</code>
+        </TableCell>
+        <TableCell>
+          Multiplies normalized coordinates before formatting.
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell className="align-top">
+          <code>options.precision</code>
+        </TableCell>
+        <TableCell className="align-top">number</TableCell>
+        <TableCell className="align-top">
+          <code>3</code>
+        </TableCell>
+        <TableCell>
+          Decimal precision used when formatting coordinates.
+        </TableCell>
+      </TableRow>
+    </TableBody>
+  </Table>
+</div>
+
+`closeLoop` appends `Z`, `scale` maps normalized `[0, 1]` coordinates into your SVG coordinate space, and `precision` controls decimal formatting. For multiple subpaths, use `toSvgCompoundPath()`.
 
 ## Model Support
 
@@ -30,7 +364,13 @@ It is intentionally UI-agnostic and pairs with `color-kit/react` adapters.
 - `hsv` (`h`, `s`, `v`)
 - `oklab` (`L`, `a`, `b`)
 - `hct` (`h`, `c`, `t`)
-- `display-p3` (`r`, `g`, `b`)
+- `p3` (Display P3; `r`, `g`, `b`)
+- `display-p3` (legacy alias for `p3`)
+
+`definePlane({ model: 'p3' })` and `definePlane({ model: 'display-p3' })` both
+select the Display P3 plane model. Resolved planes canonicalize that alias back
+to `p3`, while query options such as `gamutBoundary({ gamut: 'display-p3' })`
+still use the full `display-p3` gamut token.
 
 Internally, query computation remains canonical in OKLCH. Mapping helpers (`colorToPlane`, `planeToColor`, `projectRegionBetweenPlanes`, `fallbackPoint`, `gradient`) convert through model adapters, while LC-specific geometry queries remain capability-gated.
 
@@ -166,7 +506,7 @@ const boundary = ColorApi.getColorAreaGamutBoundaryPoints(
 ## API Surface (Grouped)
 
 - **Definition + mapping**
-  - `definePlane`, `planeHue`, `colorToPlane`, `planeToColor`
+  - `definePlane`, `definePlaneFromColor`, `planeHue`, `colorToPlane`, `planeToColor`
 - **Queries**
   - `sense`, `runPlaneQuery`, `runPlaneQueries`, `colorAtPlanePoint`
 - **Compile + cache**

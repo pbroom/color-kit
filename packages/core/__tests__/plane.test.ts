@@ -4,7 +4,9 @@ import {
   PlaneQueryCache,
   colorToPlane,
   containsPoint,
+  createPlaneQueryKey,
   definePlane,
+  definePlaneFromColor,
   differenceRegions,
   intersectRegions,
   planeToColor,
@@ -77,11 +79,18 @@ describe('plane api', () => {
     expect(hslPlane.x.range).toEqual([0, 360]);
     expect(hslPlane.y.range).toEqual([100, 0]);
 
-    const p3Plane = definePlane({ model: 'display-p3' });
+    const p3Plane = definePlane({ model: 'p3' });
     expect(p3Plane.x.channel).toBe('r');
     expect(p3Plane.y.channel).toBe('g');
     expect(p3Plane.x.range).toEqual([0, 1]);
     expect(p3Plane.y.range).toEqual([0, 1]);
+
+    const displayP3Plane = definePlane({ model: 'display-p3' });
+    expect(displayP3Plane.model).toBe('p3');
+    expect(displayP3Plane.x.channel).toBe('r');
+    expect(displayP3Plane.y.channel).toBe('g');
+    expect(displayP3Plane.x.range).toEqual([0, 1]);
+    expect(displayP3Plane.y.range).toEqual([0, 1]);
 
     expect(() =>
       definePlane({
@@ -101,6 +110,69 @@ describe('plane api', () => {
         y: { channel: 'l' },
       }),
     ).toThrowError(/distinct channels/);
+  });
+
+  it('rejects invalid fixed inputs for the selected model', () => {
+    expect(() =>
+      definePlane({
+        model: 'rgb',
+        fixed: { h: 250 },
+      }),
+    ).toThrowError(/fixed channel "h" is not supported by model "rgb"/);
+
+    expect(() =>
+      definePlane({
+        fixed: { h: Number.NaN },
+      }),
+    ).toThrowError(/fixed channel "h" must be a finite numeric value/);
+
+    expect(() =>
+      definePlane({
+        fixed: { alpha: Number.NaN },
+      }),
+    ).toThrowError(/fixed alpha must be a finite numeric value/);
+  });
+
+  it('can anchor fixed values to a source color', () => {
+    const color = parse('#3b82f6');
+    const rgb = toRgb(color);
+    const hsl = toHsl(color);
+
+    const anchoredRgbPlane = definePlane({
+      model: 'rgb',
+      x: { channel: 'r' },
+      y: { channel: 'g' },
+      color,
+    });
+    expect(anchoredRgbPlane.fixed.b).toBeCloseTo(rgb.b, 6);
+    expect(anchoredRgbPlane.fixed.alpha).toBeCloseTo(rgb.alpha, 6);
+
+    const overriddenRgbPlane = definePlane({
+      model: 'rgb',
+      x: { channel: 'r' },
+      y: { channel: 'g' },
+      color,
+      fixed: { b: 12 },
+    });
+    expect(overriddenRgbPlane.fixed.b).toBe(12);
+    expect(overriddenRgbPlane.fixed.r).toBeCloseTo(rgb.r, 6);
+
+    const undefinedOverrideRgbPlane = definePlane({
+      model: 'rgb',
+      x: { channel: 'r' },
+      y: { channel: 'g' },
+      color,
+      fixed: { b: undefined },
+    });
+    expect(undefinedOverrideRgbPlane.fixed.b).toBeCloseTo(rgb.b, 6);
+
+    const anchoredHslPlane = definePlaneFromColor(color, {
+      model: 'hsl',
+      x: { channel: 'h' },
+      y: { channel: 's' },
+    });
+    expect(anchoredHslPlane.fixed.l).toBeCloseTo(hsl.l, 6);
+    expect(anchoredHslPlane.fixed.alpha).toBeCloseTo(hsl.alpha, 6);
   });
 
   it('maps colors to and from plane coordinates', () => {
@@ -188,9 +260,9 @@ describe('plane api', () => {
         tolerance: 10,
       },
       {
-        name: 'display-p3',
+        name: 'p3',
         definition: {
-          model: 'display-p3' as const,
+          model: 'p3' as const,
           x: { channel: 'r' as const },
           y: { channel: 'g' as const },
           fixed: { b: p3.b, alpha: p3.alpha },
@@ -323,6 +395,69 @@ describe('plane api', () => {
     expect(d.startsWith('M ')).toBe(true);
     const compound = toSvgCompoundPath([first.points], { closeLoop: true });
     expect(compound.includes('Z')).toBe(true);
+  });
+
+  it('normalizes equivalent plane definitions into the same cache key', () => {
+    const query = {
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+    };
+    const color = parse('#3b82f6');
+    const rgb = toRgb(color);
+
+    expect(createPlaneQueryKey({}, query)).toBe(
+      createPlaneQueryKey(
+        {
+          model: 'oklch',
+          x: { channel: 'l', range: [0, 1] },
+          y: { channel: 'c', range: [0.4, 0] },
+          fixed: { l: 0.5, c: 0, h: 0, alpha: 1 },
+        },
+        query,
+      ),
+    );
+
+    expect(
+      createPlaneQueryKey(
+        {
+          model: 'rgb',
+          x: { channel: 'r' },
+          y: { channel: 'g' },
+          color,
+        },
+        query,
+      ),
+    ).toBe(
+      createPlaneQueryKey(
+        {
+          model: 'rgb',
+          x: { channel: 'r' },
+          y: { channel: 'g' },
+          fixed: { r: rgb.r, g: rgb.g, b: rgb.b, alpha: rgb.alpha },
+        },
+        query,
+      ),
+    );
+
+    expect(
+      createPlaneQueryKey(
+        {
+          model: 'display-p3',
+          x: { channel: 'r' },
+          y: { channel: 'g' },
+        },
+        query,
+      ),
+    ).toBe(
+      createPlaneQueryKey(
+        {
+          model: 'p3',
+          x: { channel: 'r' },
+          y: { channel: 'g' },
+        },
+        query,
+      ),
+    );
   });
 
   it('runs region operations and transforms', () => {

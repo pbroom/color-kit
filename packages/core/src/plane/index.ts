@@ -1,6 +1,7 @@
 export {
   colorToPlane,
   definePlane,
+  definePlaneFromColor,
   planeHue,
   planeModelChannels,
   planeModelDefaultRange,
@@ -9,6 +10,7 @@ export {
   PLANE_MODEL_CHANNELS,
   PLANE_MODEL_DEFAULT_AXES,
   PLANE_MODEL_DEFAULT_RANGES,
+  resolvePlaneDefinition,
   usesLightnessAndChroma,
 } from './plane.js';
 
@@ -56,6 +58,7 @@ export type {
   Plane,
   PlaneAxis,
   PlaneBoundaryPoint,
+  PlaneChannelFor,
   PlaneChromaBandQuery,
   PlaneChromaBandResult,
   PlaneColorPoint,
@@ -64,6 +67,7 @@ export type {
   PlaneContrastRegionQuery,
   PlaneContrastRegionResult,
   PlaneDefinition,
+  PlaneDefinitionFor,
   PlaneFixedInput,
   PlaneFallbackPointQuery,
   PlaneFallbackPointResult,

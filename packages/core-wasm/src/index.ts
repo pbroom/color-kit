@@ -2,8 +2,8 @@ import {
   colorToPlane,
   createJsPlaneComputeBackend,
   createPlaneComputeScheduler,
-  definePlane,
   packPlaneQueryResults,
+  resolvePlaneDefinition,
   runPlaneQuery,
   type Color,
   type PlaneComputeBackend,
@@ -253,7 +253,7 @@ export function createWasmPlaneComputeBackendFromKernel(
   return {
     kind: 'wasm',
     run(request) {
-      const resolvedPlane = definePlane(request.plane);
+      const resolvedPlane = resolvePlaneDefinition(request.plane);
       const computeStart = nowMs();
       const rawResults: PlaneQueryResult[] = [];
       const contrastQueries: WasmContrastKernelQueryPayload[] = [];

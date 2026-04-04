@@ -1,13 +1,9 @@
 import { lazy, Suspense, type ReactNode } from 'react';
-import { planeApiQuickStartSnippet } from './plane-api-playground.source.js';
-import { CodeBlock } from './code-block.js';
 import PlaneApiPlaygroundDemo from './plane-api-playground.demo.js';
 
 const PlaneApiPlaygroundSandpack = lazy(
   () => import('./plane-api-playground.sandpack.js'),
 );
-
-const PLAYGROUND_WIDTH = 'min(80rem, max(100%, calc(100vw - 6rem)))';
 
 function PlaneQuickStartStaticPreview() {
   return (
@@ -28,11 +24,8 @@ function PlaneQuickStartStaticPreview() {
 
 function PlaneQuickStartPlaygroundFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="not-prose my-6">
-      <div
-        className="relative left-1/2 -translate-x-1/2 overflow-hidden rounded-xl border border-border/70 bg-card/40 shadow-xs"
-        style={{ width: PLAYGROUND_WIDTH }}
-      >
+    <div className="ck-docs-content-bleed not-prose my-6 min-w-0">
+      <div className="w-full min-w-0 max-w-none overflow-hidden rounded-xl border border-border/70 bg-card/40 shadow-xs">
         {children}
       </div>
     </div>
@@ -64,18 +57,6 @@ export function PlaneQuickStartDemo() {
       >
         <PlaneQuickStartStaticPreview />
       </div>
-    </div>
-  );
-}
-
-export function PlaneQuickStartSnippet() {
-  return (
-    <div className="not-prose my-6 rounded-xl border border-border/70 bg-card/40 p-3">
-      <CodeBlock
-        code={planeApiQuickStartSnippet}
-        language="js"
-        className="my-0"
-      />
     </div>
   );
 }
