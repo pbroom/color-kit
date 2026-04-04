@@ -19,6 +19,7 @@ import { clamp, normalizeHue } from '../utils/index.js';
 import type {
   Plane,
   PlaneChannel,
+  PlaneDefinitionFor,
   PlaneDefinition,
   PlaneFixedInput,
   PlaneModel,
@@ -40,7 +41,7 @@ export const PLANE_MODEL_CHANNELS: Record<PlaneModel, readonly PlaneChannel[]> =
     hsv: ['h', 's', 'v'],
     oklab: ['L', 'a', 'b'],
     hct: ['h', 'c', 't'],
-    'display-p3': ['r', 'g', 'b'],
+    p3: ['r', 'g', 'b'],
   };
 
 /**
@@ -58,7 +59,7 @@ export const PLANE_MODEL_DEFAULT_AXES: Record<
   hsv: { x: 'h', y: 's' },
   oklab: { x: 'a', y: 'b' },
   hct: { x: 'h', y: 'c' },
-  'display-p3': { x: 'r', y: 'g' },
+  p3: { x: 'r', y: 'g' },
 };
 
 const OKLCH_DEFAULT_RANGES: Record<'l' | 'c' | 'h', [number, number]> = {
@@ -111,7 +112,7 @@ export const PLANE_MODEL_DEFAULT_RANGES: Record<
     c: [150, 0],
     t: [100, 0],
   },
-  'display-p3': {
+  p3: {
     r: [0, 1],
     g: [0, 1],
     b: [0, 1],
@@ -400,10 +401,10 @@ const PLANE_MODEL_SPECS: Record<PlaneModel, PlaneModelSpec> = {
     fromColor: toHctModelColor,
     toColor: fromHctModelColor,
   },
-  'display-p3': {
-    channels: PLANE_MODEL_CHANNELS['display-p3'],
-    defaultAxes: PLANE_MODEL_DEFAULT_AXES['display-p3'],
-    defaultRanges: PLANE_MODEL_DEFAULT_RANGES['display-p3'],
+  p3: {
+    channels: PLANE_MODEL_CHANNELS.p3,
+    defaultAxes: PLANE_MODEL_DEFAULT_AXES.p3,
+    defaultRanges: PLANE_MODEL_DEFAULT_RANGES.p3,
     normalizeFixed: normalizeP3Fixed,
     fromColor: toP3ModelColor,
     toColor: fromP3ModelColor,
@@ -495,10 +496,50 @@ function planeAxis(
 }
 
 /**
+ * Validates model-relative fixed input before normalization.
+ */
+function validateFixedChannels(
+  model: PlaneModel,
+  modelSpec: PlaneModelSpec,
+  fixed?: PlaneFixedInput,
+): void {
+  if (!fixed) return;
+  for (const [key, value] of Object.entries(fixed)) {
+    if (value === undefined) continue;
+    if (key === 'alpha') {
+      if (!isFiniteNumber(value)) {
+        throw new Error(
+          'definePlane() fixed alpha must be a finite numeric value',
+        );
+      }
+      continue;
+    }
+    if (!modelSpec.channels.includes(key as PlaneChannel)) {
+      throw new Error(
+        `definePlane() fixed channel "${key}" is not supported by model "${model}"`,
+      );
+    }
+    if (!isFiniteNumber(value)) {
+      throw new Error(
+        `definePlane() fixed channel "${key}" must be a finite numeric value`,
+      );
+    }
+  }
+}
+
+/**
  * Resolves and clamps model-relative fixed channels used by the plane.
  */
-function fixedColor(modelSpec: PlaneModelSpec, fixed?: PlaneFixedInput) {
-  return modelSpec.normalizeFixed(fixed);
+function fixedColor(
+  modelSpec: PlaneModelSpec,
+  options: { color?: Color; fixed?: PlaneFixedInput },
+) {
+  const anchoredFixed = options.color
+    ? modelSpec.fromColor(options.color)
+    : undefined;
+  return modelSpec.normalizeFixed(
+    anchoredFixed ? { ...anchoredFixed, ...options.fixed } : options.fixed,
+  );
 }
 
 /**
@@ -529,28 +570,77 @@ function denormalizeInRange(norm: number, range: [number, number]): number {
 }
 
 /**
- * Resolves plane input into a normalized plane object.
+ * Broad plane resolver for dynamic `PlaneDefinition` objects.
+ *
+ * Prefer `definePlane()` in user code when the model is known at the call site,
+ * because its overloads provide model-aware TypeScript narrowing.
  *
  * @param planeObject Plane input object.
- * @param planeObject.model Target model (`oklch`, `rgb`, `hsl`, `hsv`, `oklab`, `hct`, `display-p3`).
+ * @param planeObject.model Target model (`oklch`, `rgb`, `hsl`, `hsv`, `oklab`, `hct`, `p3`).
  * @param planeObject.x Optional x-axis descriptor; defaults to model defaults.
  * @param planeObject.y Optional y-axis descriptor; defaults to model defaults.
+ * @param planeObject.color Optional anchor color converted into the selected
+ * model before fixed-channel overrides are applied.
  * @param planeObject.fixed Optional fixed channel values clamped for the model.
  * @returns Fully-resolved plane safe for query and projection.
  */
-export function definePlane(planeObject: PlaneDefinition = {}): Plane {
+export function resolvePlaneDefinition(
+  planeObject: PlaneDefinition = {},
+): Plane {
   const model = planeObject.model ?? 'oklch';
   const modelSpec = planeModelSpec(model);
   const defaultAxes = modelSpec.defaultAxes;
+
+  validateFixedChannels(model, modelSpec, planeObject.fixed);
+
   const resolved: Plane = {
     model,
     x: planeAxis(model, modelSpec, planeObject.x ?? { channel: defaultAxes.x }),
     y: planeAxis(model, modelSpec, planeObject.y ?? { channel: defaultAxes.y }),
-    fixed: fixedColor(modelSpec, planeObject.fixed),
+    fixed: fixedColor(modelSpec, {
+      color: planeObject.color,
+      fixed: planeObject.fixed,
+    }),
   };
 
   validateDistinctAxes(resolved);
   return resolved;
+}
+
+export function definePlane(
+  planeObject?: PlaneDefinitionFor<'oklch'>,
+): Plane<'oklch'>;
+export function definePlane<Model extends Exclude<PlaneModel, 'oklch'>>(
+  planeObject: PlaneDefinitionFor<Model>,
+): Plane<Model>;
+export function definePlane(planeObject: PlaneDefinition = {}): Plane {
+  return resolvePlaneDefinition(planeObject);
+}
+
+/**
+ * Defines a plane anchored to a source color.
+ *
+ * Equivalent to `definePlane({ ...planeObject, color })`.
+ *
+ * @param color Anchor color converted into the selected model.
+ * @param planeObject Optional plane definition overrides.
+ * @returns Fully-resolved plane safe for query and projection.
+ */
+export function definePlaneFromColor(
+  color: Color,
+  planeObject?: Omit<PlaneDefinitionFor<'oklch'>, 'color'>,
+): Plane<'oklch'>;
+export function definePlaneFromColor<
+  Model extends Exclude<PlaneModel, 'oklch'>,
+>(
+  color: Color,
+  planeObject: Omit<PlaneDefinitionFor<Model>, 'color'>,
+): Plane<Model>;
+export function definePlaneFromColor(
+  color: Color,
+  planeObject: Omit<PlaneDefinition, 'color'> = {},
+): Plane {
+  return resolvePlaneDefinition({ ...planeObject, color });
 }
 
 /**

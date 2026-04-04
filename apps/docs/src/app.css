@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 @import 'tw-animate-css';
 @import './styles/legacy-docs.css';
 @import './styles/docs.css';
@@ -36,7 +37,7 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.985 0.002 264);
+  --background: oklch(0.985 0 0);
   --foreground: oklch(0.205 0.012 264);
   --card: oklch(0.998 0.001 264);
   --card-foreground: oklch(0.205 0.012 264);
@@ -57,7 +58,7 @@
 }
 
 .dark {
-  --background: oklch(0.15 0.005 264);
+  --background: oklch(0.15 0 0);
   --foreground: oklch(0.97 0.005 264);
   --card: oklch(0.19 0.007 264);
   --card-foreground: oklch(0.97 0.005 264);

@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsup';
 
-export default defineConfig({
+export default defineConfig((options) => ({
   // Intentionally ship compiler-safe source without React Compiler precompilation.
   // The current library pipeline relies on tsup/esbuild, while docs precompile via Vite+Babel.
   entry: {
@@ -10,9 +10,11 @@ export default defineConfig({
   },
   format: ['esm', 'cjs'],
   dts: true,
-  clean: true,
+  // Preserve prior outputs during watch rebuilds so DTS resolution stays valid
+  // while upstream workspace packages finish writing fresh declarations.
+  clean: !options.watch,
   sourcemap: true,
   treeshake: true,
   minify: false,
   external: ['react', 'react-dom'],
-});
+}));

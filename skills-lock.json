@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "api-design-principles": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "3316239df2bdcb41e992857b8142e0239e6964564dd5d7224e470c2ab350a03c"
+    },
+    "write-api-reference": {
+      "source": "vercel/next.js",
+      "sourceType": "github",
+      "computedHash": "71ef0ce66be41d19902987bf9a259c081af4f52a7a8d93dde1a23c3bb07c5a4a"
+    }
+  }
+}

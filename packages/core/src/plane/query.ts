@@ -27,9 +27,9 @@ import type {
 } from './types.js';
 import {
   colorToPlane,
-  definePlane,
   planeHue,
   planeToColor,
+  resolvePlaneDefinition,
   usesLightnessAndChroma,
 } from './plane.js';
 
@@ -79,7 +79,7 @@ export function getPlaneGamutBoundary(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneGamutBoundaryQuery, 'kind'> = {},
 ): PlaneGamutBoundaryResult {
-  const resolvedPlane = definePlane(planeDefinition);
+  const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'gamutBoundary',
@@ -127,7 +127,7 @@ export function getPlaneContrastBoundary(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneContrastBoundaryQuery, 'kind'>,
 ): PlaneContrastBoundaryResult {
-  const resolvedPlane = definePlane(planeDefinition);
+  const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'contrastBoundary',
@@ -187,7 +187,7 @@ export function getPlaneContrastRegion(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneContrastRegionQuery, 'kind'>,
 ): PlaneContrastRegionResult {
-  const resolvedPlane = definePlane(planeDefinition);
+  const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'contrastRegion',
@@ -247,7 +247,7 @@ export function getPlaneChromaBand(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneChromaBandQuery, 'kind'> = {},
 ): PlaneChromaBandResult {
-  const resolvedPlane = definePlane(planeDefinition);
+  const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'chromaBand',
@@ -295,7 +295,7 @@ export function getPlaneFallbackPoint(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneFallbackPointQuery, 'kind'>,
 ): PlaneFallbackPointResult {
-  const resolvedPlane = definePlane(planeDefinition);
+  const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const mapped =
     query.gamut === 'display-p3'
       ? toP3Gamut(query.color)
@@ -326,7 +326,7 @@ export function samplePlaneGradient(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneGradientQuery, 'kind'>,
 ): PlaneGradientResult {
-  const resolvedPlane = definePlane(planeDefinition);
+  const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const steps = query.steps ?? 16;
   const colors = generateScale(query.from, query.to, Math.max(2, steps));
   const points = colors.map((color) => {
@@ -447,6 +447,6 @@ export function colorAtPlanePoint(
   planeDefinition: PlaneDefinition,
   point: { x: number; y: number },
 ): Color {
-  const resolvedPlane = definePlane(planeDefinition);
+  const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   return planeToColor(resolvedPlane, point);
 }

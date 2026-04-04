@@ -282,7 +282,7 @@ function DocsLayoutInner() {
             <main className="ck-docs-main min-w-0" id="docs-content">
               <article
                 className={cn(
-                  'ck-docs-article ck-docs-article--gridded prose docs-article m-0! w-full! max-w-none! px-5 py-6 md:px-8 md:py-8',
+                  'ck-docs-article ck-docs-article--gridded prose dark:prose-invert docs-article m-0! w-full! max-w-none! px-5 py-6 md:px-8 md:py-8',
                 )}
                 data-doc-content=""
               >

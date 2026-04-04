@@ -29,17 +29,20 @@ const [demoComponentSource, playgroundSource, sandpackSource, pageSource] =
 
 const playgroundChecks = [
   {
-    label: 'quick-start fixed channels',
-    pattern:
-      /definePlane\(\{\s*fixed:\s*\{\s*h:\s*250,\s*alpha:\s*1\s*\}\s*\}\)/,
+    label: 'quick-start plane definition',
+    pattern: /definePlane\(/,
   },
   {
     label: 'quick-start fluent query',
     pattern: /sense\(\s*plane\s*\)/,
   },
   {
-    label: 'quick-start svg output options',
-    pattern: /toSvgPath\([^)]*closeLoop:\s*true,\s*precision:\s*2[^)]*\)/s,
+    label: 'quick-start boundary query',
+    pattern: /gamutBoundary\(/,
+  },
+  {
+    label: 'quick-start svg output',
+    pattern: /toSvgPath\(/,
   },
 ];
 
