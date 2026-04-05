@@ -51,6 +51,25 @@ const contrastSchedulerRequest: PlaneComputeRequest = {
   performanceProfile: 'balanced',
 };
 
+const gamutRegionSchedulerRequest: PlaneComputeRequest = {
+  plane: {
+    model: 'p3',
+    x: { channel: 'r', range: [0, 1] },
+    y: { channel: 'g', range: [1, 0] },
+    fixed: { b: 1, alpha: 1 },
+  },
+  queries: [
+    {
+      kind: 'gamutRegion',
+      gamut: 'srgb',
+      scope: 'viewport',
+    },
+  ],
+  priority: 'drag',
+  quality: 'high',
+  performanceProfile: 'balanced',
+};
+
 function createTimedBackend(
   kind: PlaneComputeBackend['kind'],
   computeTimeMs: number,
@@ -174,6 +193,26 @@ describe('plane compute scheduler', () => {
     expect(
       snapshot.buckets.some((bucket) =>
         bucket.key.includes('contrast:wcag:hybrid'),
+      ),
+    ).toBe(true);
+  });
+
+  it('tracks viewport gamut-region requests in scheduler telemetry buckets', () => {
+    const scheduler = createPlaneComputeScheduler({
+      backends: {
+        js: createTimedBackend('js', 6),
+      },
+      options: {
+        preferredBackends: ['js'],
+      },
+    });
+
+    scheduler.run(gamutRegionSchedulerRequest);
+    const snapshot = scheduler.getTelemetrySnapshot();
+
+    expect(
+      snapshot.buckets.some((bucket) =>
+        bucket.key.includes('gamutRegion:viewport'),
       ),
     ).toBe(true);
   });

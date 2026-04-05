@@ -1,5 +1,10 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import PlaneApiPlaygroundDemo from './plane-api-playground.demo.js';
+import PlaneApiPlaygroundLabDemo from './plane-api-playground-lab.demo.js';
+import {
+  planeApiPlaygroundLabSource,
+  planeApiPlaygroundSource,
+} from './plane-api-playground.source.js';
 
 const PlaneApiPlaygroundSandpack = lazy(
   () => import('./plane-api-playground.sandpack.js'),
@@ -22,6 +27,23 @@ function PlaneQuickStartStaticPreview() {
   );
 }
 
+function PlaneLabStaticPreview() {
+  return (
+    <div
+      style={{
+        width: 320,
+        height: 320,
+        maxWidth: '100%',
+        border: '1px solid oklch(50% 0 0 / 0.1)',
+        borderRadius: '0.5rem',
+        overflow: 'hidden',
+      }}
+    >
+      <PlaneApiPlaygroundLabDemo />
+    </div>
+  );
+}
+
 function PlaneQuickStartPlaygroundFrame({ children }: { children: ReactNode }) {
   return (
     <div className="ck-docs-content-bleed not-prose my-6 min-w-0">
@@ -36,6 +58,14 @@ function PlaneQuickStartPlaygroundFallback() {
   return (
     <div className="flex min-h-[520px] items-center justify-center bg-card/60 p-8">
       <PlaneQuickStartStaticPreview />
+    </div>
+  );
+}
+
+function PlaneLabPlaygroundFallback() {
+  return (
+    <div className="flex min-h-[520px] items-center justify-center bg-card/60 p-8">
+      <PlaneLabStaticPreview />
     </div>
   );
 }
@@ -65,7 +95,23 @@ export function PlaneQuickStartPlayground() {
   return (
     <PlaneQuickStartPlaygroundFrame>
       <Suspense fallback={<PlaneQuickStartPlaygroundFallback />}>
-        <PlaneApiPlaygroundSandpack />
+        <PlaneApiPlaygroundSandpack
+          instanceId="quick-start"
+          source={planeApiPlaygroundSource}
+        />
+      </Suspense>
+    </PlaneQuickStartPlaygroundFrame>
+  );
+}
+
+export function PlaneApiValidationPlayground() {
+  return (
+    <PlaneQuickStartPlaygroundFrame>
+      <Suspense fallback={<PlaneLabPlaygroundFallback />}>
+        <PlaneApiPlaygroundSandpack
+          instanceId="validation"
+          source={planeApiPlaygroundLabSource}
+        />
       </Suspense>
     </PlaneQuickStartPlaygroundFrame>
   );

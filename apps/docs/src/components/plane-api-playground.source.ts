@@ -1,4 +1,5 @@
 import demoSourceRaw from './plane-api-playground.demo.tsx?raw';
+import labSourceRaw from './plane-api-playground-lab.demo.tsx?raw';
 
 const SANDBOX_PACKAGE_ROOT = '/node_modules/color-kit';
 const SANDBOX_PACKAGE_ENTRY = '../../color-kit-core/index.ts' as const;
@@ -32,4 +33,8 @@ function trimBlankEdges(text: string): string {
 
 export const planeApiPlaygroundSource = trimBlankEdges(
   demoSourceRaw.replace(/\r\n/g, '\n'),
+);
+
+export const planeApiPlaygroundLabSource = trimBlankEdges(
+  labSourceRaw.replace(/\r\n/g, '\n'),
 );

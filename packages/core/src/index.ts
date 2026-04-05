@@ -124,7 +124,11 @@ export type {
 } from './gamut/index.js';
 
 // HCT utilities
-export { maxHctChromaForHue, maxHctPeakToneForHue } from './hct/index.js';
+export {
+  maxHctChromaAtTone,
+  maxHctChromaForHue,
+  maxHctPeakToneForHue,
+} from './hct/index.js';
 export type {
   HctHuePeak,
   MaxHctChromaForHueMethod,
@@ -178,6 +182,7 @@ export {
   getPlaneContrastRegion,
   getPlaneFallbackPoint,
   getPlaneGamutBoundary,
+  getPlaneGamutRegion,
   PlaneQueryCache,
   planeHue,
   planeModelChannels,
@@ -227,6 +232,10 @@ export type {
   PlaneFallbackPointResult,
   PlaneGamutBoundaryQuery,
   PlaneGamutBoundaryResult,
+  PlaneGamutRegionQuery,
+  PlaneGamutRegionResult,
+  PlaneGamutRegionScope,
+  PlaneGamutSolver,
   PlaneGradientQuery,
   PlaneGradientResult,
   PlaneModelColor,
@@ -239,6 +248,7 @@ export type {
   PlaneWithSense,
   PlaneRegion,
   PlaneRegionPoint,
+  PlaneViewportRelation,
   ResolvedPlaneAxis,
   ResolvedPlaneDefinition,
   SvgPathCompileOptions,

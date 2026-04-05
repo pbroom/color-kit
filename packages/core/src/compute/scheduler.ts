@@ -108,6 +108,10 @@ function estimateQueryBudget(request: PlaneComputeRequest): number {
         budget += query.steps ?? 48;
         break;
       }
+      case 'gamutRegion': {
+        budget += query.scope === 'full' ? 6144 : 4096;
+        break;
+      }
       case 'contrastBoundary':
       case 'contrastRegion': {
         const samplingMode = query.samplingMode ?? 'hybrid';
@@ -170,6 +174,22 @@ function createBucketKey(request: PlaneComputeRequest): string {
   const kinds = [...new Set(request.queries.map((query) => query.kind))]
     .sort()
     .join('+');
+  const gamutRegionSignature = [
+    ...new Set(
+      request.queries
+        .filter(
+          (
+            query,
+          ): query is Extract<
+            PlaneComputeRequest['queries'][number],
+            { kind: 'gamutRegion' }
+          > => query.kind === 'gamutRegion',
+        )
+        .map((query) => `${query.scope ?? 'viewport'}`),
+    ),
+  ]
+    .sort()
+    .join(',');
   const contrastSignature = [
     ...new Set(
       request.queries
@@ -199,7 +219,7 @@ function createBucketKey(request: PlaneComputeRequest): string {
   const quality = request.quality ?? 'medium';
   const profile = request.performanceProfile ?? 'balanced';
   const budget = budgetBucketLabel(estimateQueryBudget(request));
-  return `${kinds}|contrast:${contrastSignature || 'none'}|priority:${priority}|quality:${quality}|profile:${profile}|budget:${budget}`;
+  return `${kinds}|gamutRegion:${gamutRegionSignature || 'none'}|contrast:${contrastSignature || 'none'}|priority:${priority}|quality:${quality}|profile:${profile}|budget:${budget}`;
 }
 
 function totalTimeMs(response: PlaneComputeResponse): number {

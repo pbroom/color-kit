@@ -29,6 +29,9 @@ runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
   - `hybrid` (default for contrast queries) &mdash; direct root solving + adaptive tracing for smoother boundaries.
   - `uniform` &mdash; fixed stepping across the plane (legacy compatibility).
   - `adaptive` &mdash; recursive marching refinement (legacy compatibility).
+- `gamutRegion()` is viewport-first by default:
+  - `scope: 'viewport'` returns only boundary fragments that intersect the current plane window.
+  - `scope: 'full'` opts into offscreen boundary geometry for exports or overview visualizations.
 - `metric` is available for `contrastBoundary` / `contrastRegion`:
   - `wcag` &mdash; threshold uses ratio values such as `3`, `4.5`, `7`.
   - `apca` &mdash; threshold uses normalized `Lc` values (for example `0.3`, `0.45`, `0.6`) and supports `apcaPolarity` + `apcaRole`.
@@ -39,6 +42,7 @@ runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
 | Query              | Multi-model mapping support        | Requires `oklch` + `l/c` axes            |
 | ------------------ | ---------------------------------- | ---------------------------------------- |
 | `gamutBoundary`    | Returns typed result for any model | Yes (`points` is empty when unsupported) |
+| `gamutRegion`      | Yes                                | No                                       |
 | `contrastBoundary` | Returns typed result for any model | Yes (`points` is empty when unsupported) |
 | `contrastRegion`   | Returns typed result for any model | Yes (`paths` is empty when unsupported)  |
 | `chromaBand`       | Returns typed result for any model | Yes (`points` is empty when unsupported) |
@@ -74,6 +78,51 @@ const boundary = query.gamutBoundary({
   </li>
   <li>
     <code>points</code> &mdash; <code>{'Array<{ l, c, x, y }>'}</code>
+  </li>
+</ul>
+
+## `gamutRegion`
+
+Returns the visible in-gamut region for the current plane window plus any
+boundary fragments that cross that viewport.
+
+```ts
+const gamut = query.gamutRegion({
+  gamut: 'srgb',
+  scope: 'viewport',
+});
+```
+
+<p className="api-returns">
+  Returns <code>PlaneGamutRegionResult</code>
+</p>
+
+<ul className="api-field-list">
+  <li>
+    <code>kind</code> &mdash; <code>'gamutRegion'</code>
+  </li>
+  <li>
+    <code>gamut</code> &mdash; <code>'srgb' | 'display-p3'</code>
+  </li>
+  <li>
+    <code>scope</code> &mdash; <code>'viewport' | 'full'</code>
+  </li>
+  <li>
+    <code>viewportRelation</code> &mdash;{' '}
+    <code>'inside' | 'outside' | 'intersects'</code>
+  </li>
+  <li>
+    <code>solver</code> &mdash; reports whether the result came from a domain
+    clip, an analytic shortcut, or an implicit contour pass
+  </li>
+  <li>
+    <code>boundaryPaths</code> &mdash; <code>{'PlanePoint[][]'}</code> for the
+    visible contour fragments (or full projected contour when
+    <code>scope: 'full'</code>)
+  </li>
+  <li>
+    <code>visibleRegion</code> &mdash;{' '}
+    <code>{'{ paths: PlanePoint[][] }'}</code> clipped to the current viewport
   </li>
 </ul>
 

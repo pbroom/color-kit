@@ -196,6 +196,17 @@ export interface PlaneRegion {
   paths: PlanePoint[][];
 }
 
+export type PlaneViewportRelation = 'inside' | 'outside' | 'intersects';
+
+export type PlaneGamutSolver =
+  | 'domain-edge'
+  | 'analytic-lc'
+  | 'analytic-hc'
+  | 'analytic-hct'
+  | 'implicit-contour';
+
+export type PlaneGamutRegionScope = 'viewport' | 'full';
+
 export interface PlaneGamutBoundaryQuery {
   kind: 'gamutBoundary';
   gamut?: GamutTarget;
@@ -205,6 +216,13 @@ export interface PlaneGamutBoundaryQuery {
   samplingMode?: 'uniform' | 'adaptive';
   adaptiveTolerance?: number;
   adaptiveMaxDepth?: number;
+}
+
+export interface PlaneGamutRegionQuery {
+  kind: 'gamutRegion';
+  gamut?: GamutTarget;
+  scope?: PlaneGamutRegionScope;
+  simplifyTolerance?: number;
 }
 
 export interface PlaneContrastQueryOptions {
@@ -272,6 +290,7 @@ export interface PlaneGradientQuery {
 
 export type PlaneQuery =
   | PlaneGamutBoundaryQuery
+  | PlaneGamutRegionQuery
   | PlaneContrastBoundaryQuery
   | PlaneContrastRegionQuery
   | PlaneChromaBandQuery
@@ -283,6 +302,16 @@ export interface PlaneGamutBoundaryResult {
   gamut: GamutTarget;
   hue: number;
   points: PlaneBoundaryPoint[];
+}
+
+export interface PlaneGamutRegionResult {
+  kind: 'gamutRegion';
+  gamut: GamutTarget;
+  scope: PlaneGamutRegionScope;
+  viewportRelation: PlaneViewportRelation;
+  solver: PlaneGamutSolver;
+  boundaryPaths: PlanePoint[][];
+  visibleRegion: PlaneRegion;
 }
 
 export interface PlaneContrastBoundaryResult {
@@ -316,6 +345,7 @@ export interface PlaneGradientResult {
 
 export type PlaneQueryResult =
   | PlaneGamutBoundaryResult
+  | PlaneGamutRegionResult
   | PlaneContrastBoundaryResult
   | PlaneContrastRegionResult
   | PlaneChromaBandResult

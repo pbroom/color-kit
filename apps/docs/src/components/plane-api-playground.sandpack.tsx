@@ -1,5 +1,12 @@
 import * as SandpackReact from '@codesandbox/sandpack-react';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import {
   SandpackCodeEditor as SandpackCodeEditorBase,
@@ -11,14 +18,15 @@ import {
 import { githubLight } from '@codesandbox/sandpack-themes';
 import { ExternalLink, ListOrdered, RefreshCw, RotateCcw } from 'lucide-react';
 import { compressToBase64 } from 'lz-string';
+import gamutRegionSourceRaw from '../../../../packages/core/src/plane/gamut-region.ts?raw';
 import { githubDarkSandpackTheme } from '../lib/sandpack-themes.js';
 import { cn } from '../lib/utils.js';
 import {
+  planeApiPlaygroundSource,
   planeApiPlaygroundSandboxPackageEntryFile,
   planeApiPlaygroundSandboxPackageEntrySource,
   planeApiPlaygroundSandboxPackageJsonFile,
   planeApiPlaygroundSandboxPackageJsonSource,
-  planeApiPlaygroundSource,
 } from './plane-api-playground.source.js';
 import { useTheme } from './theme-context.js';
 
@@ -65,6 +73,10 @@ const rawCoreSourceFiles = import.meta.glob(
   },
 ) as Record<string, string>;
 
+const forcedCoreSourceFiles = {
+  '../../../../packages/core/src/plane/gamut-region.ts': gamutRegionSourceRaw,
+} as const;
+
 function toCoreSandboxPath(modulePath: string): string {
   if (!modulePath.startsWith(CORE_SOURCE_PREFIX)) {
     throw new Error(`Unexpected core source path: ${modulePath}`);
@@ -95,10 +107,10 @@ function joinPosix(baseDir: string, relativePath: string): string {
 }
 
 const coreSourceBySandboxPath = Object.fromEntries(
-  Object.entries(rawCoreSourceFiles).map(([modulePath, code]) => [
-    toCoreSandboxPath(modulePath),
-    code,
-  ]),
+  Object.entries({
+    ...rawCoreSourceFiles,
+    ...forcedCoreSourceFiles,
+  }).map(([modulePath, code]) => [toCoreSandboxPath(modulePath), code]),
 );
 
 const coreSandboxPaths = new Set(Object.keys(coreSourceBySandboxPath));
@@ -211,8 +223,7 @@ function rewriteCoreSourceImports(source: string, fromFile: string): string {
     );
 }
 
-const PLAYGROUND_FILES = {
-  [PLAYGROUND_APP_FILE]: planeApiPlaygroundSource,
+const PLAYGROUND_SUPPORT_FILES = {
   [PLAYGROUND_ENTRY_FILE]: PLAYGROUND_ENTRY,
   [planeApiPlaygroundSandboxPackageJsonFile]: {
     code: planeApiPlaygroundSandboxPackageJsonSource,
@@ -235,6 +246,15 @@ const PLAYGROUND_FILES = {
     ]),
   ),
 } as const;
+
+function createPlaygroundFiles(
+  source: string,
+): Record<string, SandpackFileValue> {
+  return {
+    [PLAYGROUND_APP_FILE]: source,
+    ...PLAYGROUND_SUPPORT_FILES,
+  };
+}
 
 function getFileCode(file: SandpackFileValue | undefined): string {
   if (typeof file === 'string') {
@@ -484,10 +504,17 @@ function PlaneApiPlaygroundPreview({
   );
 }
 
-export default function PlaneApiPlaygroundSandpack() {
+export default function PlaneApiPlaygroundSandpack({
+  source = planeApiPlaygroundSource,
+  instanceId = SANDBOX_INSTANCE_ID,
+}: {
+  source?: string;
+  instanceId?: string;
+}) {
   const { resolvedTheme } = useTheme();
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [showLineNumbers, setShowLineNumbers] = useState(false);
+  const files = useMemo(() => createPlaygroundFiles(source), [source]);
   const handleRefresh = useCallback(
     () => setRefreshNonce((value) => value + 1),
     [],
@@ -499,7 +526,7 @@ export default function PlaneApiPlaygroundSandpack() {
 
   return (
     <SandpackProvider
-      key={`plane-api-playground-${SANDBOX_INSTANCE_ID}`}
+      key={`plane-api-playground-${instanceId}`}
       template="react-ts"
       customSetup={{
         dependencies: {
@@ -509,7 +536,7 @@ export default function PlaneApiPlaygroundSandpack() {
         },
       }}
       theme={resolvedTheme === 'dark' ? githubDarkSandpackTheme : githubLight}
-      files={PLAYGROUND_FILES}
+      files={files}
       options={{
         activeFile: PLAYGROUND_APP_FILE,
         visibleFiles: [

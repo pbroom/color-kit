@@ -286,6 +286,12 @@ describe('plane api', () => {
     const boundary = query.gamutBoundary({ gamut: 'srgb', steps: 16 });
     expect(boundary.points.length).toBeGreaterThan(8);
 
+    const gamutRegion = query.gamutRegion({ gamut: 'srgb' });
+    expect(gamutRegion.solver).toBe('analytic-lc');
+    expect(gamutRegion.viewportRelation).toBe('intersects');
+    expect(gamutRegion.boundaryPaths.length).toBeGreaterThan(0);
+    expect(gamutRegion.visibleRegion.paths.length).toBeGreaterThan(0);
+
     const contrastBoundary = query.contrastBoundary({
       reference: parse('#ffffff'),
       threshold: 4.5,
@@ -322,6 +328,92 @@ describe('plane api', () => {
       steps: 9,
     });
     expect(gradient.points).toHaveLength(9);
+  });
+
+  it('treats zoomed-in gamut regions as viewport-first by default', () => {
+    const zoomedPlane = definePlane({
+      model: 'oklch',
+      x: { channel: 'l', range: [0.5, 0.51] },
+      y: { channel: 'c', range: [0.04, 0] },
+      fixed: { h: 0, alpha: 1 },
+    });
+    const query = sense(zoomedPlane);
+
+    const viewportRegion = query.gamutRegion({ gamut: 'srgb' });
+    expect(viewportRegion.solver).toBe('analytic-lc');
+    expect(viewportRegion.viewportRelation).toBe('inside');
+    expect(viewportRegion.boundaryPaths).toEqual([]);
+    expect(viewportRegion.visibleRegion.paths).toEqual([
+      [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+      ],
+    ]);
+
+    const fullRegion = query.gamutRegion({ gamut: 'srgb', scope: 'full' });
+    expect(fullRegion.viewportRelation).toBe('inside');
+    expect(fullRegion.boundaryPaths.length).toBeGreaterThan(0);
+    expect(
+      fullRegion.boundaryPaths.some((path) =>
+        path.some(
+          (point) => point.x < 0 || point.x > 1 || point.y < 0 || point.y > 1,
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('dispatches gamutRegion solvers across model families', () => {
+    const hueChromaPlane = definePlane({
+      model: 'oklch',
+      x: { channel: 'h', range: [0, 360] },
+      y: { channel: 'c', range: [0.35, 0] },
+      fixed: { l: 0.62, alpha: 1 },
+    });
+    const hueChroma = sense(hueChromaPlane).gamutRegion({ gamut: 'srgb' });
+    expect(hueChroma.solver).toBe('analytic-hc');
+    expect(hueChroma.viewportRelation).toBe('intersects');
+    expect(hueChroma.boundaryPaths.length).toBeGreaterThan(0);
+    expect(hueChroma.visibleRegion.paths.length).toBeGreaterThan(0);
+
+    const rgbPlane = definePlane({
+      model: 'rgb',
+      x: { channel: 'r', range: [0, 300] },
+      y: { channel: 'g', range: [255, 0] },
+      fixed: { b: 180, alpha: 1 },
+    });
+    const rgbRegion = sense(rgbPlane).gamutRegion({ gamut: 'srgb' });
+    expect(rgbRegion.solver).toBe('domain-edge');
+    expect(rgbRegion.viewportRelation).toBe('intersects');
+    expect(rgbRegion.boundaryPaths).toHaveLength(1);
+    expect(rgbRegion.boundaryPaths[0][0].x).toBeCloseTo(0.85, 6);
+
+    const hslPlane = definePlane({
+      model: 'hsl',
+      x: { channel: 'h', range: [30, 210] },
+      y: { channel: 's', range: [100, 0] },
+      fixed: { l: 50, alpha: 1 },
+    });
+    const hslRegion = sense(hslPlane).gamutRegion({ gamut: 'srgb' });
+    expect(hslRegion.solver).toBe('domain-edge');
+    expect(hslRegion.viewportRelation).toBe('inside');
+    expect(hslRegion.boundaryPaths).toEqual([]);
+    expect(containsPoint(hslRegion.visibleRegion, { x: 0.25, y: 0.5 })).toBe(
+      true,
+    );
+
+    const p3Plane = definePlane({
+      model: 'p3',
+      x: { channel: 'r', range: [0, 1] },
+      y: { channel: 'g', range: [1, 0] },
+      fixed: { b: 0.5, alpha: 1 },
+    });
+    const p3Region = sense(p3Plane).gamutRegion({ gamut: 'srgb' });
+    expect(p3Region.solver).toBe('implicit-contour');
+    expect(p3Region.viewportRelation).toBe('intersects');
+    expect(p3Region.boundaryPaths.length).toBeGreaterThan(0);
+    expect(p3Region.visibleRegion.paths.length).toBeGreaterThan(0);
   });
 
   it('keeps LC-only queries gated for non-OKLCH planes', () => {

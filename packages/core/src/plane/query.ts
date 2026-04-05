@@ -7,6 +7,7 @@ import {
 import { contrastRegionPath, contrastRegionPaths } from '../contrast/index.js';
 import { generateScale } from '../scale/index.js';
 import type { Color } from '../types.js';
+import { getPlaneGamutRegion } from './gamut-region.js';
 import type {
   Plane,
   PlaneChromaBandQuery,
@@ -20,6 +21,8 @@ import type {
   PlaneFallbackPointResult,
   PlaneGamutBoundaryQuery,
   PlaneGamutBoundaryResult,
+  PlaneGamutRegionQuery,
+  PlaneGamutRegionResult,
   PlaneGradientQuery,
   PlaneGradientResult,
   PlaneQuery,
@@ -32,6 +35,8 @@ import {
   resolvePlaneDefinition,
   usesLightnessAndChroma,
 } from './plane.js';
+
+export { getPlaneGamutRegion };
 
 /**
  * Converts an `(l, c)` boundary point into normalized plane coordinates.
@@ -357,6 +362,8 @@ export function runPlaneQuery(
   switch (query.kind) {
     case 'gamutBoundary':
       return getPlaneGamutBoundary(planeDefinition, query);
+    case 'gamutRegion':
+      return getPlaneGamutRegion(planeDefinition, query);
     case 'contrastBoundary':
       return getPlaneContrastBoundary(planeDefinition, query);
     case 'contrastRegion':
@@ -393,6 +400,10 @@ export interface PlaneSense {
   gamutBoundary: (
     query?: Omit<PlaneGamutBoundaryQuery, 'kind'>,
   ) => PlaneGamutBoundaryResult;
+  /** Computes visible gamut geometry for the current plane window. */
+  gamutRegion: (
+    query?: Omit<PlaneGamutRegionQuery, 'kind'>,
+  ) => PlaneGamutRegionResult;
   /** Computes a projected contrast-threshold contour. */
   contrastBoundary: (
     query: Omit<PlaneContrastBoundaryQuery, 'kind'>,
@@ -428,6 +439,7 @@ export function sense(planeDefinition: PlaneDefinition): PlaneSense {
   return {
     gamutBoundary: (query = {}) =>
       getPlaneGamutBoundary(planeDefinition, query),
+    gamutRegion: (query = {}) => getPlaneGamutRegion(planeDefinition, query),
     contrastBoundary: (query) =>
       getPlaneContrastBoundary(planeDefinition, query),
     contrastRegion: (query) => getPlaneContrastRegion(planeDefinition, query),

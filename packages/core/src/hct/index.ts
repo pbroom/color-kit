@@ -57,6 +57,10 @@ function resolveHctMaxChromaAtTone(hue: number, tone: number): number {
   return resolveHctMaxChromaAtToneNormalized(normalizeHue(hue), tone);
 }
 
+export function maxHctChromaAtTone(hue: number, tone: number): number {
+  return resolveHctMaxChromaAtTone(hue, tone);
+}
+
 function getNormalizedHuePeakLutSize(lutSize?: number): number {
   if (!Number.isFinite(lutSize)) return DEFAULT_HCT_HUE_PEAK_LUT_SIZE;
   const normalized = Math.floor(lutSize ?? DEFAULT_HCT_HUE_PEAK_LUT_SIZE);

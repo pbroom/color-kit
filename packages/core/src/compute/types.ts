@@ -1,8 +1,11 @@
 import type { GamutTarget } from '../gamut/index.js';
 import type {
   PlaneDefinition,
+  PlaneGamutRegionScope,
+  PlaneGamutSolver,
   PlaneQuery,
   PlaneQueryResult,
+  PlaneViewportRelation,
 } from '../plane/types.js';
 
 export type PlaneComputeBackendKind = 'js' | 'wasm' | 'webgpu';
@@ -18,8 +21,13 @@ export interface PackedPlaneQueryDescriptor {
   kind: PlaneQuery['kind'];
   pathStart: number;
   pathCount: number;
+  regionPathStart?: number;
+  regionPathCount?: number;
   hue?: number;
   gamut?: GamutTarget;
+  scope?: PlaneGamutRegionScope;
+  solver?: PlaneGamutSolver;
+  viewportRelation?: PlaneViewportRelation;
 }
 
 /**
