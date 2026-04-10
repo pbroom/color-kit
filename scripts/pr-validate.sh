@@ -225,7 +225,7 @@ else
       packages/color-kit/*)
         umbrella_changed=1
         ;;
-      .cursor/skills/*|.cursor/rules/*|scripts/*|.github/workflows/*)
+      .cursor/skills/*|.cursor/rules/*|scripts/*|.github/workflows/*|.greptile/*|greptile.json)
         automation_changed=1
         format_changed=1
         ;;

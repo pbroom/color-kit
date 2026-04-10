@@ -4,7 +4,7 @@ When an agent is asked to submit PR work, babysit CI, or prepare a branch for me
 
 ## Primary Entry Points
 
-- Use `.cursor/skills/ship-and-babysit/SKILL.md` to move a branch from local work to merge-ready.
+- Use `.cursor/skills/prep-for-merge/SKILL.md` to move a branch from local work to merge-ready.
 - Use `.cursor/skills/merge-and-clean/SKILL.md` only after the user explicitly approves merge and cleanup.
 - Use `pnpm pr:stack` for Graphite submission.
 - Use `pnpm pr:validate` for local focused regression coverage.
@@ -15,49 +15,17 @@ When an agent is asked to submit PR work, babysit CI, or prepare a branch for me
 - Never auto-clean branches or worktrees without explicit user confirmation in the current conversation.
 - Stop and ask when review feedback or conflicts are ambiguous.
 
-## CI Source Of Truth
+## Review Sources
 
-- Prefer `gh pr checks` for current status.
-- Prefer `gh run view --log-failed` for the actual GitHub Actions failure cause.
-- Keep CI fixes scoped to one failure cause per commit whenever practical.
-
-## Submission Rules
-
-- Prefer `pnpm pr:stack` over raw `gt submit` so Graphite tracking, mergeability preflight, and PR metadata refresh stay consistent.
-- If the working tree is dirty, route through the scoped effort submit workflow instead of hand-rolling Graphite commands.
-
-## Validation Rules
-
-- Always run `pnpm pr:validate` after substantive PR-fix changes.
-- Trust the printed validation profile instead of guessing the relevant package commands.
-- Escalate to the wasm matrix only when `pnpm pr:validate` selects it based on changed paths.
-
-## Browser Smoke
-
-- Only run a `browser-use` smoke pass when changed files touch `apps/docs`, `packages/react`, or another clearly UI-facing surface.
-- Keep browser checks brief and regression-focused; do not turn them into exploratory QA unless the user asks.
-
-# PR Lifecycle Automation
-
-When an agent is asked to submit PR work, babysit CI, or prepare a branch for merge, use the repo-local lifecycle helpers before inventing a custom flow.
-
-## Primary Entry Points
-
-- Use `.cursor/skills/ship-and-babysit/SKILL.md` to move a branch from local work to merge-ready.
-- Use `.cursor/skills/merge-and-clean/SKILL.md` only after the user explicitly approves merge and cleanup.
-- Use `pnpm pr:stack` for Graphite submission.
-- Use `pnpm pr:validate` for local focused regression coverage.
-
-## Approval Boundaries
-
-- Never auto-merge without explicit user confirmation in the current conversation.
-- Never auto-clean branches or worktrees without explicit user confirmation in the current conversation.
-- Stop and ask when review feedback or conflicts are ambiguous.
+- Treat Greptile as a first-class review signal when `greptile.json` is present.
+- Keep the existing `pr-review-bot` workflow as a heuristic companion, not a replacement for Greptile or human review.
+- If Greptile has not reviewed a ready PR after open/update, comment `@greptileai` once to trigger it.
 
 ## CI Source Of Truth
 
 - Prefer `gh pr checks` for current status.
 - Prefer `gh run view --log-failed` for the actual GitHub Actions failure cause.
+- When Greptile status checks are enabled, include them in merge readiness.
 - Keep CI fixes scoped to one failure cause per commit whenever practical.
 
 ## Submission Rules

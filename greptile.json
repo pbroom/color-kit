@@ -1,0 +1,55 @@
+{
+  "strictness": 2,
+  "commentTypes": ["logic", "syntax", "info"],
+  "triggerOnUpdates": true,
+  "updateExistingSummaryComment": true,
+  "statusCheck": true,
+  "fixWithAI": true,
+  "instructions": "Prioritize correctness, behavioral regressions, security, performance, cross-package integration, and missing regression tests over style nits. Do not spend review budget on formatting, import ordering, or lint-only issues already enforced by Prettier or ESLint unless they hide a real bug.",
+  "ignorePatterns": ".cursor/hooks/state/**\nnode_modules/**\n**/dist/**\ncoverage/**",
+  "customContext": {
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "description": "Repository workflow guidance and high-signal engineering constraints."
+      },
+      {
+        "path": "DESIGN.md",
+        "description": "Architecture and design rationale for the core library and docs app."
+      }
+    ],
+    "other": [
+      {
+        "content": "This repository is a PNPM monorepo with packages/core, packages/core-wasm, packages/react, packages/color-kit, and apps/docs. Public API changes often require matching barrel exports, downstream package updates, and docs/demo sync in the same PR."
+      },
+      {
+        "content": "The repo already has dedicated lint, format, and CI automation. High-signal reviews focus on logic bugs, flaky or ambiguous workflow behavior, stale snippets or demos, missing export plumbing, and missing regression coverage."
+      }
+    ],
+    "rules": [
+      {
+        "rule": "When a PR changes public exports or runtime entry points in packages/core, packages/react, packages/core-wasm, or packages/color-kit, verify the relevant barrel exports, downstream consumers, and build/test wiring are updated in the same PR.",
+        "scope": [
+          "packages/core/**",
+          "packages/react/**",
+          "packages/core-wasm/**",
+          "packages/color-kit/**",
+          "apps/docs/**"
+        ]
+      },
+      {
+        "rule": "When docs demos or API snippets change, check that the visible demo source, copied snippet, and any sync/check scripts still agree so docs do not teach stale code.",
+        "scope": ["apps/docs/**"]
+      },
+      {
+        "rule": "For workflow, script, or agent-automation changes, focus on deterministic command ordering, explicit dry-run or approval boundaries, and whether required status checks still reflect the intended merge gates.",
+        "scope": [
+          ".github/workflows/**",
+          "scripts/**",
+          ".cursor/skills/**",
+          ".cursor/rules/**"
+        ]
+      }
+    ]
+  }
+}
