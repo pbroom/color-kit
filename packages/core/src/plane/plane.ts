@@ -139,7 +139,9 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
-function normalizePlaneModel(model: PlaneModel): Exclude<PlaneModel, 'display-p3'> {
+function normalizePlaneModel(
+  model: PlaneModel,
+): Exclude<PlaneModel, 'display-p3'> {
   return model === 'display-p3' ? 'p3' : model;
 }
 
