@@ -9,6 +9,17 @@ import {
 import { toRgb } from '../conversion/index.js';
 import { oklabToLinearRgb } from '../conversion/oklab.js';
 import { oklchToOklab } from '../conversion/oklch.js';
+import {
+  incrementTraceSummary,
+  limitTraceEntries,
+  limitTracePaths,
+  recordTraceStage,
+  setTraceSummaryField,
+  shouldTraceFull,
+  shouldTraceScalarGrid,
+  type InternalPlaneTraceContext,
+} from '../plane/trace.js';
+import type { PlanePoint } from '../plane/types.js';
 import { srgbToLinearChannel, simplifyPolyline } from '../utils/index.js';
 
 /**
@@ -368,6 +379,14 @@ function pointKey(point: ContrastRegionPoint): string {
   return `${point.l.toFixed(6)}:${point.c.toFixed(6)}`;
 }
 
+function toTracePoint(point: ContrastRegionPoint): PlanePoint {
+  return { x: point.l, y: point.c };
+}
+
+function toTracePaths(paths: ContrastRegionPoint[][]): PlanePoint[][] {
+  return paths.map((path) => path.map(toTracePoint));
+}
+
 /** Canonicalize point so segments from adjacent adaptive cells share the same vertex. */
 function canonicalizePoint(
   p: ContrastRegionPoint,
@@ -573,6 +592,7 @@ function contrastRegionPathsLegacy(
   reference: Color,
   hue: number,
   options: ContrastRegionPathOptions = {},
+  trace?: InternalPlaneTraceContext | null,
 ): ContrastRegionPoint[][] {
   const criterion = resolveContrastCriterion(options);
 
@@ -590,6 +610,24 @@ function contrastRegionPathsLegacy(
   const mappedReference = mapToGamut(reference, gamut);
 
   const mode = options.samplingMode ?? 'uniform';
+  const legacySolver =
+    mode === 'adaptive' && criterion.metric === 'wcag'
+      ? 'contrast-legacy-adaptive'
+      : 'contrast-legacy-uniform';
+  const legacySamplingMode =
+    legacySolver === 'contrast-legacy-adaptive' ? 'adaptive' : 'uniform';
+  setTraceSummaryField(trace, 'solver', legacySolver);
+  setTraceSummaryField(trace, 'samplingMode', legacySamplingMode);
+  setTraceSummaryField(trace, 'fidelity', {
+    simplifyTolerance: options.simplifyTolerance,
+    resolution: options.lightnessSteps ?? DEFAULT_LIGHTNESS_STEPS,
+    maxDepth: options.adaptiveMaxDepth,
+  });
+  recordTraceStage(trace, {
+    kind: 'solver',
+    solver: legacySolver,
+    samplingMode: legacySamplingMode,
+  });
   let segments: Array<[ContrastRegionPoint, ContrastRegionPoint]>;
 
   if (mode === 'adaptive' && criterion.metric === 'wcag') {
@@ -602,6 +640,7 @@ function contrastRegionPathsLegacy(
       mappedReference,
       edgeInterpolation,
       options,
+      trace,
     );
   } else {
     const lightnessSteps = validateSteps(
@@ -612,8 +651,13 @@ function contrastRegionPathsLegacy(
       'contrastRegionPaths() chromaSteps',
       options.chromaSteps ?? DEFAULT_CHROMA_STEPS,
     );
+    const sampleCount = (lightnessSteps + 1) * (chromaSteps + 1);
+    incrementTraceSummary(trace, 'sampleCount', sampleCount);
+    incrementTraceSummary(trace, 'scalarEvaluationCount', sampleCount);
 
     const scoreGrid: number[][] = [];
+    let minScore = Number.POSITIVE_INFINITY;
+    let maxScore = Number.NEGATIVE_INFINITY;
     for (
       let lightnessIndex = 0;
       lightnessIndex <= lightnessSteps;
@@ -634,17 +678,46 @@ function contrastRegionPathsLegacy(
 
         if (c > maxInGamut) {
           row.push(-1);
+          minScore = Math.min(minScore, -1);
+          maxScore = Math.max(maxScore, -1);
           continue;
         }
 
         const sample: Color = { l, c, h: hue, alpha };
         const mappedSample = mapToGamut(sample, gamut);
-        row.push(criterion.evaluate(mappedSample, mappedReference));
+        const value = criterion.evaluate(mappedSample, mappedReference);
+        row.push(value);
+        minScore = Math.min(minScore, value);
+        maxScore = Math.max(maxScore, value);
       }
       scoreGrid.push(row);
     }
+    if (shouldTraceScalarGrid(trace)) {
+      recordTraceStage(trace, {
+        kind: 'scalarGrid',
+        label: 'legacy-score-grid',
+        bounds: {
+          minX: 0,
+          maxX: 1,
+          minY: 0,
+          maxY: maxChroma,
+        },
+        resolution: lightnessSteps,
+        sampleCount,
+        minValue: minScore,
+        maxValue: maxScore,
+        values: scoreGrid.map((row) => row.slice()),
+      });
+    }
 
     segments = [];
+    const cellEvents: Array<{
+      xIndex: number;
+      yIndex: number;
+      mask: number;
+      points: PlanePoint[];
+    }> = [];
+    let segmentCount = 0;
     for (
       let lightnessIndex = 0;
       lightnessIndex < lightnessSteps;
@@ -669,8 +742,10 @@ function contrastRegionPathsLegacy(
 
         const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
         const edgePairs = segmentEdgesForCell(mask);
+        incrementTraceSummary(trace, 'cellCount', 1);
         if (edgePairs.length === 0) continue;
 
+        const tracePoints: PlanePoint[] = [];
         for (const [fromEdge, toEdge] of edgePairs) {
           const from = edgePoint(
             fromEdge,
@@ -691,16 +766,64 @@ function contrastRegionPathsLegacy(
             edgeInterpolation,
           );
           segments.push([from, to]);
+          tracePoints.push(toTracePoint(from), toTracePoint(to));
+          segmentCount += 1;
+        }
+        if (shouldTraceFull(trace)) {
+          cellEvents.push({
+            xIndex: lightnessIndex,
+            yIndex: chromaIndex,
+            mask,
+            points: tracePoints,
+          });
         }
       }
     }
+    incrementTraceSummary(trace, 'segmentCount', segmentCount);
+    recordTraceStage(trace, {
+      kind: 'marchingSquares',
+      label: 'legacy-uniform',
+      resolution: lightnessSteps,
+      cellCount: lightnessSteps * chromaSteps,
+      segmentCount,
+      cells: limitTraceEntries(trace, cellEvents),
+    });
   }
 
   const rawPaths = buildContourPaths(segments, 1e-5);
+  recordTraceStage(trace, {
+    kind: 'paths',
+    label: 'contrast-raw-paths',
+    pathCount: rawPaths.length,
+    pointCount: rawPaths.reduce((total, path) => total + path.length, 0),
+    paths: limitTracePaths(trace, toTracePaths(rawPaths)),
+  });
   const tol = options.simplifyTolerance;
   if (tol != null && Number.isFinite(tol) && tol > 0) {
-    return rawPaths.map((p) => simplifyPolyline(p, tol, true));
+    const simplified = rawPaths.map((path) =>
+      simplifyPolyline(path, tol, true),
+    );
+    setTraceSummaryField(trace, 'pathCount', simplified.length);
+    setTraceSummaryField(
+      trace,
+      'pointCount',
+      simplified.reduce((total, path) => total + path.length, 0),
+    );
+    recordTraceStage(trace, {
+      kind: 'paths',
+      label: 'contrast-simplified-paths',
+      pathCount: simplified.length,
+      pointCount: simplified.reduce((total, path) => total + path.length, 0),
+      paths: limitTracePaths(trace, toTracePaths(simplified)),
+    });
+    return simplified;
   }
+  setTraceSummaryField(trace, 'pathCount', rawPaths.length);
+  setTraceSummaryField(
+    trace,
+    'pointCount',
+    rawPaths.reduce((total, path) => total + path.length, 0),
+  );
   return rawPaths;
 }
 
@@ -837,6 +960,7 @@ function contrastRegionPathsAdaptive(
   mappedReference: Color,
   edgeInterpolation: 'linear' | 'midpoint',
   options: ContrastRegionPathOptions,
+  trace?: InternalPlaneTraceContext | null,
 ): Array<[ContrastRegionPoint, ContrastRegionPoint]> {
   const baseSteps = Math.max(
     2,
@@ -868,6 +992,8 @@ function contrastRegionPathsAdaptive(
   };
 
   const getValue = (l: number, c: number): number => {
+    incrementTraceSummary(trace, 'sampleCount', 1);
+    incrementTraceSummary(trace, 'scalarEvaluationCount', 1);
     if (c > maxChroma) return -1;
     const maxInGamut = maxChromaAt(l, hue, maxChromaAtOpts);
     if (c > maxInGamut) return -1;
@@ -881,12 +1007,28 @@ function contrastRegionPathsAdaptive(
     gamut,
     method: 'direct',
   });
+  recordTraceStage(trace, {
+    kind: 'cusp',
+    hue,
+    lightness: cusp.l,
+    chroma: cusp.c,
+    gamut,
+    method: 'direct',
+  });
   const lightnessAnchors = buildAdaptiveLightnessAnchors(baseSteps, cusp.l);
   const chromaAnchors = buildAdaptiveChromaAnchors(
     baseSteps,
     maxChroma,
     cusp.c,
   );
+  const cellEvents: Array<{
+    xIndex: number;
+    yIndex: number;
+    mask: number;
+    points: PlanePoint[];
+  }> = [];
+  let visitedCells = 0;
+  let segmentCount = 0;
 
   const processCell = (
     l0: number,
@@ -899,6 +1041,8 @@ function contrastRegionPathsAdaptive(
     v01: number,
     depth: number,
   ): void => {
+    visitedCells += 1;
+    incrementTraceSummary(trace, 'cellCount', 1);
     const b0 = v00 >= 0;
     const b1 = v10 >= 0;
     const b2 = v11 >= 0;
@@ -909,6 +1053,7 @@ function contrastRegionPathsAdaptive(
         return;
       }
       const edgePairs = segmentEdgesForCell(mask);
+      const tracePoints: PlanePoint[] = [];
       for (const [fromEdge, toEdge] of edgePairs) {
         const from = edgePoint(
           fromEdge,
@@ -929,6 +1074,16 @@ function contrastRegionPathsAdaptive(
           edgeInterpolation,
         );
         segments.push([from, to]);
+        tracePoints.push(toTracePoint(from), toTracePoint(to));
+        segmentCount += 1;
+      }
+      if (shouldTraceFull(trace)) {
+        cellEvents.push({
+          xIndex: Math.round(l0 * baseSteps),
+          yIndex: Math.round((c0 / Math.max(maxChroma, 1e-9)) * baseSteps),
+          mask,
+          points: tracePoints,
+        });
       }
       return;
     }
@@ -1025,6 +1180,15 @@ function contrastRegionPathsAdaptive(
     }
   }
 
+  incrementTraceSummary(trace, 'segmentCount', segmentCount);
+  recordTraceStage(trace, {
+    kind: 'marchingSquares',
+    label: 'legacy-adaptive',
+    resolution: baseSteps,
+    cellCount: visitedCells,
+    segmentCount,
+    cells: limitTraceEntries(trace, cellEvents),
+  });
   return segments;
 }
 
@@ -1034,19 +1198,50 @@ function bisectHybridRoot(
   hiStart: number,
   vLoStart: number,
   vHiStart: number,
+  trace?: InternalPlaneTraceContext | null,
+  lightness?: number,
 ): number {
   let lo = loStart;
   let hi = hiStart;
   let vLo = vLoStart;
   let vHi = vHiStart;
+  const iterations: Array<{
+    lo: number;
+    hi: number;
+    mid: number;
+    value: number;
+  }> = [];
+  const finish = (root: number): number => {
+    recordTraceStage(trace, {
+      kind: 'rootBisection',
+      lightness: lightness ?? 0,
+      loStart,
+      hiStart,
+      valueLoStart: vLoStart,
+      valueHiStart: vHiStart,
+      root,
+      iterations: shouldTraceFull(trace)
+        ? limitTraceEntries(trace, iterations)
+        : undefined,
+    });
+    return root;
+  };
   for (let index = 0; index < DEFAULT_HYBRID_ROOT_ITERATIONS; index += 1) {
     const mid = (lo + hi) / 2;
     const vMid = evaluate(mid);
+    if (shouldTraceFull(trace)) {
+      iterations.push({
+        lo,
+        hi,
+        mid,
+        value: vMid,
+      });
+    }
     if (
       Math.abs(vMid) <= HYBRID_ROOT_EPSILON ||
       hi - lo <= HYBRID_ROOT_EPSILON
     ) {
-      return mid;
+      return finish(mid);
     }
     if ((vLo < 0 && vMid > 0) || (vLo > 0 && vMid < 0)) {
       hi = mid;
@@ -1055,10 +1250,10 @@ function bisectHybridRoot(
       lo = mid;
       vLo = vMid;
     }
-    if (Math.abs(vLo) <= HYBRID_ROOT_EPSILON) return lo;
-    if (Math.abs(vHi) <= HYBRID_ROOT_EPSILON) return hi;
+    if (Math.abs(vLo) <= HYBRID_ROOT_EPSILON) return finish(lo);
+    if (Math.abs(vHi) <= HYBRID_ROOT_EPSILON) return finish(hi);
   }
-  return (lo + hi) / 2;
+  return finish((lo + hi) / 2);
 }
 
 function dedupeSortedRoots(values: number[]): number[] {
@@ -1137,6 +1332,7 @@ function contrastRegionPathsHybrid(
   reference: Color,
   hue: number,
   options: ContrastRegionPathOptions,
+  trace?: InternalPlaneTraceContext | null,
 ): ContrastRegionPoint[][] | null {
   const criterion = resolveContrastCriterion(options);
   const maxChroma = Math.max(0, options.maxChroma ?? 0.4);
@@ -1176,6 +1372,19 @@ function contrastRegionPathsHybrid(
         : DEFAULT_HYBRID_CHROMA_BRACKETS,
     ),
   );
+  setTraceSummaryField(trace, 'solver', 'contrast-hybrid');
+  setTraceSummaryField(trace, 'samplingMode', 'hybrid');
+  setTraceSummaryField(trace, 'fidelity', {
+    simplifyTolerance: options.simplifyTolerance,
+    resolution: initialLightnessSteps,
+    maxDepth,
+    errorTolerance,
+  });
+  recordTraceStage(trace, {
+    kind: 'solver',
+    solver: 'contrast-hybrid',
+    samplingMode: 'hybrid',
+  });
   const maxChromaAtOptions = {
     gamut,
     tolerance: options.tolerance,
@@ -1199,6 +1408,8 @@ function contrastRegionPathsHybrid(
     return resolved;
   };
   const evaluateAt = (lightness: number, chroma: number): number => {
+    incrementTraceSummary(trace, 'sampleCount', 1);
+    incrementTraceSummary(trace, 'scalarEvaluationCount', 1);
     const sample: Color = {
       l: lightness,
       c: chroma,
@@ -1226,7 +1437,17 @@ function contrastRegionPathsHybrid(
         roots.push(c);
       }
       if ((prevV < 0 && v > 0) || (prevV > 0 && v < 0)) {
-        roots.push(bisectHybridRoot(evaluateChroma, prevC, c, prevV, v));
+        roots.push(
+          bisectHybridRoot(
+            evaluateChroma,
+            prevC,
+            c,
+            prevV,
+            v,
+            trace,
+            lightness,
+          ),
+        );
       }
       prevC = c;
       prevV = v;
@@ -1260,8 +1481,29 @@ function contrastRegionPathsHybrid(
     gamut,
     method: 'direct',
   });
+  recordTraceStage(trace, {
+    kind: 'cusp',
+    hue,
+    lightness: cusp.l,
+    chroma: cusp.c,
+    gamut,
+    method: 'direct',
+  });
   const anchors = buildHybridLightnessAnchors(initialLightnessSteps, cusp.l);
   const seedSamples = anchors.map((anchor) => getLightnessSample(anchor));
+  recordTraceStage(trace, {
+    kind: 'hybridSamples',
+    label: 'seed',
+    samples:
+      limitTraceEntries(
+        trace,
+        seedSamples.map((sample) => ({
+          lightness: sample.l,
+          maxChroma: sample.cMax,
+          roots: sample.roots.slice(),
+        })),
+      ) ?? [],
+  });
 
   const shouldSplitHybridInterval = (
     left: HybridLightnessSample,
@@ -1295,6 +1537,13 @@ function contrastRegionPathsHybrid(
   };
 
   const refinedSamples: HybridLightnessSample[] = [seedSamples[0]];
+  const refinementDecisions: Array<{
+    left: number;
+    right: number;
+    midpoint: number;
+    depth: number;
+    split: boolean;
+  }> = [];
   const refineInterval = (
     left: HybridLightnessSample,
     right: HybridLightnessSample,
@@ -1302,7 +1551,17 @@ function contrastRegionPathsHybrid(
   ): void => {
     const midLightness = (left.l + right.l) / 2;
     const midpoint = getLightnessSample(midLightness);
-    if (shouldSplitHybridInterval(left, right, midpoint, depth)) {
+    const shouldSplit = shouldSplitHybridInterval(left, right, midpoint, depth);
+    if (shouldTraceFull(trace)) {
+      refinementDecisions.push({
+        left: left.l,
+        right: right.l,
+        midpoint: midpoint.l,
+        depth,
+        split: shouldSplit,
+      });
+    }
+    if (shouldSplit) {
       refineInterval(left, midpoint, depth + 1);
       refineInterval(midpoint, right, depth + 1);
       return;
@@ -1312,6 +1571,23 @@ function contrastRegionPathsHybrid(
   for (let index = 0; index < seedSamples.length - 1; index += 1) {
     refineInterval(seedSamples[index], seedSamples[index + 1], 0);
   }
+  recordTraceStage(trace, {
+    kind: 'refinement',
+    decisions: limitTraceEntries(trace, refinementDecisions) ?? [],
+  });
+  recordTraceStage(trace, {
+    kind: 'hybridSamples',
+    label: 'refined',
+    samples:
+      limitTraceEntries(
+        trace,
+        refinedSamples.map((sample) => ({
+          lightness: sample.l,
+          maxChroma: sample.cMax,
+          roots: sample.roots.slice(),
+        })),
+      ) ?? [],
+  });
 
   interface HybridBranch {
     points: ContrastRegionPoint[];
@@ -1405,6 +1681,15 @@ function contrastRegionPathsHybrid(
       ),
     );
 
+  recordTraceStage(trace, {
+    kind: 'branching',
+    activeCount: activeBranches.length,
+    finishedCount: finishedPaths.length,
+    pathCount: cleaned.length,
+    hasComplexTopology: hasComplexTopology.value,
+    paths: limitTracePaths(trace, toTracePaths(cleaned)),
+  });
+
   if (hasComplexTopology.value) {
     return null;
   }
@@ -1437,6 +1722,20 @@ function contrastRegionPathsHybrid(
       ? cleaned.map((path) => simplifyPolyline(path, simplifyTolerance, false))
       : cleaned;
 
+  setTraceSummaryField(trace, 'pathCount', maybeSimplified.length);
+  setTraceSummaryField(
+    trace,
+    'pointCount',
+    maybeSimplified.reduce((total, path) => total + path.length, 0),
+  );
+  recordTraceStage(trace, {
+    kind: 'paths',
+    label: 'contrast-hybrid-paths',
+    pathCount: maybeSimplified.length,
+    pointCount: maybeSimplified.reduce((total, path) => total + path.length, 0),
+    paths: limitTracePaths(trace, toTracePaths(maybeSimplified)),
+  });
+
   return maybeSimplified.sort((a, b) => b.length - a.length);
 }
 
@@ -1448,6 +1747,7 @@ export function contrastRegionPaths(
   reference: Color,
   hue: number,
   options: ContrastRegionPathOptions = {},
+  trace?: InternalPlaneTraceContext | null,
 ): ContrastRegionPoint[][] {
   if (options.lightnessSteps != null) {
     validateSteps(
@@ -1476,24 +1776,35 @@ export function contrastRegionPaths(
     options.adaptiveBaseSteps != null ||
     options.adaptiveMaxDepth != null;
   if (usesLegacyControls) {
-    return contrastRegionPathsLegacy(reference, hue, {
-      ...options,
-      samplingMode: requestedLegacySamplingMode
-        ? mode
-        : options.adaptiveBaseSteps != null || options.adaptiveMaxDepth != null
-          ? 'adaptive'
-          : 'uniform',
-    });
+    return contrastRegionPathsLegacy(
+      reference,
+      hue,
+      {
+        ...options,
+        samplingMode: requestedLegacySamplingMode
+          ? mode
+          : options.adaptiveBaseSteps != null ||
+              options.adaptiveMaxDepth != null
+            ? 'adaptive'
+            : 'uniform',
+      },
+      trace,
+    );
   }
 
-  const hybridPaths = contrastRegionPathsHybrid(reference, hue, options);
+  const hybridPaths = contrastRegionPathsHybrid(reference, hue, options, trace);
   if (hybridPaths) {
     return hybridPaths;
   }
-  return contrastRegionPathsLegacy(reference, hue, {
-    ...options,
-    samplingMode: 'adaptive',
-  });
+  return contrastRegionPathsLegacy(
+    reference,
+    hue,
+    {
+      ...options,
+      samplingMode: 'adaptive',
+    },
+    trace,
+  );
 }
 
 /**
@@ -1503,7 +1814,8 @@ export function contrastRegionPath(
   reference: Color,
   hue: number,
   options: ContrastRegionPathOptions = {},
+  trace?: InternalPlaneTraceContext | null,
 ): ContrastRegionPoint[] {
-  const paths = contrastRegionPaths(reference, hue, options);
+  const paths = contrastRegionPaths(reference, hue, options, trace);
   return paths[0] ?? [];
 }

@@ -1,10 +1,11 @@
-import { createElement } from 'react';
+import { Suspense, createElement } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import type { ComponentDocData } from '@/content/components/component-docs-data';
 import { ApiTable } from './api-table.js';
 import { CodeBlock } from './code-block.js';
 import { ComponentPreview } from './component-preview.js';
+import { DeferredMount } from './deferred-mount.js';
 
 function CommandCard({ label, command }: { label: string; command: string }) {
   return (
@@ -19,6 +20,10 @@ function CommandCard({ label, command }: { label: string; command: string }) {
       </CardContent>
     </Card>
   );
+}
+
+function DemoFallback() {
+  return <div className="h-[320px] w-full rounded-xl bg-muted/35" />;
 }
 
 export function ComponentDocPage({ doc }: { doc: ComponentDocData }) {
@@ -64,11 +69,15 @@ export function ComponentDocPage({ doc }: { doc: ComponentDocData }) {
           <h2 className="m-0">Demo</h2>
         </div>
         <ComponentPreview>
-          {createElement(Demo, {
-            ...(doc.supportsPropertiesPanel
-              ? { inspectorDriven: true as const }
-              : {}),
-          })}
+          <DeferredMount minHeight={320} fallback={<DemoFallback />}>
+            <Suspense fallback={<DemoFallback />}>
+              {createElement(Demo, {
+                ...(doc.supportsPropertiesPanel
+                  ? { inspectorDriven: true as const }
+                  : {}),
+              })}
+            </Suspense>
+          </DeferredMount>
         </ComponentPreview>
       </section>
 

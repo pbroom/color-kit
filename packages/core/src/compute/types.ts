@@ -5,6 +5,8 @@ import type {
   PlaneGamutSolver,
   PlaneQuery,
   PlaneQueryResult,
+  PlaneQueryTrace,
+  PlaneQueryTraceOptions,
   PlaneViewportRelation,
 } from '../plane/types.js';
 
@@ -52,6 +54,7 @@ export interface PlaneComputeRequest {
   priority?: PlaneComputePriority;
   quality?: PlaneComputeQuality;
   performanceProfile?: PlaneComputePerformanceProfile;
+  trace?: PlaneQueryTraceOptions;
 }
 
 export interface PlaneComputeScheduleTrace {
@@ -73,6 +76,7 @@ export interface PlaneComputeResponse {
   marshalTimeMs: number;
   result: PackedPlaneQueryResult;
   schedule?: PlaneComputeScheduleTrace;
+  debugTrace?: PlaneComputeDebugTrace;
 }
 
 export interface PlaneComputeBackend {
@@ -83,6 +87,10 @@ export interface PlaneComputeBackend {
 export interface PlaneComputePackResult {
   packed: PackedPlaneQueryResult;
   raw: PlaneQueryResult[];
+}
+
+export interface PlaneComputeDebugTrace {
+  queries: PlaneQueryTrace[];
 }
 
 export interface PlaneComputeSchedulerOptions {

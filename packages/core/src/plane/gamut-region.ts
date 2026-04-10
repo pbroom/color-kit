@@ -15,6 +15,16 @@ import {
   resolvePlaneDefinition,
   usesLightnessAndChroma,
 } from './plane.js';
+import {
+  incrementTraceSummary,
+  limitTraceEntries,
+  limitTracePaths,
+  recordTraceStage,
+  setTraceSummaryField,
+  shouldTraceFull,
+  shouldTraceScalarGrid,
+  type InternalPlaneTraceContext,
+} from './trace.js';
 import type {
   Plane,
   PlaneChannel,
@@ -34,10 +44,19 @@ const GAMUT_MARGIN_EPSILON = 0.000075;
 const DEFAULT_BOUNDARY_STEPS = 192;
 const DEFAULT_VIEWPORT_RESOLUTION = 64;
 const DEFAULT_FULL_RESOLUTION = 96;
+const DEFAULT_VIEWPORT_FILL_RESOLUTION = 32;
+const DEFAULT_VIEWPORT_BASE_RESOLUTION = 8;
+const DEFAULT_FULL_BASE_RESOLUTION = 12;
+const DEFAULT_IMPLICIT_MAX_DEPTH = 3;
+const ADAPTIVE_REFINEMENT_EPSILON = GAMUT_MARGIN_EPSILON * 8;
 const CLIP_EPSILON = 1e-6;
 const BORDER_PAD = 1e-6;
 
 type ScalarField = (point: PlanePoint) => number;
+
+interface ScalarSampler {
+  sample(x: number, y: number): number;
+}
 
 interface ScalarGrid {
   minX: number;
@@ -53,6 +72,18 @@ interface ScalarBounds {
   maxX: number;
   minY: number;
   maxY: number;
+}
+
+interface ScalarGridClassification {
+  relation: PlaneViewportRelation;
+  minValue: number;
+  maxValue: number;
+}
+
+interface AdaptiveContourResult {
+  minValue: number;
+  maxValue: number;
+  segments: Array<[PlanePoint, PlanePoint]>;
 }
 
 function readModelChannel(
@@ -442,12 +473,279 @@ function buildSegmentPaths(
   return result;
 }
 
+function cellMask(v0: number, v1: number, v2: number, v3: number): number {
+  return (
+    (v0 >= 0 ? 1 : 0) |
+    (v1 >= 0 ? 2 : 0) |
+    (v2 >= 0 ? 4 : 0) |
+    (v3 >= 0 ? 8 : 0)
+  );
+}
+
+function scalarSampleKey(x: number, y: number): string {
+  return `${x.toFixed(10)}:${y.toFixed(10)}`;
+}
+
+function createScalarSampler(
+  field: ScalarField,
+  trace?: InternalPlaneTraceContext | null,
+): ScalarSampler {
+  const cache = new Map<string, number>();
+
+  return {
+    sample(x: number, y: number): number {
+      const key = scalarSampleKey(x, y);
+      const cached = cache.get(key);
+      if (cached != null) {
+        return cached;
+      }
+      const value = field({ x, y });
+      cache.set(key, value);
+      incrementTraceSummary(trace, 'sampleCount', 1);
+      incrementTraceSummary(trace, 'scalarEvaluationCount', 1);
+      return value;
+    },
+  };
+}
+
+function shouldRefineUniformAdaptiveCell(
+  cornerValues: [number, number, number, number],
+  interiorValues: [number, number, number, number, number],
+): boolean {
+  const sign = cornerValues[0] >= 0;
+  const values = [...cornerValues, ...interiorValues];
+  return values.some(
+    (value) =>
+      Math.abs(value) <= ADAPTIVE_REFINEMENT_EPSILON || value >= 0 !== sign,
+  );
+}
+
+function classifyAdaptiveContourResult(
+  result: AdaptiveContourResult,
+): ScalarGridClassification {
+  if (result.segments.length > 0) {
+    return {
+      relation: 'intersects',
+      minValue: result.minValue,
+      maxValue: result.maxValue,
+    };
+  }
+  if (result.minValue >= -GAMUT_MARGIN_EPSILON) {
+    return {
+      relation: 'inside',
+      minValue: result.minValue,
+      maxValue: result.maxValue,
+    };
+  }
+  if (result.maxValue < -GAMUT_MARGIN_EPSILON) {
+    return {
+      relation: 'outside',
+      minValue: result.minValue,
+      maxValue: result.maxValue,
+    };
+  }
+  return {
+    relation: 'intersects',
+    minValue: result.minValue,
+    maxValue: result.maxValue,
+  };
+}
+
+function extractAdaptiveContourSegments(
+  sampler: ScalarSampler,
+  bounds: ScalarBounds,
+  baseResolution: number,
+  maxDepth: number,
+  trace?: InternalPlaneTraceContext | null,
+  label: string = 'marching-squares',
+): AdaptiveContourResult {
+  const minX = Math.min(bounds.minX, bounds.maxX);
+  const maxX = Math.max(bounds.minX, bounds.maxX);
+  const minY = Math.min(bounds.minY, bounds.maxY);
+  const maxY = Math.max(bounds.minY, bounds.maxY);
+  const stepX = (maxX - minX) / baseResolution;
+  const stepY = (maxY - minY) / baseResolution;
+  const effectiveResolution = baseResolution * 2 ** maxDepth;
+  const segments: Array<[PlanePoint, PlanePoint]> = [];
+  const cellEvents: Array<{
+    xIndex: number;
+    yIndex: number;
+    mask: number;
+    points: PlanePoint[];
+  }> = [];
+  let segmentCount = 0;
+  let cellCount = 0;
+  let minValue = Number.POSITIVE_INFINITY;
+  let maxValue = Number.NEGATIVE_INFINITY;
+
+  const sample = (x: number, y: number): number => {
+    const value = sampler.sample(x, y);
+    minValue = Math.min(minValue, value);
+    maxValue = Math.max(maxValue, value);
+    return value;
+  };
+
+  const emitSegments = (
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    v0: number,
+    v1: number,
+    v2: number,
+    v3: number,
+  ): void => {
+    const mask = cellMask(v0, v1, v2, v3);
+    const edgePairs = segmentEdgesForCell(mask);
+    if (edgePairs.length === 0) {
+      return;
+    }
+    const tracePoints: PlanePoint[] = [];
+    for (const [fromEdge, toEdge] of edgePairs) {
+      const from = edgePoint(fromEdge, x0, x1, y0, y1, v0, v1, v2, v3);
+      const to = edgePoint(toEdge, x0, x1, y0, y1, v0, v1, v2, v3);
+      segments.push([from, to]);
+      segmentCount += 1;
+      if (shouldTraceFull(trace)) {
+        tracePoints.push(from, to);
+      }
+    }
+    if (shouldTraceFull(trace)) {
+      const spanX = Math.max(maxX - minX, 1e-9);
+      const spanY = Math.max(maxY - minY, 1e-9);
+      cellEvents.push({
+        xIndex: Math.round(((x0 - minX) / spanX) * effectiveResolution),
+        yIndex: Math.round(((y0 - minY) / spanY) * effectiveResolution),
+        mask,
+        points: tracePoints,
+      });
+    }
+  };
+
+  const processCell = (
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    v0: number,
+    v1: number,
+    v2: number,
+    v3: number,
+    depth: number,
+  ): void => {
+    cellCount += 1;
+    incrementTraceSummary(trace, 'cellCount', 1);
+    const mask = cellMask(v0, v1, v2, v3);
+    const uniform = mask === 0 || mask === 15;
+    if (depth >= maxDepth) {
+      if (!uniform) {
+        emitSegments(x0, x1, y0, y1, v0, v1, v2, v3);
+      }
+      return;
+    }
+
+    const xMid = (x0 + x1) / 2;
+    const yMid = (y0 + y1) / 2;
+    const vMidBottom = sample(xMid, y0);
+    const vMidRight = sample(x1, yMid);
+    const vMidTop = sample(xMid, y1);
+    const vMidLeft = sample(x0, yMid);
+    const vCenter = sample(xMid, yMid);
+
+    if (
+      uniform &&
+      !shouldRefineUniformAdaptiveCell(
+        [v0, v1, v2, v3],
+        [vMidBottom, vMidRight, vMidTop, vMidLeft, vCenter],
+      )
+    ) {
+      return;
+    }
+
+    processCell(
+      x0,
+      xMid,
+      y0,
+      yMid,
+      v0,
+      vMidBottom,
+      vCenter,
+      vMidLeft,
+      depth + 1,
+    );
+    processCell(
+      xMid,
+      x1,
+      y0,
+      yMid,
+      vMidBottom,
+      v1,
+      vMidRight,
+      vCenter,
+      depth + 1,
+    );
+    processCell(xMid, x1, yMid, y1, vCenter, vMidRight, v2, vMidTop, depth + 1);
+    processCell(x0, xMid, yMid, y1, vMidLeft, vCenter, vMidTop, v3, depth + 1);
+  };
+
+  for (let y = 0; y < baseResolution; y += 1) {
+    const y0 = minY + y * stepY;
+    const y1 = minY + (y + 1) * stepY;
+    for (let x = 0; x < baseResolution; x += 1) {
+      const x0 = minX + x * stepX;
+      const x1 = minX + (x + 1) * stepX;
+      processCell(
+        x0,
+        x1,
+        y0,
+        y1,
+        sample(x0, y0),
+        sample(x1, y0),
+        sample(x1, y1),
+        sample(x0, y1),
+        0,
+      );
+    }
+  }
+
+  if (!Number.isFinite(minValue)) {
+    minValue = 0;
+    maxValue = 0;
+  }
+
+  incrementTraceSummary(trace, 'segmentCount', segmentCount);
+  recordTraceStage(trace, {
+    kind: 'marchingSquares',
+    label,
+    resolution: effectiveResolution,
+    cellCount,
+    segmentCount,
+    cells: limitTraceEntries(trace, cellEvents),
+  });
+
+  return {
+    minValue,
+    maxValue,
+    segments,
+  };
+}
+
 function extractContourSegments(
   grid: ScalarGrid,
+  trace?: InternalPlaneTraceContext | null,
+  label: string = 'marching-squares',
 ): Array<[PlanePoint, PlanePoint]> {
   const segments: Array<[PlanePoint, PlanePoint]> = [];
   const stepX = (grid.maxX - grid.minX) / grid.resolution;
   const stepY = (grid.maxY - grid.minY) / grid.resolution;
+  const cellEvents: Array<{
+    xIndex: number;
+    yIndex: number;
+    mask: number;
+    points: PlanePoint[];
+  }> = [];
+  let segmentCount = 0;
+  let cellCount = 0;
 
   for (let y = 0; y < grid.resolution; y += 1) {
     const y0 = grid.minY + y * stepY;
@@ -465,20 +763,35 @@ function extractContourSegments(
         (v2 >= 0 ? 4 : 0) |
         (v3 >= 0 ? 8 : 0);
       const edgePairs = segmentEdgesForCell(mask);
+      cellCount += 1;
       for (const [fromEdge, toEdge] of edgePairs) {
-        segments.push([
-          edgePoint(fromEdge, x0, x1, y0, y1, v0, v1, v2, v3),
-          edgePoint(toEdge, x0, x1, y0, y1, v0, v1, v2, v3),
-        ]);
+        const from = edgePoint(fromEdge, x0, x1, y0, y1, v0, v1, v2, v3);
+        const to = edgePoint(toEdge, x0, x1, y0, y1, v0, v1, v2, v3);
+        segments.push([from, to]);
+        segmentCount += 1;
+        if (shouldTraceFull(trace)) {
+          cellEvents.push({
+            xIndex: x,
+            yIndex: y,
+            mask,
+            points: [from, to],
+          });
+        }
       }
     }
   }
 
+  incrementTraceSummary(trace, 'cellCount', cellCount);
+  incrementTraceSummary(trace, 'segmentCount', segmentCount);
+  recordTraceStage(trace, {
+    kind: 'marchingSquares',
+    label,
+    resolution: grid.resolution,
+    cellCount,
+    segmentCount,
+    cells: limitTraceEntries(trace, cellEvents),
+  });
   return segments;
-}
-
-function buildBoundaryPathsFromGrid(grid: ScalarGrid): PlanePoint[][] {
-  return buildSegmentPaths(extractContourSegments(grid));
 }
 
 function extendViewportGrid(grid: ScalarGrid): ScalarGrid {
@@ -510,15 +823,29 @@ function extendViewportGrid(grid: ScalarGrid): ScalarGrid {
   };
 }
 
-function buildVisibleRegionFromViewportGrid(grid: ScalarGrid): PlaneRegion {
+function buildVisibleRegionFromViewportGrid(
+  grid: ScalarGrid,
+  trace?: InternalPlaneTraceContext | null,
+): PlaneRegion {
   const extended = extendViewportGrid(grid);
-  return {
-    paths: buildSegmentPaths(extractContourSegments(extended), {
-      closedOnly: true,
-    })
+  const region = {
+    paths: buildSegmentPaths(
+      extractContourSegments(extended, trace, 'visible-region'),
+      {
+        closedOnly: true,
+      },
+    )
       .map((path) => path.map(clampToViewport))
       .filter((path) => path.length >= 3),
   };
+  recordTraceStage(trace, {
+    kind: 'paths',
+    label: 'visible-region',
+    pathCount: region.paths.length,
+    pointCount: region.paths.reduce((total, path) => total + path.length, 0),
+    paths: limitTracePaths(trace, region.paths),
+  });
+  return region;
 }
 
 function isViewportEdgeSegment(a: PlanePoint, b: PlanePoint): boolean {
@@ -577,47 +904,48 @@ function extractBoundaryPathsFromVisibleRegion(
 }
 
 function sampleScalarGrid(
-  field: ScalarField,
+  sampler: ScalarSampler,
   bounds: ScalarBounds,
   resolution: number,
+  trace?: InternalPlaneTraceContext | null,
+  label: string = 'scalar-grid',
 ): ScalarGrid {
   const minX = Math.min(bounds.minX, bounds.maxX);
   const maxX = Math.max(bounds.minX, bounds.maxX);
   const minY = Math.min(bounds.minY, bounds.maxY);
   const maxY = Math.max(bounds.minY, bounds.maxY);
   const values: number[][] = [];
+  let minValue = Number.POSITIVE_INFINITY;
+  let maxValue = Number.NEGATIVE_INFINITY;
 
   for (let y = 0; y <= resolution; y += 1) {
     const row: number[] = [];
     const yValue = lerp(minY, maxY, y / resolution);
     for (let x = 0; x <= resolution; x += 1) {
       const xValue = lerp(minX, maxX, x / resolution);
-      row.push(field({ x: xValue, y: yValue }));
+      const value = sampler.sample(xValue, yValue);
+      minValue = Math.min(minValue, value);
+      maxValue = Math.max(maxValue, value);
+      row.push(value);
     }
     values.push(row);
   }
 
+  const sampleCount = (resolution + 1) * (resolution + 1);
+  if (shouldTraceScalarGrid(trace)) {
+    recordTraceStage(trace, {
+      kind: 'scalarGrid',
+      label,
+      bounds: { minX, maxX, minY, maxY },
+      resolution,
+      sampleCount,
+      minValue,
+      maxValue,
+      values: values.map((row) => row.slice()),
+    });
+  }
+
   return { minX, maxX, minY, maxY, resolution, values };
-}
-
-function classifyViewportGrid(grid: ScalarGrid): PlaneViewportRelation {
-  let minValue = Number.POSITIVE_INFINITY;
-  let maxValue = Number.NEGATIVE_INFINITY;
-
-  for (const row of grid.values) {
-    for (const value of row) {
-      minValue = Math.min(minValue, value);
-      maxValue = Math.max(maxValue, value);
-    }
-  }
-
-  if (minValue >= -GAMUT_MARGIN_EPSILON) {
-    return 'inside';
-  }
-  if (maxValue < -GAMUT_MARGIN_EPSILON) {
-    return 'outside';
-  }
-  return 'intersects';
 }
 
 function gamutMargin(color: Color, gamut: 'srgb' | 'display-p3'): number {
@@ -1062,60 +1390,157 @@ function buildFullBoundaryPaths(
 }
 
 function buildImplicitBoundaryPaths(
-  field: ScalarField,
+  sampler: ScalarSampler,
   scope: PlaneGamutRegionScope,
   resolvedPlane: Plane,
   simplifyTolerance?: number,
+  trace?: InternalPlaneTraceContext | null,
 ): PlanePoint[][] {
   const bounds =
     scope === 'full'
       ? fullScopeBounds(resolvedPlane)
       : { minX: 0, maxX: 1, minY: 0, maxY: 1 };
-  const grid = sampleScalarGrid(
-    field,
+  const adaptiveContour = extractAdaptiveContourSegments(
+    sampler,
     bounds,
-    scope === 'full' ? DEFAULT_FULL_RESOLUTION : DEFAULT_VIEWPORT_RESOLUTION,
+    scope === 'full'
+      ? DEFAULT_FULL_BASE_RESOLUTION
+      : DEFAULT_VIEWPORT_BASE_RESOLUTION,
+    DEFAULT_IMPLICIT_MAX_DEPTH,
+    trace,
+    scope === 'full' ? 'implicit-full-boundary' : 'implicit-viewport-boundary',
   );
-  return simplifyPlanePaths(
-    buildBoundaryPathsFromGrid(grid),
+  const simplified = simplifyPlanePaths(
+    buildSegmentPaths(adaptiveContour.segments),
     simplifyTolerance,
   );
+  recordTraceStage(trace, {
+    kind: 'paths',
+    label: scope === 'full' ? 'implicit-full-paths' : 'implicit-viewport-paths',
+    pathCount: simplified.length,
+    pointCount: simplified.reduce((total, path) => total + path.length, 0),
+    paths: limitTracePaths(trace, simplified),
+  });
+  return simplified;
 }
 
 function buildViewportVisibleRegion(
-  grid: ScalarGrid,
+  grid: ScalarGrid | null,
   relation: PlaneViewportRelation,
+  trace?: InternalPlaneTraceContext | null,
 ): PlaneRegion {
   if (relation === 'inside') return fullViewportRegion();
   if (relation === 'outside') return emptyRegion();
-  return buildVisibleRegionFromViewportGrid(grid);
+  if (!grid) return emptyRegion();
+  return buildVisibleRegionFromViewportGrid(grid, trace);
 }
 
 export function getPlaneGamutRegion(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneGamutRegionQuery, 'kind'> = {},
+  trace?: InternalPlaneTraceContext | null,
 ): PlaneGamutRegionResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const gamut = query.gamut ?? 'srgb';
   const scope = query.scope ?? 'viewport';
   const solver = resolveGamutSolver(resolvedPlane, gamut);
+  setTraceSummaryField(trace, 'solver', solver);
+  setTraceSummaryField(
+    trace,
+    'samplingMode',
+    solver === 'implicit-contour' ? 'adaptive' : 'analytic',
+  );
+  setTraceSummaryField(trace, 'fidelity', {
+    simplifyTolerance: query.simplifyTolerance,
+    resolution:
+      solver === 'implicit-contour'
+        ? scope === 'full'
+          ? DEFAULT_FULL_RESOLUTION
+          : DEFAULT_VIEWPORT_RESOLUTION
+        : DEFAULT_BOUNDARY_STEPS,
+    steps: solver === 'implicit-contour' ? undefined : DEFAULT_BOUNDARY_STEPS,
+  });
+  recordTraceStage(trace, {
+    kind: 'solver',
+    solver,
+    samplingMode: solver === 'implicit-contour' ? 'adaptive' : 'analytic',
+    scope,
+  });
 
   if (solver === 'domain-edge') {
-    return buildDomainEdgeViewportResult(
+    const result = buildDomainEdgeViewportResult(
       resolvedPlane,
       gamut,
       scope,
       query.simplifyTolerance,
     );
+    setTraceSummaryField(trace, 'viewportRelation', result.viewportRelation);
+    setTraceSummaryField(
+      trace,
+      'pathCount',
+      result.boundaryPaths.length + result.visibleRegion.paths.length,
+    );
+    setTraceSummaryField(
+      trace,
+      'pointCount',
+      result.boundaryPaths.reduce((total, path) => total + path.length, 0) +
+        result.visibleRegion.paths.reduce(
+          (total, path) => total + path.length,
+          0,
+        ),
+    );
+    recordTraceStage(trace, {
+      kind: 'paths',
+      label: 'domain-edge-boundary',
+      pathCount: result.boundaryPaths.length,
+      pointCount: result.boundaryPaths.reduce(
+        (total, path) => total + path.length,
+        0,
+      ),
+      paths: limitTracePaths(trace, result.boundaryPaths),
+    });
+    recordTraceStage(trace, {
+      kind: 'paths',
+      label: 'domain-edge-visible-region',
+      pathCount: result.visibleRegion.paths.length,
+      pointCount: result.visibleRegion.paths.reduce(
+        (total, path) => total + path.length,
+        0,
+      ),
+      paths: limitTracePaths(trace, result.visibleRegion.paths),
+    });
+    return result;
   }
 
   const field = createFieldEvaluator(resolvedPlane, gamut);
-  const viewportGrid = sampleScalarGrid(
-    field,
+  const sampler = createScalarSampler(field, trace);
+  const viewportContour = extractAdaptiveContourSegments(
+    sampler,
     { minX: 0, maxX: 1, minY: 0, maxY: 1 },
-    DEFAULT_VIEWPORT_RESOLUTION,
+    DEFAULT_VIEWPORT_BASE_RESOLUTION,
+    DEFAULT_IMPLICIT_MAX_DEPTH,
+    trace,
+    'viewport-boundary',
   );
-  const viewportRelation = classifyViewportGrid(viewportGrid);
+  const viewportClassification = classifyAdaptiveContourResult(viewportContour);
+  const viewportRelation = viewportClassification.relation;
+  setTraceSummaryField(trace, 'viewportRelation', viewportRelation);
+  recordTraceStage(trace, {
+    kind: 'viewportClassification',
+    relation: viewportRelation,
+    minValue: viewportClassification.minValue,
+    maxValue: viewportClassification.maxValue,
+  });
+  const viewportGrid =
+    viewportRelation === 'intersects'
+      ? sampleScalarGrid(
+          sampler,
+          { minX: 0, maxX: 1, minY: 0, maxY: 1 },
+          DEFAULT_VIEWPORT_FILL_RESOLUTION,
+          trace,
+          'viewport-grid',
+        )
+      : null;
 
   if (
     solver === 'analytic-lc' ||
@@ -1128,48 +1553,154 @@ export function getPlaneGamutRegion(
       solver,
       query.simplifyTolerance,
     );
+    recordTraceStage(trace, {
+      kind: 'paths',
+      label: 'analytic-full-boundary',
+      pathCount: fullBoundaryPaths.length,
+      pointCount: fullBoundaryPaths.reduce(
+        (total, path) => total + path.length,
+        0,
+      ),
+      paths: limitTracePaths(trace, fullBoundaryPaths),
+    });
     const viewportBoundaryPaths = simplifyPlanePaths(
       clipPathsToViewport(fullBoundaryPaths),
       query.simplifyTolerance,
+    );
+    recordTraceStage(trace, {
+      kind: 'paths',
+      label: 'analytic-viewport-boundary',
+      pathCount: viewportBoundaryPaths.length,
+      pointCount: viewportBoundaryPaths.reduce(
+        (total, path) => total + path.length,
+        0,
+      ),
+      paths: limitTracePaths(trace, viewportBoundaryPaths),
+    });
+    const resolvedViewportRelation =
+      viewportBoundaryPaths.length > 0 ? 'intersects' : viewportRelation;
+    const resolvedViewportGrid =
+      resolvedViewportRelation === 'intersects'
+        ? (viewportGrid ??
+          sampleScalarGrid(
+            sampler,
+            { minX: 0, maxX: 1, minY: 0, maxY: 1 },
+            DEFAULT_VIEWPORT_FILL_RESOLUTION,
+            trace,
+            'viewport-grid',
+          ))
+        : null;
+    const visibleRegion = buildViewportVisibleRegion(
+      resolvedViewportGrid,
+      resolvedViewportRelation,
+      trace,
+    );
+    if (resolvedViewportRelation !== 'intersects') {
+      recordTraceStage(trace, {
+        kind: 'paths',
+        label: 'analytic-visible-region',
+        pathCount: visibleRegion.paths.length,
+        pointCount: visibleRegion.paths.reduce(
+          (total, path) => total + path.length,
+          0,
+        ),
+        paths: limitTracePaths(trace, visibleRegion.paths),
+      });
+    }
+    const boundaryPaths =
+      scope === 'full'
+        ? fullBoundaryPaths
+        : viewportBoundaryPaths.length > 0
+          ? viewportBoundaryPaths
+          : [];
+    setTraceSummaryField(trace, 'viewportRelation', resolvedViewportRelation);
+    setTraceSummaryField(
+      trace,
+      'pathCount',
+      boundaryPaths.length + visibleRegion.paths.length,
+    );
+    setTraceSummaryField(
+      trace,
+      'pointCount',
+      boundaryPaths.reduce((total, path) => total + path.length, 0) +
+        visibleRegion.paths.reduce((total, path) => total + path.length, 0),
     );
 
     return {
       kind: 'gamutRegion',
       gamut,
       scope,
-      viewportRelation:
-        viewportBoundaryPaths.length > 0 ? 'intersects' : viewportRelation,
+      viewportRelation: resolvedViewportRelation,
       solver,
-      boundaryPaths:
-        scope === 'full'
-          ? fullBoundaryPaths
-          : viewportBoundaryPaths.length > 0
-            ? viewportBoundaryPaths
-            : [],
-      visibleRegion: buildViewportVisibleRegion(
-        viewportGrid,
-        viewportBoundaryPaths.length > 0 ? 'intersects' : viewportRelation,
-      ),
+      boundaryPaths,
+      visibleRegion,
     };
   }
 
-  const boundaryPaths =
+  const implicitBoundaryPaths =
     scope === 'full'
       ? buildImplicitBoundaryPaths(
-          field,
+          sampler,
           'full',
           resolvedPlane,
           query.simplifyTolerance,
+          trace,
         )
       : viewportRelation === 'intersects'
         ? simplifyPlanePaths(
-            buildBoundaryPathsFromGrid(viewportGrid),
+            buildSegmentPaths(viewportContour.segments),
             query.simplifyTolerance,
           )
         : [];
   const visibleRegion = buildViewportVisibleRegion(
     viewportGrid,
     viewportRelation,
+    trace,
+  );
+  if (viewportRelation !== 'intersects') {
+    recordTraceStage(trace, {
+      kind: 'paths',
+      label: 'implicit-visible-region',
+      pathCount: visibleRegion.paths.length,
+      pointCount: visibleRegion.paths.reduce(
+        (total, path) => total + path.length,
+        0,
+      ),
+      paths: limitTracePaths(trace, visibleRegion.paths),
+    });
+  }
+  const boundaryPaths =
+    scope === 'viewport' &&
+    viewportRelation === 'intersects' &&
+    implicitBoundaryPaths.length === 0
+      ? simplifyPlanePaths(
+          extractBoundaryPathsFromVisibleRegion(visibleRegion),
+          query.simplifyTolerance,
+        )
+      : implicitBoundaryPaths;
+  if (
+    scope === 'viewport' &&
+    viewportRelation === 'intersects' &&
+    implicitBoundaryPaths.length === 0
+  ) {
+    recordTraceStage(trace, {
+      kind: 'paths',
+      label: 'visible-region-boundary-fallback',
+      pathCount: boundaryPaths.length,
+      pointCount: boundaryPaths.reduce((total, path) => total + path.length, 0),
+      paths: limitTracePaths(trace, boundaryPaths),
+    });
+  }
+  setTraceSummaryField(
+    trace,
+    'pathCount',
+    boundaryPaths.length + visibleRegion.paths.length,
+  );
+  setTraceSummaryField(
+    trace,
+    'pointCount',
+    boundaryPaths.reduce((total, path) => total + path.length, 0) +
+      visibleRegion.paths.reduce((total, path) => total + path.length, 0),
   );
 
   return {
@@ -1178,15 +1709,7 @@ export function getPlaneGamutRegion(
     scope,
     viewportRelation,
     solver,
-    boundaryPaths:
-      scope === 'viewport' &&
-      viewportRelation === 'intersects' &&
-      boundaryPaths.length === 0
-        ? simplifyPlanePaths(
-            extractBoundaryPathsFromVisibleRegion(visibleRegion),
-            query.simplifyTolerance,
-          )
-        : boundaryPaths,
+    boundaryPaths,
     visibleRegion,
   };
 }

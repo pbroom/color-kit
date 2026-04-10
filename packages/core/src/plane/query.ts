@@ -8,6 +8,11 @@ import { contrastRegionPath, contrastRegionPaths } from '../contrast/index.js';
 import { generateScale } from '../scale/index.js';
 import type { Color } from '../types.js';
 import { getPlaneGamutRegion } from './gamut-region.js';
+import {
+  createPlaneTraceContext,
+  finalizePlaneTrace,
+  type InternalPlaneTraceContext,
+} from './trace.js';
 import type {
   Plane,
   PlaneChromaBandQuery,
@@ -25,8 +30,10 @@ import type {
   PlaneGamutRegionResult,
   PlaneGradientQuery,
   PlaneGradientResult,
+  PlaneQueryInspection,
   PlaneQuery,
   PlaneQueryResult,
+  PlaneQueryTraceOptions,
 } from './types.js';
 import {
   colorToPlane,
@@ -131,6 +138,7 @@ export function getPlaneGamutBoundary(
 export function getPlaneContrastBoundary(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneContrastBoundaryQuery, 'kind'>,
+  trace?: InternalPlaneTraceContext | null,
 ): PlaneContrastBoundaryResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   if (!usesLightnessAndChroma(resolvedPlane)) {
@@ -142,28 +150,33 @@ export function getPlaneContrastBoundary(
   }
 
   const hue = planeHue(resolvedPlane, query.hue);
-  const path = contrastRegionPath(query.reference, hue, {
-    gamut: query.gamut,
-    metric: query.metric,
-    level: query.level,
-    threshold: query.threshold,
-    apcaPreset: query.apcaPreset,
-    apcaPolarity: query.apcaPolarity,
-    apcaRole: query.apcaRole,
-    lightnessSteps: query.lightnessSteps,
-    chromaSteps: query.chromaSteps,
-    maxChroma: query.maxChroma,
-    tolerance: query.tolerance,
-    maxIterations: query.maxIterations,
-    alpha: query.alpha,
-    edgeInterpolation: query.edgeInterpolation,
-    simplifyTolerance: query.simplifyTolerance,
-    samplingMode: query.samplingMode,
-    adaptiveBaseSteps: query.adaptiveBaseSteps,
-    adaptiveMaxDepth: query.adaptiveMaxDepth,
-    hybridMaxDepth: query.hybridMaxDepth,
-    hybridErrorTolerance: query.hybridErrorTolerance,
-  });
+  const path = contrastRegionPath(
+    query.reference,
+    hue,
+    {
+      gamut: query.gamut,
+      metric: query.metric,
+      level: query.level,
+      threshold: query.threshold,
+      apcaPreset: query.apcaPreset,
+      apcaPolarity: query.apcaPolarity,
+      apcaRole: query.apcaRole,
+      lightnessSteps: query.lightnessSteps,
+      chromaSteps: query.chromaSteps,
+      maxChroma: query.maxChroma,
+      tolerance: query.tolerance,
+      maxIterations: query.maxIterations,
+      alpha: query.alpha,
+      edgeInterpolation: query.edgeInterpolation,
+      simplifyTolerance: query.simplifyTolerance,
+      samplingMode: query.samplingMode,
+      adaptiveBaseSteps: query.adaptiveBaseSteps,
+      adaptiveMaxDepth: query.adaptiveMaxDepth,
+      hybridMaxDepth: query.hybridMaxDepth,
+      hybridErrorTolerance: query.hybridErrorTolerance,
+    },
+    trace,
+  );
 
   return {
     kind: 'contrastBoundary',
@@ -191,6 +204,7 @@ export function getPlaneContrastBoundary(
 export function getPlaneContrastRegion(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneContrastRegionQuery, 'kind'>,
+  trace?: InternalPlaneTraceContext | null,
 ): PlaneContrastRegionResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   if (!usesLightnessAndChroma(resolvedPlane)) {
@@ -202,28 +216,33 @@ export function getPlaneContrastRegion(
   }
 
   const hue = planeHue(resolvedPlane, query.hue);
-  const paths = contrastRegionPaths(query.reference, hue, {
-    gamut: query.gamut,
-    metric: query.metric,
-    level: query.level,
-    threshold: query.threshold,
-    apcaPreset: query.apcaPreset,
-    apcaPolarity: query.apcaPolarity,
-    apcaRole: query.apcaRole,
-    lightnessSteps: query.lightnessSteps,
-    chromaSteps: query.chromaSteps,
-    maxChroma: query.maxChroma,
-    tolerance: query.tolerance,
-    maxIterations: query.maxIterations,
-    alpha: query.alpha,
-    edgeInterpolation: query.edgeInterpolation,
-    simplifyTolerance: query.simplifyTolerance,
-    samplingMode: query.samplingMode,
-    adaptiveBaseSteps: query.adaptiveBaseSteps,
-    adaptiveMaxDepth: query.adaptiveMaxDepth,
-    hybridMaxDepth: query.hybridMaxDepth,
-    hybridErrorTolerance: query.hybridErrorTolerance,
-  });
+  const paths = contrastRegionPaths(
+    query.reference,
+    hue,
+    {
+      gamut: query.gamut,
+      metric: query.metric,
+      level: query.level,
+      threshold: query.threshold,
+      apcaPreset: query.apcaPreset,
+      apcaPolarity: query.apcaPolarity,
+      apcaRole: query.apcaRole,
+      lightnessSteps: query.lightnessSteps,
+      chromaSteps: query.chromaSteps,
+      maxChroma: query.maxChroma,
+      tolerance: query.tolerance,
+      maxIterations: query.maxIterations,
+      alpha: query.alpha,
+      edgeInterpolation: query.edgeInterpolation,
+      simplifyTolerance: query.simplifyTolerance,
+      samplingMode: query.samplingMode,
+      adaptiveBaseSteps: query.adaptiveBaseSteps,
+      adaptiveMaxDepth: query.adaptiveMaxDepth,
+      hybridMaxDepth: query.hybridMaxDepth,
+      hybridErrorTolerance: query.hybridErrorTolerance,
+    },
+    trace,
+  );
 
   return {
     kind: 'contrastRegion',
@@ -349,25 +368,20 @@ export function samplePlaneGradient(
   };
 }
 
-/**
- * Executes one stateless plane query and returns a typed result payload.
- *
- * @param planeDefinition Plane definition used for query execution.
- * @param query Discriminated plane query payload.
- */
-export function runPlaneQuery(
+function runPlaneQueryInternal(
   planeDefinition: PlaneDefinition,
   query: PlaneQuery,
+  trace?: InternalPlaneTraceContext | null,
 ): PlaneQueryResult {
   switch (query.kind) {
     case 'gamutBoundary':
       return getPlaneGamutBoundary(planeDefinition, query);
     case 'gamutRegion':
-      return getPlaneGamutRegion(planeDefinition, query);
+      return getPlaneGamutRegion(planeDefinition, query, trace);
     case 'contrastBoundary':
-      return getPlaneContrastBoundary(planeDefinition, query);
+      return getPlaneContrastBoundary(planeDefinition, query, trace);
     case 'contrastRegion':
-      return getPlaneContrastRegion(planeDefinition, query);
+      return getPlaneContrastRegion(planeDefinition, query, trace);
     case 'chromaBand':
       return getPlaneChromaBand(planeDefinition, query);
     case 'fallbackPoint':
@@ -382,6 +396,19 @@ export function runPlaneQuery(
 }
 
 /**
+ * Executes one stateless plane query and returns a typed result payload.
+ *
+ * @param planeDefinition Plane definition used for query execution.
+ * @param query Discriminated plane query payload.
+ */
+export function runPlaneQuery(
+  planeDefinition: PlaneDefinition,
+  query: PlaneQuery,
+): PlaneQueryResult {
+  return runPlaneQueryInternal(planeDefinition, query);
+}
+
+/**
  * Executes a list of stateless plane queries in order.
  *
  * @param planeDefinition Plane definition used for query execution.
@@ -391,7 +418,44 @@ export function runPlaneQueries(
   planeDefinition: PlaneDefinition,
   queries: PlaneQuery[],
 ): PlaneQueryResult[] {
-  return queries.map((query) => runPlaneQuery(planeDefinition, query));
+  return queries.map((query) => runPlaneQueryInternal(planeDefinition, query));
+}
+
+/**
+ * Executes one stateless plane query and returns a sidecar trace payload.
+ *
+ * @param planeDefinition Plane definition used for query execution.
+ * @param query Discriminated plane query payload.
+ * @param options Trace capture configuration.
+ */
+export function inspectPlaneQuery<Result extends PlaneQuery = PlaneQuery>(
+  planeDefinition: PlaneDefinition,
+  query: Result,
+  options?: PlaneQueryTraceOptions,
+): PlaneQueryInspection<Extract<PlaneQueryResult, { kind: Result['kind'] }>> {
+  const trace = createPlaneTraceContext(query, options);
+  const result = runPlaneQueryInternal(planeDefinition, query, trace);
+  return finalizePlaneTrace(
+    trace,
+    result as Extract<PlaneQueryResult, { kind: Result['kind'] }>,
+  );
+}
+
+/**
+ * Executes a list of stateless plane queries and returns sidecar traces.
+ *
+ * @param planeDefinition Plane definition used for query execution.
+ * @param queries Query list to execute in sequence.
+ * @param options Trace capture configuration.
+ */
+export function inspectPlaneQueries(
+  planeDefinition: PlaneDefinition,
+  queries: PlaneQuery[],
+  options?: PlaneQueryTraceOptions,
+): PlaneQueryInspection[] {
+  return queries.map((query) =>
+    inspectPlaneQuery(planeDefinition, query, options),
+  );
 }
 
 /** Fluent query helper methods bound to a single plane definition. */

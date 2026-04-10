@@ -216,4 +216,43 @@ describe('plane compute scheduler', () => {
       ),
     ).toBe(true);
   });
+
+  it('attaches debug trace metadata without changing scheduler bucket selection', () => {
+    const scheduler = createPlaneComputeScheduler({
+      backends: {
+        js: createTimedBackend('js', 6),
+      },
+      options: {
+        preferredBackends: ['js'],
+      },
+    });
+
+    const response = scheduler.run({
+      ...gamutRegionSchedulerRequest,
+      trace: {
+        level: 'full',
+        maxStageEntries: 16,
+      },
+    });
+
+    expect(response.debugTrace?.queries).toHaveLength(1);
+    expect(response.debugTrace?.queries[0].summary.backend).toBe('js');
+    expect(response.debugTrace?.queries[0].summary.bucketKey).toContain(
+      'gamutRegion:viewport',
+    );
+    expect(response.debugTrace?.queries[0].summary.scheduleReason).toBe(
+      'default-js',
+    );
+    expect(response.debugTrace?.queries[0].summary.timings?.compute ?? 0).toBe(
+      response.computeTimeMs,
+    );
+    expect(response.debugTrace?.queries[0].summary.timings?.marshal ?? 0).toBe(
+      response.marshalTimeMs,
+    );
+    expect(
+      response.debugTrace?.queries[0].stages.some(
+        (stage) => stage.kind === 'viewportClassification',
+      ),
+    ).toBe(true);
+  });
 });

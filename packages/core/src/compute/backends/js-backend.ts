@@ -1,5 +1,6 @@
 import { resolvePlaneDefinition } from '../../plane/plane.js';
-import { runPlaneQueries } from '../../plane/query.js';
+import { inspectPlaneQueries, runPlaneQueries } from '../../plane/query.js';
+import { applyComputeTraceMetadata } from '../../plane/trace.js';
 import { packPlaneQueryResults } from '../pack.js';
 import type { PlaneComputeBackend } from '../types.js';
 
@@ -14,18 +15,35 @@ export function createJsPlaneComputeBackend(): PlaneComputeBackend {
       const resolvedPlane = resolvePlaneDefinition(request.plane);
 
       const computeStart = nowMs();
-      const raw = runPlaneQueries(resolvedPlane, request.queries);
+      const inspected = request.trace
+        ? inspectPlaneQueries(resolvedPlane, request.queries, request.trace)
+        : null;
+      const raw = inspected
+        ? inspected.map((inspection) => inspection.result)
+        : runPlaneQueries(resolvedPlane, request.queries);
       const computeEnd = nowMs();
 
       const marshalStart = nowMs();
       const result = packPlaneQueryResults(raw);
       const marshalEnd = nowMs();
+      const debugTrace = inspected
+        ? {
+            queries: inspected.map((inspection) =>
+              applyComputeTraceMetadata(inspection.trace, {
+                backend: 'js',
+                computeTimeMs: computeEnd - computeStart,
+                marshalTimeMs: marshalEnd - marshalStart,
+              }),
+            ),
+          }
+        : undefined;
 
       return {
         backend: 'js',
         computeTimeMs: computeEnd - computeStart,
         marshalTimeMs: marshalEnd - marshalStart,
         result,
+        debugTrace,
       };
     },
   };

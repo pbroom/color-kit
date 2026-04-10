@@ -18,11 +18,9 @@ import {
 import { githubLight } from '@codesandbox/sandpack-themes';
 import { ExternalLink, ListOrdered, RefreshCw, RotateCcw } from 'lucide-react';
 import { compressToBase64 } from 'lz-string';
-import gamutRegionSourceRaw from '../../../../packages/core/src/plane/gamut-region.ts?raw';
 import { githubDarkSandpackTheme } from '../lib/sandpack-themes.js';
 import { cn } from '../lib/utils.js';
 import {
-  planeApiPlaygroundSource,
   planeApiPlaygroundSandboxPackageEntryFile,
   planeApiPlaygroundSandboxPackageEntrySource,
   planeApiPlaygroundSandboxPackageJsonFile,
@@ -33,7 +31,7 @@ import { useTheme } from './theme-context.js';
 const CORE_SOURCE_PREFIX = '../../../../packages/core/src/';
 const CORE_SANDBOX_ROOT = '/color-kit-core';
 const CODESANDBOX_DEFINE_URL = 'https://codesandbox.io/api/v1/sandboxes/define';
-const PLAYGROUND_APP_FILE = '/App.js';
+const DEFAULT_PLAYGROUND_APP_FILE = '/App.js';
 const PLAYGROUND_ENTRY_FILE = '/index.tsx';
 const PLAYGROUND_PANEL_HEIGHT = 520;
 
@@ -60,22 +58,37 @@ const SandpackFileTabs = (
 
 interface SandpackFileDescriptor {
   code: string;
+  hidden?: boolean;
 }
 
 type SandpackFileValue = string | SandpackFileDescriptor;
 
 const rawCoreSourceFiles = import.meta.glob(
-  '../../../../packages/core/src/**/*.{ts,tsx}',
+  [
+    '../../../../packages/core/src/compute/types.ts',
+    '../../../../packages/core/src/contrast/index.ts',
+    '../../../../packages/core/src/conversion/*.ts',
+    '../../../../packages/core/src/gamut/index.ts',
+    '../../../../packages/core/src/hct/index.ts',
+    '../../../../packages/core/src/plane/compile.ts',
+    '../../../../packages/core/src/plane/gamut-region.ts',
+    '../../../../packages/core/src/plane/index.ts',
+    '../../../../packages/core/src/plane/operations.ts',
+    '../../../../packages/core/src/plane/plane.ts',
+    '../../../../packages/core/src/plane/query.ts',
+    '../../../../packages/core/src/plane/trace.ts',
+    '../../../../packages/core/src/plane/transforms.ts',
+    '../../../../packages/core/src/plane/types.ts',
+    '../../../../packages/core/src/scale/index.ts',
+    '../../../../packages/core/src/types.ts',
+    '../../../../packages/core/src/utils/*.ts',
+  ],
   {
     eager: true,
     import: 'default',
     query: '?raw',
   },
 ) as Record<string, string>;
-
-const forcedCoreSourceFiles = {
-  '../../../../packages/core/src/plane/gamut-region.ts': gamutRegionSourceRaw,
-} as const;
 
 function toCoreSandboxPath(modulePath: string): string {
   if (!modulePath.startsWith(CORE_SOURCE_PREFIX)) {
@@ -107,10 +120,10 @@ function joinPosix(baseDir: string, relativePath: string): string {
 }
 
 const coreSourceBySandboxPath = Object.fromEntries(
-  Object.entries({
-    ...rawCoreSourceFiles,
-    ...forcedCoreSourceFiles,
-  }).map(([modulePath, code]) => [toCoreSandboxPath(modulePath), code]),
+  Object.entries(rawCoreSourceFiles).map(([modulePath, code]) => [
+    toCoreSandboxPath(modulePath),
+    code,
+  ]),
 );
 
 const coreSandboxPaths = new Set(Object.keys(coreSourceBySandboxPath));
@@ -166,11 +179,12 @@ svg path {
   stroke: oklch(68.5% 0.169 237.323);
 }
 `;
-const PLAYGROUND_ENTRY = `import React, { StrictMode } from 'react';
+function createPlaygroundEntry(appFile: string): string {
+  return `import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
-import App from './App.js';
+import App from '.${appFile}';
 
 const root = createRoot(document.getElementById('root'));
 root.render(
@@ -178,6 +192,7 @@ root.render(
     <App />
   </StrictMode>,
 );`;
+}
 const PLAYGROUND_TSCONFIG = JSON.stringify(
   {
     include: ['./**/*'],
@@ -223,36 +238,41 @@ function rewriteCoreSourceImports(source: string, fromFile: string): string {
     );
 }
 
-const PLAYGROUND_SUPPORT_FILES = {
-  [PLAYGROUND_ENTRY_FILE]: PLAYGROUND_ENTRY,
-  [planeApiPlaygroundSandboxPackageJsonFile]: {
-    code: planeApiPlaygroundSandboxPackageJsonSource,
-    hidden: true,
-  },
-  [planeApiPlaygroundSandboxPackageEntryFile]: {
-    code: planeApiPlaygroundSandboxPackageEntrySource,
-    hidden: true,
-  },
-  '/public/index.html': PLAYGROUND_INDEX_HTML,
-  '/styles.css': PLAYGROUND_STYLES,
-  '/tsconfig.json': PLAYGROUND_TSCONFIG,
-  ...Object.fromEntries(
-    Object.entries(coreSourceBySandboxPath).map(([filePath, code]) => [
-      filePath,
-      {
-        code: rewriteCoreSourceImports(code, filePath),
-        hidden: true,
-      },
-    ]),
-  ),
-} as const;
+function createPlaygroundSupportFiles(
+  appFile: string,
+): Record<string, SandpackFileValue> {
+  return {
+    [PLAYGROUND_ENTRY_FILE]: createPlaygroundEntry(appFile),
+    [planeApiPlaygroundSandboxPackageJsonFile]: {
+      code: planeApiPlaygroundSandboxPackageJsonSource,
+      hidden: true,
+    },
+    [planeApiPlaygroundSandboxPackageEntryFile]: {
+      code: planeApiPlaygroundSandboxPackageEntrySource,
+      hidden: true,
+    },
+    '/public/index.html': PLAYGROUND_INDEX_HTML,
+    '/styles.css': PLAYGROUND_STYLES,
+    '/tsconfig.json': PLAYGROUND_TSCONFIG,
+    ...Object.fromEntries(
+      Object.entries(coreSourceBySandboxPath).map(([filePath, code]) => [
+        filePath,
+        {
+          code: rewriteCoreSourceImports(code, filePath),
+          hidden: true,
+        },
+      ]),
+    ),
+  };
+}
 
 function createPlaygroundFiles(
   source: string,
+  appFile: string,
 ): Record<string, SandpackFileValue> {
   return {
-    [PLAYGROUND_APP_FILE]: source,
-    ...PLAYGROUND_SUPPORT_FILES,
+    [appFile]: source,
+    ...createPlaygroundSupportFiles(appFile),
   };
 }
 
@@ -430,8 +450,10 @@ function PlaneApiPlaygroundToolbar({
 
 function PlaneApiPlaygroundEditor({
   showLineNumbers,
+  panelHeight,
 }: {
   showLineNumbers: boolean;
+  panelHeight: number;
 }) {
   const { sandpack } = useSandpack();
   const activeFileUniqueId = useId();
@@ -439,7 +461,7 @@ function PlaneApiPlaygroundEditor({
   return (
     <div
       className="sp-stack sp-editor flex min-w-0 flex-1 flex-col overflow-hidden [background:var(--sp-colors-surface1)]"
-      style={{ height: PLAYGROUND_PANEL_HEIGHT }}
+      style={{ height: panelHeight }}
     >
       <div className="flex min-w-0 items-stretch border-b border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
         <SandpackFileTabs
@@ -472,16 +494,18 @@ function PlaneApiPlaygroundPreview({
   onRefresh,
   showLineNumbers,
   onToggleLineNumbers,
+  panelHeight,
 }: {
   refreshNonce: number;
   onRefresh: () => void;
   showLineNumbers: boolean;
   onToggleLineNumbers: () => void;
+  panelHeight: number;
 }) {
   return (
     <div
       className="sp-stack sp-preview flex min-w-0 flex-1 flex-col overflow-hidden [background:var(--sp-colors-surface1)]"
-      style={{ height: PLAYGROUND_PANEL_HEIGHT }}
+      style={{ height: panelHeight }}
     >
       <div className="flex min-w-0 items-stretch justify-end border-b-2 border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
         <PlaneApiPlaygroundToolbar
@@ -505,16 +529,23 @@ function PlaneApiPlaygroundPreview({
 }
 
 export default function PlaneApiPlaygroundSandpack({
-  source = planeApiPlaygroundSource,
+  source,
   instanceId = SANDBOX_INSTANCE_ID,
+  appFile = DEFAULT_PLAYGROUND_APP_FILE,
+  panelHeight = PLAYGROUND_PANEL_HEIGHT,
 }: {
-  source?: string;
+  source: string;
   instanceId?: string;
+  appFile?: string;
+  panelHeight?: number;
 }) {
   const { resolvedTheme } = useTheme();
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [showLineNumbers, setShowLineNumbers] = useState(false);
-  const files = useMemo(() => createPlaygroundFiles(source), [source]);
+  const files = useMemo(
+    () => createPlaygroundFiles(source, appFile),
+    [appFile, source],
+  );
   const handleRefresh = useCallback(
     () => setRefreshNonce((value) => value + 1),
     [],
@@ -538,12 +569,8 @@ export default function PlaneApiPlaygroundSandpack({
       theme={resolvedTheme === 'dark' ? githubDarkSandpackTheme : githubLight}
       files={files}
       options={{
-        activeFile: PLAYGROUND_APP_FILE,
-        visibleFiles: [
-          PLAYGROUND_APP_FILE,
-          '/public/index.html',
-          '/styles.css',
-        ],
+        activeFile: appFile,
+        visibleFiles: [appFile, '/public/index.html', '/styles.css'],
         autorun: true,
         bundlerTimeOut: 120000,
         initMode: 'immediate',
@@ -553,14 +580,18 @@ export default function PlaneApiPlaygroundSandpack({
     >
       <SandpackLayout
         className="w-full min-w-0"
-        style={{ minHeight: PLAYGROUND_PANEL_HEIGHT }}
+        style={{ minHeight: panelHeight }}
       >
-        <PlaneApiPlaygroundEditor showLineNumbers={showLineNumbers} />
+        <PlaneApiPlaygroundEditor
+          showLineNumbers={showLineNumbers}
+          panelHeight={panelHeight}
+        />
         <PlaneApiPlaygroundPreview
           refreshNonce={refreshNonce}
           onRefresh={handleRefresh}
           showLineNumbers={showLineNumbers}
           onToggleLineNumbers={handleToggleLineNumbers}
+          panelHeight={panelHeight}
         />
       </SandpackLayout>
       <SandpackAutoRun />

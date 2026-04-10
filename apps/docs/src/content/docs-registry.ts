@@ -34,10 +34,9 @@ export const docsPages: Record<
   string,
   LazyExoticComponent<ComponentType>
 > = Object.fromEntries(
-  Object.entries(mdxLoaders).map(([mdxPath, loader]) => [
-    normalizeMdxPath(mdxPath),
-    lazy(loader),
-  ]),
+  Object.entries(mdxLoaders)
+    .filter(([mdxPath]) => !normalizeMdxPath(mdxPath).startsWith('components/'))
+    .map(([mdxPath, loader]) => [normalizeMdxPath(mdxPath), lazy(loader)]),
 );
 
 const componentPages = [

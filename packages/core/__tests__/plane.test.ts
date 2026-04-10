@@ -8,6 +8,7 @@ import {
   definePlane,
   definePlaneFromColor,
   differenceRegions,
+  inspectPlaneQuery,
   intersectRegions,
   planeToColor,
   pointDistance,
@@ -414,6 +415,133 @@ describe('plane api', () => {
     expect(p3Region.viewportRelation).toBe('intersects');
     expect(p3Region.boundaryPaths.length).toBeGreaterThan(0);
     expect(p3Region.visibleRegion.paths.length).toBeGreaterThan(0);
+  });
+
+  it('returns identical results when using the inspection sidecar', () => {
+    const gamutQuery = {
+      kind: 'gamutRegion' as const,
+      gamut: 'srgb' as const,
+      scope: 'viewport' as const,
+      simplifyTolerance: 0.0015,
+    };
+    const contrastQuery = {
+      kind: 'contrastRegion' as const,
+      reference: parse('#111827'),
+      threshold: 4.5,
+      samplingMode: 'hybrid' as const,
+      lightnessSteps: 48,
+      chromaSteps: 64,
+      hybridMaxDepth: 6,
+      hybridErrorTolerance: 0.0015,
+      simplifyTolerance: 0.0015,
+    };
+
+    const directGamut = sense(basePlane).gamutRegion(gamutQuery);
+    const inspectedGamut = inspectPlaneQuery(basePlane, gamutQuery);
+    expect(inspectedGamut.result).toEqual(directGamut);
+
+    const directContrast = sense(basePlane).contrastRegion(contrastQuery);
+    const inspectedContrast = inspectPlaneQuery(basePlane, contrastQuery);
+    expect(inspectedContrast.result).toEqual(directContrast);
+  });
+
+  it('captures viewport sampling and marching-squares trace stages for implicit gamut regions', () => {
+    const p3Plane = definePlane({
+      model: 'p3',
+      x: { channel: 'r', range: [0, 1] },
+      y: { channel: 'g', range: [1, 0] },
+      fixed: { b: 0.5, alpha: 1 },
+    });
+
+    const inspection = inspectPlaneQuery(
+      p3Plane,
+      {
+        kind: 'gamutRegion',
+        gamut: 'srgb',
+        scope: 'viewport',
+      },
+      {
+        level: 'full',
+        maxStageEntries: 24,
+      },
+    );
+
+    expect(inspection.result.kind).toBe('gamutRegion');
+    expect(inspection.trace.summary.solver).toBe('implicit-contour');
+    expect(inspection.trace.summary.sampleCount).toBeLessThan(4225);
+    expect(
+      inspection.trace.stages.some(
+        (stage) =>
+          stage.kind === 'scalarGrid' && stage.label === 'viewport-grid',
+      ),
+    ).toBe(true);
+    expect(
+      inspection.trace.stages.some(
+        (stage) =>
+          stage.kind === 'viewportClassification' &&
+          stage.relation === inspection.result.viewportRelation,
+      ),
+    ).toBe(true);
+    expect(
+      inspection.trace.stages.some(
+        (stage) =>
+          stage.kind === 'marchingSquares' &&
+          stage.label === 'viewport-boundary' &&
+          stage.resolution === 64,
+      ),
+    ).toBe(true);
+    expect(
+      inspection.trace.stages.some(
+        (stage) => stage.kind === 'paths' && stage.label === 'visible-region',
+      ),
+    ).toBe(true);
+  });
+
+  it('captures cusp, root, refinement, and branching trace stages for hybrid contrast regions', () => {
+    const inspection = inspectPlaneQuery(
+      basePlane,
+      {
+        kind: 'contrastRegion',
+        reference: parse('#f9fafb'),
+        threshold: 4.5,
+        samplingMode: 'hybrid',
+        lightnessSteps: 88,
+        chromaSteps: 180,
+        hybridMaxDepth: 8,
+        hybridErrorTolerance: 0.0009,
+        hue: 230,
+      },
+      {
+        level: 'full',
+        maxStageEntries: 32,
+      },
+    );
+
+    expect(inspection.result.kind).toBe('contrastRegion');
+    expect(inspection.result.paths.length).toBeGreaterThan(0);
+    expect(inspection.trace.summary.solver).toBe('contrast-hybrid');
+    expect(inspection.trace.stages.some((stage) => stage.kind === 'cusp')).toBe(
+      true,
+    );
+    expect(
+      inspection.trace.stages.some(
+        (stage) => stage.kind === 'hybridSamples' && stage.label === 'seed',
+      ),
+    ).toBe(true);
+    expect(
+      inspection.trace.stages.some(
+        (stage) => stage.kind === 'hybridSamples' && stage.label === 'refined',
+      ),
+    ).toBe(true);
+    expect(
+      inspection.trace.stages.some((stage) => stage.kind === 'rootBisection'),
+    ).toBe(true);
+    expect(
+      inspection.trace.stages.some((stage) => stage.kind === 'refinement'),
+    ).toBe(true);
+    expect(
+      inspection.trace.stages.some((stage) => stage.kind === 'branching'),
+    ).toBe(true);
   });
 
   it('keeps LC-only queries gated for non-OKLCH planes', () => {

@@ -1,4 +1,5 @@
 import { createJsPlaneComputeBackend } from './backends/js-backend.js';
+import { applyComputeTraceMetadata } from '../plane/trace.js';
 import type {
   PlaneComputeBackend,
   PlaneComputeBackendKind,
@@ -526,9 +527,22 @@ export function createPlaneComputeScheduler({
       const totalMs = totalTimeMs(response);
       updateTelemetry(key, response.backend, totalMs);
       recordRegression(response.backend, key, totalMs, request);
+      const debugTrace = response.debugTrace
+        ? {
+            queries: response.debugTrace.queries.map((trace) =>
+              applyComputeTraceMetadata(trace, {
+                backend: response.backend,
+                computeTimeMs: response.computeTimeMs,
+                marshalTimeMs: response.marshalTimeMs,
+                schedule: decision.trace,
+              }),
+            ),
+          }
+        : undefined;
       return {
         ...response,
         schedule: decision.trace,
+        debugTrace,
       };
     } catch (error) {
       const fallbackBackend = backendMap.js;
@@ -538,13 +552,27 @@ export function createPlaneComputeScheduler({
       recordBackendError(decision.backend.kind);
       const fallbackResponse = fallbackBackend.run(request);
       updateTelemetry(key, 'js', totalTimeMs(fallbackResponse));
+      const schedule = {
+        bucketKey: key,
+        selectedBackend: 'js' as const,
+        reason: 'backend-error' as const,
+      };
+      const debugTrace = fallbackResponse.debugTrace
+        ? {
+            queries: fallbackResponse.debugTrace.queries.map((trace) =>
+              applyComputeTraceMetadata(trace, {
+                backend: fallbackResponse.backend,
+                computeTimeMs: fallbackResponse.computeTimeMs,
+                marshalTimeMs: fallbackResponse.marshalTimeMs,
+                schedule,
+              }),
+            ),
+          }
+        : undefined;
       return {
         ...fallbackResponse,
-        schedule: {
-          bucketKey: key,
-          selectedBackend: 'js',
-          reason: 'backend-error',
-        },
+        schedule,
+        debugTrace,
       };
     }
   };

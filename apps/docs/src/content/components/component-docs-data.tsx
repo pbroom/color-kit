@@ -1,13 +1,37 @@
-import type { ComponentType } from 'react';
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { ApiTableRow } from '@/components/api-table';
-import {
-  ColorAreaDemo,
-  ColorInputDemo,
-  ColorStringInputDemo,
-  ColorProviderDemo,
-  ColorSliderDemo,
-} from '@/components/component-demos';
 import { componentApiDocs } from './component-api';
+
+type ComponentDemoProps = { inspectorDriven?: boolean };
+type ComponentDocDemo =
+  | ComponentType<ComponentDemoProps>
+  | LazyExoticComponent<ComponentType<ComponentDemoProps>>;
+
+const ColorAreaDemo = lazy(() =>
+  import('@/components/component-demos').then((module) => ({
+    default: module.ColorAreaDemo as ComponentType<ComponentDemoProps>,
+  })),
+);
+const ColorProviderDemo = lazy(() =>
+  import('@/components/demos/color-provider-demo').then((module) => ({
+    default: module.ColorProviderDemo,
+  })),
+);
+const ColorSliderDemo = lazy(() =>
+  import('@/components/demos/color-slider-demo').then((module) => ({
+    default: module.ColorSliderDemo,
+  })),
+);
+const ColorInputDemo = lazy(() =>
+  import('@/components/demos/color-input-demo').then((module) => ({
+    default: module.ColorInputDemo,
+  })),
+);
+const ColorStringInputDemo = lazy(() =>
+  import('@/components/demos/color-string-input-demo').then((module) => ({
+    default: module.ColorStringInputDemo,
+  })),
+);
 
 export interface ComponentDocData {
   slug: string;
@@ -15,7 +39,7 @@ export interface ComponentDocData {
   summary: string;
   description: string;
   registryName: string;
-  demo: ComponentType<{ inspectorDriven?: boolean }>;
+  demo: ComponentDocDemo;
   usage: string;
   helperApis: string[];
   features: string[];
