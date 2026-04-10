@@ -160,11 +160,10 @@ add_command() {
 }
 
 collect_files() {
-  local diff_command="$1"
   local file
   while IFS= read -r file; do
     add_file "$file"
-  done < <(eval "$diff_command")
+  done < <("$@")
 }
 
 require_command git
@@ -182,12 +181,12 @@ profiles=()
 labels=()
 commands=()
 
-collect_files "git diff --name-only \"$MERGE_BASE...$HEAD_REF\""
+collect_files git diff --name-only "$MERGE_BASE...$HEAD_REF"
 
 if [[ "$HEAD_REF" == "HEAD" ]]; then
-  collect_files "git diff --name-only"
-  collect_files "git diff --name-only --cached"
-  collect_files "git ls-files --others --exclude-standard"
+  collect_files git diff --name-only
+  collect_files git diff --name-only --cached
+  collect_files git ls-files --others --exclude-standard
 fi
 
 docs_changed=0
@@ -214,16 +213,20 @@ else
         ;;
       packages/core/*)
         core_changed=1
+        format_changed=1
         ;;
       packages/react/*)
         react_changed=1
         needs_browser_smoke_hint=1
+        format_changed=1
         ;;
       packages/core-wasm/*)
         wasm_changed=1
+        format_changed=1
         ;;
       packages/color-kit/*)
         umbrella_changed=1
+        format_changed=1
         ;;
       .cursor/skills/*|.cursor/rules/*|scripts/*|.github/workflows/*|.greptile/*|greptile.json)
         automation_changed=1

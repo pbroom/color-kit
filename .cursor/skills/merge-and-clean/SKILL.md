@@ -19,11 +19,14 @@ Confirm all of the following before acting:
 
 ## Step 1: Dry-Run Merge Readiness
 
-Follow the safe merge workflow from:
+Start with a dry run only. Do not perform the merge yet.
 
-- `/Users/peterbroomfield/.codex/skills/gh-safe-merge-ready-pr/SKILL.md`
+Use GitHub metadata to confirm the merge gates before taking any action:
 
-Start with the dry run only. Do not perform the merge yet.
+```bash
+gh pr view {PR_NUMBER} --json url,state,isDraft,reviewDecision,mergeable
+gh pr checks {PR_NUMBER}
+```
 
 Expected outcome:
 
@@ -56,16 +59,20 @@ Rules:
 
 After a successful merge, do not immediately delete worktrees or branches.
 
-Follow the cleanup workflow from:
-
-- `/Users/peterbroomfield/.codex/skills/git-clean-codex-worktrees/SKILL.md`
-
-Start with dry-run mode and inspect:
+Start with dry-run inspection only. Review:
 
 - worktrees planned for removal
 - branches planned for deletion
 - skipped items
 - manual follow-ups
+
+Useful commands:
+
+```bash
+git worktree list
+git branch --merged
+git branch --format='%(refname:short)'
+```
 
 ## Step 4: Execute Cleanup
 

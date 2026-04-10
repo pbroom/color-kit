@@ -49,11 +49,14 @@ This keeps the repo's Graphite preflight, tracking, and PR metadata refresh in o
 
 ### Dirty working tree
 
-If the worktree has local changes, do not improvise raw `git`/`gt` commands. Route through the existing scoped submit workflow:
+If the worktree has local changes, keep the submit step scoped to the current effort:
 
-- Follow `/Users/peterbroomfield/.cursor/skills/effort-pr-stacker/SKILL.md`
+1. Confirm the current worktree and branch scope before staging anything.
+2. Stage only the files that belong to this effort.
+3. Commit them on the current branch with a conventional message.
+4. Re-run `pnpm pr:stack` from the now-clean worktree.
 
-The goal is to submit only the current effort, not unrelated local work.
+The goal is to submit only the current effort, not unrelated local work or sibling stacks.
 
 ## Step 2: Resolve The Current PR
 
@@ -145,18 +148,21 @@ Pause and ask the user when:
 
 ### Review feedback
 
-If comments are actionable, follow:
+If comments are actionable, resolve them in a focused loop:
 
-- `/Users/peterbroomfield/.cursor/skills/pr-comment-resolver/SKILL.md`
+1. Inspect unresolved review threads, review comments, and issue comments.
+2. Ignore resolved, outdated, or non-actionable comments.
+3. Apply only the requested code or test changes.
+4. Re-run validation before pushing follow-up commits.
 
-Skip that step when comments are only approvals, questions, or stale threads.
+Skip that loop when comments are only approvals, questions, or stale threads.
 
 ### CI loop
 
 Prefer a watcher rather than repeatedly polling by hand:
 
 - Launch the `ci-watcher` subagent when you expect a longer wait loop.
-- Use `/Users/peterbroomfield/.cursor/plugins/cache/cursor-public/cursor-team-kit/08c2bbe2ae8a022a21dc6c32faf611f14a6e8343/skills/loop-on-ci/SKILL.md` when you are fixing and rechecking in a tight loop.
+- If your environment provides a CI loop helper, use it when you are fixing and rechecking in a tight loop.
 
 Keep each push scoped to one failure cause when possible.
 
