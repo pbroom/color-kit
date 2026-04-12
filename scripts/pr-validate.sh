@@ -41,6 +41,9 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=1
       shift
       ;;
+    --)
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -89,13 +92,63 @@ run_command() {
   bash -lc "$command"
 }
 
-build_prettier_check_command() {
-  local command="pnpm exec prettier --check --ignore-unknown --"
+path_exists_for_validation() {
+  local path="$1"
+  [[ -e "$path" ]]
+}
+
+build_prettier_command() {
+  local parser="$1"
+  shift
+  local command="pnpm exec prettier --check"
   local file
 
-  for file in "${changed_files[@]}"; do
+  if [[ -n "$parser" ]]; then
+    command="${command} --parser $(printf '%q' "$parser")"
+  else
+    command="${command} --ignore-unknown"
+  fi
+
+  command="${command} --"
+
+  for file in "$@"; do
     command="${command} $(printf '%q' "$file")"
   done
+
+  echo "$command"
+}
+
+build_prettier_check_command() {
+  local file
+  local command=""
+  local default_files=()
+  local mdc_files=()
+
+  for file in "${changed_files[@]}"; do
+    if ! path_exists_for_validation "$file"; then
+      continue
+    fi
+
+    case "$file" in
+      *.mdc)
+        mdc_files+=("$file")
+        ;;
+      *)
+        default_files+=("$file")
+        ;;
+    esac
+  done
+
+  if [[ "${#default_files[@]}" -gt 0 ]]; then
+    command="$(build_prettier_command "" "${default_files[@]}")"
+  fi
+
+  if [[ "${#mdc_files[@]}" -gt 0 ]]; then
+    if [[ -n "$command" ]]; then
+      command="${command} && "
+    fi
+    command="${command}$(build_prettier_command "markdown" "${mdc_files[@]}")"
+  fi
 
   echo "$command"
 }
@@ -247,6 +300,11 @@ else
   done
 fi
 
+format_command=""
+if [[ "$format_changed" == "1" ]]; then
+  format_command="$(build_prettier_check_command)"
+fi
+
 if [[ "$workspace_changed" == "1" ]]; then
   add_profile "workspace"
 fi
@@ -271,7 +329,7 @@ fi
 if [[ "$umbrella_changed" == "1" ]]; then
   add_profile "color-kit"
 fi
-if [[ "$format_changed" == "1" ]]; then
+if [[ -n "$format_command" ]]; then
   add_profile "format"
 fi
 
@@ -281,8 +339,8 @@ fi
 
 add_command "lint" "pnpm lint"
 
-if [[ "$format_changed" == "1" ]]; then
-  add_command "format" "$(build_prettier_check_command)"
+if [[ -n "$format_command" ]]; then
+  add_command "format" "$format_command"
 fi
 
 if [[ "$agents_changed" == "1" ]]; then
