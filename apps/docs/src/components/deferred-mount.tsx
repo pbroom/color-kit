@@ -22,7 +22,9 @@ export function DeferredMount({
   className,
 }: DeferredMountProps) {
   const targetRef = useRef<HTMLDivElement | null>(null);
-  const [shouldMount, setShouldMount] = useState(false);
+  const [shouldMount, setShouldMount] = useState(
+    () => typeof IntersectionObserver !== 'function',
+  );
 
   useEffect(() => {
     if (shouldMount) {
@@ -31,11 +33,6 @@ export function DeferredMount({
 
     const node = targetRef.current;
     if (!node) {
-      return;
-    }
-
-    if (typeof IntersectionObserver !== 'function') {
-      setShouldMount(true);
       return;
     }
 

@@ -422,7 +422,9 @@ describe('plane api', () => {
       y: { channel: 'c', range: [150, 0] },
       fixed: { t: 50, alpha: 1 },
     });
-    const hctHueChroma = sense(hctHueChromaPlane).gamutRegion({ gamut: 'srgb' });
+    const hctHueChroma = sense(hctHueChromaPlane).gamutRegion({
+      gamut: 'srgb',
+    });
     expect(hctHueChroma.solver).toBe('analytic-hct');
     expect(hctHueChroma.viewportRelation).toBe('intersects');
     expect(hctHueChroma.boundaryPaths.length).toBeGreaterThan(0);
@@ -434,7 +436,9 @@ describe('plane api', () => {
       y: { channel: 'c', range: [150, 0] },
       fixed: { h: 210, alpha: 1 },
     });
-    const hctToneChroma = sense(hctToneChromaPlane).gamutRegion({ gamut: 'srgb' });
+    const hctToneChroma = sense(hctToneChromaPlane).gamutRegion({
+      gamut: 'srgb',
+    });
     expect(hctToneChroma.solver).toBe('analytic-hct');
     expect(hctToneChroma.boundaryPaths.length).toBeGreaterThan(0);
     expect(hctToneChroma.visibleRegion.paths.length).toBeGreaterThan(0);

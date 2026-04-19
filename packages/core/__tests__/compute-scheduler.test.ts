@@ -232,7 +232,9 @@ describe('plane compute scheduler', () => {
     const bucketKeys = snapshot.buckets.map((bucket) => bucket.key);
 
     expect(
-      bucketKeys.some((key) => key.includes('gamutRegion:srgb:viewport:p3:r/g')),
+      bucketKeys.some((key) =>
+        key.includes('gamutRegion:srgb:viewport:p3:r/g'),
+      ),
     ).toBe(true);
     expect(
       bucketKeys.some((key) =>

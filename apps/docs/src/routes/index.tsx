@@ -3,7 +3,6 @@ import {
   Suspense,
   type ComponentType,
   type LazyExoticComponent,
-  type ReactNode,
 } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, Github } from 'lucide-react';
