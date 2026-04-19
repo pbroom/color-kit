@@ -70,6 +70,25 @@ const gamutRegionSchedulerRequest: PlaneComputeRequest = {
   performanceProfile: 'balanced',
 };
 
+const gamutRegionDomainEdgeSchedulerRequest: PlaneComputeRequest = {
+  plane: {
+    model: 'hsl',
+    x: { channel: 'h', range: [0, 360] },
+    y: { channel: 's', range: [100, 0] },
+    fixed: { l: 50, alpha: 1 },
+  },
+  queries: [
+    {
+      kind: 'gamutRegion',
+      gamut: 'srgb',
+      scope: 'viewport',
+    },
+  ],
+  priority: 'drag',
+  quality: 'high',
+  performanceProfile: 'balanced',
+};
+
 function createTimedBackend(
   kind: PlaneComputeBackend['kind'],
   computeTimeMs: number,
@@ -197,7 +216,7 @@ describe('plane compute scheduler', () => {
     ).toBe(true);
   });
 
-  it('tracks viewport gamut-region requests in scheduler telemetry buckets', () => {
+  it('separates gamut-region telemetry buckets by workload signature', () => {
     const scheduler = createPlaneComputeScheduler({
       backends: {
         js: createTimedBackend('js', 6),
@@ -208,11 +227,16 @@ describe('plane compute scheduler', () => {
     });
 
     scheduler.run(gamutRegionSchedulerRequest);
+    scheduler.run(gamutRegionDomainEdgeSchedulerRequest);
     const snapshot = scheduler.getTelemetrySnapshot();
+    const bucketKeys = snapshot.buckets.map((bucket) => bucket.key);
 
     expect(
-      snapshot.buckets.some((bucket) =>
-        bucket.key.includes('gamutRegion:viewport'),
+      bucketKeys.some((key) => key.includes('gamutRegion:srgb:viewport:p3:r/g')),
+    ).toBe(true);
+    expect(
+      bucketKeys.some((key) =>
+        key.includes('gamutRegion:srgb:viewport:hsl:h/s'),
       ),
     ).toBe(true);
   });
@@ -238,7 +262,7 @@ describe('plane compute scheduler', () => {
     expect(response.debugTrace?.queries).toHaveLength(1);
     expect(response.debugTrace?.queries[0].summary.backend).toBe('js');
     expect(response.debugTrace?.queries[0].summary.bucketKey).toContain(
-      'gamutRegion:viewport',
+      'gamutRegion:srgb:viewport:p3:r/g',
     );
     expect(response.debugTrace?.queries[0].summary.scheduleReason).toBe(
       'default-js',

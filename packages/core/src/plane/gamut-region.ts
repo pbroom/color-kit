@@ -50,7 +50,10 @@ const DEFAULT_FULL_BASE_RESOLUTION = 12;
 const DEFAULT_IMPLICIT_MAX_DEPTH = 3;
 const ADAPTIVE_REFINEMENT_EPSILON = GAMUT_MARGIN_EPSILON * 8;
 const CLIP_EPSILON = 1e-6;
-const BORDER_PAD = 1e-6;
+// `extendViewportGrid()` inserts a one-cell border of outside samples around the
+// original scalar grid. Expanding the bounds by one full cell keeps the shifted
+// interior indices aligned with their original sample coordinates.
+const BORDER_PAD_CELLS = 1;
 
 type ScalarField = (point: PlanePoint) => number;
 
@@ -404,6 +407,9 @@ function buildSegmentPaths(
   const pointByKey = new Map<string, PlanePoint>();
   const adjacency = new Map<string, Set<string>>();
   const visited = new Set<string>();
+  // Scale the traversal guard with the number of input segments so dense
+  // implicit contours can walk nearly every edge before the safety hatch trips.
+  const traversalGuardLimit = Math.max(2048, segments.length * 4);
 
   for (const [a, b] of segments) {
     const aCanonical = canonicalize(a, 1e-5);
@@ -424,7 +430,7 @@ function buildSegmentPaths(
     const path = [start];
     let current = start;
     let guard = 0;
-    while (guard < 20000) {
+    while (guard < traversalGuardLimit) {
       guard += 1;
       const neighbors = adjacency.get(current);
       if (!neighbors || neighbors.size === 0) break;
@@ -814,10 +820,10 @@ function extendViewportGrid(grid: ScalarGrid): ScalarGrid {
   }
 
   return {
-    minX: grid.minX - stepX * BORDER_PAD,
-    maxX: grid.maxX + stepX * BORDER_PAD,
-    minY: grid.minY - stepY * BORDER_PAD,
-    maxY: grid.maxY + stepY * BORDER_PAD,
+    minX: grid.minX - stepX * BORDER_PAD_CELLS,
+    maxX: grid.maxX + stepX * BORDER_PAD_CELLS,
+    minY: grid.minY - stepY * BORDER_PAD_CELLS,
+    maxY: grid.maxY + stepY * BORDER_PAD_CELLS,
     resolution: grid.resolution + 2,
     values,
   };

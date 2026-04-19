@@ -415,6 +415,29 @@ describe('plane api', () => {
     expect(p3Region.viewportRelation).toBe('intersects');
     expect(p3Region.boundaryPaths.length).toBeGreaterThan(0);
     expect(p3Region.visibleRegion.paths.length).toBeGreaterThan(0);
+
+    const hctHueChromaPlane = definePlane({
+      model: 'hct',
+      x: { channel: 'h', range: [0, 360] },
+      y: { channel: 'c', range: [150, 0] },
+      fixed: { t: 50, alpha: 1 },
+    });
+    const hctHueChroma = sense(hctHueChromaPlane).gamutRegion({ gamut: 'srgb' });
+    expect(hctHueChroma.solver).toBe('analytic-hct');
+    expect(hctHueChroma.viewportRelation).toBe('intersects');
+    expect(hctHueChroma.boundaryPaths.length).toBeGreaterThan(0);
+    expect(hctHueChroma.visibleRegion.paths.length).toBeGreaterThan(0);
+
+    const hctToneChromaPlane = definePlane({
+      model: 'hct',
+      x: { channel: 't', range: [100, 0] },
+      y: { channel: 'c', range: [150, 0] },
+      fixed: { h: 210, alpha: 1 },
+    });
+    const hctToneChroma = sense(hctToneChromaPlane).gamutRegion({ gamut: 'srgb' });
+    expect(hctToneChroma.solver).toBe('analytic-hct');
+    expect(hctToneChroma.boundaryPaths.length).toBeGreaterThan(0);
+    expect(hctToneChroma.visibleRegion.paths.length).toBeGreaterThan(0);
   });
 
   it('returns identical results when using the inspection sidecar', () => {

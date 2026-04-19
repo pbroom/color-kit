@@ -155,16 +155,6 @@ function countPlanePaths(paths: PlanePoint[][]): {
   };
 }
 
-export function summarizeTracePaths(
-  trace: InternalPlaneTraceContext | null | undefined,
-  paths: PlanePoint[][],
-): void {
-  if (!trace) return;
-  const { pathCount, pointCount } = countPlanePaths(paths);
-  trace.summary.pathCount += pathCount;
-  trace.summary.pointCount += pointCount;
-}
-
 function countResultGeometry(result: PlaneQueryResult): {
   pathCount: number;
   pointCount: number;

@@ -1,4 +1,5 @@
 import { createJsPlaneComputeBackend } from './backends/js-backend.js';
+import { resolvePlaneDefinition } from '../plane/plane.js';
 import { applyComputeTraceMetadata } from '../plane/trace.js';
 import type {
   PlaneComputeBackend,
@@ -175,6 +176,7 @@ function createBucketKey(request: PlaneComputeRequest): string {
   const kinds = [...new Set(request.queries.map((query) => query.kind))]
     .sort()
     .join('+');
+  const resolvedPlane = resolvePlaneDefinition(request.plane);
   const gamutRegionSignature = [
     ...new Set(
       request.queries
@@ -186,7 +188,10 @@ function createBucketKey(request: PlaneComputeRequest): string {
             { kind: 'gamutRegion' }
           > => query.kind === 'gamutRegion',
         )
-        .map((query) => `${query.scope ?? 'viewport'}`),
+        .map(
+          (query) =>
+            `${query.gamut ?? 'srgb'}:${query.scope ?? 'viewport'}:${resolvedPlane.model}:${resolvedPlane.x.channel}/${resolvedPlane.y.channel}`,
+        ),
     ),
   ]
     .sort()
