@@ -52,6 +52,7 @@ This file defines top-level guidance for Codex in this repository.
 
 ## Agent Learnings
 
+- **CI autofix claim lock**: Use the `ci-fail-<checks>` AutomationMemory timestamp lock before investigating CI failures so only one automation run claims and fixes a given failure set.
 - **Keep AGENTS memory high-signal**: Prefer compact, hard-to-rediscover lessons; archive or remove low-leverage run history and avoid metadata-only prefixes like dates.
 - **Rebase before push on diverged branch**: If your branch is ahead/behind remote, rebase first so push is fast-forward and your fixes stay on top of the latest upstream work.
 - **Dry-run Graphite submit before publish**: Use `gt submit --dry-run` to verify included branches; if unrelated descendants appear, submit without `--stack`.
