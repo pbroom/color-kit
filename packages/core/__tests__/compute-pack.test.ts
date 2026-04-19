@@ -200,6 +200,46 @@ describe('plane compute packing', () => {
     }
   });
 
+  it('falls back visible-region offsets after boundary paths', () => {
+    const [result] = unpackPlaneQueryResults({
+      queryDescriptors: [
+        {
+          kind: 'gamutRegion',
+          pathStart: 0,
+          pathCount: 1,
+          regionPathCount: 1,
+          gamut: 'srgb',
+          scope: 'viewport',
+          solver: 'implicit-contour',
+          viewportRelation: 'intersects',
+        },
+      ],
+      pathRanges: Uint32Array.from([0, 2, 2, 3]),
+      pointXY: Float32Array.from([0, 0, 1, 0, 0, 0, 1, 1, 0, 1]),
+      pointLC: Float32Array.from(new Array(10).fill(Number.NaN)),
+      pointColorLcha: Float32Array.from(new Array(20).fill(Number.NaN)),
+    });
+
+    expect(result.kind).toBe('gamutRegion');
+    if (result.kind !== 'gamutRegion') {
+      throw new Error(`Expected gamutRegion result, received ${result.kind}`);
+    }
+
+    expect(result.boundaryPaths).toEqual([
+      [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+      ],
+    ]);
+    expect(result.visibleRegion.paths).toEqual([
+      [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+      ],
+    ]);
+  });
+
   it('keeps packed LC/LCHA schema stable for non-OKLCH planes', () => {
     const rgbPlane = definePlane({
       model: 'rgb',

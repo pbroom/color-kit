@@ -537,8 +537,6 @@ export function createPlaneComputeScheduler({
             queries: response.debugTrace.queries.map((trace) =>
               applyComputeTraceMetadata(trace, {
                 backend: response.backend,
-                computeTimeMs: response.computeTimeMs,
-                marshalTimeMs: response.marshalTimeMs,
                 schedule: decision.trace,
               }),
             ),
@@ -567,8 +565,6 @@ export function createPlaneComputeScheduler({
             queries: fallbackResponse.debugTrace.queries.map((trace) =>
               applyComputeTraceMetadata(trace, {
                 backend: fallbackResponse.backend,
-                computeTimeMs: fallbackResponse.computeTimeMs,
-                marshalTimeMs: fallbackResponse.marshalTimeMs,
                 schedule,
               }),
             ),

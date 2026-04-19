@@ -172,7 +172,8 @@ export function unpackPlaneQueryResults(
         }
         const visiblePaths: PlanePoint[][] = [];
         const regionPathStart =
-          descriptor.regionPathStart ?? descriptor.pathStart;
+          descriptor.regionPathStart ??
+          descriptor.pathStart + descriptor.pathCount;
         const regionPathCount = descriptor.regionPathCount ?? 0;
         for (let index = 0; index < regionPathCount; index += 1) {
           visiblePaths.push(readPlainPath(packed, regionPathStart + index));

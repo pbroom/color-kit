@@ -245,6 +245,12 @@ export function limitTracePaths(
     .map((path) => path.slice(0, trace.options.maxStageEntries));
 }
 
+/**
+ * Returns a traced query copy with backend/scheduler metadata merged in.
+ *
+ * The scheduler and backend may decorate the same logical trace at different
+ * layers, so this helper must stay non-mutating to avoid aliasing surprises.
+ */
 export function applyComputeTraceMetadata(
   trace: PlaneQueryTrace,
   metadata: {
@@ -254,18 +260,31 @@ export function applyComputeTraceMetadata(
     schedule?: PlaneComputeScheduleTrace;
   },
 ): PlaneQueryTrace {
-  trace.summary.backend = metadata.backend;
-  if (metadata.computeTimeMs != null) {
-    trace.summary.timings ??= {};
-    trace.summary.timings.compute = metadata.computeTimeMs;
-  }
-  if (metadata.marshalTimeMs != null) {
-    trace.summary.timings ??= {};
-    trace.summary.timings.marshal = metadata.marshalTimeMs;
-  }
-  if (metadata.schedule) {
-    trace.summary.bucketKey = metadata.schedule.bucketKey;
-    trace.summary.scheduleReason = metadata.schedule.reason;
-  }
-  return trace;
+  const timings =
+    metadata.computeTimeMs != null || metadata.marshalTimeMs != null
+      ? {
+          ...(trace.summary.timings ?? {}),
+          ...(metadata.computeTimeMs != null
+            ? { compute: metadata.computeTimeMs }
+            : {}),
+          ...(metadata.marshalTimeMs != null
+            ? { marshal: metadata.marshalTimeMs }
+            : {}),
+        }
+      : trace.summary.timings;
+
+  return {
+    ...trace,
+    summary: {
+      ...trace.summary,
+      backend: metadata.backend,
+      ...(timings ? { timings } : {}),
+      ...(metadata.schedule
+        ? {
+            bucketKey: metadata.schedule.bucketKey,
+            scheduleReason: metadata.schedule.reason,
+          }
+        : {}),
+    },
+  };
 }

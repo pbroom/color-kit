@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   createJsPlaneComputeBackend,
   createPlaneComputeScheduler,
+  type PlaneQueryTrace,
   type PlaneComputeBackend,
   type PlaneComputeRequest,
 } from '../src/index.js';
+import { applyComputeTraceMetadata } from '../src/plane/trace.js';
 
 const schedulerRequest: PlaneComputeRequest = {
   plane: {
@@ -243,6 +245,47 @@ describe('plane compute scheduler', () => {
     ).toBe(true);
   });
 
+  it('distributes batched debug timings across traced queries', () => {
+    const response = createJsPlaneComputeBackend().run({
+      plane: gamutRegionSchedulerRequest.plane,
+      queries: [
+        {
+          kind: 'gamutRegion',
+          gamut: 'srgb',
+          scope: 'viewport',
+        },
+        {
+          kind: 'gamutRegion',
+          gamut: 'srgb',
+          scope: 'viewport',
+        },
+      ],
+      trace: {
+        level: 'summary',
+      },
+    });
+
+    const computeTimings =
+      response.debugTrace?.queries.map(
+        (trace) => trace.summary.timings?.compute ?? 0,
+      ) ?? [];
+    const marshalTimings =
+      response.debugTrace?.queries.map(
+        (trace) => trace.summary.timings?.marshal ?? 0,
+      ) ?? [];
+
+    expect(computeTimings).toHaveLength(2);
+    expect(computeTimings.reduce((sum, value) => sum + value, 0)).toBeCloseTo(
+      response.computeTimeMs,
+      6,
+    );
+    expect(marshalTimings.reduce((sum, value) => sum + value, 0)).toBeCloseTo(
+      response.marshalTimeMs,
+      6,
+    );
+    expect(Math.max(...computeTimings)).toBeLessThan(response.computeTimeMs);
+  });
+
   it('attaches debug trace metadata without changing scheduler bucket selection', () => {
     const scheduler = createPlaneComputeScheduler({
       backends: {
@@ -269,16 +312,54 @@ describe('plane compute scheduler', () => {
     expect(response.debugTrace?.queries[0].summary.scheduleReason).toBe(
       'default-js',
     );
-    expect(response.debugTrace?.queries[0].summary.timings?.compute ?? 0).toBe(
-      response.computeTimeMs,
-    );
-    expect(response.debugTrace?.queries[0].summary.timings?.marshal ?? 0).toBe(
-      response.marshalTimeMs,
-    );
+    expect(
+      response.debugTrace?.queries[0].summary.timings?.compute ?? 0,
+    ).toBeGreaterThan(0);
+    expect(
+      response.debugTrace?.queries[0].summary.timings?.marshal ?? 0,
+    ).toBeGreaterThanOrEqual(0);
     expect(
       response.debugTrace?.queries[0].stages.some(
         (stage) => stage.kind === 'viewportClassification',
       ),
     ).toBe(true);
+  });
+
+  it('returns a copy when applying compute trace metadata', () => {
+    const trace: PlaneQueryTrace = {
+      summary: {
+        queryKind: 'gamutRegion',
+        level: 'summary',
+        totalTimeMs: 12,
+        sampleCount: 0,
+        scalarEvaluationCount: 0,
+        cellCount: 0,
+        segmentCount: 0,
+        pathCount: 0,
+        pointCount: 0,
+        resultPathCount: 1,
+        resultPointCount: 4,
+        timings: {
+          compute: 5,
+        },
+      },
+      stages: [],
+    };
+
+    const updated = applyComputeTraceMetadata(trace, {
+      backend: 'js',
+      schedule: {
+        bucketKey: 'gamutRegion:demo',
+        selectedBackend: 'js',
+        reason: 'default-js',
+      },
+    });
+
+    expect(updated).not.toBe(trace);
+    expect(updated.summary).not.toBe(trace.summary);
+    expect(trace.summary.bucketKey).toBeUndefined();
+    expect(trace.summary.scheduleReason).toBeUndefined();
+    expect(updated.summary.bucketKey).toBe('gamutRegion:demo');
+    expect(updated.summary.scheduleReason).toBe('default-js');
   });
 });
