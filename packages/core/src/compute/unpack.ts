@@ -5,7 +5,9 @@ import type {
   PlaneContrastRegionResult,
   PlaneFallbackPointResult,
   PlaneGamutBoundaryResult,
+  PlaneGamutRegionResult,
   PlaneGradientResult,
+  PlanePoint,
   PlaneQueryResult,
   PlaneRegionPoint,
 } from '../plane/types.js';
@@ -86,6 +88,19 @@ function readBoundaryPath(
   return points;
 }
 
+function readPlainPath(
+  packed: PackedPlaneQueryResult,
+  pathIndex: number,
+): PlanePoint[] {
+  const range = readPathRange(packed.pathRanges, pathIndex);
+  const points: PlanePoint[] = [];
+  for (let index = 0; index < range.pointCount; index += 1) {
+    const pointIndex = range.startPoint + index;
+    points.push(readPointXY(packed, pointIndex));
+  }
+  return points;
+}
+
 function readRegionPath(
   packed: PackedPlaneQueryResult,
   pathIndex: number,
@@ -144,6 +159,33 @@ export function unpackPlaneQueryResults(
           gamut: descriptor.gamut ?? 'srgb',
           hue: descriptor.hue ?? 0,
           points,
+        };
+        return result;
+      }
+
+      case 'gamutRegion': {
+        const boundaryPaths: PlanePoint[][] = [];
+        for (let index = 0; index < descriptor.pathCount; index += 1) {
+          boundaryPaths.push(
+            readPlainPath(packed, descriptor.pathStart + index),
+          );
+        }
+        const visiblePaths: PlanePoint[][] = [];
+        const regionPathStart =
+          descriptor.regionPathStart ??
+          descriptor.pathStart + descriptor.pathCount;
+        const regionPathCount = descriptor.regionPathCount ?? 0;
+        for (let index = 0; index < regionPathCount; index += 1) {
+          visiblePaths.push(readPlainPath(packed, regionPathStart + index));
+        }
+        const result: PlaneGamutRegionResult = {
+          kind: 'gamutRegion',
+          gamut: descriptor.gamut ?? 'srgb',
+          scope: descriptor.scope ?? 'viewport',
+          solver: descriptor.solver ?? 'implicit-contour',
+          viewportRelation: descriptor.viewportRelation ?? 'outside',
+          boundaryPaths,
+          visibleRegion: { paths: visiblePaths },
         };
         return result;
       }

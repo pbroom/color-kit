@@ -1,7 +1,6 @@
 import { definePlane, sense, toSvgPath } from 'color-kit';
 
 const plane = definePlane();
-
 const p3Boundary = sense(plane).gamutBoundary();
 
 const boundaryPath = toSvgPath(p3Boundary.points);

@@ -1,8 +1,13 @@
 import type { GamutTarget } from '../gamut/index.js';
 import type {
   PlaneDefinition,
+  PlaneGamutRegionScope,
+  PlaneGamutSolver,
   PlaneQuery,
   PlaneQueryResult,
+  PlaneQueryTrace,
+  PlaneQueryTraceOptions,
+  PlaneViewportRelation,
 } from '../plane/types.js';
 
 export type PlaneComputeBackendKind = 'js' | 'wasm' | 'webgpu';
@@ -18,8 +23,13 @@ export interface PackedPlaneQueryDescriptor {
   kind: PlaneQuery['kind'];
   pathStart: number;
   pathCount: number;
+  regionPathStart?: number;
+  regionPathCount?: number;
   hue?: number;
   gamut?: GamutTarget;
+  scope?: PlaneGamutRegionScope;
+  solver?: PlaneGamutSolver;
+  viewportRelation?: PlaneViewportRelation;
 }
 
 /**
@@ -44,6 +54,7 @@ export interface PlaneComputeRequest {
   priority?: PlaneComputePriority;
   quality?: PlaneComputeQuality;
   performanceProfile?: PlaneComputePerformanceProfile;
+  trace?: PlaneQueryTraceOptions;
 }
 
 export interface PlaneComputeScheduleTrace {
@@ -65,6 +76,7 @@ export interface PlaneComputeResponse {
   marshalTimeMs: number;
   result: PackedPlaneQueryResult;
   schedule?: PlaneComputeScheduleTrace;
+  debugTrace?: PlaneComputeDebugTrace;
 }
 
 export interface PlaneComputeBackend {
@@ -75,6 +87,10 @@ export interface PlaneComputeBackend {
 export interface PlaneComputePackResult {
   packed: PackedPlaneQueryResult;
   raw: PlaneQueryResult[];
+}
+
+export interface PlaneComputeDebugTrace {
+  queries: PlaneQueryTrace[];
 }
 
 export interface PlaneComputeSchedulerOptions {

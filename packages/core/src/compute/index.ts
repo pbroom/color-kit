@@ -20,6 +20,7 @@ export type {
   PackedPlaneQueryResult,
   PlaneComputeBackend,
   PlaneComputeBackendKind,
+  PlaneComputeDebugTrace,
   PlaneComputeCircuitBreakerState,
   PlaneComputePerformanceProfile,
   PlaneComputePriority,

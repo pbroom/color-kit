@@ -1,4 +1,9 @@
-import type { ReactNode } from 'react';
+import {
+  lazy,
+  Suspense,
+  type ComponentType,
+  type LazyExoticComponent,
+} from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,13 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-
-import {
-  ColorAreaDemo,
-  ColorInputDemo,
-  ColorProviderDemo,
-  ColorSliderDemo,
-} from '../components/component-demos.js';
+import { DeferredMount } from '../components/deferred-mount.js';
 import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 interface ShowcaseCard {
@@ -24,7 +23,39 @@ interface ShowcaseCard {
   description: string;
   href: string;
   className?: string;
-  demo: ReactNode;
+  demo: LazyExoticComponent<ComponentType>;
+  minHeight?: number;
+}
+
+function lazyDemo<TProps extends object>(
+  load: () => Promise<{ default: ComponentType<TProps> }>,
+) {
+  return lazy(load);
+}
+
+const ColorAreaDemo = lazyDemo(() =>
+  import('../components/component-demos.js').then((module) => ({
+    default: module.ColorAreaDemo as ComponentType,
+  })),
+);
+const ColorProviderDemo = lazyDemo(() =>
+  import('../components/demos/color-provider-demo.js').then((module) => ({
+    default: module.ColorProviderDemo,
+  })),
+);
+const ColorSliderDemo = lazyDemo(() =>
+  import('../components/demos/color-slider-demo.js').then((module) => ({
+    default: module.ColorSliderDemo,
+  })),
+);
+const ColorInputDemo = lazyDemo(() =>
+  import('../components/demos/color-input-demo.js').then((module) => ({
+    default: module.ColorInputDemo,
+  })),
+);
+
+function ShowcaseDemoFallback() {
+  return <div className="h-[320px] w-full rounded-xl bg-muted/35" />;
 }
 
 const cards: ShowcaseCard[] = [
@@ -33,29 +64,35 @@ const cards: ShowcaseCard[] = [
     description: '2D requested-value geometry with deterministic mapping.',
     href: '/docs/components/color-area',
     className: 'span-2',
-    demo: <ColorAreaDemo />,
+    demo: ColorAreaDemo,
+    minHeight: 320,
   },
   {
     title: 'Color',
     description: 'Shared canonical state for coordinated primitives.',
     href: '/docs/components/color',
-    demo: <ColorProviderDemo />,
+    demo: ColorProviderDemo,
+    minHeight: 320,
   },
   {
     title: 'Color Slider',
     description: 'Single-axis channel control across lightness, hue, chroma.',
     href: '/docs/components/color-slider',
-    demo: <ColorSliderDemo />,
+    demo: ColorSliderDemo,
+    minHeight: 320,
   },
   {
     title: 'Color Input',
     description: 'Channel-aware numeric editing with scrub and math parsing.',
     href: '/docs/components/color-input',
-    demo: <ColorInputDemo />,
+    demo: ColorInputDemo,
+    minHeight: 220,
   },
 ];
 
 function ShowcaseCard({ card }: { card: ShowcaseCard }) {
+  const Demo = card.demo;
+
   return (
     <Card
       className="ck-home-card flex flex-col overflow-hidden border-border/70 bg-card/80 shadow-sm backdrop-blur-sm"
@@ -68,7 +105,16 @@ function ShowcaseCard({ card }: { card: ShowcaseCard }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="ck-home-card-demo">{card.demo}</div>
+        <div className="ck-home-card-demo">
+          <DeferredMount
+            minHeight={card.minHeight}
+            fallback={<ShowcaseDemoFallback />}
+          >
+            <Suspense fallback={<ShowcaseDemoFallback />}>
+              <Demo />
+            </Suspense>
+          </DeferredMount>
+        </div>
       </CardContent>
       <CardFooter className="mt-auto pt-4">
         <Button asChild variant="ghost" className="px-0">

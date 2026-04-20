@@ -1,4 +1,6 @@
 import { createJsPlaneComputeBackend } from './backends/js-backend.js';
+import { resolvePlaneDefinition } from '../plane/plane.js';
+import { applyComputeTraceMetadata } from '../plane/trace.js';
 import type {
   PlaneComputeBackend,
   PlaneComputeBackendKind,
@@ -108,6 +110,10 @@ function estimateQueryBudget(request: PlaneComputeRequest): number {
         budget += query.steps ?? 48;
         break;
       }
+      case 'gamutRegion': {
+        budget += query.scope === 'full' ? 6144 : 4096;
+        break;
+      }
       case 'contrastBoundary':
       case 'contrastRegion': {
         const samplingMode = query.samplingMode ?? 'hybrid';
@@ -170,6 +176,26 @@ function createBucketKey(request: PlaneComputeRequest): string {
   const kinds = [...new Set(request.queries.map((query) => query.kind))]
     .sort()
     .join('+');
+  const resolvedPlane = resolvePlaneDefinition(request.plane);
+  const gamutRegionSignature = [
+    ...new Set(
+      request.queries
+        .filter(
+          (
+            query,
+          ): query is Extract<
+            PlaneComputeRequest['queries'][number],
+            { kind: 'gamutRegion' }
+          > => query.kind === 'gamutRegion',
+        )
+        .map(
+          (query) =>
+            `${query.gamut ?? 'srgb'}:${query.scope ?? 'viewport'}:${resolvedPlane.model}:${resolvedPlane.x.channel}/${resolvedPlane.y.channel}`,
+        ),
+    ),
+  ]
+    .sort()
+    .join(',');
   const contrastSignature = [
     ...new Set(
       request.queries
@@ -199,7 +225,7 @@ function createBucketKey(request: PlaneComputeRequest): string {
   const quality = request.quality ?? 'medium';
   const profile = request.performanceProfile ?? 'balanced';
   const budget = budgetBucketLabel(estimateQueryBudget(request));
-  return `${kinds}|contrast:${contrastSignature || 'none'}|priority:${priority}|quality:${quality}|profile:${profile}|budget:${budget}`;
+  return `${kinds}|gamutRegion:${gamutRegionSignature || 'none'}|contrast:${contrastSignature || 'none'}|priority:${priority}|quality:${quality}|profile:${profile}|budget:${budget}`;
 }
 
 function totalTimeMs(response: PlaneComputeResponse): number {
@@ -506,9 +532,20 @@ export function createPlaneComputeScheduler({
       const totalMs = totalTimeMs(response);
       updateTelemetry(key, response.backend, totalMs);
       recordRegression(response.backend, key, totalMs, request);
+      const debugTrace = response.debugTrace
+        ? {
+            queries: response.debugTrace.queries.map((trace) =>
+              applyComputeTraceMetadata(trace, {
+                backend: response.backend,
+                schedule: decision.trace,
+              }),
+            ),
+          }
+        : undefined;
       return {
         ...response,
         schedule: decision.trace,
+        debugTrace,
       };
     } catch (error) {
       const fallbackBackend = backendMap.js;
@@ -518,13 +555,25 @@ export function createPlaneComputeScheduler({
       recordBackendError(decision.backend.kind);
       const fallbackResponse = fallbackBackend.run(request);
       updateTelemetry(key, 'js', totalTimeMs(fallbackResponse));
+      const schedule = {
+        bucketKey: key,
+        selectedBackend: 'js' as const,
+        reason: 'backend-error' as const,
+      };
+      const debugTrace = fallbackResponse.debugTrace
+        ? {
+            queries: fallbackResponse.debugTrace.queries.map((trace) =>
+              applyComputeTraceMetadata(trace, {
+                backend: fallbackResponse.backend,
+                schedule,
+              }),
+            ),
+          }
+        : undefined;
       return {
         ...fallbackResponse,
-        schedule: {
-          bucketKey: key,
-          selectedBackend: 'js',
-          reason: 'backend-error',
-        },
+        schedule,
+        debugTrace,
       };
     }
   };

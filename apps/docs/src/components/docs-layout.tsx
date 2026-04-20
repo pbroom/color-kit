@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { lazy, Suspense, useEffect, useEffectEvent, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { Github, Menu, PanelRightOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,14 @@ import {
   DocsInspectorProvider,
   useDocsInspector,
 } from './docs-inspector-context.js';
-import { DocsRightRail, type DocsHeading } from './docs-right-rail.js';
+import { DocsOutlineRail, type DocsHeading } from './docs-outline-rail.js';
 import { ThemeSwitcher } from './theme-switcher.js';
+
+const DocsRightRail = lazy(() =>
+  import('./docs-right-rail.js').then((module) => ({
+    default: module.DocsRightRail,
+  })),
+);
 
 function slugifyHeading(title: string): string {
   return title
@@ -72,6 +78,8 @@ function DocsLayoutInner() {
   const [navSheetOpen, setNavSheetOpen] = useState(false);
   const [panelsSheetOpen, setPanelsSheetOpen] = useState(false);
   const { setActiveTab } = useDocsInspector();
+  const supportsPropertiesPanel =
+    location.pathname.startsWith('/docs/components/');
   const headings =
     headingsState.pathname === location.pathname ? headingsState.items : [];
   const closeSheetsOnRouteChange = useEffectEvent(() => {
@@ -249,7 +257,20 @@ function DocsLayoutInner() {
                   </SheetDescription>
                 </SheetHeader>
                 <div className="min-h-0 flex-1">
-                  <DocsRightRail headings={headings} className="h-full" />
+                  {supportsPropertiesPanel ? (
+                    <Suspense
+                      fallback={
+                        <DocsOutlineRail
+                          headings={headings}
+                          className="h-full"
+                        />
+                      }
+                    >
+                      <DocsRightRail headings={headings} className="h-full" />
+                    </Suspense>
+                  ) : (
+                    <DocsOutlineRail headings={headings} className="h-full" />
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
@@ -298,10 +319,26 @@ function DocsLayoutInner() {
                 '2xl:flex 2xl:flex-col',
               )}
             >
-              <DocsRightRail
-                headings={headings}
-                className="min-h-0 flex-1 overflow-hidden"
-              />
+              {supportsPropertiesPanel ? (
+                <Suspense
+                  fallback={
+                    <DocsOutlineRail
+                      headings={headings}
+                      className="min-h-0 flex-1 overflow-hidden"
+                    />
+                  }
+                >
+                  <DocsRightRail
+                    headings={headings}
+                    className="min-h-0 flex-1 overflow-hidden"
+                  />
+                </Suspense>
+              ) : (
+                <DocsOutlineRail
+                  headings={headings}
+                  className="min-h-0 flex-1 overflow-hidden"
+                />
+              )}
             </div>
           </div>
         </div>

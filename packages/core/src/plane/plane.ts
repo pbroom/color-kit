@@ -591,11 +591,27 @@ function normalizeInRange(value: number, range: [number, number]): number {
   return clamp((value - range[0]) / span, 0, 1);
 }
 
+function normalizeInRangeUnclamped(
+  value: number,
+  range: [number, number],
+): number {
+  const span = range[1] - range[0];
+  if (Math.abs(span) <= Number.EPSILON) return 0;
+  return (value - range[0]) / span;
+}
+
 /**
  * Converts a normalized plane value [0..1] back into channel space.
  */
 function denormalizeInRange(norm: number, range: [number, number]): number {
   return range[0] + clamp(norm, 0, 1) * (range[1] - range[0]);
+}
+
+function denormalizeInRangeUnclamped(
+  norm: number,
+  range: [number, number],
+): number {
+  return range[0] + norm * (range[1] - range[0]);
 }
 
 /**
@@ -673,6 +689,48 @@ export function definePlaneFromColor(
   return resolvePlaneDefinition({ ...planeObject, color });
 }
 
+export function planeToModelColor(
+  resolvedPlane: Plane,
+  point: PlanePoint,
+  options: { clampToViewport?: boolean } = {},
+): PlaneModelColor {
+  const denormalize =
+    options.clampToViewport === false
+      ? denormalizeInRangeUnclamped
+      : denormalizeInRange;
+  return {
+    ...resolvedPlane.fixed,
+    [resolvedPlane.x.channel]: denormalize(point.x, resolvedPlane.x.range),
+    [resolvedPlane.y.channel]: denormalize(point.y, resolvedPlane.y.range),
+    alpha: resolvedPlane.fixed.alpha,
+  };
+}
+
+export function modelColorToPlane(
+  resolvedPlane: Plane,
+  modelColor: PlaneModelColor,
+  options: { clampToViewport?: boolean } = {},
+): PlanePoint {
+  const normalize =
+    options.clampToViewport === false
+      ? normalizeInRangeUnclamped
+      : normalizeInRange;
+  const xValue = readChannel(
+    modelColor,
+    resolvedPlane.x.channel,
+    readChannel(resolvedPlane.fixed, resolvedPlane.x.channel, 0),
+  );
+  const yValue = readChannel(
+    modelColor,
+    resolvedPlane.y.channel,
+    readChannel(resolvedPlane.fixed, resolvedPlane.y.channel, 0),
+  );
+  return {
+    x: normalize(xValue, resolvedPlane.x.range),
+    y: normalize(yValue, resolvedPlane.y.range),
+  };
+}
+
 /**
  * Projects a normalized point on the plane back into a color value.
  *
@@ -682,19 +740,17 @@ export function definePlaneFromColor(
  */
 export function planeToColor(resolvedPlane: Plane, point: PlanePoint): Color {
   const modelSpec = planeModelSpec(resolvedPlane.model);
-  const modelColor: PlaneModelColor = {
-    ...resolvedPlane.fixed,
-    [resolvedPlane.x.channel]: denormalizeInRange(
-      point.x,
-      resolvedPlane.x.range,
-    ),
-    [resolvedPlane.y.channel]: denormalizeInRange(
-      point.y,
-      resolvedPlane.y.range,
-    ),
-    alpha: resolvedPlane.fixed.alpha,
-  };
-  return modelSpec.toColor(modelColor);
+  return modelSpec.toColor(planeToModelColor(resolvedPlane, point));
+}
+
+export function planeToColorUnclamped(
+  resolvedPlane: Plane,
+  point: PlanePoint,
+): Color {
+  const modelSpec = planeModelSpec(resolvedPlane.model);
+  return modelSpec.toColor(
+    planeToModelColor(resolvedPlane, point, { clampToViewport: false }),
+  );
 }
 
 /**
@@ -707,20 +763,18 @@ export function planeToColor(resolvedPlane: Plane, point: PlanePoint): Color {
 export function colorToPlane(resolvedPlane: Plane, color: Color): PlanePoint {
   const modelSpec = planeModelSpec(resolvedPlane.model);
   const modelColor = modelSpec.fromColor(color);
-  const xValue = readChannel(
-    modelColor,
-    resolvedPlane.x.channel,
-    readChannel(resolvedPlane.fixed, resolvedPlane.x.channel, 0),
-  );
-  const yValue = readChannel(
-    modelColor,
-    resolvedPlane.y.channel,
-    readChannel(resolvedPlane.fixed, resolvedPlane.y.channel, 0),
-  );
-  return {
-    x: normalizeInRange(xValue, resolvedPlane.x.range),
-    y: normalizeInRange(yValue, resolvedPlane.y.range),
-  };
+  return modelColorToPlane(resolvedPlane, modelColor);
+}
+
+export function colorToPlaneUnclamped(
+  resolvedPlane: Plane,
+  color: Color,
+): PlanePoint {
+  const modelSpec = planeModelSpec(resolvedPlane.model);
+  const modelColor = modelSpec.fromColor(color);
+  return modelColorToPlane(resolvedPlane, modelColor, {
+    clampToViewport: false,
+  });
 }
 
 /**

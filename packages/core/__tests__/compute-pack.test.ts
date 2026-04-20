@@ -23,6 +23,17 @@ function expectBoundaryPointsClose(
   }
 }
 
+function expectPlanePointsClose(
+  actual: Array<{ x: number; y: number }>,
+  expected: Array<{ x: number; y: number }>,
+): void {
+  expect(actual).toHaveLength(expected.length);
+  for (let index = 0; index < actual.length; index += 1) {
+    expect(actual[index].x).toBeCloseTo(expected[index].x, 5);
+    expect(actual[index].y).toBeCloseTo(expected[index].y, 5);
+  }
+}
+
 function expectColorPointsClose(
   actual: Array<{
     x: number;
@@ -60,6 +71,30 @@ function expectQueryResultClose(
     expect(actual.gamut).toBe(expected.gamut);
     expect(actual.hue).toBeCloseTo(expected.hue, 6);
     expectBoundaryPointsClose(actual.points, expected.points);
+    return;
+  }
+
+  if (actual.kind === 'gamutRegion' && expected.kind === 'gamutRegion') {
+    expect(actual.gamut).toBe(expected.gamut);
+    expect(actual.scope).toBe(expected.scope);
+    expect(actual.solver).toBe(expected.solver);
+    expect(actual.viewportRelation).toBe(expected.viewportRelation);
+    expect(actual.boundaryPaths).toHaveLength(expected.boundaryPaths.length);
+    for (let index = 0; index < actual.boundaryPaths.length; index += 1) {
+      expectPlanePointsClose(
+        actual.boundaryPaths[index],
+        expected.boundaryPaths[index],
+      );
+    }
+    expect(actual.visibleRegion.paths).toHaveLength(
+      expected.visibleRegion.paths.length,
+    );
+    for (let index = 0; index < actual.visibleRegion.paths.length; index += 1) {
+      expectPlanePointsClose(
+        actual.visibleRegion.paths[index],
+        expected.visibleRegion.paths[index],
+      );
+    }
     return;
   }
 
@@ -119,6 +154,11 @@ describe('plane compute packing', () => {
         samplingMode: 'adaptive' as const,
       },
       {
+        kind: 'gamutRegion' as const,
+        gamut: 'srgb' as const,
+        scope: 'viewport' as const,
+      },
+      {
         kind: 'contrastBoundary' as const,
         reference: parse('#ffffff'),
         threshold: 4.5,
@@ -160,6 +200,46 @@ describe('plane compute packing', () => {
     }
   });
 
+  it('falls back visible-region offsets after boundary paths', () => {
+    const [result] = unpackPlaneQueryResults({
+      queryDescriptors: [
+        {
+          kind: 'gamutRegion',
+          pathStart: 0,
+          pathCount: 1,
+          regionPathCount: 1,
+          gamut: 'srgb',
+          scope: 'viewport',
+          solver: 'implicit-contour',
+          viewportRelation: 'intersects',
+        },
+      ],
+      pathRanges: Uint32Array.from([0, 2, 2, 3]),
+      pointXY: Float32Array.from([0, 0, 1, 0, 0, 0, 1, 1, 0, 1]),
+      pointLC: Float32Array.from(new Array(10).fill(Number.NaN)),
+      pointColorLcha: Float32Array.from(new Array(20).fill(Number.NaN)),
+    });
+
+    expect(result.kind).toBe('gamutRegion');
+    if (result.kind !== 'gamutRegion') {
+      throw new Error(`Expected gamutRegion result, received ${result.kind}`);
+    }
+
+    expect(result.boundaryPaths).toEqual([
+      [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+      ],
+    ]);
+    expect(result.visibleRegion.paths).toEqual([
+      [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+      ],
+    ]);
+  });
+
   it('keeps packed LC/LCHA schema stable for non-OKLCH planes', () => {
     const rgbPlane = definePlane({
       model: 'rgb',
@@ -172,6 +252,10 @@ describe('plane compute packing', () => {
       {
         kind: 'gamutBoundary',
         gamut: 'srgb',
+      },
+      {
+        kind: 'gamutRegion',
+        gamut: 'display-p3',
       },
       {
         kind: 'fallbackPoint',
@@ -193,10 +277,15 @@ describe('plane compute packing', () => {
     }
 
     const unpacked = unpackPlaneQueryResults(packed);
-    expect(unpacked).toHaveLength(3);
+    expect(unpacked).toHaveLength(4);
     expect(unpacked[0]).toMatchObject({ kind: 'gamutBoundary', points: [] });
-    expect(unpacked[1]).toMatchObject({ kind: 'fallbackPoint' });
-    expect(unpacked[2]).toMatchObject({ kind: 'gradient' });
+    expect(unpacked[1]).toMatchObject({
+      kind: 'gamutRegion',
+      solver: 'domain-edge',
+      viewportRelation: 'inside',
+    });
+    expect(unpacked[2]).toMatchObject({ kind: 'fallbackPoint' });
+    expect(unpacked[3]).toMatchObject({ kind: 'gradient' });
   });
 
   it('returns transferable buffers for worker postMessage', () => {

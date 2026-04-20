@@ -1,8 +1,6 @@
 import { Suspense } from 'react';
 import { useParams } from 'react-router';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ComponentDocPage } from '../components/component-doc-page.js';
-import { getComponentDoc } from '../content/components/component-docs-data.js';
 import { docsPages } from '../content/docs-registry.js';
 
 function NotFound() {
@@ -17,13 +15,6 @@ function NotFound() {
 export function DocsPage() {
   const { slug, category } = useParams();
   const path = category ? `${category}/${slug}` : slug;
-
-  if (category === 'components' && slug) {
-    const componentDoc = getComponentDoc(slug);
-    if (componentDoc) {
-      return <ComponentDocPage doc={componentDoc} />;
-    }
-  }
 
   const Page = path ? docsPages[path] : undefined;
 

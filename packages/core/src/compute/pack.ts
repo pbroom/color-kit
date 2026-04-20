@@ -102,6 +102,29 @@ export function packPlaneQueryResults(
         break;
       }
 
+      case 'gamutRegion': {
+        for (const path of result.boundaryPaths) {
+          appendPath(path);
+        }
+        const regionPathStart = pathRanges.length / 2;
+        for (const path of result.visibleRegion.paths) {
+          appendPath(path);
+        }
+        const descriptor: PackedPlaneQueryDescriptor = {
+          kind: result.kind,
+          pathStart,
+          pathCount: result.boundaryPaths.length,
+          regionPathStart,
+          regionPathCount: result.visibleRegion.paths.length,
+          gamut: result.gamut,
+          scope: result.scope,
+          solver: result.solver,
+          viewportRelation: result.viewportRelation,
+        };
+        queryDescriptors.push(descriptor);
+        break;
+      }
+
       case 'contrastRegion': {
         for (const path of result.paths) {
           appendPath(path);
