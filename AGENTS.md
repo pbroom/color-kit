@@ -14,8 +14,8 @@ This file defines top-level guidance for Codex in this repository.
 - Use Conventional Commit style messages (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`).
 - If Graphite is configured, prefer `gt` workflow (`gt create`, `gt modify`, `gt submit --stack`).
 - If Graphite is unavailable or unsynced, fall back to plain `git` + `gh`.
-- If `greptile.json` is present, treat Greptile’s status check and comments as part of PR readiness; if a ready PR has not been reviewed yet, trigger it once with `@greptileai`.
-- For React/TSX work, run `pnpm lint` and proactively resolve `react-hooks/*` findings (including React Compiler rules) in touched files before final validation.
+- For any code-editing task, run `pnpm lint` before final validation.
+- For React/TSX work, proactively resolve `react-hooks/*` findings (including React Compiler rules) in touched files before final validation.
 
 ## Parallel Work
 
@@ -38,7 +38,6 @@ This file defines top-level guidance for Codex in this repository.
 ## Active Agent Learnings (Top 10 Evergreen)
 
 - Full history lives in `AGENTS.learnings.archive.md`.
-
 - **Align eslint majors**: Keep `eslint` and `@eslint/js` on the same major version to avoid peer dependency warnings when adding linting to the workspace root.
 - **Gamut checks must use unclamped values**: `inSrgbGamut`/`inP3Gamut` must bypass clamping functions (`linearToSrgb`, `linearP3ToP3`) and check raw linear channel values directly. Clamped conversion pipelines silently mask out-of-gamut colors.
 - **TypeScript strict mode catches unused imports in DTS**: `tsup` DTS builds fail on unused imports that esbuild silently ignores. Run the full build (including DTS), not just ESM/CJS output, before considering a build clean.
@@ -52,7 +51,6 @@ This file defines top-level guidance for Codex in this repository.
 
 ## Agent Learnings
 
-- **CI autofix claim lock**: Use the `ci-fail-<checks>` AutomationMemory timestamp lock before investigating CI failures so only one automation run claims and fixes a given failure set.
 - **Keep AGENTS memory high-signal**: Prefer compact, hard-to-rediscover lessons; archive or remove low-leverage run history and avoid metadata-only prefixes like dates.
 - **Rebase before push on diverged branch**: If your branch is ahead/behind remote, rebase first so push is fast-forward and your fixes stay on top of the latest upstream work.
 - **Dry-run Graphite submit before publish**: Use `gt submit --dry-run` to verify included branches; if unrelated descendants appear, submit without `--stack`.
@@ -118,3 +116,4 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-04-04 — Adaptive implicit contours should refine on a dyadic grid**: Start implicit `gamutRegion` marching squares from a coarse root grid and cache midpoint samples so sparse views evaluate far fewer points, while the worst case still caps at the old full-grid sample count. Keep any fallback fill/visible-region pass on a lower cache-aligned grid to preserve result shapes without giving back the performance win.
 - **2026-04-09 — Route-split docs demos before deeper tuning**: On the docs app, the biggest load-time win came from lazy route entrypoints plus viewport-gated demo mounting. Move consumers off eager demo imports first, then trim heavy Sandpack inputs once the main route chunk is already smaller.
 - **2026-04-19 — Gamut-region telemetry buckets need plane signatures**: For `PlaneComputeScheduler`, bucket `gamutRegion` workloads by gamut plus resolved plane model and x/y channels, not just `scope`, or cheap domain-edge requests can skew backend decisions for heavier implicit-contour planes.
+- **2026-04-19 — Default-branch required checks are ruleset-backed**: This repo enforces merge-blocking checks through GitHub repository rulesets, not legacy branch protection. When a new job like `lint` must become mandatory, update the active ruleset’s `required_status_checks` instead of looking for branch protection settings.
