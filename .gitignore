@@ -45,3 +45,8 @@ packages/core-wasm/rust/Cargo.lock
 
 # Codex local workspace files
 .codex/
+
+# Cursor continual-learning hook machine state (checkpoint + transcript index).
+# Not AGENTS learnings — those stay in AGENTS.md / AGENTS.learnings.archive.md.
+.cursor/hooks/state/continual-learning.json
+.cursor/hooks/state/continual-learning-index.json
