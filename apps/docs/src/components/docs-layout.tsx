@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useEffectEvent, useState } from 'react';
+import {
+  lazy,
+  type CSSProperties,
+  Suspense,
+  useEffect,
+  useEffectEvent,
+  useState,
+} from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { Github, Menu, PanelRightOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +18,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarInset,
+  SidebarProvider,
+  SidebarRail,
+  useSidebar,
+} from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { docsNavigation } from '../content/docs-registry.js';
 import {
@@ -66,8 +81,46 @@ function DocsSidebarNav({
   );
 }
 
+function readSidebarDefaultOpen(): boolean {
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)sidebar_state=([^;]*)/);
+    if (match?.[1] === 'false') {
+      return false;
+    }
+  } catch {
+    // ignore
+  }
+  return true;
+}
+
+function DocsSidebarNavConnected({ pathname }: { pathname: string }) {
+  const { setOpenMobile } = useSidebar();
+  return (
+    <DocsSidebarNav
+      pathname={pathname}
+      onNavigate={() => setOpenMobile(false)}
+    />
+  );
+}
+
+function DocsNavToggleButton() {
+  const { toggleSidebar } = useSidebar();
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label="Toggle documentation navigation"
+      onClick={() => toggleSidebar()}
+    >
+      <Menu className="size-4" />
+    </Button>
+  );
+}
+
 function DocsLayoutInner() {
   const location = useLocation();
+  const [sidebarDefaultOpen] = useState(readSidebarDefaultOpen);
   const [headingsState, setHeadingsState] = useState<{
     pathname: string;
     items: DocsHeading[];
@@ -75,7 +128,6 @@ function DocsLayoutInner() {
     pathname: location.pathname,
     items: [],
   });
-  const [navSheetOpen, setNavSheetOpen] = useState(false);
   const [panelsSheetOpen, setPanelsSheetOpen] = useState(false);
   const { setActiveTab } = useDocsInspector();
   const supportsPropertiesPanel =
@@ -83,7 +135,6 @@ function DocsLayoutInner() {
   const headings =
     headingsState.pathname === location.pathname ? headingsState.items : [];
   const closeSheetsOnRouteChange = useEffectEvent(() => {
-    setNavSheetOpen(false);
     setPanelsSheetOpen(false);
   });
 
@@ -166,44 +217,19 @@ function DocsLayoutInner() {
   }, [location.pathname]);
 
   return (
-    <div className="docs-shell ck-shell-bg min-h-screen">
+    <SidebarProvider
+      defaultOpen={sidebarDefaultOpen}
+      style={
+        {
+          '--sidebar-width': '260px',
+        } as CSSProperties
+      }
+      className="docs-shell ck-shell-bg flex min-h-screen w-full flex-col"
+    >
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 w-full max-w-[1560px] items-center justify-between gap-3 px-4">
           <div className="flex items-center gap-2">
-            <Sheet open={navSheetOpen} onOpenChange={setNavSheetOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="lg:hidden"
-                  aria-label="Open docs navigation"
-                >
-                  <Menu className="size-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-[20rem] p-0 sm:max-w-[20rem]"
-              >
-                <div className="flex h-full min-h-0 flex-col">
-                  <SheetHeader className="border-b p-4">
-                    <SheetTitle>Documentation</SheetTitle>
-                    <SheetDescription>
-                      Browse Color Kit guides and components.
-                    </SheetDescription>
-                  </SheetHeader>
-                  <div className="min-h-0 flex-1 p-3">
-                    <ScrollArea className="h-full pr-2">
-                      <DocsSidebarNav
-                        pathname={location.pathname}
-                        onNavigate={() => setNavSheetOpen(false)}
-                      />
-                    </ScrollArea>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+            <DocsNavToggleButton />
 
             <Link to="/" className="docs-brand">
               <span className="docs-brand-dot" />
@@ -280,27 +306,27 @@ function DocsLayoutInner() {
         </div>
       </header>
 
-      <div
-        className={cn(
-          'mx-auto w-full max-w-[1560px] border-t border-border/60',
-          'lg:grid lg:grid-cols-[260px_1fr] 2xl:grid-cols-[260px_1fr_260px]',
-        )}
-      >
-        <aside
-          aria-label="Documentation navigation"
-          className={cn(
-            'sticky top-14 hidden h-[calc(100vh-3.5rem)] max-h-[calc(100vh-3.5rem)] min-h-0 w-full min-w-0',
-            'flex-col overflow-x-visible overflow-y-hidden p-6 lg:flex',
-          )}
-        >
-          <ScrollArea className="h-full min-h-0 flex-1 pr-2">
-            <DocsSidebarNav pathname={location.pathname} />
-          </ScrollArea>
-        </aside>
+      <div className="mx-auto flex min-h-0 w-full max-w-[1560px] flex-1 border-t border-border/60">
+        <Sidebar collapsible="offcanvas" variant="sidebar">
+          <SidebarRail />
+          <SidebarContent
+            aria-label="Documentation navigation"
+            className="bg-transparent p-0"
+          >
+            <ScrollArea className="h-full min-h-0 flex-1 pr-2">
+              <div className="p-6">
+                <DocsSidebarNavConnected pathname={location.pathname} />
+              </div>
+            </ScrollArea>
+          </SidebarContent>
+        </Sidebar>
 
-        <div className="ck-docs-main-column container 2xl:col-span-2">
-          <div className="w-full min-w-0 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_260px]">
-            <main className="ck-docs-main min-w-0" id="docs-content">
+        <SidebarInset
+          id="docs-content"
+          className="ck-docs-main-column flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden"
+        >
+          <div className="container mx-auto w-full min-w-0 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="ck-docs-main min-w-0">
               <article
                 className={cn(
                   'ck-docs-article ck-docs-article--gridded prose dark:prose-invert docs-article m-0! w-full! max-w-none! px-5 py-6 md:px-8 md:py-8',
@@ -309,7 +335,7 @@ function DocsLayoutInner() {
               >
                 <Outlet />
               </article>
-            </main>
+            </div>
 
             <div
               role="complementary"
@@ -341,9 +367,9 @@ function DocsLayoutInner() {
               )}
             </div>
           </div>
-        </div>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
 

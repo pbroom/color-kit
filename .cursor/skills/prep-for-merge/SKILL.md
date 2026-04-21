@@ -1,11 +1,13 @@
 ---
 name: prep-for-merge
-description: Submit the current effort as a stacked PR, gather GitHub review and Greptile signals, apply focused fixes, and stop at merge-ready without merging.
+description: Primary repo workflow for stacking or creating PRs, gathering review and CI signals, and stopping at merge-ready without merging.
 ---
 
 # Prep For Merge
 
-Use this skill when the user wants to move the current effort from local work to a merge-ready PR, while keeping merge and cleanup as separate approval steps.
+Use this skill as the default repo entry point when the user wants to stack a PR, create or open a PR, submit work for review, push a branch for review, or move the current effort from local work to a merge-ready PR.
+
+If a generic Graphite, PR-creation, or "ship my work" skill also seems relevant, read this repo-local workflow first and treat the generic skill as secondary context.
 
 ## Goals
 

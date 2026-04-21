@@ -431,69 +431,54 @@ export default function PlaneLabDemo() {
       </div>
 
       <div style={{ display: 'grid', gap: 12 }}>
-        <div
+        <svg
+          viewBox="0 0 100 100"
+          role="img"
+          aria-label="Plane query trace visualization"
           style={{
-            border: '1px solid #21262d',
-            borderRadius: 14,
-            padding: 12,
-            background: '#0d1117',
+            width: '100%',
+            maxWidth: 420,
+            aspectRatio: '1 / 1',
+            display: 'block',
+            margin: '0 auto',
           }}
         >
-          <svg
-            viewBox="0 0 100 100"
-            role="img"
-            aria-label="Plane query trace visualization"
-            style={{
-              width: '100%',
-              maxWidth: 420,
-              aspectRatio: '1 / 1',
-              display: 'block',
-              margin: '0 auto',
-              background: 'linear-gradient(180deg, #0a0a0a 0%, #010409 100%)',
-              borderRadius: 10,
-            }}
-          >
-            <rect x="0" y="0" width="100" height="100" fill="#010409" />
-            <g opacity="0.35" stroke="#21262d" strokeWidth="0.4">
-              {[20, 40, 60, 80].map((value) => (
-                <g key={value}>
-                  <line x1={value} y1="0" x2={value} y2="100" />
-                  <line x1="0" y1={value} x2="100" y2={value} />
-                </g>
-              ))}
-            </g>
+          <rect x="0" y="0" width="100" height="100" fill="#010409" />
+          <g opacity="0.35" stroke="#21262d" strokeWidth="0.4">
+            {[20, 40, 60, 80].map((value) => (
+              <g key={value}>
+                <line x1={value} y1="0" x2={value} y2="100" />
+                <line x1="0" y1={value} x2="100" y2={value} />
+              </g>
+            ))}
+          </g>
 
-            {showResult && resultRegionPath ? (
-              <path
-                d={resultRegionPath}
-                fill={
-                  queryMode === 'gamut'
-                    ? 'rgba(88,166,255,0.22)'
-                    : 'rgba(63,185,80,0.22)'
-                }
-                stroke="none"
-              />
-            ) : null}
-            {showResult && resultBoundaryPath ? (
-              <path
-                d={resultBoundaryPath}
-                fill="none"
-                stroke={queryMode === 'gamut' ? '#58a6ff' : '#3fb950'}
-                strokeWidth="1.4"
-              />
-            ) : null}
-            {showStageOverlay
-              ? renderStageOverlay(activeStage, queryMode, maxChroma)
-              : null}
-          </svg>
-        </div>
+          {showResult && resultRegionPath ? (
+            <path
+              d={resultRegionPath}
+              fill={
+                queryMode === 'gamut'
+                  ? 'rgba(88,166,255,0.22)'
+                  : 'rgba(63,185,80,0.22)'
+              }
+              stroke="none"
+            />
+          ) : null}
+          {showResult && resultBoundaryPath ? (
+            <path
+              d={resultBoundaryPath}
+              fill="none"
+              stroke={queryMode === 'gamut' ? '#58a6ff' : '#3fb950'}
+              strokeWidth="1.4"
+            />
+          ) : null}
+          {showStageOverlay
+            ? renderStageOverlay(activeStage, queryMode, maxChroma)
+            : null}
+        </svg>
 
         <div
           style={{
-            border: '1px solid #21262d',
-            borderRadius: 14,
-            padding: 12,
-            background: '#0d1117',
             display: 'grid',
             gap: 10,
             color: '#e6edf3',
@@ -541,10 +526,6 @@ export default function PlaneLabDemo() {
 
         <div
           style={{
-            border: '1px solid #21262d',
-            borderRadius: 14,
-            padding: 12,
-            background: '#0d1117',
             display: 'grid',
             gap: 8,
             color: '#e6edf3',
@@ -553,27 +534,32 @@ export default function PlaneLabDemo() {
           <strong style={{ fontSize: 14, fontWeight: 600 }}>Stages</strong>
           <div
             style={{
-              display: 'flex',
-              gap: 6,
-              overflowX: 'auto',
-              paddingBottom: 4,
+              display: 'grid',
+              gap: 4,
+              maxHeight: 'min(40vh, 280px)',
+              overflowY: 'auto',
+              paddingRight: 4,
               scrollbarWidth: 'thin',
             }}
           >
             {stages.map((stage, index) => (
               <button
                 key={`${stage.kind}-${index}`}
+                type="button"
                 onClick={() => setActiveStageIndex(index)}
                 style={{
-                  padding: '6px 10px',
-                  borderRadius: 999,
+                  display: 'block',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '10px 12px',
+                  borderRadius: 8,
                   border: '1px solid #30363d',
                   background:
                     safeStageIndex === index ? '#21262d' : '#161b22',
                   color: safeStageIndex === index ? '#e6edf3' : '#8b949e',
                   fontSize: 12,
-                  whiteSpace: 'nowrap',
-                  flex: '0 0 auto',
+                  lineHeight: 1.35,
+                  textAlign: 'left',
                   cursor: 'pointer',
                 }}
               >
@@ -589,11 +575,9 @@ export default function PlaneLabDemo() {
           <pre
             style={{
               margin: 0,
-              padding: 12,
-              borderRadius: 10,
-              background: '#010409',
+              padding: 0,
+              background: 'transparent',
               color: '#c9d1d9',
-              border: '1px solid #21262d',
               fontSize: 10.5,
               lineHeight: 1.5,
               overflow: 'auto',

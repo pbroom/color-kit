@@ -1,4 +1,32 @@
 @layer components {
+  /*
+   * Docs shell: header is sticky above the sidebar; shadcn Sidebar uses fixed
+   * full-viewport positioning — offset the container to sit below the header.
+   */
+  .docs-shell [data-slot='sidebar-container'] {
+    top: 3.5rem !important;
+    bottom: 0 !important;
+    height: auto !important;
+    max-height: calc(100vh - 3.5rem) !important;
+    border-color: var(--border) !important;
+  }
+
+  /* Match pre–shadcn nav: shell background, not shadcn `--sidebar` tokens */
+  .docs-shell [data-slot='sidebar-inner'] {
+    background-color: var(--background) !important;
+  }
+
+  .docs-shell [data-slot='sidebar'][data-mobile='true'] {
+    background-color: var(--background) !important;
+    color: var(--foreground);
+  }
+
+  .docs-shell [data-slot='sidebar'].group.peer {
+    color: var(--foreground);
+    /* Let the flex track collapse to 0 when off-canvas is hidden (avoid min-width:auto gap). */
+    min-width: 0;
+  }
+
   .ck-shell-bg {
     background: var(--background);
   }

@@ -1,18 +1,23 @@
 ---
 name: merge-and-clean
-description: After explicit user approval, dry-run merge readiness, perform the merge if all gates pass, and clean eligible Codex worktrees and branches with a dry-run-first workflow.
+description: Primary repo workflow for dry-run merge readiness, safe merge execution after approval, and cleanup of already-merged branches or worktrees.
 ---
 
 # Merge And Clean
 
-Use this skill only after the user has reviewed the PR and explicitly approved merge and cleanup.
+Use this skill as the default repo entry point when the user asks to merge a PR, check merge readiness, auto-merge a reviewed PR, or clean up branches and worktrees after a merge.
+
+It has two valid modes:
+
+- merge plus cleanup after the user explicitly approves merge and cleanup
+- cleanup-only when the target PR or branch has already been merged and the user now wants post-merge cleanup
 
 ## Preconditions
 
 Confirm all of the following before acting:
 
-- the user explicitly asked to merge
-- the target PR is known, or the current branch maps to a PR
+- the user explicitly asked to merge, or explicitly asked for cleanup after a merge that already happened
+- the target PR is known, the current branch maps to a PR, or the merged branch to clean up is otherwise identifiable
 - `gh auth status` succeeds
 - you are not bypassing branch protection or approvals unless the user explicitly asked
 - if `greptile.json` enables a Greptile status check, it is either already green or you are explicitly waiting for it before merge
@@ -20,6 +25,8 @@ Confirm all of the following before acting:
 ## Step 1: Dry-Run Merge Readiness
 
 Start with a dry run only. Do not perform the merge yet.
+
+Skip this section only for cleanup-only mode when the PR is already merged and no merge action is needed.
 
 Use GitHub metadata to confirm the merge gates before taking any action:
 
@@ -58,6 +65,8 @@ Rules:
 ## Step 3: Dry-Run Cleanup
 
 After a successful merge, do not immediately delete worktrees or branches.
+
+For cleanup-only mode, start here after confirming which already-merged PR, branch, or worktree should be cleaned up.
 
 Start with dry-run inspection only. Review:
 

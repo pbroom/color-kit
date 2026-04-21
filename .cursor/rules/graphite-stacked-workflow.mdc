@@ -7,6 +7,8 @@ alwaysApply: true
 
 Use Graphite (`gt`) for all branch and commit operations. This enables stacked PRs where each branch builds on the previous.
 
+For PR submission in this repo, prefer `pnpm pr:stack` as the Graphite wrapper. It preserves repo-specific preflight, tracking, and PR metadata refresh. Use raw `gt submit` only if the wrapper is unavailable.
+
 ## Core Commands
 
 | Action         | Command                            | Note                    |
@@ -14,7 +16,7 @@ Use Graphite (`gt`) for all branch and commit operations. This enables stacked P
 | Create branch  | `gt create -m "type: description"` | Creates branch + commit |
 | Branch only    | `gt create --no-commit`            | Branch without commit   |
 | Amend current  | `gt modify -m "new message"`       | Updates current branch  |
-| Submit PRs     | `gt submit --stack`                | Pushes entire stack     |
+| Submit PRs     | `pnpm pr:stack`                    | Preferred repo wrapper  |
 | Sync with main | `gt sync`                          | Rebases stack on main   |
 | Navigate down  | `gt checkout <branch>`             | Or `gt bottom` for base |
 | Navigate up    | `gt up`                            | Move up the stack       |
@@ -70,5 +72,5 @@ gt create -m "feat: add auth middleware"
 gt modify -m "feat: add user auth with validation"
 
 # Submit when ready
-gt submit --stack --no-interactive
+pnpm pr:stack
 ```
