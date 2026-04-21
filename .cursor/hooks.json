@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterShellExecution": [
+      {
+        "command": ".cursor/hooks/pr-babysit-arm.sh",
+        "matcher": "pnpm\\s+pr:stack|gh\\s+pr\\s+create|gt\\s+submit",
+        "timeout": 20
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/pr-babysit-stop.sh",
+        "timeout": 20,
+        "loop_limit": null
+      }
+    ]
+  }
+}

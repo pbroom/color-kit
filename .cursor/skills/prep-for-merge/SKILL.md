@@ -9,6 +9,12 @@ Use this skill as the default repo entry point when the user wants to stack a PR
 
 If a generic Graphite, PR-creation, or "ship my work" skill also seems relevant, read this repo-local workflow first and treat the generic skill as secondary context.
 
+Project hooks back this workflow with automatic PR babysitting:
+
+- `pnpm pr:stack`, `gt submit`, and `gh pr create` arm PR babysitting automatically for the current branch PR
+- the repo `stop` hook keeps polling GitHub and auto-continues when CI fails, new review feedback lands, or the PR becomes merge-ready
+- before any terminal response that should stop the loop, explicitly pause it with `pnpm pr:babysit -- pause --reason <merge-ready|needs-user>`
+
 ## Goals
 
 1. Submit the current effort safely.
@@ -70,6 +76,16 @@ gh pr checks
 ```
 
 Keep the PR number, URL, base branch, head SHA, and draft state for all later steps.
+
+After the PR exists, assume the repo babysitter is active unless you explicitly paused it.
+
+Useful helper commands:
+
+```bash
+pnpm pr:babysit -- status --json
+pnpm pr:babysit -- pause --reason needs-user
+pnpm pr:babysit -- resume
+```
 
 ## Step 3: Gather Signals
 
@@ -161,7 +177,9 @@ Skip that loop when comments are only approvals, questions, or stale threads.
 
 ### CI loop
 
-Prefer a watcher rather than repeatedly polling by hand:
+The repo `stop` hook is the default wait loop. Let it keep the session alive between polls instead of manually rechecking on every pass.
+
+Use an extra watcher only when you need richer CI-specific logs during an active fix pass:
 
 - Launch the `ci-watcher` subagent when you expect a longer wait loop.
 - If your environment provides a CI loop helper, use it when you are fixing and rechecking in a tight loop.
@@ -192,6 +210,15 @@ Validation rules:
 ## Step 6: Stop At Merge-Ready
 
 Do not merge in this skill.
+
+Before any final response that should stop automatic continuation, pause the babysitter first:
+
+```bash
+pnpm pr:babysit -- pause --reason merge-ready
+pnpm pr:babysit -- pause --reason needs-user
+```
+
+Use `merge-ready` when the PR is ready for explicit merge approval. Use `needs-user` when ambiguity, product judgment, or reviewer disagreement means the next action belongs to the user.
 
 Return one of:
 

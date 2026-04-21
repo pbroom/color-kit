@@ -50,3 +50,4 @@ packages/core-wasm/rust/Cargo.lock
 # Not AGENTS learnings — those stay in AGENTS.md / AGENTS.learnings.archive.md.
 .cursor/hooks/state/continual-learning.json
 .cursor/hooks/state/continual-learning-index.json
+.cursor/hooks/state/pr-babysit.json
