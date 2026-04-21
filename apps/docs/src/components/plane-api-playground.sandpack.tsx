@@ -15,6 +15,7 @@ import {
   SandpackProvider as SandpackProviderBase,
   useSandpack,
 } from '@codesandbox/sandpack-react';
+import { githubLight } from '@codesandbox/sandpack-themes';
 import { ExternalLink, ListOrdered, RefreshCw, RotateCcw } from 'lucide-react';
 import { compressToBase64 } from 'lz-string';
 import { githubDarkSandpackTheme } from '../lib/sandpack-themes.js';
@@ -25,6 +26,7 @@ import {
   planeApiPlaygroundSandboxPackageJsonFile,
   planeApiPlaygroundSandboxPackageJsonSource,
 } from './plane-api-playground.source.js';
+import { useTheme, type ResolvedTheme } from './theme-context.js';
 
 const CORE_SOURCE_PREFIX = '../../../../packages/core/src/';
 const CORE_SANDBOX_ROOT = '/color-kit-core';
@@ -137,8 +139,18 @@ const PLAYGROUND_INDEX_HTML = `<!DOCTYPE html>
     <div id="root"></div>
   </body>
 </html>`;
-const PLAYGROUND_STYLES = `:root {
-  color-scheme: dark;
+function createPlaygroundStyles(resolvedTheme: ResolvedTheme): string {
+  const isDark = resolvedTheme === 'dark';
+  const background = isDark ? '#0a0a0a' : '#ffffff';
+  const text = isDark ? '#e6edf3' : '#1f2328';
+  const border = isDark ? '#222' : '#d0d7de';
+  const pathFill = isDark
+    ? 'oklch(82.8% 0.111 230.318 / 0.08)'
+    : 'oklch(74.6% 0.16 232.661 / 0.08)';
+  const pathStroke = isDark ? 'oklch(68.5% 0.169 237.323)' : '#2563eb';
+
+  return `:root {
+  color-scheme: ${resolvedTheme};
   font-family:
     Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -153,8 +165,8 @@ body,
 }
 
 body {
-  background: #0a0a0a;
-  color: #e6edf3;
+  background: ${background};
+  color: ${text};
 }
 
 #root {
@@ -171,16 +183,17 @@ svg {
   height: 300px;
   overflow: hidden;
   border-radius: 8px;
-  box-shadow: 0 0 0 0.5px #222;
+  box-shadow: 0 0 0 0.5px ${border};
   user-select: none;
 }
 
 svg path {
   stroke-width: 0.5px;
-  fill: oklch(82.8% 0.111 230.318 / 0.08);
-  stroke: oklch(68.5% 0.169 237.323);
+  fill: ${pathFill};
+  stroke: ${pathStroke};
 }
 `;
+}
 function createPlaygroundEntry(appFile: string): string {
   return `import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -242,6 +255,7 @@ function rewriteCoreSourceImports(source: string, fromFile: string): string {
 
 function createPlaygroundSupportFiles(
   appFile: string,
+  resolvedTheme: ResolvedTheme,
 ): Record<string, SandpackFileValue> {
   return {
     [PLAYGROUND_ENTRY_FILE]: createPlaygroundEntry(appFile),
@@ -254,7 +268,7 @@ function createPlaygroundSupportFiles(
       hidden: true,
     },
     '/public/index.html': PLAYGROUND_INDEX_HTML,
-    '/styles.css': PLAYGROUND_STYLES,
+    '/styles.css': createPlaygroundStyles(resolvedTheme),
     '/tsconfig.json': PLAYGROUND_TSCONFIG,
     ...Object.fromEntries(
       Object.entries(coreSourceBySandboxPath).map(([filePath, code]) => [
@@ -271,10 +285,11 @@ function createPlaygroundSupportFiles(
 function createPlaygroundFiles(
   source: string,
   appFile: string,
+  resolvedTheme: ResolvedTheme,
 ): Record<string, SandpackFileValue> {
   return {
     [appFile]: source,
-    ...createPlaygroundSupportFiles(appFile),
+    ...createPlaygroundSupportFiles(appFile, resolvedTheme),
   };
 }
 
@@ -536,11 +551,12 @@ export default function PlaneApiPlaygroundSandpack({
   appFile?: string;
   panelHeight?: number;
 }) {
+  const { resolvedTheme } = useTheme();
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [showLineNumbers, setShowLineNumbers] = useState(false);
   const files = useMemo(
-    () => createPlaygroundFiles(source, appFile),
-    [appFile, source],
+    () => createPlaygroundFiles(source, appFile, resolvedTheme),
+    [appFile, resolvedTheme, source],
   );
   const handleRefresh = useCallback(
     () => setRefreshNonce((value) => value + 1),
@@ -562,7 +578,7 @@ export default function PlaneApiPlaygroundSandpack({
           '@material/material-color-utilities': '^0.3.0',
         },
       }}
-      theme={githubDarkSandpackTheme}
+      theme={resolvedTheme === 'dark' ? githubDarkSandpackTheme : githubLight}
       files={files}
       options={{
         activeFile: appFile,

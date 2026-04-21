@@ -18,6 +18,7 @@ const STATE_FILE = path.join(
   'pr-babysit.json',
 );
 const ARM_COMMAND_RE = /\b(?:pnpm\s+pr:stack|gh\s+pr\s+create|gt\s+submit)\b/;
+const KEEP_DRAFT_RE = /\b(?:--draft|--keep-draft)\b/;
 const WAIT_MS_PENDING = 60_000;
 const WAIT_MS_IDLE = 300_000;
 const WAIT_MS_RETRY = 120_000;
@@ -397,6 +398,31 @@ function getSnapshot(
   };
 }
 
+function ensurePublished(
+  branch = getCurrentBranch(),
+  prNumber = findOpenPrNumber(branch),
+  { allowDraft = false } = {},
+) {
+  const snapshot = getSnapshot(branch, prNumber);
+
+  if (
+    !snapshot ||
+    snapshot.pr.state !== 'OPEN' ||
+    allowDraft ||
+    !snapshot.pr.isDraft
+  ) {
+    return snapshot;
+  }
+
+  try {
+    shellText('gh', ['pr', 'ready', String(snapshot.pr.number)]);
+  } catch {
+    return snapshot;
+  }
+
+  return getSnapshot(branch, snapshot.pr.number) ?? snapshot;
+}
+
 function hasPersistentReviewBlockers(snapshot) {
   return (
     snapshot.reviewThreads.length > 0 ||
@@ -499,10 +525,7 @@ function buildRetryMessage(state, error) {
   ].join(' ');
 }
 
-function armState() {
-  const branch = getCurrentBranch();
-  const snapshot = getSnapshot(branch);
-
+function armState(snapshot = getSnapshot(getCurrentBranch())) {
   if (!snapshot || snapshot.pr.state !== 'OPEN') {
     return null;
   }
@@ -525,8 +548,8 @@ function armState() {
     pauseReason: '',
     seen: {
       reviewActivityCursor: samePr
-        ? (previous.seen?.reviewActivityCursor ?? '')
-        : '',
+        ? previous.seen?.reviewActivityCursor || snapshot.cursors.reviewActivity
+        : snapshot.cursors.reviewActivity,
     },
   };
 
@@ -572,7 +595,7 @@ function disarmState() {
   removeState();
 }
 
-function evaluateStop(state) {
+function evaluateStop(state, { persist = true } = {}) {
   if (!state || state.mode !== 'active') {
     return {};
   }
@@ -581,7 +604,9 @@ function evaluateStop(state) {
     const snapshot = getSnapshot(state.branch, state.prNumber);
 
     if (!snapshot || snapshot.pr.state !== 'OPEN') {
-      removeState();
+      if (persist) {
+        removeState();
+      }
       return {};
     }
 
@@ -598,29 +623,39 @@ function evaluateStop(state) {
     };
 
     if (isMergeReady(snapshot)) {
-      writeState(nextState);
+      if (persist) {
+        writeState(nextState);
+      }
       return { followup_message: buildMergeReadyMessage(snapshot) };
     }
 
     if (snapshot.failingChecks.length > 0) {
-      writeState(nextState);
+      if (persist) {
+        writeState(nextState);
+      }
       return { followup_message: buildCiMessage(snapshot) };
     }
 
     if (hasPersistentReviewBlockers(snapshot)) {
-      writeState(nextState);
+      if (persist) {
+        writeState(nextState);
+      }
       return { followup_message: buildReviewMessage(snapshot) };
     }
 
     if (
       snapshot.cursors.reviewActivity !== nextState.seen.reviewActivityCursor
     ) {
-      nextState.seen.reviewActivityCursor = snapshot.cursors.reviewActivity;
-      writeState(nextState);
+      if (persist) {
+        nextState.seen.reviewActivityCursor = snapshot.cursors.reviewActivity;
+        writeState(nextState);
+      }
       return { followup_message: buildReviewMessage(snapshot) };
     }
 
-    writeState(nextState);
+    if (persist) {
+      writeState(nextState);
+    }
 
     if (snapshot.pendingChecks.length > 0) {
       return { followup_message: buildWaitMessage(snapshot, WAIT_MS_PENDING) };
@@ -657,7 +692,9 @@ function runStatusCommand(asJson) {
     state,
     snapshot,
     activeDecision:
-      state?.mode === 'active' && snapshot ? evaluateStop(state) : {},
+      state?.mode === 'active' && snapshot
+        ? evaluateStop(state, { persist: false })
+        : {},
   };
 
   if (asJson) {
@@ -668,16 +705,51 @@ function runStatusCommand(asJson) {
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
+function resolveHookCommand(payload) {
+  const candidates = [
+    payload.command,
+    payload.cmd,
+    payload.shell,
+    payload.input?.command,
+    payload.tool_input?.command,
+    payload.toolInput?.command,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return '';
+}
+
 function runHookArm() {
   const payload = readStdinJson();
-  const command = String(payload.command ?? '');
+  const command = resolveHookCommand(payload);
+
+  if (!command) {
+    if (Object.keys(payload).length > 0) {
+      console.error(
+        `pr-babysit: afterShellExecution payload missing command field (keys: ${Object.keys(payload).join(', ')})`,
+      );
+    }
+    printJson({});
+    return;
+  }
 
   if (!ARM_COMMAND_RE.test(command)) {
     printJson({});
     return;
   }
 
-  armState();
+  const branch = getCurrentBranch();
+  const prNumber = findOpenPrNumber(branch);
+  const snapshot = ensurePublished(branch, prNumber, {
+    allowDraft: KEEP_DRAFT_RE.test(command),
+  });
+
+  armState(snapshot);
   printJson({});
 }
 
