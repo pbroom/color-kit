@@ -15,7 +15,6 @@ import {
   SandpackProvider as SandpackProviderBase,
   useSandpack,
 } from '@codesandbox/sandpack-react';
-import { githubLight } from '@codesandbox/sandpack-themes';
 import { ExternalLink, ListOrdered, RefreshCw, RotateCcw } from 'lucide-react';
 import { compressToBase64 } from 'lz-string';
 import { githubDarkSandpackTheme } from '../lib/sandpack-themes.js';
@@ -26,7 +25,6 @@ import {
   planeApiPlaygroundSandboxPackageJsonFile,
   planeApiPlaygroundSandboxPackageJsonSource,
 } from './plane-api-playground.source.js';
-import { useTheme } from './theme-context.js';
 
 const CORE_SOURCE_PREFIX = '../../../../packages/core/src/';
 const CORE_SANDBOX_ROOT = '/color-kit-core';
@@ -143,6 +141,8 @@ const PLAYGROUND_STYLES = `:root {
   color-scheme: dark;
   font-family:
     Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html,
@@ -153,8 +153,8 @@ body,
 }
 
 body {
-  background: #0d0d0d;
-  color: #f5f7fa;
+  background: #0a0a0a;
+  color: #e6edf3;
 }
 
 #root {
@@ -167,12 +167,14 @@ body {
 
 svg {
   display: block;
-  border: 0.5px solid #222222;
-  overflow: hidden;
   width: 300px;
   height: 300px;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 0 0 0.5px #222;
+  user-select: none;
 }
-  
+
 svg path {
   stroke-width: 0.5px;
   fill: oklch(82.8% 0.111 230.318 / 0.08);
@@ -374,26 +376,21 @@ function PlaygroundToolbarButton({
   pressed?: boolean;
 }) {
   return (
-    <div className="group relative flex">
-      <button
-        type="button"
-        aria-label={label}
-        aria-pressed={pressed || undefined}
-        className={cn(
-          'flex size-[41px] shrink-0 items-center justify-center bg-transparent text-(--sp-colors-clickable) transition-colors hover:bg-(--sp-colors-surface2) hover:text-(--sp-syntax-color-plain) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-(--sp-colors-accent)',
-          pressed && 'bg-(--sp-colors-surface2) text-(--sp-syntax-color-plain)',
-        )}
-        onClick={onClick}
-      >
-        {icon}
-      </button>
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute right-0 top-full z-20 mt-2 whitespace-nowrap rounded-md border border-border/70 bg-background/95 px-2 py-1 text-xs text-foreground opacity-0 shadow-md backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-      >
-        {label}
-      </span>
-    </div>
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={pressed || undefined}
+      onClick={onClick}
+      className={cn(
+        'inline-flex size-10 shrink-0 items-center justify-center text-(--sp-colors-clickable) transition-colors duration-150 ease-out motion-reduce:transition-none',
+        'hover:bg-(--sp-colors-surface2) hover:text-(--sp-colors-hover)',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-(--sp-colors-accent)',
+        pressed && 'bg-(--sp-colors-surface2) text-(--sp-colors-hover)',
+      )}
+    >
+      {icon}
+    </button>
   );
 }
 
@@ -507,7 +504,7 @@ function PlaneApiPlaygroundPreview({
       className="sp-stack sp-preview flex min-w-0 flex-1 flex-col overflow-hidden [background:var(--sp-colors-surface1)]"
       style={{ height: panelHeight }}
     >
-      <div className="flex min-w-0 items-stretch justify-end border-b-2 border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
+      <div className="flex min-w-0 items-stretch justify-end border-b border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
         <PlaneApiPlaygroundToolbar
           onRefresh={onRefresh}
           showLineNumbers={showLineNumbers}
@@ -539,7 +536,6 @@ export default function PlaneApiPlaygroundSandpack({
   appFile?: string;
   panelHeight?: number;
 }) {
-  const { resolvedTheme } = useTheme();
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [showLineNumbers, setShowLineNumbers] = useState(false);
   const files = useMemo(
@@ -566,7 +562,7 @@ export default function PlaneApiPlaygroundSandpack({
           '@material/material-color-utilities': '^0.3.0',
         },
       }}
-      theme={resolvedTheme === 'dark' ? githubDarkSandpackTheme : githubLight}
+      theme={githubDarkSandpackTheme}
       files={files}
       options={{
         activeFile: appFile,
