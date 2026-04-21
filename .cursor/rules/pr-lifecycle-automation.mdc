@@ -16,6 +16,7 @@ Use the repo-local PR lifecycle skills as the default path for PR submission, me
 ## Repo Helpers
 
 - Prefer `pnpm pr:stack` over raw `gt submit`.
+- Prefer published, ready-for-review PRs by default so Greptile starts immediately. Only keep a PR draft when the user explicitly asks.
 - Use `pnpm pr:babysit -- status|pause|resume` to inspect or control the hook-backed PR babysitter.
 - Prefer `pnpm pr:validate` over ad hoc lint/build/test command selection.
 - Use `gh pr checks` for current status and `gh run view --log-failed` for the failing GitHub Actions step.
@@ -24,7 +25,9 @@ Use the repo-local PR lifecycle skills as the default path for PR submission, me
 ## Auto Continuation
 
 - After `pnpm pr:stack`, `gt submit`, or `gh pr create`, project hooks auto-arm PR babysitting for the current branch PR.
+- The default PR creation path should auto-publish drafts immediately unless draft mode was explicitly requested with `--draft` or `--keep-draft`.
 - The project `stop` hook keeps polling GitHub and auto-continues when CI fails, new review feedback lands, or the PR becomes merge-ready.
+- Once checks are green, Greptile Review is successful, and no unresolved non-outdated review threads remain, the babysitter should auto-pause and notify the user to review/merge.
 - Before any final response that should stop that loop, run `pnpm pr:babysit -- pause --reason merge-ready` or `pnpm pr:babysit -- pause --reason needs-user`.
 
 ## Approval Boundaries

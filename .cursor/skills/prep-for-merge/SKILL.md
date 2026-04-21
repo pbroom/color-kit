@@ -12,7 +12,9 @@ If a generic Graphite, PR-creation, or "ship my work" skill also seems relevant,
 Project hooks back this workflow with automatic PR babysitting:
 
 - `pnpm pr:stack`, `gt submit`, and `gh pr create` arm PR babysitting automatically for the current branch PR
+- PR creation defaults to published/ready-for-review so Greptile can start immediately; only keep draft when the user explicitly asks
 - the repo `stop` hook keeps polling GitHub and auto-continues when CI fails, new review feedback lands, or the PR becomes merge-ready
+- when the PR is green, Greptile has completed successfully, and no unresolved non-outdated review threads remain, the babysitter auto-pauses and notifies the user to review/merge
 - before any terminal response that should stop the loop, explicitly pause it with `pnpm pr:babysit -- pause --reason <merge-ready|needs-user>`
 
 ## Goals
@@ -55,6 +57,17 @@ pnpm pr:stack
 
 This keeps the repo's Graphite preflight, tracking, and PR metadata refresh in one place.
 
+Default expectation: `pnpm pr:stack` leaves the PR published, not draft, so Greptile review can start immediately.
+
+If the user explicitly wants a draft PR, use one of:
+
+```bash
+pnpm pr:stack -- --keep-draft
+gh pr create --draft ...
+```
+
+When you intentionally keep a PR draft, tell the user Greptile will not start until the PR is published.
+
 ### Dirty working tree
 
 If the worktree has local changes, keep the submit step scoped to the current effort:
@@ -76,6 +89,8 @@ gh pr checks
 ```
 
 Keep the PR number, URL, base branch, head SHA, and draft state for all later steps.
+
+Unless the user explicitly asked for a draft, `isDraft` should be `false`. If a creation path unexpectedly leaves the PR in draft state, publish it immediately with `gh pr ready {PR_NUMBER}`.
 
 After the PR exists, assume the repo babysitter is active unless you explicitly paused it.
 

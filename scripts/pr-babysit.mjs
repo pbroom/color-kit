@@ -430,6 +430,41 @@ function hasPersistentReviewBlockers(snapshot) {
   );
 }
 
+function findCheck(snapshot, name) {
+  return snapshot.checks.find((check) => check.name === name) ?? null;
+}
+
+function isSuccessfulCheck(check) {
+  return Boolean(
+    check &&
+    check.status === 'COMPLETED' &&
+    PASSING_CONCLUSIONS.has(check.conclusion ?? ''),
+  );
+}
+
+function hasCompletedGreptileReview(snapshot) {
+  const greptileCheck = findCheck(snapshot, 'Greptile Review');
+
+  if (!greptileCheck) {
+    return true;
+  }
+
+  return isSuccessfulCheck(greptileCheck);
+}
+
+function isReadyForUserMergeReview(snapshot) {
+  return (
+    snapshot.pr.state === 'OPEN' &&
+    snapshot.pr.isDraft === false &&
+    snapshot.pr.mergeable === 'MERGEABLE' &&
+    snapshot.pr.reviewDecision !== 'CHANGES_REQUESTED' &&
+    snapshot.failingChecks.length === 0 &&
+    snapshot.pendingChecks.length === 0 &&
+    snapshot.reviewThreads.length === 0 &&
+    hasCompletedGreptileReview(snapshot)
+  );
+}
+
 function isMergeReady(snapshot) {
   return (
     snapshot.pr.state === 'OPEN' &&
@@ -509,8 +544,20 @@ function buildReviewMessage(snapshot) {
 function buildMergeReadyMessage(snapshot) {
   return [
     `PR babysit update for #${snapshot.pr.number} (\`${snapshot.branch}\` -> \`${snapshot.pr.baseRefName}\`): checks are green, unresolved review threads are clear, and GitHub reports \`reviewDecision=APPROVED\`.`,
-    'Summarize the PR as merge-ready to the user, but do not merge.',
-    'Before finishing, run `pnpm pr:babysit -- pause --reason merge-ready` so the auto-follow-up loop stops until the user explicitly asks to merge.',
+    'The babysitter has paused automatically because the PR now looks merge-ready.',
+    'Review it and, if you want me to merge it, ask me to run the merge-and-clean workflow.',
+  ].join(' ');
+}
+
+function buildReadyForUserMergeReviewMessage(snapshot) {
+  const reviewDecision = snapshot.pr.reviewDecision
+    ? ` GitHub reviewDecision is \`${snapshot.pr.reviewDecision}\`.`
+    : '';
+
+  return [
+    `PR babysit update for #${snapshot.pr.number} (\`${snapshot.branch}\` -> \`${snapshot.pr.baseRefName}\`): CI checks are green, Greptile Review completed successfully, and there are no unresolved non-outdated review threads.`,
+    `The babysitter has paused automatically so you can review the PR and decide whether to merge.${reviewDecision}`,
+    'If you want me to merge it now, ask me to run the merge-and-clean workflow.',
   ].join(' ');
 }
 
@@ -595,6 +642,22 @@ function disarmState() {
   removeState();
 }
 
+function buildPausedState(state, snapshot, pauseReason) {
+  return {
+    ...state,
+    mode: 'paused',
+    branch: snapshot.branch,
+    prNumber: snapshot.pr.number,
+    prUrl: snapshot.pr.url,
+    baseRefName: snapshot.pr.baseRefName,
+    updatedAt: snapshot.observedAt,
+    pauseReason,
+    seen: {
+      reviewActivityCursor: snapshot.cursors.reviewActivity,
+    },
+  };
+}
+
 function evaluateStop(state, { persist = true } = {}) {
   if (!state || state.mode !== 'active') {
     return {};
@@ -624,9 +687,18 @@ function evaluateStop(state, { persist = true } = {}) {
 
     if (isMergeReady(snapshot)) {
       if (persist) {
-        writeState(nextState);
+        writeState(buildPausedState(state, snapshot, 'merge-ready'));
       }
       return { followup_message: buildMergeReadyMessage(snapshot) };
+    }
+
+    if (isReadyForUserMergeReview(snapshot)) {
+      if (persist) {
+        writeState(buildPausedState(state, snapshot, 'ready-for-merge-review'));
+      }
+      return {
+        followup_message: buildReadyForUserMergeReviewMessage(snapshot),
+      };
     }
 
     if (snapshot.failingChecks.length > 0) {

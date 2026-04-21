@@ -9,6 +9,8 @@ Use Graphite (`gt`) for all branch and commit operations. This enables stacked P
 
 For PR submission in this repo, prefer `pnpm pr:stack` as the Graphite wrapper. It preserves repo-specific preflight, tracking, and PR metadata refresh. Use raw `gt submit` only if the wrapper is unavailable.
 
+Default PR behavior in this repo is published/ready-for-review, not draft, so Greptile and other review bots start immediately. Only keep a draft when the user explicitly asks, for example with `pnpm pr:stack -- --keep-draft`.
+
 ## Core Commands
 
 | Action         | Command                            | Note                    |
