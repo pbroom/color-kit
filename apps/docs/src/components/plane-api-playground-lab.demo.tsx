@@ -371,9 +371,7 @@ export default function PlaneLabDemo() {
               borderRadius: 999,
               border: '1px solid #30363d',
               background:
-                queryMode === 'contrast'
-                  ? 'rgba(163,113,247,0.22)'
-                  : '#161b22',
+                queryMode === 'contrast' ? 'rgba(163,113,247,0.22)' : '#161b22',
               color: queryMode === 'contrast' ? '#d2a8ff' : '#e6edf3',
               fontSize: 13,
               fontWeight: 500,
@@ -554,8 +552,7 @@ export default function PlaneLabDemo() {
                   padding: '10px 12px',
                   borderRadius: 8,
                   border: '1px solid #30363d',
-                  background:
-                    safeStageIndex === index ? '#21262d' : '#161b22',
+                  background: safeStageIndex === index ? '#21262d' : '#161b22',
                   color: safeStageIndex === index ? '#e6edf3' : '#8b949e',
                   fontSize: 12,
                   lineHeight: 1.35,
