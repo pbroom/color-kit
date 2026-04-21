@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/stack-pr.sh [--dry-run] [--parent <branch>]
+Usage: scripts/stack-pr.sh [--dry-run] [--parent <branch>] [--keep-draft]
 
 Automates stacked PR submission and metadata updates:
 1. Tracks the current branch in Graphite (if needed)
@@ -13,12 +13,14 @@ Automates stacked PR submission and metadata updates:
 Options:
   --dry-run         Print planned actions without mutating remote PR state
   --parent <branch> Parent branch used when tracking untracked branches (default: main)
+  --keep-draft      Leave the created/updated PR in draft state
   -h, --help        Show this help
 
 Environment overrides:
   PR_STACK_PARENT            Default parent branch for tracking (default: main)
   PR_STACK_MAX_FILES         Max files shown in PR body (default: 20)
   PR_STACK_MAX_SUMMARY_ITEMS Max summary bullets from commit subjects (default: 5)
+  PR_STACK_KEEP_DRAFT        Leave the created/updated PR in draft state when set to 1
 USAGE
 }
 
@@ -26,6 +28,7 @@ DRY_RUN=0
 PARENT_BRANCH="${PR_STACK_PARENT:-main}"
 MAX_FILES="${PR_STACK_MAX_FILES:-20}"
 MAX_SUMMARY_ITEMS="${PR_STACK_MAX_SUMMARY_ITEMS:-5}"
+KEEP_DRAFT="${PR_STACK_KEEP_DRAFT:-0}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -44,6 +47,10 @@ while [[ $# -gt 0 ]]; do
       fi
       PARENT_BRANCH="$2"
       shift 2
+      ;;
+    --keep-draft)
+      KEEP_DRAFT=1
+      shift
       ;;
     -h|--help)
       usage
@@ -177,6 +184,15 @@ if [[ -z "$pr_number" || "$pr_number" == "null" ]]; then
   echo "Unable to locate PR for branch $branch." >&2
   exit 1
 fi
+
+if [[ "$KEEP_DRAFT" != "1" ]]; then
+  is_draft="$(gh pr view "$pr_number" --json isDraft --jq '.isDraft')"
+  if [[ "$is_draft" == "true" ]]; then
+    echo "Publishing PR #${pr_number} so review bots can start immediately."
+    run gh pr ready "$pr_number"
+  fi
+fi
+
 pr_url="$(gh pr view "$pr_number" --json url --jq '.url')"
 base_ref="$(gh pr view "$pr_number" --json baseRefName --jq '.baseRefName')"
 

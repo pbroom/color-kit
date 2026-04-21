@@ -26,7 +26,7 @@ import {
   planeApiPlaygroundSandboxPackageJsonFile,
   planeApiPlaygroundSandboxPackageJsonSource,
 } from './plane-api-playground.source.js';
-import { useTheme } from './theme-context.js';
+import { useTheme, type ResolvedTheme } from './theme-context.js';
 
 const CORE_SOURCE_PREFIX = '../../../../packages/core/src/';
 const CORE_SANDBOX_ROOT = '/color-kit-core';
@@ -139,10 +139,22 @@ const PLAYGROUND_INDEX_HTML = `<!DOCTYPE html>
     <div id="root"></div>
   </body>
 </html>`;
-const PLAYGROUND_STYLES = `:root {
-  color-scheme: dark;
+function createPlaygroundStyles(resolvedTheme: ResolvedTheme): string {
+  const isDark = resolvedTheme === 'dark';
+  const background = isDark ? '#0a0a0a' : '#ffffff';
+  const text = isDark ? '#e6edf3' : '#1f2328';
+  const border = isDark ? '#222' : '#d0d7de';
+  const pathFill = isDark
+    ? 'oklch(82.8% 0.111 230.318 / 0.08)'
+    : 'oklch(74.6% 0.16 232.661 / 0.08)';
+  const pathStroke = isDark ? 'oklch(68.5% 0.169 237.323)' : '#2563eb';
+
+  return `:root {
+  color-scheme: ${resolvedTheme};
   font-family:
     Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html,
@@ -153,8 +165,8 @@ body,
 }
 
 body {
-  background: #0d0d0d;
-  color: #f5f7fa;
+  background: ${background};
+  color: ${text};
 }
 
 #root {
@@ -167,18 +179,21 @@ body {
 
 svg {
   display: block;
-  border: 0.5px solid #222222;
-  overflow: hidden;
   width: 300px;
   height: 300px;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 0 0 0.5px ${border};
+  user-select: none;
 }
-  
+
 svg path {
   stroke-width: 0.5px;
-  fill: oklch(82.8% 0.111 230.318 / 0.08);
-  stroke: oklch(68.5% 0.169 237.323);
+  fill: ${pathFill};
+  stroke: ${pathStroke};
 }
 `;
+}
 function createPlaygroundEntry(appFile: string): string {
   return `import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -240,6 +255,7 @@ function rewriteCoreSourceImports(source: string, fromFile: string): string {
 
 function createPlaygroundSupportFiles(
   appFile: string,
+  resolvedTheme: ResolvedTheme,
 ): Record<string, SandpackFileValue> {
   return {
     [PLAYGROUND_ENTRY_FILE]: createPlaygroundEntry(appFile),
@@ -252,7 +268,7 @@ function createPlaygroundSupportFiles(
       hidden: true,
     },
     '/public/index.html': PLAYGROUND_INDEX_HTML,
-    '/styles.css': PLAYGROUND_STYLES,
+    '/styles.css': createPlaygroundStyles(resolvedTheme),
     '/tsconfig.json': PLAYGROUND_TSCONFIG,
     ...Object.fromEntries(
       Object.entries(coreSourceBySandboxPath).map(([filePath, code]) => [
@@ -269,10 +285,11 @@ function createPlaygroundSupportFiles(
 function createPlaygroundFiles(
   source: string,
   appFile: string,
+  resolvedTheme: ResolvedTheme,
 ): Record<string, SandpackFileValue> {
   return {
     [appFile]: source,
-    ...createPlaygroundSupportFiles(appFile),
+    ...createPlaygroundSupportFiles(appFile, resolvedTheme),
   };
 }
 
@@ -374,26 +391,21 @@ function PlaygroundToolbarButton({
   pressed?: boolean;
 }) {
   return (
-    <div className="group relative flex">
-      <button
-        type="button"
-        aria-label={label}
-        aria-pressed={pressed || undefined}
-        className={cn(
-          'flex size-[41px] shrink-0 items-center justify-center bg-transparent text-(--sp-colors-clickable) transition-colors hover:bg-(--sp-colors-surface2) hover:text-(--sp-syntax-color-plain) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-(--sp-colors-accent)',
-          pressed && 'bg-(--sp-colors-surface2) text-(--sp-syntax-color-plain)',
-        )}
-        onClick={onClick}
-      >
-        {icon}
-      </button>
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute right-0 top-full z-20 mt-2 whitespace-nowrap rounded-md border border-border/70 bg-background/95 px-2 py-1 text-xs text-foreground opacity-0 shadow-md backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-      >
-        {label}
-      </span>
-    </div>
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={pressed || undefined}
+      onClick={onClick}
+      className={cn(
+        'inline-flex size-10 shrink-0 items-center justify-center text-(--sp-colors-clickable) transition-colors duration-150 ease-out motion-reduce:transition-none',
+        'hover:bg-(--sp-colors-surface2) hover:text-(--sp-colors-hover)',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-(--sp-colors-accent)',
+        pressed && 'bg-(--sp-colors-surface2) text-(--sp-colors-hover)',
+      )}
+    >
+      {icon}
+    </button>
   );
 }
 
@@ -507,7 +519,7 @@ function PlaneApiPlaygroundPreview({
       className="sp-stack sp-preview flex min-w-0 flex-1 flex-col overflow-hidden [background:var(--sp-colors-surface1)]"
       style={{ height: panelHeight }}
     >
-      <div className="flex min-w-0 items-stretch justify-end border-b-2 border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
+      <div className="flex min-w-0 items-stretch justify-end border-b border-(--sp-colors-surface2) [background:var(--sp-colors-surface1)]">
         <PlaneApiPlaygroundToolbar
           onRefresh={onRefresh}
           showLineNumbers={showLineNumbers}
@@ -543,8 +555,8 @@ export default function PlaneApiPlaygroundSandpack({
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [showLineNumbers, setShowLineNumbers] = useState(false);
   const files = useMemo(
-    () => createPlaygroundFiles(source, appFile),
-    [appFile, source],
+    () => createPlaygroundFiles(source, appFile, resolvedTheme),
+    [appFile, resolvedTheme, source],
   );
   const handleRefresh = useCallback(
     () => setRefreshNonce((value) => value + 1),

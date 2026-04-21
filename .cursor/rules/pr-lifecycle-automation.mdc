@@ -1,45 +1,37 @@
+---
+description: Route PR creation and merge requests through repo lifecycle skills
+alwaysApply: true
+---
+
 # PR Lifecycle Automation
 
-When an agent is asked to submit PR work, babysit CI, or prepare a branch for merge, use the repo-local lifecycle helpers before inventing a custom flow.
+Use the repo-local PR lifecycle skills as the default path for PR submission, merge readiness, and post-merge cleanup.
 
-## Primary Entry Points
+## Primary Triggers
 
-- Use `.cursor/skills/prep-for-merge/SKILL.md` to move a branch from local work to merge-ready.
-- Use `.cursor/skills/merge-and-clean/SKILL.md` only after the user explicitly approves merge and cleanup.
-- Use `pnpm pr:stack` for Graphite submission.
-- Use `pnpm pr:validate` for local focused regression coverage.
+- When the user asks to stack a PR, submit work, create or open a PR, push for review, babysit CI, or prep a branch for merge, first read and follow `.cursor/skills/prep-for-merge/SKILL.md`.
+- When the user asks to merge a PR, check merge readiness, auto-merge a reviewed PR, or clean up after a merge, first read and follow `.cursor/skills/merge-and-clean/SKILL.md`.
+- If the merge already happened and the user wants cleanup only, use the cleanup path from `.cursor/skills/merge-and-clean/SKILL.md` instead of inventing a separate cleanup flow.
+
+## Repo Helpers
+
+- Prefer `pnpm pr:stack` over raw `gt submit`.
+- Prefer published, ready-for-review PRs by default so Greptile starts immediately. Only keep a PR draft when the user explicitly asks.
+- Use `pnpm pr:babysit -- status|pause|resume` to inspect or control the hook-backed PR babysitter.
+- Prefer `pnpm pr:validate` over ad hoc lint/build/test command selection.
+- Use `gh pr checks` for current status and `gh run view --log-failed` for the failing GitHub Actions step.
+- Treat Greptile as a first-class review signal when `greptile.json` is present.
+
+## Auto Continuation
+
+- After `pnpm pr:stack`, `gt submit`, or `gh pr create`, project hooks auto-arm PR babysitting for the current branch PR.
+- The default PR creation path should auto-publish drafts immediately unless draft mode was explicitly requested with `--draft` or `--keep-draft`.
+- The project `stop` hook keeps polling GitHub and auto-continues when CI fails, new review feedback lands, or the PR becomes merge-ready.
+- Once checks are green, Greptile Review is successful, and no unresolved non-outdated review threads remain, the babysitter should auto-pause and notify the user to review/merge.
+- Before any final response that should stop that loop, run `pnpm pr:babysit -- pause --reason merge-ready` or `pnpm pr:babysit -- pause --reason needs-user`.
 
 ## Approval Boundaries
 
 - Never auto-merge without explicit user confirmation in the current conversation.
 - Never auto-clean branches or worktrees without explicit user confirmation in the current conversation.
-- Stop and ask when review feedback or conflicts are ambiguous.
-
-## Review Sources
-
-- Treat Greptile as a first-class review signal when `greptile.json` is present.
-- Keep the existing `pr-review-bot` workflow as a heuristic companion, not a replacement for Greptile or human review.
-- If Greptile has not reviewed a ready PR after open/update, comment `@greptileai` once to trigger it.
-
-## CI Source Of Truth
-
-- Prefer `gh pr checks` for current status.
-- Prefer `gh run view --log-failed` for the actual GitHub Actions failure cause.
-- When Greptile status checks are enabled, include them in merge readiness.
-- Keep CI fixes scoped to one failure cause per commit whenever practical.
-
-## Submission Rules
-
-- Prefer `pnpm pr:stack` over raw `gt submit` so Graphite tracking, mergeability preflight, and PR metadata refresh stay consistent.
-- If the working tree is dirty, route through the scoped effort submit workflow instead of hand-rolling Graphite commands.
-
-## Validation Rules
-
-- Always run `pnpm pr:validate` after substantive PR-fix changes.
-- Trust the printed validation profile instead of guessing the relevant package commands.
-- Escalate to the wasm matrix only when `pnpm pr:validate` selects it based on changed paths.
-
-## Browser Smoke
-
-- Only run a `browser-use` smoke pass when changed files touch `apps/docs`, `packages/react`, or another clearly UI-facing surface.
-- Keep browser checks brief and regression-focused; do not turn them into exploratory QA unless the user asks.
+- Stop and ask when review feedback, CI failures, or merge conflicts are ambiguous.
