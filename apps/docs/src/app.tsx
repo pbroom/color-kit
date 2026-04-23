@@ -22,6 +22,11 @@ const ComponentDocRoute = lazy(() =>
     default: module.ComponentDocRoute,
   })),
 );
+const PlaygroundPage = lazy(() =>
+  import('./routes/playground.js').then((module) => ({
+    default: module.PlaygroundPage,
+  })),
+);
 
 function RouteFallback() {
   return <div className="ck-shell-bg min-h-screen" />;
@@ -36,6 +41,14 @@ export function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <HomePage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="playground"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <PlaygroundPage />
             </Suspense>
           }
         />
