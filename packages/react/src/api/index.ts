@@ -67,6 +67,7 @@ export {
   colorFromColorInputKey,
   formatColorInputChannelValue,
   getColorInputChangedChannel,
+  getColorInputChannelGlyph,
   getColorInputChannelValue,
   getColorInputLabel,
   getColorInputPrecisionFromStep,

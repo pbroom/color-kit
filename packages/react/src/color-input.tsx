@@ -17,6 +17,7 @@ import {
   formatColorInputChannelValue,
   getColorInputChangedChannel,
   getColorInputChannelValue,
+  getColorInputChannelGlyph,
   getColorInputLabel,
   getColorInputPrecisionFromStep,
   normalizeColorInputValue,
@@ -56,7 +57,7 @@ interface ColorInputBaseProps extends Omit<
   selectAllOnFocus?: boolean;
   /** Commit draft value on blur */
   commitOnBlur?: boolean;
-  /** Width (px) of the left-edge scrub hit area */
+  /** Size (px) of the square leading scrub/drag hit area (width and height) */
   scrubEdgeWidth?: number;
   /** Horizontal pixels per step during scrub drag */
   scrubPixelsPerStep?: number;
@@ -127,7 +128,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       allowExpressions = true,
       selectAllOnFocus = true,
       commitOnBlur = true,
-      scrubEdgeWidth = 14,
+      scrubEdgeWidth = 24,
       scrubPixelsPerStep = 6,
       dragEpsilon = 0.0005,
       maxScrubRate = 120,
@@ -183,6 +184,10 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     );
     const channelLabel = useMemo(
       () => getColorInputLabel(model, channel),
+      [channel, model],
+    );
+    const channelGlyph = useMemo(
+      () => getColorInputChannelGlyph(model, channel),
       [channel, model],
     );
     const changedChannel = useMemo(
@@ -669,7 +674,12 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         data-editing={isEditing || undefined}
         data-scrubbing={isScrubbing || undefined}
         style={{
-          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          columnGap: 0,
+          minHeight: 24,
+          height: 24,
+          boxSizing: 'border-box',
           touchAction: 'manipulation',
           ...props.style,
         }}
@@ -683,14 +693,19 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           onPointerCancel={handleScrubPointerCancel}
           onLostPointerCapture={handleScrubLostPointerCapture}
           style={{
-            position: 'absolute',
-            inset: '0 auto 0 0',
             width: `${Math.max(0, scrubEdgeWidth)}px`,
+            height: `${Math.max(0, scrubEdgeWidth)}px`,
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             cursor: 'ew-resize',
             touchAction: 'none',
             userSelect: 'none',
           }}
-        />
+        >
+          {channelGlyph}
+        </div>
         <input
           ref={inputRef}
           type="text"
@@ -708,6 +723,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           onBlur={handleBlur}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          style={{ flex: 1, minWidth: 0 }}
         />
       </div>
     );

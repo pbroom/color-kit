@@ -14,6 +14,7 @@ import {
   getColorAreaFallbackPoint,
   getColorAreaGamutBoundaryPoints,
   getColorAreaThumbPosition,
+  getColorInputChannelGlyph,
   getColorInputChannelValue,
   parseColorInputExpression,
   parseColorStringInputValue,
@@ -212,6 +213,12 @@ describe('Color API helpers', () => {
 
     const fromHsl = colorFromColorInputChannelValue(base, 'hsl', 'h', 180);
     expect(getColorInputChannelValue(fromHsl, 'hsl', 'h')).toBeCloseTo(180, 1);
+  });
+
+  it('exposes one-character glyphs for input scrub handles', () => {
+    expect(getColorInputChannelGlyph('oklch', 'l')).toBe('L');
+    expect(getColorInputChannelGlyph('oklch', 'alpha')).toBe('α');
+    expect(getColorInputChannelGlyph('rgb', 'r')).toBe('R');
   });
 
   it('parses color input expressions with relative math and precedence', () => {

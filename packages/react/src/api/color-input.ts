@@ -212,6 +212,50 @@ export function getColorInputLabel(
   return COLOR_INPUT_LABELS[model][channel];
 }
 
+/** Single character (or "α" for alpha) for the leading scrub handle in channel inputs. */
+const COLOR_INPUT_GLYPHS: Record<
+  ColorInputModel,
+  Record<ColorInputChannel, string>
+> = {
+  oklch: {
+    l: 'L',
+    c: 'C',
+    h: 'H',
+    alpha: 'α',
+    r: 'R',
+    g: 'G',
+    b: 'B',
+    s: 'S',
+  },
+  rgb: {
+    r: 'R',
+    g: 'G',
+    b: 'B',
+    alpha: 'α',
+    l: 'L',
+    c: 'C',
+    h: 'H',
+    s: 'S',
+  },
+  hsl: {
+    h: 'H',
+    s: 'S',
+    l: 'L',
+    alpha: 'α',
+    c: 'C',
+    r: 'R',
+    g: 'G',
+    b: 'B',
+  },
+};
+
+export function getColorInputChannelGlyph(
+  model: ColorInputModel,
+  channel: ColorInputChannel,
+): string {
+  return COLOR_INPUT_GLYPHS[model][channel];
+}
+
 export function getColorInputChangedChannel(
   model: ColorInputModel,
   channel: ColorInputChannel,

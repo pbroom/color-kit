@@ -420,45 +420,30 @@ export function PlaygroundPage() {
                       </div>
 
                       <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-2">
-                          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                            L
-                          </p>
-                          <ColorInput
-                            model="oklch"
-                            channel="l"
-                            className="ck-input"
-                            requested={color.requested}
-                            onChangeRequested={color.setRequested}
-                            aria-label="Lightness input"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                            C
-                          </p>
-                          <ColorInput
-                            model="oklch"
-                            channel="c"
-                            className="ck-input"
-                            requested={color.requested}
-                            onChangeRequested={color.setRequested}
-                            aria-label="Chroma input"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                            H
-                          </p>
-                          <ColorInput
-                            model="oklch"
-                            channel="h"
-                            className="ck-input"
-                            requested={color.requested}
-                            onChangeRequested={color.setRequested}
-                            aria-label="Hue input"
-                          />
-                        </div>
+                        <ColorInput
+                          model="oklch"
+                          channel="l"
+                          className="ck-input"
+                          requested={color.requested}
+                          onChangeRequested={color.setRequested}
+                          aria-label="Lightness input"
+                        />
+                        <ColorInput
+                          model="oklch"
+                          channel="c"
+                          className="ck-input"
+                          requested={color.requested}
+                          onChangeRequested={color.setRequested}
+                          aria-label="Chroma input"
+                        />
+                        <ColorInput
+                          model="oklch"
+                          channel="h"
+                          className="ck-input"
+                          requested={color.requested}
+                          onChangeRequested={color.setRequested}
+                          aria-label="Hue input"
+                        />
                       </div>
                     </div>
                   </PanelSection>

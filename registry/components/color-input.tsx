@@ -151,6 +151,40 @@ const DEFAULT_RANGES: Record<
   },
 };
 
+const CHANNEL_GLYPHS: Record<ColorInputModel, Record<ColorInputChannel, string>> =
+  {
+    oklch: {
+      l: 'L',
+      c: 'C',
+      h: 'H',
+      alpha: 'α',
+      r: 'R',
+      g: 'G',
+      b: 'B',
+      s: 'S',
+    },
+    rgb: {
+      r: 'R',
+      g: 'G',
+      b: 'B',
+      alpha: 'α',
+      l: 'L',
+      c: 'C',
+      h: 'H',
+      s: 'S',
+    },
+    hsl: {
+      h: 'H',
+      s: 'S',
+      l: 'L',
+      alpha: 'α',
+      c: 'C',
+      r: 'R',
+      g: 'G',
+      b: 'B',
+    },
+  };
+
 const DEFAULT_STEPS: Record<
   ColorInputModel,
   Record<ColorInputChannel, StepConfig>
@@ -590,7 +624,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       allowExpressions = true,
       selectAllOnFocus = true,
       commitOnBlur = true,
-      scrubEdgeWidth = 14,
+      scrubEdgeWidth = 24,
       scrubPixelsPerStep = 6,
       dragEpsilon = 0.0005,
       maxScrubRate = 120,
@@ -632,6 +666,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       [channel, model, requested],
     );
     const channelLabel = LABELS[model][channel];
+    const channelGlyph = CHANNEL_GLYPHS[model][channel];
     const displayValue = useMemo(
       () => formatValue(channelValue, resolvedPrecision),
       [channelValue, resolvedPrecision],
@@ -1097,7 +1132,13 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         data-editing={isEditing || undefined}
         data-scrubbing={isScrubbing || undefined}
         style={{
-          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          columnGap: 0,
+          minHeight: 24,
+          height: 24,
+          boxSizing: 'border-box',
+          cursor: 'pointer',
           touchAction: 'manipulation',
           ...props.style,
         }}
@@ -1111,14 +1152,19 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           onPointerCancel={handleScrubPointerCancel}
           onLostPointerCapture={handleScrubLostPointerCapture}
           style={{
-            position: 'absolute',
-            inset: '0 auto 0 0',
             width: `${Math.max(0, scrubEdgeWidth)}px`,
+            height: `${Math.max(0, scrubEdgeWidth)}px`,
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             cursor: 'ew-resize',
             touchAction: 'none',
             userSelect: 'none',
           }}
-        />
+        >
+          {channelGlyph}
+        </div>
         <input
           ref={inputRef}
           type="text"
@@ -1136,6 +1182,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           onBlur={handleBlur}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          style={{ flex: 1, minWidth: 0 }}
         />
       </div>
     );
