@@ -14,6 +14,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -80,6 +81,13 @@ interface ScrubSnapshot {
   clientX: number;
   shiftKey: boolean;
   altKey: boolean;
+}
+
+interface InputSelectionSnapshot {
+  start: number;
+  end: number;
+  direction: 'forward' | 'backward' | 'none';
+  selectAll: boolean;
 }
 
 const LABELS: Record<ColorInputModel, Record<ColorInputChannel, string>> = {
@@ -607,6 +615,14 @@ function resolveModifiedStep(
 }
 
 const COMMIT_NOOP_EPSILON = 1e-9;
+const SCRUB_DRAG_START_THRESHOLD_PX = 2;
+
+function resolvePointerClientX(
+  event: { clientX: number },
+  fallback: number,
+): number {
+  return Number.isFinite(event.clientX) ? event.clientX : fallback;
+}
 
 export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
   function ColorInput(
@@ -675,6 +691,9 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       model === 'oklch' ? (channel as OklchColorInputChannel) : undefined;
 
     const inputRef = useRef<HTMLInputElement>(null);
+    const scrubHandleRef = useRef<HTMLDivElement>(null);
+    const preservedSelectionRef = useRef<InputSelectionSnapshot | null>(null);
+    const clearPreservedSelectionFrameRef = useRef<number | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [draftValue, setDraftValue] = useState('');
     const [isScrubbing, setIsScrubbing] = useState(false);
@@ -684,7 +703,9 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
 
     const activePointerIdRef = useRef<number | null>(null);
     const isScrubbingRef = useRef(false);
+    const hasScrubDragStartedRef = useRef(false);
     const scrubStartXRef = useRef(0);
+    const lastScrubClientXRef = useRef(0);
     const scrubStartValueRef = useRef(0);
     const lastScrubValueRef = useRef<number | null>(null);
     const lastScrubCommitTsRef = useRef(0);
@@ -921,6 +942,71 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       pendingScrubRef.current = null;
     }, []);
 
+    const restorePreservedSelection = useCallback(() => {
+      const input = inputRef.current;
+      const snapshot = preservedSelectionRef.current;
+      if (!input || !snapshot || document.activeElement !== input) {
+        return;
+      }
+
+      const length = input.value.length;
+      const start = snapshot.selectAll ? 0 : Math.min(snapshot.start, length);
+      const end = snapshot.selectAll ? length : Math.min(snapshot.end, length);
+      input.setSelectionRange(start, end, snapshot.direction);
+    }, []);
+
+    const clearPreservedSelection = useCallback(() => {
+      if (clearPreservedSelectionFrameRef.current !== null) {
+        cancelAnimationFrame(clearPreservedSelectionFrameRef.current);
+        clearPreservedSelectionFrameRef.current = null;
+      }
+      preservedSelectionRef.current = null;
+    }, []);
+
+    const scheduleClearPreservedSelection = useCallback(() => {
+      if (clearPreservedSelectionFrameRef.current !== null) {
+        cancelAnimationFrame(clearPreservedSelectionFrameRef.current);
+      }
+      clearPreservedSelectionFrameRef.current = requestAnimationFrame(() => {
+        restorePreservedSelection();
+        preservedSelectionRef.current = null;
+        clearPreservedSelectionFrameRef.current = null;
+      });
+    }, [restorePreservedSelection]);
+
+    const preserveCurrentSelection = useCallback(() => {
+      const input = inputRef.current;
+      if (!input || document.activeElement !== input) {
+        preservedSelectionRef.current = null;
+        return;
+      }
+
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? start;
+      preservedSelectionRef.current = {
+        start,
+        end,
+        direction: input.selectionDirection ?? 'none',
+        selectAll: start === 0 && end === input.value.length,
+      };
+    }, []);
+
+    const hasScrubPointerLock = useCallback(() => {
+      return (
+        typeof document !== 'undefined' &&
+        document.pointerLockElement === scrubHandleRef.current
+      );
+    }, []);
+
+    const exitScrubPointerLock = useCallback(() => {
+      if (
+        typeof document !== 'undefined' &&
+        document.pointerLockElement === scrubHandleRef.current
+      ) {
+        document.exitPointerLock?.();
+      }
+    }, []);
+
     const schedulePendingScrubFrame = useCallback(() => {
       scrubFrameRef.current = requestAnimationFrame((frameTime: number) => {
         processPendingScrubRef.current(frameTime);
@@ -940,8 +1026,22 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         );
         const safePixelsPerStep =
           scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-        const deltaSteps =
-          (snapshot.clientX - scrubStartXRef.current) / safePixelsPerStep;
+        const clientX = Number.isFinite(snapshot.clientX)
+          ? snapshot.clientX
+          : lastScrubClientXRef.current;
+        const deltaPixels = clientX - scrubStartXRef.current;
+        if (
+          !hasScrubDragStartedRef.current &&
+          Math.abs(deltaPixels) < SCRUB_DRAG_START_THRESHOLD_PX
+        ) {
+          return;
+        }
+        if (!hasScrubDragStartedRef.current) {
+          hasScrubDragStartedRef.current = true;
+          setIsScrubbing(true);
+        }
+
+        const deltaSteps = deltaPixels / safePixelsPerStep;
         const nextRaw = scrubStartValueRef.current + deltaSteps * activeStep;
         const nextValue = normalizeValue(nextRaw, resolvedRange, resolvedWrap);
 
@@ -1036,12 +1136,20 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         }
 
         isScrubbingRef.current = false;
+        hasScrubDragStartedRef.current = false;
         activePointerIdRef.current = null;
         lastScrubCommitTsRef.current = 0;
         setIsScrubbing(false);
+        exitScrubPointerLock();
+        scheduleClearPreservedSelection();
         stopScrubFrame();
       },
-      [commitScrubSnapshot, stopScrubFrame],
+      [
+        commitScrubSnapshot,
+        exitScrubPointerLock,
+        scheduleClearPreservedSelection,
+        stopScrubFrame,
+      ],
     );
 
     const handleScrubPointerDown = useCallback(
@@ -1052,10 +1160,14 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         }
 
         event.preventDefault();
+        clearPreservedSelection();
+        preserveCurrentSelection();
+        const clientX = resolvePointerClientX(event, 0);
         activePointerIdRef.current = event.pointerId;
         isScrubbingRef.current = true;
-        setIsScrubbing(true);
-        scrubStartXRef.current = event.clientX;
+        hasScrubDragStartedRef.current = false;
+        scrubStartXRef.current = clientX;
+        lastScrubClientXRef.current = clientX;
         scrubStartValueRef.current = channelValue;
         lastScrubValueRef.current = channelValue;
         lastScrubCommitTsRef.current = 0;
@@ -1069,9 +1181,15 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           event.currentTarget.setPointerCapture(event.pointerId);
         }
 
-        inputRef.current?.focus();
+        const lockRequest = event.currentTarget.requestPointerLock?.() as
+          | Promise<void>
+          | void;
+        if (lockRequest) {
+          void lockRequest.catch(() => {});
+        }
+
       },
-      [channelValue, displayValue],
+      [channelValue, clearPreservedSelection, displayValue, preserveCurrentSelection],
     );
 
     const handleScrubPointerMove = useCallback(
@@ -1082,13 +1200,21 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         ) {
           return;
         }
+        if (hasScrubPointerLock()) {
+          return;
+        }
+        const clientX = resolvePointerClientX(
+          event,
+          lastScrubClientXRef.current,
+        );
+        lastScrubClientXRef.current = clientX;
         queueScrubSnapshot({
-          clientX: event.clientX,
+          clientX,
           shiftKey: event.shiftKey,
           altKey: event.altKey,
         });
       },
-      [queueScrubSnapshot],
+      [hasScrubPointerLock, queueScrubSnapshot],
     );
 
     const handleScrubPointerUp = useCallback(
@@ -1096,13 +1222,16 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         if (event.pointerId !== activePointerIdRef.current) {
           return;
         }
+        const clientX = hasScrubPointerLock()
+          ? lastScrubClientXRef.current
+          : resolvePointerClientX(event, lastScrubClientXRef.current);
         endScrubbing({
-          clientX: event.clientX,
+          clientX,
           shiftKey: event.shiftKey,
           altKey: event.altKey,
         });
       },
-      [endScrubbing],
+      [endScrubbing, hasScrubPointerLock],
     );
 
     const handleScrubPointerCancel = useCallback(
@@ -1116,10 +1245,65 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     );
 
     const handleScrubLostPointerCapture = useCallback(() => {
+      if (hasScrubPointerLock()) {
+        return;
+      }
       endScrubbing();
-    }, [endScrubbing]);
+    }, [endScrubbing, hasScrubPointerLock]);
 
-    useEffect(() => stopScrubFrame, [stopScrubFrame]);
+    useEffect(() => {
+      return () => {
+        clearPreservedSelection();
+        stopScrubFrame();
+      };
+    }, [clearPreservedSelection, stopScrubFrame]);
+
+    useLayoutEffect(() => {
+      restorePreservedSelection();
+    }, [currentValue, restorePreservedSelection]);
+
+    useEffect(() => {
+      const handleLockedMouseMove = (event: MouseEvent) => {
+        if (!isScrubbingRef.current || !hasScrubPointerLock()) {
+          return;
+        }
+
+        const movementX = Number.isFinite(event.movementX)
+          ? event.movementX
+          : 0;
+        if (movementX === 0) {
+          return;
+        }
+
+        const clientX = lastScrubClientXRef.current + movementX;
+        lastScrubClientXRef.current = clientX;
+        queueScrubSnapshot({
+          clientX,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+        });
+      };
+
+      const handlePointerLockChange = () => {
+        if (
+          isScrubbingRef.current &&
+          scrubHandleRef.current &&
+          document.pointerLockElement !== scrubHandleRef.current
+        ) {
+          endScrubbing();
+        }
+      };
+
+      document.addEventListener('mousemove', handleLockedMouseMove);
+      document.addEventListener('pointerlockchange', handlePointerLockChange);
+      return () => {
+        document.removeEventListener('mousemove', handleLockedMouseMove);
+        document.removeEventListener(
+          'pointerlockchange',
+          handlePointerLockChange,
+        );
+      };
+    }, [endScrubbing, hasScrubPointerLock, queueScrubSnapshot]);
 
     return (
       <div
@@ -1144,6 +1328,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         }}
       >
         <div
+          ref={scrubHandleRef}
           data-color-input-scrub-handle=""
           aria-hidden="true"
           onPointerDown={handleScrubPointerDown}

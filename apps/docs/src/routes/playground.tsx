@@ -252,6 +252,10 @@ export function PlaygroundPage() {
         : displayedSrgb,
     [color.activeGamut, color.requested, displayedSrgb],
   );
+  const displayedHex = useMemo(
+    () => toHex(toSrgbGamut(color.requested)).toUpperCase(),
+    [color.requested],
+  );
 
   const setAxis = (axis: 'x' | 'y', channel: ColorAreaChannel) => {
     setAxisState((current) => {
@@ -378,7 +382,7 @@ export function PlaygroundPage() {
                       />
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-white">
-                          {toHex(color.requested).toUpperCase()}
+                          {displayedHex}
                         </div>
                         <div className="text-xs text-white/55">
                           {color.activeGamut === 'display-p3' ? 'Display P3' : 'sRGB'}{' '}
