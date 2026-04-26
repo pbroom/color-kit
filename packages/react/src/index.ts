@@ -55,6 +55,7 @@ export type {
   ResolvedColorAreaAxis,
   ColorInputModel,
   ColorInputChannel,
+  ColorInputKey,
   OklchColorInputChannel,
   RgbColorInputChannel,
   HslColorInputChannel,
