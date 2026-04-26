@@ -13,6 +13,7 @@ This file defines top-level guidance for Codex in this repository.
 - Prefer one logical change per branch and keep branches reviewable.
 - Use Conventional Commit style messages (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`).
 - If Graphite is configured, prefer `gt` workflow (`gt create`, `gt modify`, `gt submit --stack`).
+- Treat general requests to create, open, or draft a PR as the same workflow as “stack PR”: use the repo Graphite stack path (`pnpm pr:stack` / `gt submit`) and pass draft-preserving flags when the user asks for draft, rather than creating PRs directly with `gh`.
 - If Graphite is unavailable or unsynced, fall back to plain `git` + `gh`.
 - For any code-editing task, run `pnpm lint` before final validation.
 - For React/TSX work, proactively resolve `react-hooks/*` findings (including React Compiler rules) in touched files before final validation.
