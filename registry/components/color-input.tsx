@@ -48,7 +48,7 @@ interface ColorInputBaseProps extends Omit<
   allowExpressions?: boolean;
   selectAllOnFocus?: boolean;
   commitOnBlur?: boolean;
-  scrubEdgeWidth?: number;
+  scrubHandleSize?: number;
   scrubPixelsPerStep?: number;
   dragEpsilon?: number;
   maxScrubRate?: number;
@@ -642,7 +642,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       allowExpressions = true,
       selectAllOnFocus = true,
       commitOnBlur = true,
-      scrubEdgeWidth = 24,
+      scrubHandleSize = 24,
       scrubPixelsPerStep = 6,
       dragEpsilon = 0.0005,
       maxScrubRate = 120,
@@ -1335,8 +1335,6 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           display: 'flex',
           alignItems: 'center',
           columnGap: 0,
-          minHeight: 24,
-          height: 24,
           boxSizing: 'border-box',
           touchAction: 'manipulation',
           ...props.style,
@@ -1352,8 +1350,8 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           onPointerCancel={handleScrubPointerCancel}
           onLostPointerCapture={handleScrubLostPointerCapture}
           style={{
-            width: `${Math.max(0, scrubEdgeWidth)}px`,
-            height: `${Math.max(0, scrubEdgeWidth)}px`,
+            width: `${Math.max(0, scrubHandleSize)}px`,
+            height: `${Math.max(0, scrubHandleSize)}px`,
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
