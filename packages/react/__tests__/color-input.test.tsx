@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { parse } from '@color-kit/core';
+import { useState } from 'react';
 import { ColorInput } from '../src/color-input.js';
 
 function setPointerLockElement(element: Element | null): void {
@@ -364,6 +365,62 @@ describe('ColorInput', () => {
       onChangeRequested.mock.calls[onChangeRequested.mock.calls.length - 1];
     expect(next.c).toBeCloseTo(0.215, 3);
     expect(exitPointerLock).toHaveBeenCalled();
+  });
+
+  it('does not keep unfocused scrub input in editing mode after external updates', async () => {
+    function ControlledInput() {
+      const [requested, setRequested] = useState(parse('oklch(0.6 0.2 160)'));
+
+      return (
+        <>
+          <ColorInput
+            model="oklch"
+            channel="c"
+            requested={requested}
+            onChangeRequested={setRequested}
+          />
+          <button
+            type="button"
+            onClick={() => setRequested(parse('oklch(0.6 0.35 160)'))}
+          >
+            External update
+          </button>
+        </>
+      );
+    }
+
+    const { container } = render(<ControlledInput />);
+
+    const input = screen.getByRole('spinbutton') as HTMLInputElement;
+    const handle = container.querySelector(
+      '[data-color-input-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    expect(document.activeElement).not.toBe(input);
+
+    firePointerEvent(handle, 'pointerdown', {
+      pointerId: 12,
+      button: 0,
+      clientX: 0,
+    });
+    firePointerEvent(handle, 'pointermove', {
+      pointerId: 12,
+      clientX: 18,
+    });
+
+    await flushAnimationFrames(2);
+
+    firePointerEvent(handle, 'pointerup', {
+      pointerId: 12,
+      clientX: 18,
+    });
+
+    await flushAnimationFrames(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'External update' }));
+
+    expect(Number(input.value)).toBeCloseTo(0.35, 3);
   });
 
   it('preserves full text selection while scrub dragging', async () => {

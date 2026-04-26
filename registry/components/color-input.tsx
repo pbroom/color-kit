@@ -751,6 +751,11 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       [resolvedPrecision],
     );
 
+    const isInputFocused = useCallback(
+      () => document.activeElement === inputRef.current,
+      [],
+    );
+
     const commitChannelValue = useCallback(
       (
         nextValue: number,
@@ -1064,12 +1069,13 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         lastScrubValueRef.current = nextValue;
         lastCommittedValueRef.current = nextValue;
         syncDraftFromValue(nextValue);
-        setIsEditing(true);
+        setIsEditing(isInputFocused());
       },
       [
         changedChannel,
         channel,
         dragEpsilon,
+        isInputFocused,
         model,
         requested,
         resolvedRange,
@@ -1175,7 +1181,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         lastScrubCommitTsRef.current = 0;
         setFocusStartValue(channelValue);
         lastCommittedValueRef.current = channelValue;
-        setIsEditing(true);
+        setIsEditing(isInputFocused());
         setDraftValue(displayValue);
         pendingScrubRef.current = null;
 
@@ -1193,6 +1199,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         channelValue,
         clearPreservedSelection,
         displayValue,
+        isInputFocused,
         preserveCurrentSelection,
       ],
     );
