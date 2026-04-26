@@ -1118,6 +1118,10 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         pendingScrubRef.current = null;
         commitScrubSnapshot(pending, false);
         lastScrubCommitTsRef.current = frameTime;
+
+        if (pendingScrubRef.current) {
+          schedulePendingScrubFrame();
+        }
       },
       [commitScrubSnapshot, maxScrubRate, schedulePendingScrubFrame],
     );

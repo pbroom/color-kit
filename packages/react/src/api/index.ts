@@ -84,6 +84,7 @@ export type {
   OklchColorInputChannel,
   RgbColorInputChannel,
   HslColorInputChannel,
+  ColorInputKey,
   ColorInputStepConfig,
   ResolveColorInputStepsOptions,
   ParseColorInputExpressionOptions,
