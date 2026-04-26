@@ -1334,7 +1334,6 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           minHeight: 24,
           height: 24,
           boxSizing: 'border-box',
-          cursor: 'pointer',
           touchAction: 'manipulation',
           ...props.style,
         }}
