@@ -1698,7 +1698,7 @@ html:not(.dark) .prose .shiki span {
   }
 }
 
-/* Figma: 24px-tall field, Inter 11/16, #383838, 4px radius; inset ring for hover/focus/drag. */
+/* Figma: 24px-tall field, Inter 11/16, #383838, 4px radius; stable border-box outline states. */
 .ck-input[data-color-input] {
   display: flex;
   align-items: center;
@@ -1707,22 +1707,21 @@ html:not(.dark) .prose .shiki span {
   height: 24px;
   padding: 0;
   background: #383838;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 4px;
-  box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0);
   column-gap: 0;
 }
 
 .ck-input[data-color-input]:hover {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .ck-input[data-color-input]:focus-within {
-  box-shadow: inset 0 0 0 2px #5288db;
+  border-color: #5288db;
 }
 
 .ck-input[data-color-input][data-scrubbing] {
-  box-shadow: inset 0 0 0 2px #97c1ef;
+  border-color: #97c1ef;
 }
 
 .ck-input[data-color-input] [data-color-input-scrub-handle] {

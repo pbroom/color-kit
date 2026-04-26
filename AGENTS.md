@@ -117,3 +117,17 @@ This file defines top-level guidance for Codex in this repository.
 - **2026-04-09 — Route-split docs demos before deeper tuning**: On the docs app, the biggest load-time win came from lazy route entrypoints plus viewport-gated demo mounting. Move consumers off eager demo imports first, then trim heavy Sandpack inputs once the main route chunk is already smaller.
 - **2026-04-19 — Gamut-region telemetry buckets need plane signatures**: For `PlaneComputeScheduler`, bucket `gamutRegion` workloads by gamut plus resolved plane model and x/y channels, not just `scope`, or cheap domain-edge requests can skew backend decisions for heavier implicit-contour planes.
 - **2026-04-19 — Default-branch required checks are ruleset-backed**: This repo enforces merge-blocking checks through GitHub repository rulesets, not legacy branch protection. When a new job like `lint` must become mandatory, update the active ruleset’s `required_status_checks` instead of looking for branch protection settings.
+
+## Learned User Preferences
+
+- The user prefers incubating the input primitive in the docs playground with the repo's own documentation and testing tooling rather than moving immediately to Storybook.
+- The user prefers playground page navigation to use minimal side-nav-like list items with active state shown through lightness and font weight, not button treatments, cards, or multiline descriptions.
+- The user prefers explicit control labels over ambiguous labels like `Auto` when showing defaults such as input precision.
+- The user prefers border-box based outlines for input defaults because borders are expected across use cases, while inset shadows are more of a styling decision.
+
+## Learned Workspace Facts
+
+- The Input Primitive Lab is intended to be color-agnostic: it should refine, test, and visualize a standalone input component primitive independently from ColorPlane state.
+- The Input Primitive Lab should keep the standalone input directly on the page without decorative wrappers such as cards or background gradients.
+- The standalone input should inherit the default spacing, sizing, font, and cursor treatment refined in the color plane playground while remaining state-independent from the color plane.
+- Invalid raw input content should not automatically trigger a visible error state in the Input Primitive Lab.
