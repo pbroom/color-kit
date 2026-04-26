@@ -10,6 +10,7 @@ const DEFAULT_MAX_CHROMA = 0.4;
 const DEFAULT_TOLERANCE = 0.0001;
 const DEFAULT_MAX_ITERATIONS = 30;
 const DEFAULT_HUE_CUSP_LUT_SIZE = 4096;
+const LIGHTNESS_ENDPOINT_EPSILON = 1e-9;
 
 const OKLAB_LMS_PRIME_COEFFICIENTS = {
   l: { a: 0.3963377774, b: 0.2158037573 },
@@ -33,6 +34,18 @@ const OKLAB_TO_LINEAR_P3_ROWS = [
 const HUE_CUSP_CHANNEL_EPSILON = 1e-7;
 const MAX_SATURATION_SEARCH = 16;
 const SATURATION_ROOT_ITERATIONS = 24;
+
+function mapLightnessEndpoint(color: Color): Color | null {
+  if (color.l <= LIGHTNESS_ENDPOINT_EPSILON) {
+    return { ...color, l: 0, c: 0 };
+  }
+
+  if (color.l >= 1 - LIGHTNESS_ENDPOINT_EPSILON) {
+    return { ...color, l: 1, c: 0 };
+  }
+
+  return null;
+}
 
 export type GamutTarget = 'srgb' | 'display-p3';
 
@@ -992,11 +1005,14 @@ export function inP3Gamut(color: Color): boolean {
  * which produces the most visually similar in-gamut color.
  */
 export function toSrgbGamut(color: Color): Color {
+  const endpoint = mapLightnessEndpoint(color);
+  if (endpoint) return endpoint;
   if (inSrgbGamut(color)) return { ...color };
 
   let lo = 0;
   let hi = color.c;
-  let mapped = { ...color };
+  const achromatic = { ...color, c: 0 };
+  let mapped = inSrgbGamut(achromatic) ? achromatic : { ...color };
 
   // Binary search for max chroma in gamut (within epsilon)
   const epsilon = 0.0001;
@@ -1018,11 +1034,14 @@ export function toSrgbGamut(color: Color): Color {
  * Map a Color to the Display P3 gamut by progressively reducing chroma.
  */
 export function toP3Gamut(color: Color): Color {
+  const endpoint = mapLightnessEndpoint(color);
+  if (endpoint) return endpoint;
   if (inP3Gamut(color)) return { ...color };
 
   let lo = 0;
   let hi = color.c;
-  let mapped = { ...color };
+  const achromatic = { ...color, c: 0 };
+  let mapped = inP3Gamut(achromatic) ? achromatic : { ...color };
 
   const epsilon = 0.0001;
   while (hi - lo > epsilon) {

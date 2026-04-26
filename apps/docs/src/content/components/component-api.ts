@@ -238,7 +238,7 @@ export const componentApiDocs: ComponentApiDocs = {
       description: 'Commits the current draft on blur when valid.',
     },
     {
-      name: 'scrubEdgeWidth / scrubPixelsPerStep / maxScrubRate',
+      name: 'scrubHandleSize / scrubPixelsPerStep / maxScrubRate',
       type: 'number',
       description: 'Controls left-edge scrubbing geometry and update cadence.',
     },

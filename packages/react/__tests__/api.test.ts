@@ -14,6 +14,8 @@ import {
   getColorAreaFallbackPoint,
   getColorAreaGamutBoundaryPoints,
   getColorAreaThumbPosition,
+  formatColorStringInputValue,
+  getColorInputChannelGlyph,
   getColorInputChannelValue,
   parseColorInputExpression,
   parseColorStringInputValue,
@@ -214,6 +216,12 @@ describe('Color API helpers', () => {
     expect(getColorInputChannelValue(fromHsl, 'hsl', 'h')).toBeCloseTo(180, 1);
   });
 
+  it('exposes one-character glyphs for input scrub handles', () => {
+    expect(getColorInputChannelGlyph('oklch', 'l')).toBe('L');
+    expect(getColorInputChannelGlyph('oklch', 'alpha')).toBe('α');
+    expect(getColorInputChannelGlyph('rgb', 'r')).toBe('R');
+  });
+
   it('parses color input expressions with relative math and precedence', () => {
     expect(
       parseColorInputExpression('10 + 5 * 2', {
@@ -294,6 +302,15 @@ describe('Color API helpers', () => {
     expect(end?.value).toBeCloseTo(0.4, 6);
     expect(hueHome?.value).toBeCloseTo(0, 6);
     expect(hueEnd?.value).toBeCloseTo(360, 6);
+  });
+
+  it('formats endpoint OKLCH colors as gamut-mapped hex values', () => {
+    expect(
+      formatColorStringInputValue({ l: 0, c: 0.211, h: 28, alpha: 1 }, 'hex'),
+    ).toBe('#000000');
+    expect(
+      formatColorStringInputValue({ l: 1, c: 0.211, h: 28, alpha: 1 }, 'hex'),
+    ).toBe('#ffffff');
   });
 
   it('parses legacy color-string input values', () => {

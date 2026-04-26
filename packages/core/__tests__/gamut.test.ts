@@ -76,6 +76,14 @@ describe('toSrgbGamut()', () => {
     const hex = toHex(mapped);
     expect(hex).toMatch(/^#[0-9a-f]{6}$/);
   });
+
+  it('should map chromatic endpoint colors to true black and white', () => {
+    const chromaticBlack: Color = { l: 0, c: 0.211, h: 28, alpha: 1 };
+    const chromaticWhite: Color = { l: 1, c: 0.211, h: 28, alpha: 1 };
+
+    expect(toHex(toSrgbGamut(chromaticBlack))).toBe('#000000');
+    expect(toHex(toSrgbGamut(chromaticWhite))).toBe('#ffffff');
+  });
 });
 
 describe('toP3Gamut()', () => {
@@ -86,5 +94,13 @@ describe('toP3Gamut()', () => {
     const mapped = toP3Gamut(extreme);
     expect(inP3Gamut(mapped)).toBe(true);
     expect(mapped.c).toBeLessThan(extreme.c);
+  });
+
+  it('should reduce chromatic endpoint colors to achromatic endpoints', () => {
+    const chromaticBlack: Color = { l: 0, c: 0.211, h: 28, alpha: 1 };
+    const chromaticWhite: Color = { l: 1, c: 0.211, h: 28, alpha: 1 };
+
+    expect(toP3Gamut(chromaticBlack).c).toBe(0);
+    expect(toP3Gamut(chromaticWhite).c).toBe(0);
   });
 });

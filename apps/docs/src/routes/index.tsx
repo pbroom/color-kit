@@ -151,6 +151,9 @@ export function HomePage() {
                 <Link to="/docs/shadcn-registry">Registry</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
+                <Link to="/playground">Playground</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
                 <a
                   href="https://github.com/pbroom/color-kit"
                   target="_blank"

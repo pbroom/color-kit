@@ -10,7 +10,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import type { Color } from 'color-kit';
-import { parse, toCss } from 'color-kit';
+import { parse, toCss, toHex, toSrgbGamut } from 'color-kit';
 import { useOptionalColorContext } from '@/hooks/color-context';
 import type { SetRequestedOptions } from '@/hooks/use-color';
 
@@ -28,6 +28,10 @@ function formatValue(
   color: Color,
   format: 'hex' | 'rgb' | 'hsl' | 'oklch',
 ): string {
+  if (format === 'hex') {
+    return toHex(toSrgbGamut(color));
+  }
+
   return toCss(color, format);
 }
 
