@@ -116,7 +116,10 @@ function normalizePrimitiveValue(
   return Math.min(max, Math.max(min, value));
 }
 
-function formatPrimitiveValue(value: number, precision: PrimitivePrecision): string {
+function formatPrimitiveValue(
+  value: number,
+  precision: PrimitivePrecision,
+): string {
   if (!Number.isFinite(value)) {
     return '0';
   }
@@ -225,7 +228,9 @@ function PanelSection({
   return (
     <section className="space-y-3">
       <div className="space-y-1">
-        <h2 className="text-sm font-medium tracking-tight text-white">{title}</h2>
+        <h2 className="text-sm font-medium tracking-tight text-white">
+          {title}
+        </h2>
         {description ? (
           <p className="text-xs leading-relaxed text-white/55">{description}</p>
         ) : null}
@@ -423,15 +428,18 @@ function PrimitiveValueInput({
 }: PrimitiveValueInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrubHandleRef = useRef<HTMLDivElement>(null);
-  const preservedSelectionRef =
-    useRef<PrimitiveInputSelectionSnapshot | null>(null);
+  const preservedSelectionRef = useRef<PrimitiveInputSelectionSnapshot | null>(
+    null,
+  );
   const clearPreservedSelectionFrameRef = useRef<number | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
   const scrubStartXRef = useRef(0);
   const scrubStartValueRef = useRef(0);
   const lastScrubXRef = useRef(0);
   const hasDragStartedRef = useRef(false);
-  const [draft, setDraft] = useState(() => formatPrimitiveValue(value, precision));
+  const [draft, setDraft] = useState(() =>
+    formatPrimitiveValue(value, precision),
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
 
@@ -640,7 +648,9 @@ function PrimitiveValueInput({
       if (activePointerIdRef.current !== null && hasDragStartedRef.current) {
         const deltaPixels = clientX - scrubStartXRef.current;
         const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-        commitValue(scrubStartValueRef.current + (deltaPixels / pixelsPerStep) * step);
+        commitValue(
+          scrubStartValueRef.current + (deltaPixels / pixelsPerStep) * step,
+        );
       }
       activePointerIdRef.current = null;
       hasDragStartedRef.current = false;
@@ -663,13 +673,18 @@ function PrimitiveValueInput({
     (clientX: number) => {
       lastScrubXRef.current = clientX;
       const deltaPixels = clientX - scrubStartXRef.current;
-      if (!hasDragStartedRef.current && Math.abs(deltaPixels) < scrubThreshold) {
+      if (
+        !hasDragStartedRef.current &&
+        Math.abs(deltaPixels) < scrubThreshold
+      ) {
         return;
       }
       hasDragStartedRef.current = true;
       setIsScrubbing(true);
       const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-      commitValue(scrubStartValueRef.current + (deltaPixels / pixelsPerStep) * step);
+      commitValue(
+        scrubStartValueRef.current + (deltaPixels / pixelsPerStep) * step,
+      );
     },
     [commitValue, scrubPixelsPerStep, scrubThreshold, step],
   );
@@ -689,9 +704,8 @@ function PrimitiveValueInput({
       hasDragStartedRef.current = false;
       event.currentTarget.setPointerCapture?.(event.pointerId);
       if (pointerLockEnabled) {
-        const lockRequest = event.currentTarget.requestPointerLock?.() as
-          | Promise<void>
-          | void;
+        const lockRequest =
+          event.currentTarget.requestPointerLock?.() as Promise<void> | void;
         if (lockRequest) {
           void lockRequest.catch(() => {});
         }
@@ -746,7 +760,10 @@ function PrimitiveValueInput({
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     return () => {
       document.removeEventListener('mousemove', handleLockedMouseMove);
-      document.removeEventListener('pointerlockchange', handlePointerLockChange);
+      document.removeEventListener(
+        'pointerlockchange',
+        handlePointerLockChange,
+      );
     };
   }, [endScrub, hasPointerLock, queueScrubValue]);
 
@@ -758,9 +775,7 @@ function PrimitiveValueInput({
         showInvalidState ? 'border-[#ff4e4e]' : ''
       } ${isScrubbing ? 'border-[#97c1ef]' : ''} ${
         PRIMITIVE_SIZE_CLASS[size]
-      } ${PRIMITIVE_DENSITY_CLASS[density]} ${
-        disabled ? 'opacity-45' : ''
-      }`}
+      } ${PRIMITIVE_DENSITY_CLASS[density]} ${disabled ? 'opacity-45' : ''}`}
       data-scrubbing={isScrubbing || undefined}
       data-valid={isVisuallyValid || undefined}
     >
@@ -962,7 +977,9 @@ export function PlaygroundPage() {
                   performanceProfile={performanceProfile}
                 >
                   {checkerboard ? <Background checkerboard /> : null}
-                  <ColorPlane edgeBehavior={repeatEdgePixels ? 'clamp' : 'transparent'} />
+                  <ColorPlane
+                    edgeBehavior={repeatEdgePixels ? 'clamp' : 'transparent'}
+                  />
                   {showP3Boundary ? (
                     <GamutBoundaryLayer
                       gamut="display-p3"
@@ -1053,7 +1070,9 @@ export function PlaygroundPage() {
                             {activeDisplayedHex}
                           </div>
                           <div className="text-xs text-white/55">
-                            {color.activeGamut === 'display-p3' ? 'Display P3' : 'sRGB'}{' '}
+                            {color.activeGamut === 'display-p3'
+                              ? 'Display P3'
+                              : 'sRGB'}{' '}
                             preview
                           </div>
                         </div>
@@ -1064,7 +1083,10 @@ export function PlaygroundPage() {
                           Current value
                         </div>
                         <div className="mt-1 font-mono text-lg text-white">
-                          {formatPrimitiveValue(primitiveValue, primitivePrecision)}
+                          {formatPrimitiveValue(
+                            primitiveValue,
+                            primitivePrecision,
+                          )}
                         </div>
                         <div className="mt-1 text-xs text-white/55">
                           {primitiveMin} to {primitiveMax} · {primitiveWrapMode}
@@ -1077,7 +1099,10 @@ export function PlaygroundPage() {
 
                   {activePage === 'plane' ? (
                     <>
-                      <PanelSection title="Color" description="Drive the current sample color.">
+                      <PanelSection
+                        title="Color"
+                        description="Drive the current sample color."
+                      >
                         <div className="space-y-3">
                           <div className="space-y-2">
                             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
@@ -1145,7 +1170,9 @@ export function PlaygroundPage() {
                           <SegmentedField
                             label="Preview gamut"
                             value={color.activeGamut}
-                            onChange={(next) => color.setActiveGamut(next, 'programmatic')}
+                            onChange={(next) =>
+                              color.setActiveGamut(next, 'programmatic')
+                            }
                             options={[
                               { value: 'display-p3', label: 'P3' },
                               { value: 'srgb', label: 'sRGB' },

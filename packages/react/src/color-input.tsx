@@ -709,15 +709,18 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           event.currentTarget.setPointerCapture(event.pointerId);
         }
 
-        const lockRequest = event.currentTarget.requestPointerLock?.() as
-          | Promise<void>
-          | void;
+        const lockRequest =
+          event.currentTarget.requestPointerLock?.() as Promise<void> | void;
         if (lockRequest) {
           void lockRequest.catch(() => {});
         }
-
       },
-      [channelValue, clearPreservedSelection, displayValue, preserveCurrentSelection],
+      [
+        channelValue,
+        clearPreservedSelection,
+        displayValue,
+        preserveCurrentSelection,
+      ],
     );
 
     const handleScrubPointerMove = useCallback(

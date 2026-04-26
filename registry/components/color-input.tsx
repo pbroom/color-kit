@@ -159,39 +159,41 @@ const DEFAULT_RANGES: Record<
   },
 };
 
-const CHANNEL_GLYPHS: Record<ColorInputModel, Record<ColorInputChannel, string>> =
-  {
-    oklch: {
-      l: 'L',
-      c: 'C',
-      h: 'H',
-      alpha: 'α',
-      r: 'R',
-      g: 'G',
-      b: 'B',
-      s: 'S',
-    },
-    rgb: {
-      r: 'R',
-      g: 'G',
-      b: 'B',
-      alpha: 'α',
-      l: 'L',
-      c: 'C',
-      h: 'H',
-      s: 'S',
-    },
-    hsl: {
-      h: 'H',
-      s: 'S',
-      l: 'L',
-      alpha: 'α',
-      c: 'C',
-      r: 'R',
-      g: 'G',
-      b: 'B',
-    },
-  };
+const CHANNEL_GLYPHS: Record<
+  ColorInputModel,
+  Record<ColorInputChannel, string>
+> = {
+  oklch: {
+    l: 'L',
+    c: 'C',
+    h: 'H',
+    alpha: 'α',
+    r: 'R',
+    g: 'G',
+    b: 'B',
+    s: 'S',
+  },
+  rgb: {
+    r: 'R',
+    g: 'G',
+    b: 'B',
+    alpha: 'α',
+    l: 'L',
+    c: 'C',
+    h: 'H',
+    s: 'S',
+  },
+  hsl: {
+    h: 'H',
+    s: 'S',
+    l: 'L',
+    alpha: 'α',
+    c: 'C',
+    r: 'R',
+    g: 'G',
+    b: 'B',
+  },
+};
 
 const DEFAULT_STEPS: Record<
   ColorInputModel,
@@ -1181,15 +1183,18 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           event.currentTarget.setPointerCapture(event.pointerId);
         }
 
-        const lockRequest = event.currentTarget.requestPointerLock?.() as
-          | Promise<void>
-          | void;
+        const lockRequest =
+          event.currentTarget.requestPointerLock?.() as Promise<void> | void;
         if (lockRequest) {
           void lockRequest.catch(() => {});
         }
-
       },
-      [channelValue, clearPreservedSelection, displayValue, preserveCurrentSelection],
+      [
+        channelValue,
+        clearPreservedSelection,
+        displayValue,
+        preserveCurrentSelection,
+      ],
     );
 
     const handleScrubPointerMove = useCallback(

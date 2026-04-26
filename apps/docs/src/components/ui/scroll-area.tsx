@@ -10,10 +10,7 @@ function ScrollArea({
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
-      className={cn(
-        'relative overflow-hidden rounded-[inherit]',
-        className,
-      )}
+      className={cn('relative overflow-hidden rounded-[inherit]', className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport className="size-full rounded-[inherit]">

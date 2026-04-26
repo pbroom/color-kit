@@ -244,7 +244,9 @@ describe('ColorInput', () => {
     const handle = container.querySelector(
       '[data-color-input-scrub-handle]',
     ) as HTMLDivElement;
-    const root = container.querySelector('[data-color-input]') as HTMLDivElement;
+    const root = container.querySelector(
+      '[data-color-input]',
+    ) as HTMLDivElement;
     handle.setPointerCapture = vi.fn();
 
     firePointerEvent(handle, 'pointerdown', {
@@ -286,7 +288,9 @@ describe('ColorInput', () => {
       />,
     );
 
-    const root = container.querySelector('[data-color-input]') as HTMLDivElement;
+    const root = container.querySelector(
+      '[data-color-input]',
+    ) as HTMLDivElement;
     const handle = container.querySelector(
       '[data-color-input-scrub-handle]',
     ) as HTMLDivElement;
@@ -319,7 +323,9 @@ describe('ColorInput', () => {
       />,
     );
 
-    const root = container.querySelector('[data-color-input]') as HTMLDivElement;
+    const root = container.querySelector(
+      '[data-color-input]',
+    ) as HTMLDivElement;
     const handle = container.querySelector(
       '[data-color-input-scrub-handle]',
     ) as HTMLDivElement;
