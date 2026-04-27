@@ -17,7 +17,6 @@ import {
 } from 'color-kit/react';
 import {
   toCss,
-  toHex,
   toP3Gamut,
   toSrgbGamut,
   type Color as ColorValue,
@@ -26,8 +25,10 @@ import {
   ArrowBigUp,
   ArrowLeftToLine,
   ArrowRightToLine,
+  DecimalsArrowRight,
   Diff,
   Github,
+  MousePointer2,
   Option,
 } from 'lucide-react';
 import {
@@ -57,13 +58,14 @@ import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
 type PlaygroundPageKey = 'plane' | 'input' | 'tooltip';
-type PrimitivePrecision = 'auto' | '0' | '1' | '2' | '3';
+type PrimitivePrecision = number;
 type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
-type PrimitiveScrubMultiplier = '1' | '0.1' | '0.01';
 type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
 type PrimitiveDensity = 'compact' | 'comfortable';
 type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
+
+const MAX_PRIMITIVE_PRECISION_DIGITS = 12;
 
 type SliderRailStyle = CSSProperties & {
   '--ck-slider-gradient-active': string;
@@ -94,13 +96,6 @@ const PLAYGROUND_PAGES: Array<{
     label: 'Tooltip',
   },
 ];
-
-const PLAYGROUND_PAGE_DESCRIPTIONS: Record<PlaygroundPageKey, string> = {
-  plane: 'Drag inside the color area and tune the plane from this properties rail.',
-  input: 'Tune the centered input and its editing behavior from this rail.',
-  tooltip:
-    'Hover between adjacent triggers to inspect initial delay, handoff cooldown, and open/close animation behavior.',
-};
 
 const TOOLTIP_DEMO_ITEMS: Array<{
   label: string;
@@ -146,12 +141,6 @@ const TOOLTIP_SIDE_DEMO_ITEMS: Array<{
   },
 ];
 
-const PRIMITIVE_SCRUB_MULTIPLIER: Record<PrimitiveScrubMultiplier, number> = {
-  '1': 1,
-  '0.1': 0.1,
-  '0.01': 0.01,
-};
-
 const PRIMITIVE_SIZE_CLASS: Record<PrimitiveSize, string> = {
   sm: 'w-32',
   md: 'w-44',
@@ -189,17 +178,38 @@ function normalizePrimitiveValue(
 function formatPrimitiveValue(
   value: number,
   precision: PrimitivePrecision,
+  autoTrim: boolean,
 ): string {
   if (!Number.isFinite(value)) {
     return '0';
   }
 
-  if (precision === 'auto') {
-    const rounded = Number(value.toFixed(6));
+  const fixed = value.toFixed(precision);
+  if (autoTrim) {
+    const rounded = Number(fixed);
     return Object.is(rounded, -0) ? '0' : String(rounded);
   }
 
-  return value.toFixed(Number(precision));
+  return fixed;
+}
+
+function normalizePrimitivePrecision(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.min(
+    MAX_PRIMITIVE_PRECISION_DIGITS,
+    Math.max(0, Math.round(value)),
+  );
+}
+
+function normalizePrimitiveScrubMultiplier(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  return Math.min(1000, Math.max(0.01, Number(value.toFixed(4))));
 }
 
 function parsePrimitiveDraft(
@@ -464,6 +474,58 @@ function NumberConfigField({
   );
 }
 
+function PrecisionConfigInput({
+  value,
+  onChange,
+}: {
+  value: PrimitivePrecision;
+  onChange: (value: PrimitivePrecision) => void;
+}) {
+  return (
+    <PropertyFieldTooltip label="Precision">
+      <label className="space-y-2">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          Precision
+        </span>
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={(nextValue) =>
+            onChange(normalizePrimitivePrecision(nextValue))
+          }
+          ariaLabel="Precision"
+          leadingElement={
+            <DecimalsArrowRight
+              aria-hidden="true"
+              className="size-3"
+              strokeWidth={1.75}
+            />
+          }
+          min={0}
+          max={MAX_PRIMITIVE_PRECISION_DIGITS}
+          wrapMode="clamp"
+          step={1}
+          fineStep={1}
+          coarseStep={2}
+          pageStep={3}
+          precision={0}
+          autoTrim
+          allowExpressions={false}
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
 function StepConfigInput({
   label,
   value,
@@ -495,7 +557,60 @@ function StepConfigInput({
           fineStep={step / 10}
           coarseStep={step * 10}
           pageStep={step * 10}
-          precision="auto"
+          precision={6}
+          autoTrim
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function DragStepConfigInput({
+  value,
+  onValueChange,
+}: {
+  value: number;
+  onValueChange: (value: number) => void;
+}) {
+  return (
+    <PropertyFieldTooltip label="Drag step">
+      <label className="block space-y-2">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          Drag step
+        </span>
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={(nextValue) =>
+            onValueChange(normalizePrimitiveScrubMultiplier(nextValue))
+          }
+          ariaLabel="Drag step"
+          leadingElement={
+            <MousePointer2
+              aria-hidden="true"
+              className="size-3"
+              strokeWidth={1.75}
+            />
+          }
+          min={0.01}
+          max={1000}
+          wrapMode="clamp"
+          step={0.01}
+          fineStep={0.001}
+          coarseStep={0.1}
+          pageStep={1}
+          precision={4}
+          autoTrim
           allowExpressions
           selectAllOnFocus
           commitOnBlur
@@ -539,7 +654,8 @@ function BoundsConfigInput({
           fineStep={0.1}
           coarseStep={10}
           pageStep={10}
-          precision="auto"
+          precision={6}
+          autoTrim
           allowExpressions
           selectAllOnFocus
           commitOnBlur
@@ -570,6 +686,7 @@ interface PrimitiveValueInputProps {
   coarseStep: number;
   pageStep: number;
   precision: PrimitivePrecision;
+  autoTrim: boolean;
   allowExpressions: boolean;
   selectAllOnFocus: boolean;
   commitOnBlur: boolean;
@@ -577,6 +694,7 @@ interface PrimitiveValueInputProps {
   scrubPixelsPerStep?: number;
   scrubThreshold: number;
   pointerLockEnabled: boolean;
+  horizontalArrowKeysMoveCaret?: boolean;
   disabled: boolean;
   readOnly: boolean;
   visualState: PrimitiveVisualState;
@@ -603,6 +721,7 @@ function PrimitiveValueInput({
   coarseStep,
   pageStep,
   precision,
+  autoTrim,
   allowExpressions,
   selectAllOnFocus,
   commitOnBlur,
@@ -610,6 +729,7 @@ function PrimitiveValueInput({
   scrubPixelsPerStep = 1,
   scrubThreshold,
   pointerLockEnabled,
+  horizontalArrowKeysMoveCaret = true,
   disabled,
   readOnly,
   visualState,
@@ -628,15 +748,15 @@ function PrimitiveValueInput({
   const lastScrubXRef = useRef(0);
   const hasDragStartedRef = useRef(false);
   const [draft, setDraft] = useState(() =>
-    formatPrimitiveValue(value, precision),
+    formatPrimitiveValue(value, precision, autoTrim),
   );
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
 
   const displayValue = useMemo(
-    () => formatPrimitiveValue(value, precision),
-    [precision, value],
+    () => formatPrimitiveValue(value, precision, autoTrim),
+    [autoTrim, precision, value],
   );
 
   useEffect(() => {
@@ -726,9 +846,9 @@ function PrimitiveValueInput({
     (nextValue: number) => {
       const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
       onValueChange(normalized);
-      setDraft(formatPrimitiveValue(normalized, precision));
+      setDraft(formatPrimitiveValue(normalized, precision, autoTrim));
     },
-    [max, min, onValueChange, precision, wrapMode],
+    [autoTrim, max, min, onValueChange, precision, wrapMode],
   );
 
   const commitDraft = useCallback(() => {
@@ -769,6 +889,13 @@ function PrimitiveValueInput({
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {
       if (disabled || readOnly) {
+        return;
+      }
+
+      if (
+        horizontalArrowKeysMoveCaret &&
+        (event.key === 'ArrowRight' || event.key === 'ArrowLeft')
+      ) {
         return;
       }
 
@@ -822,6 +949,7 @@ function PrimitiveValueInput({
       disabled,
       displayValue,
       getModifiedStep,
+      horizontalArrowKeysMoveCaret,
       max,
       min,
       pageStep,
@@ -1113,32 +1241,34 @@ export function PlaygroundPage() {
   const [primitiveCoarseStep, setPrimitiveCoarseStep] = useState(10);
   const primitivePageStep = 10;
   const [primitivePrecision, setPrimitivePrecision] =
-    useState<PrimitivePrecision>('auto');
+    useState<PrimitivePrecision>(3);
+  const [primitiveAutoTrim, setPrimitiveAutoTrim] = useState(true);
   const [primitiveAllowExpressions, setPrimitiveAllowExpressions] =
     useState(true);
   const [primitiveSelectAllOnFocus, setPrimitiveSelectAllOnFocus] =
     useState(true);
   const [primitiveCommitOnBlur, setPrimitiveCommitOnBlur] = useState(true);
+  const [
+    primitiveHorizontalArrowKeysMoveCaret,
+    setPrimitiveHorizontalArrowKeysMoveCaret,
+  ] = useState(true);
   const [primitiveScrubEnabled, setPrimitiveScrubEnabled] = useState(true);
   const [primitivePointerLockEnabled, setPrimitivePointerLockEnabled] =
     useState(true);
   const [primitiveScrubThreshold, setPrimitiveScrubThreshold] = useState(2);
   const [primitiveScrubMultiplier, setPrimitiveScrubMultiplier] =
-    useState<PrimitiveScrubMultiplier>('1');
+    useState(1);
   const [primitiveDisabled, setPrimitiveDisabled] = useState(false);
   const [primitiveReadOnly, setPrimitiveReadOnly] = useState(false);
   const [primitiveVisualState, setPrimitiveVisualState] =
     useState<PrimitiveVisualState>('auto');
-  const [primitiveSize, setPrimitiveSize] = useState<PrimitiveSize>('md');
+  const primitiveSize: PrimitiveSize = 'sm';
   const [primitiveDensity, setPrimitiveDensity] =
     useState<PrimitiveDensity>('compact');
   const [tooltipSide, setTooltipSide] = useState<TooltipSide>('top');
   const [tooltipDelayDuration, setTooltipDelayDuration] = useState(450);
   const [tooltipSkipDelayDuration, setTooltipSkipDelayDuration] = useState(300);
 
-  const activePageConfig =
-    PLAYGROUND_PAGES.find((page) => page.value === activePage) ??
-    PLAYGROUND_PAGES[0];
   const channels = useMemo(
     () => normalizeAxes(axisState.x, axisState.y),
     [axisState.x, axisState.y],
@@ -1160,22 +1290,6 @@ export function PlaygroundPage() {
     () => getOklchSliderRail('h', color.requested, color.activeGamut),
     [color.activeGamut, color.requested],
   );
-  const activeDisplayedSrgb = useMemo(
-    () => toCss(toSrgbGamut(color.requested), 'rgb'),
-    [color.requested],
-  );
-  const activeDisplayedActive = useMemo(
-    () =>
-      color.activeGamut === 'display-p3'
-        ? toCss(toP3Gamut(color.requested), 'p3')
-        : activeDisplayedSrgb,
-    [activeDisplayedSrgb, color.activeGamut, color.requested],
-  );
-  const activeDisplayedHex = useMemo(
-    () => toHex(toSrgbGamut(color.requested)).toUpperCase(),
-    [color.requested],
-  );
-
   const setAxis = (axis: 'x' | 'y', channel: ColorAreaChannel) => {
     setAxisState((current) => {
       if (axis === 'x') {
@@ -1191,7 +1305,7 @@ export function PlaygroundPage() {
   };
 
   const primitiveScrubPixelsPerStep =
-    1 / PRIMITIVE_SCRUB_MULTIPLIER[primitiveScrubMultiplier];
+    1 / normalizePrimitiveScrubMultiplier(primitiveScrubMultiplier);
 
   return (
     <div className="ck-shell-bg min-h-screen">
@@ -1301,6 +1415,7 @@ export function PlaygroundPage() {
                 coarseStep={primitiveCoarseStep}
                 pageStep={primitivePageStep}
                 precision={primitivePrecision}
+                autoTrim={primitiveAutoTrim}
                 allowExpressions={primitiveAllowExpressions}
                 selectAllOnFocus={primitiveSelectAllOnFocus}
                 commitOnBlur={primitiveCommitOnBlur}
@@ -1308,6 +1423,9 @@ export function PlaygroundPage() {
                 scrubPixelsPerStep={primitiveScrubPixelsPerStep}
                 scrubThreshold={primitiveScrubThreshold}
                 pointerLockEnabled={primitivePointerLockEnabled}
+                horizontalArrowKeysMoveCaret={
+                  primitiveHorizontalArrowKeysMoveCaret
+                }
                 disabled={primitiveDisabled}
                 readOnly={primitiveReadOnly}
                 visualState={primitiveVisualState}
@@ -1328,65 +1446,6 @@ export function PlaygroundPage() {
               <ScrollArea className="h-full">
                 <TooltipProvider>
                   <div className="space-y-6 p-4">
-                  <PanelSection
-                    title={activePageConfig.label}
-                    description={PLAYGROUND_PAGE_DESCRIPTIONS[activePage]}
-                  >
-                    {activePage === 'plane' ? (
-                      <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-black/20 p-3">
-                        <div
-                          className="size-12 shrink-0 rounded-xl border border-white/10"
-                          style={{
-                            backgroundColor: activeDisplayedSrgb,
-                            background: activeDisplayedActive,
-                          }}
-                          aria-hidden="true"
-                        />
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-white">
-                            {activeDisplayedHex}
-                          </div>
-                          <div className="text-xs text-white/55">
-                            {color.activeGamut === 'display-p3'
-                              ? 'Display P3'
-                              : 'sRGB'}{' '}
-                            preview
-                          </div>
-                        </div>
-                      </div>
-                    ) : activePage === 'input' ? (
-                      <div className="rounded-2xl border border-white/8 bg-black/20 p-3">
-                        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                          Current value
-                        </div>
-                        <div className="mt-1 font-mono text-lg text-white">
-                          {formatPrimitiveValue(
-                            primitiveValue,
-                            primitivePrecision,
-                          )}
-                        </div>
-                        <div className="mt-1 text-xs text-white/55">
-                          {primitiveMin} to {primitiveMax} · {primitiveWrapMode}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-white/8 bg-black/20 p-3">
-                        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                          Timing
-                        </div>
-                        <div className="mt-1 font-mono text-lg text-white">
-                          {tooltipDelayDuration}ms /{' '}
-                          {tooltipSkipDelayDuration}ms
-                        </div>
-                        <div className="mt-1 text-xs text-white/55">
-                          {tooltipSide} side · initial delay / cooldown
-                        </div>
-                      </div>
-                    )}
-                  </PanelSection>
-
-                  <Separator className="bg-white/8" />
-
                   {activePage === 'plane' ? (
                     <>
                       <PanelSection
@@ -1561,37 +1620,47 @@ export function PlaygroundPage() {
                         title="Input"
                       >
                         <div className="space-y-4">
-                          <PropertyFieldTooltip label="Value">
-                            <label className="block space-y-2">
-                              <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                                Value
-                              </span>
-                              <PrimitiveValueInput
-                                value={primitiveValue}
-                                onValueChange={setPrimitiveValue}
-                                ariaLabel="Value"
-                                min={primitiveMin}
-                                max={primitiveMax}
-                                wrapMode={primitiveWrapMode}
-                                step={primitiveStep}
-                                fineStep={primitiveFineStep}
-                                coarseStep={primitiveCoarseStep}
-                                pageStep={primitivePageStep}
-                                precision={primitivePrecision}
-                                allowExpressions={primitiveAllowExpressions}
-                                selectAllOnFocus={primitiveSelectAllOnFocus}
-                                commitOnBlur={primitiveCommitOnBlur}
-                                scrubEnabled={primitiveScrubEnabled}
-                                scrubPixelsPerStep={primitiveScrubPixelsPerStep}
-                                scrubThreshold={primitiveScrubThreshold}
-                                pointerLockEnabled={primitivePointerLockEnabled}
-                                disabled={primitiveDisabled}
-                                readOnly={primitiveReadOnly}
-                                visualState={primitiveVisualState}
-                                size="full"
-                              />
-                            </label>
-                          </PropertyFieldTooltip>
+                          <div className="grid grid-cols-2 gap-3">
+                            <PropertyFieldTooltip label="Value">
+                              <label className="block space-y-2">
+                                <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Value
+                                </span>
+                                <PrimitiveValueInput
+                                  value={primitiveValue}
+                                  onValueChange={setPrimitiveValue}
+                                  ariaLabel="Value"
+                                  min={primitiveMin}
+                                  max={primitiveMax}
+                                  wrapMode={primitiveWrapMode}
+                                  step={primitiveStep}
+                                  fineStep={primitiveFineStep}
+                                  coarseStep={primitiveCoarseStep}
+                                  pageStep={primitivePageStep}
+                                  precision={primitivePrecision}
+                                  autoTrim={primitiveAutoTrim}
+                                  allowExpressions={primitiveAllowExpressions}
+                                  selectAllOnFocus={primitiveSelectAllOnFocus}
+                                  commitOnBlur={primitiveCommitOnBlur}
+                                  scrubEnabled={primitiveScrubEnabled}
+                                  scrubPixelsPerStep={primitiveScrubPixelsPerStep}
+                                  scrubThreshold={primitiveScrubThreshold}
+                                  pointerLockEnabled={primitivePointerLockEnabled}
+                                  horizontalArrowKeysMoveCaret={
+                                    primitiveHorizontalArrowKeysMoveCaret
+                                  }
+                                  disabled={primitiveDisabled}
+                                  readOnly={primitiveReadOnly}
+                                  visualState={primitiveVisualState}
+                                  size="full"
+                                />
+                              </label>
+                            </PropertyFieldTooltip>
+                            <PrecisionConfigInput
+                              value={primitivePrecision}
+                              onChange={setPrimitivePrecision}
+                            />
+                          </div>
                           <div className="grid grid-cols-2 gap-3">
                             <BoundsConfigInput
                               label="Min"
@@ -1628,18 +1697,6 @@ export function PlaygroundPage() {
                               { value: 'free', label: 'Free' },
                             ]}
                           />
-                          <SegmentedField
-                            label="Precision"
-                            value={primitivePrecision}
-                            onChange={setPrimitivePrecision}
-                            options={[
-                              { value: 'auto', label: 'Auto' },
-                              { value: '0', label: '0' },
-                              { value: '1', label: '1' },
-                              { value: '2', label: '2' },
-                              { value: '3', label: '3' },
-                            ]}
-                          />
                         </div>
                       </PanelSection>
 
@@ -1661,6 +1718,10 @@ export function PlaygroundPage() {
                               />
                             }
                             step={0.1}
+                          />
+                          <DragStepConfigInput
+                            value={primitiveScrubMultiplier}
+                            onValueChange={setPrimitiveScrubMultiplier}
                           />
                           <StepConfigInput
                             label="Fine"
@@ -1713,6 +1774,16 @@ export function PlaygroundPage() {
                             checked={primitiveCommitOnBlur}
                             onChange={setPrimitiveCommitOnBlur}
                           />
+                          <ToggleField
+                            label="Horizontal arrows move caret"
+                            checked={primitiveHorizontalArrowKeysMoveCaret}
+                            onChange={setPrimitiveHorizontalArrowKeysMoveCaret}
+                          />
+                          <ToggleField
+                            label="Trim trailing zeros"
+                            checked={primitiveAutoTrim}
+                            onChange={setPrimitiveAutoTrim}
+                          />
                         </div>
                       </PanelSection>
 
@@ -1739,16 +1810,6 @@ export function PlaygroundPage() {
                             onChange={setPrimitiveScrubThreshold}
                             step={1}
                           />
-                          <SegmentedField
-                            label="Drag step"
-                            value={primitiveScrubMultiplier}
-                            onChange={setPrimitiveScrubMultiplier}
-                            options={[
-                              { value: '1', label: '1' },
-                              { value: '0.1', label: '0.1' },
-                              { value: '0.01', label: '0.01' },
-                            ]}
-                          />
                         </div>
                       </PanelSection>
 
@@ -1759,16 +1820,6 @@ export function PlaygroundPage() {
                         description="Preview primitive sizing and state variants."
                       >
                         <div className="space-y-3">
-                          <SegmentedField
-                            label="Size"
-                            value={primitiveSize}
-                            onChange={setPrimitiveSize}
-                            options={[
-                              { value: 'sm', label: 'Sm' },
-                              { value: 'md', label: 'Md' },
-                              { value: 'lg', label: 'Lg' },
-                            ]}
-                          />
                           <SegmentedField
                             label="Density"
                             value={primitiveDensity}

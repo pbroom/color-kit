@@ -249,7 +249,7 @@ function DocsLayoutInner() {
                 <Link to="/docs/shadcn-registry">Registry</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/playground">Playground</Link>
+                <Link to="/playground">Lab</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
                 <a

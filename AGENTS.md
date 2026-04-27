@@ -138,5 +138,7 @@ This file defines top-level guidance for Codex in this repository.
 - `PrimitiveValueInput` should default to the compact 24px height and to 1 value step per 1px of scrub drag movement.
 - Input primitive min/max controls in the properties panel should be icon-only fields with accessible names and hover/focus tooltips, not visible labels above each input.
 - The docs playground is now the Lab and includes Plane, Input, and Tooltip pages.
-- The Lab tooltip component should preserve provider-scoped handoff behavior: initial hover delay, cooldown-backed sequential handoffs, one visible tooltip at a time, and first-open/last-close animations.
+- The Lab tooltip component should preserve provider-scoped handoff behavior: 450ms default initial hover delay, cooldown-backed sequential handoffs, one visible tooltip at a time, and first-open/last-close animations.
 - `PrimitiveValueInput` scrub math should quantize pointer deltas to whole CSS pixels before applying the configured step so `step={1}` stays integer-per-pixel.
+- `PrimitiveValueInput` precision should mean max decimal places, while `autoTrim` separately controls trailing-zero trimming; the Input Lab defaults precision to `3` with trimming enabled.
+- Input Lab Step-adjacent controls should use draggable numeric inputs for precision and drag step, with `DecimalsArrowRight` and pointer-style leading icons respectively.
