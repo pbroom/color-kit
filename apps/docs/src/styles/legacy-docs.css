@@ -1725,7 +1725,13 @@ html:not(.dark) .prose .shiki span {
 }
 
 .ck-input[data-color-input] [data-color-input-scrub-handle] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
   color: rgba(255, 255, 255, 0.55);
   font-family: var(--font-sans);
   font-size: 11px;
@@ -1736,7 +1742,8 @@ html:not(.dark) .prose .shiki span {
 }
 
 .ck-input[data-color-input] input[type='text'] {
-  width: 100%;
+  flex: 1 1 0;
+  width: auto;
   min-height: 0;
   min-width: 0;
   height: 24px;

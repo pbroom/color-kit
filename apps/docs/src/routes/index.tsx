@@ -151,7 +151,7 @@ export function HomePage() {
                 <Link to="/docs/shadcn-registry">Registry</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/playground">Playground</Link>
+                <Link to="/playground">Lab</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
                 <a
@@ -196,7 +196,7 @@ export function HomePage() {
         <section className="space-y-4">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              Interactive Playground Grid
+              Interactive Lab Grid
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
               This surface doubles as product showcase, performance testbed, and
