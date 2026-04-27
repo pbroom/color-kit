@@ -22,7 +22,7 @@ import {
   toSrgbGamut,
   type Color as ColorValue,
 } from 'color-kit';
-import { Github } from 'lucide-react';
+import { ArrowLeftToLine, ArrowRightToLine, Github } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -47,7 +47,7 @@ type PlaygroundPageKey = 'plane' | 'input';
 type PrimitivePrecision = 'auto' | '0' | '1' | '2' | '3';
 type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
 type PrimitiveScrubMultiplier = '1' | '0.1' | '0.01';
-type PrimitiveSize = 'sm' | 'md' | 'lg';
+type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
 type PrimitiveDensity = 'compact' | 'comfortable';
 type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
 
@@ -87,6 +87,7 @@ const PRIMITIVE_SIZE_CLASS: Record<PrimitiveSize, string> = {
   sm: 'w-32',
   md: 'w-44',
   lg: 'w-60',
+  full: 'w-full',
 };
 
 const PRIMITIVE_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
@@ -371,9 +372,57 @@ function NumberConfigField({
   );
 }
 
+function BoundsConfigInput({
+  label,
+  value,
+  onValueChange,
+  leadingElement,
+}: {
+  label: string;
+  value: number;
+  onValueChange: (value: number) => void;
+  leadingElement: ReactNode;
+}) {
+  return (
+    <label className="group relative block">
+      <PrimitiveValueInput
+        value={value}
+        onValueChange={onValueChange}
+        ariaLabel={label}
+        leadingElement={leadingElement}
+        min={-1000}
+        max={1000}
+        wrapMode="free"
+        step={1}
+        fineStep={0.1}
+        coarseStep={10}
+        pageStep={10}
+        precision="auto"
+        allowExpressions
+        selectAllOnFocus
+        commitOnBlur
+        scrubEnabled
+        scrubPixelsPerStep={1}
+        scrubThreshold={1}
+        pointerLockEnabled={false}
+        disabled={false}
+        readOnly={false}
+        visualState="auto"
+        size="full"
+        density="compact"
+      />
+      <span className="pointer-events-none absolute left-0 top-full z-10 mt-1 rounded-md border border-white/10 bg-[#111] px-2 py-1 text-[11px] font-medium text-white/80 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        {label}
+      </span>
+    </label>
+  );
+}
+
 interface PrimitiveValueInputProps {
   value: number;
   onValueChange: (value: number) => void;
+  ariaLabel?: string;
+  leadingElement?: ReactNode;
   min: number;
   max: number;
   wrapMode: PrimitiveWrapMode;
@@ -386,7 +435,7 @@ interface PrimitiveValueInputProps {
   selectAllOnFocus: boolean;
   commitOnBlur: boolean;
   scrubEnabled: boolean;
-  scrubPixelsPerStep: number;
+  scrubPixelsPerStep?: number;
   scrubThreshold: number;
   pointerLockEnabled: boolean;
   disabled: boolean;
@@ -405,6 +454,8 @@ interface PrimitiveInputSelectionSnapshot {
 function PrimitiveValueInput({
   value,
   onValueChange,
+  ariaLabel,
+  leadingElement = 'V',
   min,
   max,
   wrapMode,
@@ -417,7 +468,7 @@ function PrimitiveValueInput({
   selectAllOnFocus,
   commitOnBlur,
   scrubEnabled,
-  scrubPixelsPerStep,
+  scrubPixelsPerStep = 1,
   scrubThreshold,
   pointerLockEnabled,
   disabled,
@@ -647,9 +698,11 @@ function PrimitiveValueInput({
     (clientX = lastScrubXRef.current) => {
       if (activePointerIdRef.current !== null && hasDragStartedRef.current) {
         const deltaPixels = clientX - scrubStartXRef.current;
+        const wholeDeltaPixels = Math.round(deltaPixels);
         const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
         commitValue(
-          scrubStartValueRef.current + (deltaPixels / pixelsPerStep) * step,
+          scrubStartValueRef.current +
+            (wholeDeltaPixels / pixelsPerStep) * step,
         );
       }
       activePointerIdRef.current = null;
@@ -681,9 +734,10 @@ function PrimitiveValueInput({
       }
       hasDragStartedRef.current = true;
       setIsScrubbing(true);
+      const wholeDeltaPixels = Math.round(deltaPixels);
       const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
       commitValue(
-        scrubStartValueRef.current + (deltaPixels / pixelsPerStep) * step,
+        scrubStartValueRef.current + (wholeDeltaPixels / pixelsPerStep) * step,
       );
     },
     [commitValue, scrubPixelsPerStep, scrubThreshold, step],
@@ -792,7 +846,7 @@ function PrimitiveValueInput({
             if (!hasPointerLock()) endScrub();
           }}
         >
-          V
+          {leadingElement}
         </div>
       ) : null}
       <input
@@ -801,6 +855,7 @@ function PrimitiveValueInput({
         value={currentValue}
         disabled={disabled}
         readOnly={readOnly}
+        aria-label={ariaLabel}
         aria-invalid={showInvalidState || (isEditing && !isDraftValid)}
         onFocus={handleFocus}
         onBlur={handleBlur}
@@ -1269,15 +1324,29 @@ export function PlaygroundPage() {
                             step={primitiveStep}
                           />
                           <div className="grid grid-cols-2 gap-3">
-                            <NumberConfigField
+                            <BoundsConfigInput
                               label="Min"
                               value={primitiveMin}
-                              onChange={setPrimitiveMin}
+                              onValueChange={setPrimitiveMin}
+                              leadingElement={
+                                <ArrowLeftToLine
+                                  aria-hidden="true"
+                                  className="size-3"
+                                  strokeWidth={1.75}
+                                />
+                              }
                             />
-                            <NumberConfigField
+                            <BoundsConfigInput
                               label="Max"
                               value={primitiveMax}
-                              onChange={setPrimitiveMax}
+                              onValueChange={setPrimitiveMax}
+                              leadingElement={
+                                <ArrowRightToLine
+                                  aria-hidden="true"
+                                  className="size-3"
+                                  strokeWidth={1.75}
+                                />
+                              }
                             />
                           </div>
                           <SegmentedField

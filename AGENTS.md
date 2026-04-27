@@ -132,3 +132,4 @@ This file defines top-level guidance for Codex in this repository.
 - The Input Primitive Lab should keep the standalone input directly on the page without decorative wrappers such as cards or background gradients.
 - The standalone input should inherit the default spacing, sizing, font, and cursor treatment refined in the color plane playground while remaining state-independent from the color plane.
 - Invalid raw input content should not automatically trigger a visible error state in the Input Primitive Lab.
+- Dogfooding the input primitive in the properties panel should preserve the existing ColorPlane `L`, `C`, and `H` leading labels rather than replacing them with property-panel icons.
