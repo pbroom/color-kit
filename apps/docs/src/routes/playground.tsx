@@ -22,7 +22,14 @@ import {
   toSrgbGamut,
   type Color as ColorValue,
 } from 'color-kit';
-import { ArrowLeftToLine, ArrowRightToLine, Github } from 'lucide-react';
+import {
+  ArrowBigUp,
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  Diff,
+  Github,
+  Option,
+} from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -40,16 +47,23 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
-type PlaygroundPageKey = 'plane' | 'input';
+type PlaygroundPageKey = 'plane' | 'input' | 'tooltip';
 type PrimitivePrecision = 'auto' | '0' | '1' | '2' | '3';
 type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
 type PrimitiveScrubMultiplier = '1' | '0.1' | '0.01';
 type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
 type PrimitiveDensity = 'compact' | 'comfortable';
 type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
+type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
 
 type SliderRailStyle = CSSProperties & {
   '--ck-slider-gradient-active': string;
@@ -74,6 +88,61 @@ const PLAYGROUND_PAGES: Array<{
   {
     value: 'input',
     label: 'Input Primitive',
+  },
+  {
+    value: 'tooltip',
+    label: 'Tooltip',
+  },
+];
+
+const PLAYGROUND_PAGE_DESCRIPTIONS: Record<PlaygroundPageKey, string> = {
+  plane: 'Drag inside the color area and tune the plane from this properties rail.',
+  input: 'Tune the centered input and its editing behavior from this rail.',
+  tooltip:
+    'Hover between adjacent triggers to inspect initial delay, handoff cooldown, and open/close animation behavior.',
+};
+
+const TOOLTIP_DEMO_ITEMS: Array<{
+  label: string;
+  tooltip: string;
+}> = [
+  {
+    label: 'Plane',
+    tooltip: 'Show color-plane controls',
+  },
+  {
+    label: 'Input',
+    tooltip: 'Tune channel input behavior',
+  },
+  {
+    label: 'Copy',
+    tooltip: 'Copy the current value',
+  },
+  {
+    label: 'Inspect',
+    tooltip: 'Open inspector details',
+  },
+];
+
+const TOOLTIP_SIDE_DEMO_ITEMS: Array<{
+  side: TooltipSide;
+  tooltip: string;
+}> = [
+  {
+    side: 'top',
+    tooltip: 'This tooltip opens above the trigger',
+  },
+  {
+    side: 'right',
+    tooltip: 'This tooltip opens to the right',
+  },
+  {
+    side: 'bottom',
+    tooltip: 'This tooltip opens below the trigger',
+  },
+  {
+    side: 'left',
+    tooltip: 'This tooltip opens to the left',
   },
 ];
 
@@ -241,6 +310,23 @@ function PanelSection({
   );
 }
 
+function PropertyFieldTooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="min-w-0">{children}</div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function SegmentedField<T extends string>({
   label,
   value,
@@ -253,32 +339,34 @@ function SegmentedField<T extends string>({
   options: Array<{ value: T; label: string }>;
 }) {
   return (
-    <div className="space-y-2">
-      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-        {label}
-      </p>
-      <ToggleGroup
-        type="single"
-        value={value}
-        className="h-auto w-full justify-start rounded-xl border border-white/8 bg-white/[0.03] p-1"
-        onValueChange={(next) => {
-          if (next) {
-            onChange(next as T);
-          }
-        }}
-      >
-        {options.map((option) => (
-          <ToggleGroupItem
-            key={option.value}
-            value={option.value}
-            className="h-8 flex-1 rounded-lg px-2 text-xs text-white/70 data-[state=on]:bg-white/10 data-[state=on]:text-white data-[state=on]:shadow-none"
-            aria-label={`${label}: ${option.label}`}
-          >
-            {option.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-    </div>
+    <PropertyFieldTooltip label={label}>
+      <div className="space-y-2">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          {label}
+        </p>
+        <ToggleGroup
+          type="single"
+          value={value}
+          className="h-auto w-full justify-start rounded-xl border border-white/8 bg-white/[0.03] p-1"
+          onValueChange={(next) => {
+            if (next) {
+              onChange(next as T);
+            }
+          }}
+        >
+          {options.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              value={option.value}
+              className="h-8 flex-1 rounded-lg px-2 text-xs text-white/70 data-[state=on]:bg-white/10 data-[state=on]:text-white data-[state=on]:shadow-none"
+              aria-label={`${label}: ${option.label}`}
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+    </PropertyFieldTooltip>
   );
 }
 
@@ -292,15 +380,17 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-sm text-white/78">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="size-4 rounded border-white/20 bg-transparent accent-white"
-      />
-    </label>
+    <PropertyFieldTooltip label={label}>
+      <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-sm text-white/78">
+        <span>{label}</span>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+          className="size-4 rounded border-white/20 bg-transparent accent-white"
+        />
+      </label>
+    </PropertyFieldTooltip>
   );
 }
 
@@ -352,23 +442,74 @@ function NumberConfigField({
   step?: number;
 }) {
   return (
-    <label className="space-y-2">
-      <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-        {label}
-      </span>
-      <input
-        type="number"
-        value={value}
-        step={step}
-        onChange={(event) => {
-          const next = Number(event.target.value);
-          if (Number.isFinite(next)) {
-            onChange(next);
-          }
-        }}
-        className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-[#5288db]"
-      />
-    </label>
+    <PropertyFieldTooltip label={label}>
+      <label className="space-y-2">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          {label}
+        </span>
+        <input
+          type="number"
+          value={value}
+          step={step}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            if (Number.isFinite(next)) {
+              onChange(next);
+            }
+          }}
+          className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-[#5288db]"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function StepConfigInput({
+  label,
+  value,
+  onValueChange,
+  leadingElement,
+  step,
+}: {
+  label: string;
+  value: number;
+  onValueChange: (value: number) => void;
+  leadingElement: ReactNode;
+  step: number;
+}) {
+  return (
+    <PropertyFieldTooltip label={label}>
+      <label className="block space-y-2">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          {label}
+        </span>
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={onValueChange}
+          ariaLabel={label}
+          leadingElement={leadingElement}
+          min={0}
+          max={1000}
+          wrapMode="free"
+          step={step}
+          fineStep={step / 10}
+          coarseStep={step * 10}
+          pageStep={step * 10}
+          precision="auto"
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
   );
 }
 
@@ -384,37 +525,35 @@ function BoundsConfigInput({
   leadingElement: ReactNode;
 }) {
   return (
-    <label className="group relative block">
-      <PrimitiveValueInput
-        value={value}
-        onValueChange={onValueChange}
-        ariaLabel={label}
-        leadingElement={leadingElement}
-        min={-1000}
-        max={1000}
-        wrapMode="free"
-        step={1}
-        fineStep={0.1}
-        coarseStep={10}
-        pageStep={10}
-        precision="auto"
-        allowExpressions
-        selectAllOnFocus
-        commitOnBlur
-        scrubEnabled
-        scrubPixelsPerStep={1}
-        scrubThreshold={1}
-        pointerLockEnabled={false}
-        disabled={false}
-        readOnly={false}
-        visualState="auto"
-        size="full"
-        density="compact"
-      />
-      <span className="pointer-events-none absolute left-0 top-full z-10 mt-1 rounded-md border border-white/10 bg-[#111] px-2 py-1 text-[11px] font-medium text-white/80 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-        {label}
-      </span>
-    </label>
+    <PropertyFieldTooltip label={label}>
+      <label className="block">
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={onValueChange}
+          ariaLabel={label}
+          leadingElement={leadingElement}
+          min={-1000}
+          max={1000}
+          wrapMode="free"
+          step={1}
+          fineStep={0.1}
+          coarseStep={10}
+          pageStep={10}
+          precision="auto"
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
   );
 }
 
@@ -442,7 +581,7 @@ interface PrimitiveValueInputProps {
   readOnly: boolean;
   visualState: PrimitiveVisualState;
   size: PrimitiveSize;
-  density: PrimitiveDensity;
+  density?: PrimitiveDensity;
 }
 
 interface PrimitiveInputSelectionSnapshot {
@@ -475,7 +614,7 @@ function PrimitiveValueInput({
   readOnly,
   visualState,
   size,
-  density,
+  density = 'compact',
 }: PrimitiveValueInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrubHandleRef = useRef<HTMLDivElement>(null);
@@ -492,6 +631,7 @@ function PrimitiveValueInput({
     formatPrimitiveValue(value, precision),
   );
   const [isEditing, setIsEditing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
 
   const displayValue = useMemo(
@@ -539,7 +679,7 @@ function PrimitiveValueInput({
     input.setSelectionRange(
       Math.min(snapshot.start, valueLength),
       Math.min(snapshot.end, valueLength),
-      snapshot.direction,
+      snapshot.direction ?? undefined,
     );
   }, []);
 
@@ -823,15 +963,26 @@ function PrimitiveValueInput({
 
   useEffect(() => clearPreservedSelection, [clearPreservedSelection]);
 
+  const borderColor = showInvalidState
+    ? '#ff4e4e'
+    : isScrubbing
+      ? '#97c1ef'
+      : isEditing
+        ? '#5288db'
+        : isHovered
+          ? 'rgba(255, 255, 255, 0.1)'
+          : 'transparent';
+
   return (
     <div
-      className={`box-border flex items-center rounded-[4px] border border-transparent bg-[#383838] p-0 font-sans text-white hover:border-white/10 focus-within:border-[#5288db] ${
-        showInvalidState ? 'border-[#ff4e4e]' : ''
-      } ${isScrubbing ? 'border-[#97c1ef]' : ''} ${
+      className={`box-border flex items-center rounded-[4px] border bg-[#383838] p-0 font-sans text-white ${
         PRIMITIVE_SIZE_CLASS[size]
       } ${PRIMITIVE_DENSITY_CLASS[density]} ${disabled ? 'opacity-45' : ''}`}
+      style={{ borderColor }}
       data-scrubbing={isScrubbing || undefined}
       data-valid={isVisuallyValid || undefined}
+      onPointerEnter={() => setIsHovered(true)}
+      onPointerLeave={() => setIsHovered(false)}
     >
       {scrubEnabled ? (
         <div
@@ -870,6 +1021,68 @@ function PrimitiveValueInput({
   );
 }
 
+function TooltipPlaygroundStage({
+  delayDuration,
+  skipDelayDuration,
+  side,
+}: {
+  delayDuration: number;
+  skipDelayDuration: number;
+  side: TooltipSide;
+}) {
+  return (
+    <TooltipProvider
+      delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
+    >
+      <div className="relative flex w-full max-w-xl flex-col items-center gap-8 rounded-[28px] border border-white/8 bg-black/20 px-8 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="space-y-2 text-center">
+          <p className="text-sm font-medium text-white">Tooltip handoff lab</p>
+          <p className="mx-auto max-w-sm text-xs leading-relaxed text-white/55">
+            Hover the buttons left to right, then pause and enter again. The
+            first and final tooltip animate; handoffs stay immediate.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          {TOOLTIP_DEMO_ITEMS.map((item) => (
+            <Tooltip key={item.label}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="h-10 rounded-xl border border-white/10 bg-white/[0.06] px-4 text-sm font-medium text-white/75 outline-none transition-[background-color,border-color,color] hover:border-white/20 hover:bg-white/[0.1] hover:text-white focus-visible:ring-2 focus-visible:ring-white/35"
+                >
+                  {item.label}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={side}>{item.tooltip}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+        <div className="space-y-3 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/40">
+            Fixed placement samples
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {TOOLTIP_SIDE_DEMO_ITEMS.map((item) => (
+              <Tooltip key={item.side}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-9 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs font-medium capitalize text-white/65 outline-none transition-[background-color,border-color,color] hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-white/35"
+                  >
+                    {item.side}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={item.side}>{item.tooltip}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
+  );
+}
+
 export function PlaygroundPage() {
   const color = useColor({
     defaultColor: 'oklch(0.64 0.24 28)',
@@ -898,7 +1111,7 @@ export function PlaygroundPage() {
   const [primitiveStep, setPrimitiveStep] = useState(1);
   const [primitiveFineStep, setPrimitiveFineStep] = useState(0.1);
   const [primitiveCoarseStep, setPrimitiveCoarseStep] = useState(10);
-  const [primitivePageStep, setPrimitivePageStep] = useState(10);
+  const primitivePageStep = 10;
   const [primitivePrecision, setPrimitivePrecision] =
     useState<PrimitivePrecision>('auto');
   const [primitiveAllowExpressions, setPrimitiveAllowExpressions] =
@@ -919,7 +1132,13 @@ export function PlaygroundPage() {
   const [primitiveSize, setPrimitiveSize] = useState<PrimitiveSize>('md');
   const [primitiveDensity, setPrimitiveDensity] =
     useState<PrimitiveDensity>('compact');
+  const [tooltipSide, setTooltipSide] = useState<TooltipSide>('top');
+  const [tooltipDelayDuration, setTooltipDelayDuration] = useState(450);
+  const [tooltipSkipDelayDuration, setTooltipSkipDelayDuration] = useState(300);
 
+  const activePageConfig =
+    PLAYGROUND_PAGES.find((page) => page.value === activePage) ??
+    PLAYGROUND_PAGES[0];
   const channels = useMemo(
     () => normalizeAxes(axisState.x, axisState.y),
     [axisState.x, axisState.y],
@@ -996,7 +1215,7 @@ export function PlaygroundPage() {
                 <Link to="/docs/shadcn-registry">Registry</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/playground">Playground</Link>
+                <Link to="/playground">Lab</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
                 <a
@@ -1070,7 +1289,7 @@ export function PlaygroundPage() {
                   ) : null}
                 </ColorArea>
               </div>
-            ) : (
+            ) : activePage === 'input' ? (
               <PrimitiveValueInput
                 value={primitiveValue}
                 onValueChange={setPrimitiveValue}
@@ -1095,20 +1314,23 @@ export function PlaygroundPage() {
                 size={primitiveSize}
                 density={primitiveDensity}
               />
+            ) : (
+              <TooltipPlaygroundStage
+                delayDuration={tooltipDelayDuration}
+                skipDelayDuration={tooltipSkipDelayDuration}
+                side={tooltipSide}
+              />
             )}
           </section>
 
           <aside className="border-t border-white/8 p-3 lg:min-h-0 lg:border-t-0 lg:p-4">
             <div className="h-full rounded-[24px] border border-white/8 bg-white/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur lg:min-h-0">
               <ScrollArea className="h-full">
-                <div className="space-y-6 p-4">
+                <TooltipProvider>
+                  <div className="space-y-6 p-4">
                   <PanelSection
-                    title={activePage === 'plane' ? 'ColorPlane' : 'ColorInput'}
-                    description={
-                      activePage === 'plane'
-                        ? 'Drag inside the color area and tune the plane from this properties rail.'
-                        : 'Tune the centered input and its editing behavior from this rail.'
-                    }
+                    title={activePageConfig.label}
+                    description={PLAYGROUND_PAGE_DESCRIPTIONS[activePage]}
                   >
                     {activePage === 'plane' ? (
                       <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-black/20 p-3">
@@ -1132,7 +1354,7 @@ export function PlaygroundPage() {
                           </div>
                         </div>
                       </div>
-                    ) : (
+                    ) : activePage === 'input' ? (
                       <div className="rounded-2xl border border-white/8 bg-black/20 p-3">
                         <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
                           Current value
@@ -1147,6 +1369,19 @@ export function PlaygroundPage() {
                           {primitiveMin} to {primitiveMax} · {primitiveWrapMode}
                         </div>
                       </div>
+                    ) : (
+                      <div className="rounded-2xl border border-white/8 bg-black/20 p-3">
+                        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                          Timing
+                        </div>
+                        <div className="mt-1 font-mono text-lg text-white">
+                          {tooltipDelayDuration}ms /{' '}
+                          {tooltipSkipDelayDuration}ms
+                        </div>
+                        <div className="mt-1 text-xs text-white/55">
+                          {tooltipSide} side · initial delay / cooldown
+                        </div>
+                      </div>
                     )}
                   </PanelSection>
 
@@ -1159,58 +1394,68 @@ export function PlaygroundPage() {
                         description="Drive the current sample color."
                       >
                         <div className="space-y-3">
-                          <div className="space-y-2">
-                            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                              Hex
-                            </p>
-                            <ColorStringInput
-                              format="hex"
-                              className="ck-input"
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              aria-label="Hex color input"
-                            />
-                          </div>
+                          <PropertyFieldTooltip label="Hex">
+                            <div className="space-y-2">
+                              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                Hex
+                              </p>
+                              <ColorStringInput
+                                format="hex"
+                                className="ck-input"
+                                requested={color.requested}
+                                onChangeRequested={color.setRequested}
+                                aria-label="Hex color input"
+                              />
+                            </div>
+                          </PropertyFieldTooltip>
 
-                          <div className="space-y-2">
-                            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                              Hue
-                            </p>
-                            <ColorSlider
-                              channel="h"
-                              className="ck-slider ck-slider-v2"
-                              data-color-space={hueRail.colorSpace}
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              style={hueRail.style}
-                            />
-                          </div>
+                          <PropertyFieldTooltip label="Hue">
+                            <div className="space-y-2">
+                              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                Hue
+                              </p>
+                              <ColorSlider
+                                channel="h"
+                                className="ck-slider ck-slider-v2"
+                                data-color-space={hueRail.colorSpace}
+                                requested={color.requested}
+                                onChangeRequested={color.setRequested}
+                                style={hueRail.style}
+                              />
+                            </div>
+                          </PropertyFieldTooltip>
 
                           <div className="grid grid-cols-3 gap-3">
-                            <ColorInput
-                              model="oklch"
-                              channel="l"
-                              className="ck-input"
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              aria-label="Lightness input"
-                            />
-                            <ColorInput
-                              model="oklch"
-                              channel="c"
-                              className="ck-input"
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              aria-label="Chroma input"
-                            />
-                            <ColorInput
-                              model="oklch"
-                              channel="h"
-                              className="ck-input"
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              aria-label="Hue input"
-                            />
+                            <PropertyFieldTooltip label="Lightness">
+                              <ColorInput
+                                model="oklch"
+                                channel="l"
+                                className="ck-input"
+                                requested={color.requested}
+                                onChangeRequested={color.setRequested}
+                                aria-label="Lightness input"
+                              />
+                            </PropertyFieldTooltip>
+                            <PropertyFieldTooltip label="Chroma">
+                              <ColorInput
+                                model="oklch"
+                                channel="c"
+                                className="ck-input"
+                                requested={color.requested}
+                                onChangeRequested={color.setRequested}
+                                aria-label="Chroma input"
+                              />
+                            </PropertyFieldTooltip>
+                            <PropertyFieldTooltip label="Hue">
+                              <ColorInput
+                                model="oklch"
+                                channel="h"
+                                className="ck-input"
+                                requested={color.requested}
+                                onChangeRequested={color.setRequested}
+                                aria-label="Hue input"
+                              />
+                            </PropertyFieldTooltip>
                           </div>
                         </div>
                       </PanelSection>
@@ -1310,19 +1555,43 @@ export function PlaygroundPage() {
                         />
                       </PanelSection>
                     </>
-                  ) : (
+                  ) : activePage === 'input' ? (
                     <>
                       <PanelSection
                         title="Input"
-                        description="Plain value state for the centered input primitive."
                       >
-                        <div className="space-y-3">
-                          <NumberConfigField
-                            label="Value"
-                            value={primitiveValue}
-                            onChange={setPrimitiveValue}
-                            step={primitiveStep}
-                          />
+                        <div className="space-y-4">
+                          <PropertyFieldTooltip label="Value">
+                            <label className="block space-y-2">
+                              <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                Value
+                              </span>
+                              <PrimitiveValueInput
+                                value={primitiveValue}
+                                onValueChange={setPrimitiveValue}
+                                ariaLabel="Value"
+                                min={primitiveMin}
+                                max={primitiveMax}
+                                wrapMode={primitiveWrapMode}
+                                step={primitiveStep}
+                                fineStep={primitiveFineStep}
+                                coarseStep={primitiveCoarseStep}
+                                pageStep={primitivePageStep}
+                                precision={primitivePrecision}
+                                allowExpressions={primitiveAllowExpressions}
+                                selectAllOnFocus={primitiveSelectAllOnFocus}
+                                commitOnBlur={primitiveCommitOnBlur}
+                                scrubEnabled={primitiveScrubEnabled}
+                                scrubPixelsPerStep={primitiveScrubPixelsPerStep}
+                                scrubThreshold={primitiveScrubThreshold}
+                                pointerLockEnabled={primitivePointerLockEnabled}
+                                disabled={primitiveDisabled}
+                                readOnly={primitiveReadOnly}
+                                visualState={primitiveVisualState}
+                                size="full"
+                              />
+                            </label>
+                          </PropertyFieldTooltip>
                           <div className="grid grid-cols-2 gap-3">
                             <BoundsConfigInput
                               label="Min"
@@ -1378,31 +1647,45 @@ export function PlaygroundPage() {
 
                       <PanelSection
                         title="Stepping"
-                        description="Configure keyboard and pointer step sizes."
                       >
                         <div className="grid grid-cols-2 gap-3">
-                          <NumberConfigField
+                          <StepConfigInput
                             label="Step"
                             value={primitiveStep}
-                            onChange={setPrimitiveStep}
+                            onValueChange={setPrimitiveStep}
+                            leadingElement={
+                              <Diff
+                                aria-hidden="true"
+                                className="size-3"
+                                strokeWidth={1.75}
+                              />
+                            }
                             step={0.1}
                           />
-                          <NumberConfigField
+                          <StepConfigInput
                             label="Fine"
                             value={primitiveFineStep}
-                            onChange={setPrimitiveFineStep}
+                            onValueChange={setPrimitiveFineStep}
+                            leadingElement={
+                              <Option
+                                aria-hidden="true"
+                                className="size-3"
+                                strokeWidth={1.75}
+                              />
+                            }
                             step={0.1}
                           />
-                          <NumberConfigField
+                          <StepConfigInput
                             label="Coarse"
                             value={primitiveCoarseStep}
-                            onChange={setPrimitiveCoarseStep}
-                            step={1}
-                          />
-                          <NumberConfigField
-                            label="Page"
-                            value={primitivePageStep}
-                            onChange={setPrimitivePageStep}
+                            onValueChange={setPrimitiveCoarseStep}
+                            leadingElement={
+                              <ArrowBigUp
+                                aria-hidden="true"
+                                className="size-3"
+                                strokeWidth={1.75}
+                              />
+                            }
                             step={1}
                           />
                         </div>
@@ -1518,8 +1801,50 @@ export function PlaygroundPage() {
                         </div>
                       </PanelSection>
                     </>
+                  ) : (
+                    <>
+                      <PanelSection
+                        title="Timing"
+                        description="Tune the Radix initial hover delay and the cooldown window that marks tooltip handoffs."
+                      >
+                        <div className="space-y-3">
+                          <NumberConfigField
+                            label="Initial delay"
+                            value={tooltipDelayDuration}
+                            onChange={setTooltipDelayDuration}
+                            step={50}
+                          />
+                          <NumberConfigField
+                            label="Handoff cooldown"
+                            value={tooltipSkipDelayDuration}
+                            onChange={setTooltipSkipDelayDuration}
+                            step={50}
+                          />
+                        </div>
+                      </PanelSection>
+
+                      <Separator className="bg-white/8" />
+
+                      <PanelSection
+                        title="Placement"
+                        description="Move the tooltip around each trigger while preserving the same handoff behavior."
+                      >
+                        <SegmentedField
+                          label="Side"
+                          value={tooltipSide}
+                          onChange={setTooltipSide}
+                          options={[
+                            { value: 'top', label: 'Top' },
+                            { value: 'right', label: 'Right' },
+                            { value: 'bottom', label: 'Bottom' },
+                            { value: 'left', label: 'Left' },
+                          ]}
+                        />
+                      </PanelSection>
+                    </>
                   )}
-                </div>
+                  </div>
+                </TooltipProvider>
               </ScrollArea>
             </div>
           </aside>
