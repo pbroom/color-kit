@@ -17,12 +17,25 @@ import {
 } from 'color-kit/react';
 import {
   toCss,
-  toHex,
   toP3Gamut,
   toSrgbGamut,
   type Color as ColorValue,
 } from 'color-kit';
-import { Github } from 'lucide-react';
+import {
+  ArrowBigUp,
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  Check,
+  ChevronsLeftRight,
+  ChevronsRightLeft,
+  DecimalsArrowRight,
+  Diff,
+  Github,
+  MousePointer2,
+  Option,
+  Radius,
+  RotateCw,
+} from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -40,16 +53,26 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
-type PlaygroundPageKey = 'plane' | 'input';
-type PrimitivePrecision = 'auto' | '0' | '1' | '2' | '3';
+type PlaygroundPageKey = 'plane' | 'input' | 'tooltip';
+type PrimitivePrecision = number;
 type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
-type PrimitiveScrubMultiplier = '1' | '0.1' | '0.01';
-type PrimitiveSize = 'sm' | 'md' | 'lg';
+type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
 type PrimitiveDensity = 'compact' | 'comfortable';
 type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
+type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
+type PrimitiveHandleIcon = 'cursor' | 'radius' | 'delta';
+type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
+
+const MAX_PRIMITIVE_PRECISION_DIGITS = 12;
 
 type SliderRailStyle = CSSProperties & {
   '--ck-slider-gradient-active': string;
@@ -75,18 +98,61 @@ const PLAYGROUND_PAGES: Array<{
     value: 'input',
     label: 'Input Primitive',
   },
+  {
+    value: 'tooltip',
+    label: 'Tooltip',
+  },
 ];
 
-const PRIMITIVE_SCRUB_MULTIPLIER: Record<PrimitiveScrubMultiplier, number> = {
-  '1': 1,
-  '0.1': 0.1,
-  '0.01': 0.01,
-};
+const TOOLTIP_DEMO_ITEMS: Array<{
+  label: string;
+  tooltip: string;
+}> = [
+  {
+    label: 'Plane',
+    tooltip: 'Show color-plane controls',
+  },
+  {
+    label: 'Input',
+    tooltip: 'Tune channel input behavior',
+  },
+  {
+    label: 'Copy',
+    tooltip: 'Copy the current value',
+  },
+  {
+    label: 'Inspect',
+    tooltip: 'Open inspector details',
+  },
+];
+
+const TOOLTIP_SIDE_DEMO_ITEMS: Array<{
+  side: TooltipSide;
+  tooltip: string;
+}> = [
+  {
+    side: 'top',
+    tooltip: 'This tooltip opens above the trigger',
+  },
+  {
+    side: 'right',
+    tooltip: 'This tooltip opens to the right',
+  },
+  {
+    side: 'bottom',
+    tooltip: 'This tooltip opens below the trigger',
+  },
+  {
+    side: 'left',
+    tooltip: 'This tooltip opens to the left',
+  },
+];
 
 const PRIMITIVE_SIZE_CLASS: Record<PrimitiveSize, string> = {
   sm: 'w-32',
   md: 'w-44',
   lg: 'w-60',
+  full: 'w-full',
 };
 
 const PRIMITIVE_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
@@ -119,17 +185,38 @@ function normalizePrimitiveValue(
 function formatPrimitiveValue(
   value: number,
   precision: PrimitivePrecision,
+  autoTrim: boolean,
 ): string {
   if (!Number.isFinite(value)) {
     return '0';
   }
 
-  if (precision === 'auto') {
-    const rounded = Number(value.toFixed(6));
+  const fixed = value.toFixed(precision);
+  if (autoTrim) {
+    const rounded = Number(fixed);
     return Object.is(rounded, -0) ? '0' : String(rounded);
   }
 
-  return value.toFixed(Number(precision));
+  return fixed;
+}
+
+function normalizePrimitivePrecision(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.min(
+    MAX_PRIMITIVE_PRECISION_DIGITS,
+    Math.max(0, Math.round(value)),
+  );
+}
+
+function normalizePrimitiveScrubMultiplier(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  return Math.min(1000, Math.max(0.01, Number(value.toFixed(4))));
 }
 
 function parsePrimitiveDraft(
@@ -240,6 +327,23 @@ function PanelSection({
   );
 }
 
+function PropertyFieldTooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="min-w-0">{children}</div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function SegmentedField<T extends string>({
   label,
   value,
@@ -249,33 +353,60 @@ function SegmentedField<T extends string>({
   label: string;
   value: T;
   onChange: (value: T) => void;
-  options: Array<{ value: T; label: string }>;
+  options: Array<{
+    value: T;
+    label: string;
+    icon?: ReactNode;
+    tooltip?: string;
+  }>;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
         {label}
       </p>
       <ToggleGroup
         type="single"
         value={value}
-        className="h-auto w-full justify-start rounded-xl border border-white/8 bg-white/[0.03] p-1"
+        className="h-6 w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none"
         onValueChange={(next) => {
           if (next) {
             onChange(next as T);
           }
         }}
       >
-        {options.map((option) => (
-          <ToggleGroupItem
-            key={option.value}
-            value={option.value}
-            className="h-8 flex-1 rounded-lg px-2 text-xs text-white/70 data-[state=on]:bg-white/10 data-[state=on]:text-white data-[state=on]:shadow-none"
-            aria-label={`${label}: ${option.label}`}
-          >
-            {option.label}
-          </ToggleGroupItem>
-        ))}
+        {options.map((option) => {
+          const isSelected = value === option.value;
+
+          return (
+            <Tooltip key={option.value}>
+              <TooltipTrigger asChild>
+                <span className="flex min-w-0 flex-1">
+                  <ToggleGroupItem
+                    value={option.value}
+                    className={`h-6 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[state=on]:bg-[#1f1f1f] data-[state=on]:shadow-none ${
+                      isSelected
+                        ? 'border-[#4C4C4C] bg-[#1f1f1f] text-white/90 shadow-none'
+                        : 'border-transparent bg-transparent text-white/50 shadow-none'
+                    }`}
+                    aria-label={`${label}: ${option.label}`}
+                  >
+                    {option.icon ? (
+                      <span className="flex size-3.5 items-center justify-center text-current">
+                        {option.icon}
+                      </span>
+                    ) : (
+                      <span>{option.label}</span>
+                    )}
+                  </ToggleGroupItem>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="pointer-events-none">
+                {option.tooltip ?? `${label}: ${option.label}`}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </ToggleGroup>
     </div>
   );
@@ -291,14 +422,22 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-sm text-white/78">
-      <span>{label}</span>
+    <label className="flex min-h-6 items-center gap-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80">
       <input
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="size-4 rounded border-white/20 bg-transparent accent-white"
+        className="peer sr-only"
       />
+      <span
+        aria-hidden="true"
+        className="flex size-4 shrink-0 items-center justify-center rounded-[5px] border border-[#4C4C4C] bg-[#383838] text-white transition-[background-color,border-color] peer-checked:border-[#007be5] peer-checked:bg-[#0d99ff] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0d99ff]/80"
+      >
+        {checked ? (
+          <Check aria-hidden="true" className="size-3" strokeWidth={3} />
+        ) : null}
+      </span>
+      <span>{label}</span>
     </label>
   );
 }
@@ -351,29 +490,298 @@ function NumberConfigField({
   step?: number;
 }) {
   return (
-    <label className="space-y-2">
-      <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-        {label}
-      </span>
-      <input
-        type="number"
-        value={value}
-        step={step}
-        onChange={(event) => {
-          const next = Number(event.target.value);
-          if (Number.isFinite(next)) {
-            onChange(next);
+    <PropertyFieldTooltip label={label}>
+      <label className="space-y-2">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          {label}
+        </span>
+        <input
+          type="number"
+          value={value}
+          step={step}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            if (Number.isFinite(next)) {
+              onChange(next);
+            }
+          }}
+          className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-[#5288db]"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function TextConfigField({
+  label,
+  value,
+  onChange,
+  maxLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  maxLength?: number;
+}) {
+  return (
+    <PropertyFieldTooltip label={label}>
+      <label className="block space-y-2">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          {label}
+        </span>
+        <input
+          type="text"
+          value={value}
+          maxLength={maxLength}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-6 w-full rounded-[4px] border border-transparent bg-[#383838] px-2 text-[11px] font-medium text-white outline-none transition-[border-color] hover:border-[#4C4C4C] focus:border-[#5288db]"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function PrecisionConfigInput({
+  value,
+  onChange,
+}: {
+  value: PrimitivePrecision;
+  onChange: (value: PrimitivePrecision) => void;
+}) {
+  return (
+    <PropertyFieldTooltip label="Precision">
+      <label className="space-y-2">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          Precision
+        </span>
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={(nextValue) =>
+            onChange(normalizePrimitivePrecision(nextValue))
           }
-        }}
-        className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-[#5288db]"
-      />
-    </label>
+          ariaLabel="Precision"
+          leadingElement={
+            <DecimalsArrowRight
+              aria-hidden="true"
+              className="size-3"
+              strokeWidth={1.75}
+            />
+          }
+          min={0}
+          max={MAX_PRIMITIVE_PRECISION_DIGITS}
+          wrapMode="clamp"
+          step={1}
+          fineStep={1}
+          coarseStep={2}
+          pageStep={3}
+          precision={0}
+          autoTrim
+          allowExpressions={false}
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function StepConfigInput({
+  label,
+  value,
+  onValueChange,
+  leadingElement,
+  step,
+}: {
+  label: string;
+  value: number;
+  onValueChange: (value: number) => void;
+  leadingElement: ReactNode;
+  step: number;
+}) {
+  return (
+    <PropertyFieldTooltip label={label}>
+      <label className="block">
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={onValueChange}
+          ariaLabel={label}
+          leadingElement={leadingElement}
+          min={0}
+          max={1000}
+          wrapMode="free"
+          step={step}
+          fineStep={step / 10}
+          coarseStep={step * 10}
+          pageStep={step * 10}
+          precision={6}
+          autoTrim
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function DragStepConfigInput({
+  value,
+  onValueChange,
+}: {
+  value: number;
+  onValueChange: (value: number) => void;
+}) {
+  return (
+    <PropertyFieldTooltip label="Drag step">
+      <label className="block">
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={(nextValue) =>
+            onValueChange(normalizePrimitiveScrubMultiplier(nextValue))
+          }
+          ariaLabel="Drag step"
+          leadingElement={
+            <MousePointer2
+              aria-hidden="true"
+              className="size-3"
+              strokeWidth={1.75}
+            />
+          }
+          min={0.01}
+          max={1000}
+          wrapMode="clamp"
+          step={0.01}
+          fineStep={0.001}
+          coarseStep={0.1}
+          pageStep={1}
+          precision={4}
+          autoTrim
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function BoundsConfigInput({
+  label,
+  value,
+  onValueChange,
+  leadingElement,
+}: {
+  label: string;
+  value: number;
+  onValueChange: (value: number) => void;
+  leadingElement: ReactNode;
+}) {
+  return (
+    <PropertyFieldTooltip label={label}>
+      <label className="block">
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={onValueChange}
+          ariaLabel={label}
+          leadingElement={leadingElement}
+          min={-1000}
+          max={1000}
+          wrapMode="free"
+          step={1}
+          fineStep={0.1}
+          coarseStep={10}
+          pageStep={10}
+          precision={6}
+          autoTrim
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function DragThresholdConfigInput({
+  value,
+  onValueChange,
+}: {
+  value: number;
+  onValueChange: (value: number) => void;
+}) {
+  return (
+    <PropertyFieldTooltip label="Drag threshold">
+      <label className="block">
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={onValueChange}
+          ariaLabel="Drag threshold"
+          leadingElement={
+            <Radius aria-hidden="true" className="size-3" strokeWidth={1.75} />
+          }
+          min={0}
+          max={1000}
+          wrapMode="clamp"
+          step={1}
+          fineStep={0.1}
+          coarseStep={10}
+          pageStep={10}
+          precision={6}
+          autoTrim
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
   );
 }
 
 interface PrimitiveValueInputProps {
   value: number;
   onValueChange: (value: number) => void;
+  ariaLabel?: string;
+  leadingElement?: ReactNode;
   min: number;
   max: number;
   wrapMode: PrimitiveWrapMode;
@@ -382,18 +790,20 @@ interface PrimitiveValueInputProps {
   coarseStep: number;
   pageStep: number;
   precision: PrimitivePrecision;
+  autoTrim: boolean;
   allowExpressions: boolean;
   selectAllOnFocus: boolean;
   commitOnBlur: boolean;
   scrubEnabled: boolean;
-  scrubPixelsPerStep: number;
+  scrubPixelsPerStep?: number;
   scrubThreshold: number;
   pointerLockEnabled: boolean;
+  horizontalArrowKeysMoveCaret?: boolean;
   disabled: boolean;
   readOnly: boolean;
   visualState: PrimitiveVisualState;
   size: PrimitiveSize;
-  density: PrimitiveDensity;
+  density?: PrimitiveDensity;
 }
 
 interface PrimitiveInputSelectionSnapshot {
@@ -405,6 +815,8 @@ interface PrimitiveInputSelectionSnapshot {
 function PrimitiveValueInput({
   value,
   onValueChange,
+  ariaLabel,
+  leadingElement = 'V',
   min,
   max,
   wrapMode,
@@ -413,18 +825,20 @@ function PrimitiveValueInput({
   coarseStep,
   pageStep,
   precision,
+  autoTrim,
   allowExpressions,
   selectAllOnFocus,
   commitOnBlur,
   scrubEnabled,
-  scrubPixelsPerStep,
+  scrubPixelsPerStep = 1,
   scrubThreshold,
   pointerLockEnabled,
+  horizontalArrowKeysMoveCaret = true,
   disabled,
   readOnly,
   visualState,
   size,
-  density,
+  density = 'compact',
 }: PrimitiveValueInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrubHandleRef = useRef<HTMLDivElement>(null);
@@ -436,16 +850,18 @@ function PrimitiveValueInput({
   const scrubStartXRef = useRef(0);
   const scrubStartValueRef = useRef(0);
   const lastScrubXRef = useRef(0);
+  const activeScrubStepRef = useRef(step);
   const hasDragStartedRef = useRef(false);
   const [draft, setDraft] = useState(() =>
-    formatPrimitiveValue(value, precision),
+    formatPrimitiveValue(value, precision, autoTrim),
   );
   const [isEditing, setIsEditing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
 
   const displayValue = useMemo(
-    () => formatPrimitiveValue(value, precision),
-    [precision, value],
+    () => formatPrimitiveValue(value, precision, autoTrim),
+    [autoTrim, precision, value],
   );
 
   useEffect(() => {
@@ -488,7 +904,7 @@ function PrimitiveValueInput({
     input.setSelectionRange(
       Math.min(snapshot.start, valueLength),
       Math.min(snapshot.end, valueLength),
-      snapshot.direction,
+      snapshot.direction ?? undefined,
     );
   }, []);
 
@@ -535,9 +951,9 @@ function PrimitiveValueInput({
     (nextValue: number) => {
       const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
       onValueChange(normalized);
-      setDraft(formatPrimitiveValue(normalized, precision));
+      setDraft(formatPrimitiveValue(normalized, precision, autoTrim));
     },
-    [max, min, onValueChange, precision, wrapMode],
+    [autoTrim, max, min, onValueChange, precision, wrapMode],
   );
 
   const commitDraft = useCallback(() => {
@@ -578,6 +994,13 @@ function PrimitiveValueInput({
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {
       if (disabled || readOnly) {
+        return;
+      }
+
+      if (
+        horizontalArrowKeysMoveCaret &&
+        (event.key === 'ArrowRight' || event.key === 'ArrowLeft')
+      ) {
         return;
       }
 
@@ -631,6 +1054,7 @@ function PrimitiveValueInput({
       disabled,
       displayValue,
       getModifiedStep,
+      horizontalArrowKeysMoveCaret,
       max,
       min,
       pageStep,
@@ -644,12 +1068,19 @@ function PrimitiveValueInput({
   }, []);
 
   const endScrub = useCallback(
-    (clientX = lastScrubXRef.current) => {
+    (clientX = lastScrubXRef.current, shiftKey?: boolean, altKey?: boolean) => {
       if (activePointerIdRef.current !== null && hasDragStartedRef.current) {
+        const activeStep =
+          shiftKey === undefined || altKey === undefined
+            ? activeScrubStepRef.current
+            : getModifiedStep(shiftKey, altKey);
+        activeScrubStepRef.current = activeStep;
         const deltaPixels = clientX - scrubStartXRef.current;
+        const wholeDeltaPixels = Math.round(deltaPixels);
         const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
         commitValue(
-          scrubStartValueRef.current + (deltaPixels / pixelsPerStep) * step,
+          scrubStartValueRef.current +
+            (wholeDeltaPixels / pixelsPerStep) * activeStep,
         );
       }
       activePointerIdRef.current = null;
@@ -662,15 +1093,15 @@ function PrimitiveValueInput({
     },
     [
       commitValue,
+      getModifiedStep,
       hasPointerLock,
       scheduleClearPreservedSelection,
       scrubPixelsPerStep,
-      step,
     ],
   );
 
   const queueScrubValue = useCallback(
-    (clientX: number) => {
+    (clientX: number, shiftKey: boolean, altKey: boolean) => {
       lastScrubXRef.current = clientX;
       const deltaPixels = clientX - scrubStartXRef.current;
       if (
@@ -681,12 +1112,16 @@ function PrimitiveValueInput({
       }
       hasDragStartedRef.current = true;
       setIsScrubbing(true);
+      const activeStep = getModifiedStep(shiftKey, altKey);
+      activeScrubStepRef.current = activeStep;
+      const wholeDeltaPixels = Math.round(deltaPixels);
       const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
       commitValue(
-        scrubStartValueRef.current + (deltaPixels / pixelsPerStep) * step,
+        scrubStartValueRef.current +
+          (wholeDeltaPixels / pixelsPerStep) * activeStep,
       );
     },
-    [commitValue, scrubPixelsPerStep, scrubThreshold, step],
+    [commitValue, getModifiedStep, scrubPixelsPerStep, scrubThreshold],
   );
 
   const handlePointerDown = useCallback(
@@ -701,6 +1136,10 @@ function PrimitiveValueInput({
       scrubStartXRef.current = event.clientX;
       lastScrubXRef.current = event.clientX;
       scrubStartValueRef.current = value;
+      activeScrubStepRef.current = getModifiedStep(
+        event.shiftKey,
+        event.altKey,
+      );
       hasDragStartedRef.current = false;
       event.currentTarget.setPointerCapture?.(event.pointerId);
       if (pointerLockEnabled) {
@@ -716,6 +1155,7 @@ function PrimitiveValueInput({
       disabled,
       pointerLockEnabled,
       preserveCurrentSelection,
+      getModifiedStep,
       readOnly,
       scrubEnabled,
       value,
@@ -727,7 +1167,7 @@ function PrimitiveValueInput({
       if (event.pointerId !== activePointerIdRef.current || hasPointerLock()) {
         return;
       }
-      queueScrubValue(event.clientX);
+      queueScrubValue(event.clientX, event.shiftKey, event.altKey);
     },
     [hasPointerLock, queueScrubValue],
   );
@@ -737,7 +1177,11 @@ function PrimitiveValueInput({
       if (event.pointerId !== activePointerIdRef.current) {
         return;
       }
-      endScrub(hasPointerLock() ? lastScrubXRef.current : event.clientX);
+      endScrub(
+        hasPointerLock() ? lastScrubXRef.current : event.clientX,
+        event.shiftKey,
+        event.altKey,
+      );
     },
     [endScrub, hasPointerLock],
   );
@@ -747,7 +1191,11 @@ function PrimitiveValueInput({
       if (activePointerIdRef.current === null || !hasPointerLock()) {
         return;
       }
-      queueScrubValue(lastScrubXRef.current + event.movementX);
+      queueScrubValue(
+        lastScrubXRef.current + event.movementX,
+        event.shiftKey,
+        event.altKey,
+      );
     };
 
     const handlePointerLockChange = () => {
@@ -769,15 +1217,26 @@ function PrimitiveValueInput({
 
   useEffect(() => clearPreservedSelection, [clearPreservedSelection]);
 
+  const borderColor = showInvalidState
+    ? '#ff4e4e'
+    : isScrubbing
+      ? '#97c1ef'
+      : isEditing
+        ? '#5288db'
+        : isHovered
+          ? '#4C4C4C'
+          : 'transparent';
+
   return (
     <div
-      className={`box-border flex items-center rounded-[4px] border border-transparent bg-[#383838] p-0 font-sans text-white hover:border-white/10 focus-within:border-[#5288db] ${
-        showInvalidState ? 'border-[#ff4e4e]' : ''
-      } ${isScrubbing ? 'border-[#97c1ef]' : ''} ${
+      className={`box-border flex items-center rounded-[4px] border bg-[#383838] p-0 font-sans text-white ${
         PRIMITIVE_SIZE_CLASS[size]
       } ${PRIMITIVE_DENSITY_CLASS[density]} ${disabled ? 'opacity-45' : ''}`}
+      style={{ borderColor }}
       data-scrubbing={isScrubbing || undefined}
       data-valid={isVisuallyValid || undefined}
+      onPointerEnter={() => setIsHovered(true)}
+      onPointerLeave={() => setIsHovered(false)}
     >
       {scrubEnabled ? (
         <div
@@ -792,7 +1251,7 @@ function PrimitiveValueInput({
             if (!hasPointerLock()) endScrub();
           }}
         >
-          V
+          {leadingElement}
         </div>
       ) : null}
       <input
@@ -801,6 +1260,7 @@ function PrimitiveValueInput({
         value={currentValue}
         disabled={disabled}
         readOnly={readOnly}
+        aria-label={ariaLabel}
         aria-invalid={showInvalidState || (isEditing && !isDraftValid)}
         onFocus={handleFocus}
         onBlur={handleBlur}
@@ -812,6 +1272,68 @@ function PrimitiveValueInput({
         className="h-full min-w-0 flex-1 cursor-default bg-transparent py-0 pl-1 pr-0 font-sans tabular-nums text-white outline-none focus:cursor-text disabled:cursor-not-allowed"
       />
     </div>
+  );
+}
+
+function TooltipPlaygroundStage({
+  delayDuration,
+  skipDelayDuration,
+  side,
+}: {
+  delayDuration: number;
+  skipDelayDuration: number;
+  side: TooltipSide;
+}) {
+  return (
+    <TooltipProvider
+      delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
+    >
+      <div className="relative flex w-full max-w-xl flex-col items-center gap-8 rounded-[28px] border border-white/8 bg-black/20 px-8 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="space-y-2 text-center">
+          <p className="text-sm font-medium text-white">Tooltip handoff lab</p>
+          <p className="mx-auto max-w-sm text-xs leading-relaxed text-white/55">
+            Hover the buttons left to right, then pause and enter again. The
+            first and final tooltip animate; handoffs stay immediate.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          {TOOLTIP_DEMO_ITEMS.map((item) => (
+            <Tooltip key={item.label}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="h-10 rounded-xl border border-white/10 bg-white/[0.06] px-4 text-sm font-medium text-white/75 outline-none transition-[background-color,border-color,color] hover:border-white/20 hover:bg-white/[0.1] hover:text-white focus-visible:ring-2 focus-visible:ring-white/35"
+                >
+                  {item.label}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={side}>{item.tooltip}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+        <div className="space-y-3 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/40">
+            Fixed placement samples
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {TOOLTIP_SIDE_DEMO_ITEMS.map((item) => (
+              <Tooltip key={item.side}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-9 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs font-medium capitalize text-white/65 outline-none transition-[background-color,border-color,color] hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-white/35"
+                  >
+                    {item.side}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={item.side}>{item.tooltip}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -843,27 +1365,39 @@ export function PlaygroundPage() {
   const [primitiveStep, setPrimitiveStep] = useState(1);
   const [primitiveFineStep, setPrimitiveFineStep] = useState(0.1);
   const [primitiveCoarseStep, setPrimitiveCoarseStep] = useState(10);
-  const [primitivePageStep, setPrimitivePageStep] = useState(10);
+  const primitivePageStep = 10;
   const [primitivePrecision, setPrimitivePrecision] =
-    useState<PrimitivePrecision>('auto');
+    useState<PrimitivePrecision>(3);
+  const [primitiveAutoTrim, setPrimitiveAutoTrim] = useState(true);
   const [primitiveAllowExpressions, setPrimitiveAllowExpressions] =
     useState(true);
   const [primitiveSelectAllOnFocus, setPrimitiveSelectAllOnFocus] =
     useState(true);
   const [primitiveCommitOnBlur, setPrimitiveCommitOnBlur] = useState(true);
+  const [
+    primitiveHorizontalArrowKeysMoveCaret,
+    setPrimitiveHorizontalArrowKeysMoveCaret,
+  ] = useState(true);
   const [primitiveScrubEnabled, setPrimitiveScrubEnabled] = useState(true);
   const [primitivePointerLockEnabled, setPrimitivePointerLockEnabled] =
     useState(true);
   const [primitiveScrubThreshold, setPrimitiveScrubThreshold] = useState(2);
-  const [primitiveScrubMultiplier, setPrimitiveScrubMultiplier] =
-    useState<PrimitiveScrubMultiplier>('1');
+  const [primitiveScrubMultiplier, setPrimitiveScrubMultiplier] = useState(1);
+  const [primitiveHandleContent, setPrimitiveHandleContent] =
+    useState<PrimitiveHandleContent>('letter');
+  const [primitiveHandleLetter, setPrimitiveHandleLetter] = useState('V');
+  const [primitiveHandleIcon, setPrimitiveHandleIcon] =
+    useState<PrimitiveHandleIcon>('cursor');
   const [primitiveDisabled, setPrimitiveDisabled] = useState(false);
   const [primitiveReadOnly, setPrimitiveReadOnly] = useState(false);
   const [primitiveVisualState, setPrimitiveVisualState] =
     useState<PrimitiveVisualState>('auto');
-  const [primitiveSize, setPrimitiveSize] = useState<PrimitiveSize>('md');
+  const primitiveSize: PrimitiveSize = 'sm';
   const [primitiveDensity, setPrimitiveDensity] =
     useState<PrimitiveDensity>('compact');
+  const [tooltipSide, setTooltipSide] = useState<TooltipSide>('top');
+  const [tooltipDelayDuration, setTooltipDelayDuration] = useState(450);
+  const [tooltipSkipDelayDuration, setTooltipSkipDelayDuration] = useState(300);
 
   const channels = useMemo(
     () => normalizeAxes(axisState.x, axisState.y),
@@ -886,22 +1420,6 @@ export function PlaygroundPage() {
     () => getOklchSliderRail('h', color.requested, color.activeGamut),
     [color.activeGamut, color.requested],
   );
-  const activeDisplayedSrgb = useMemo(
-    () => toCss(toSrgbGamut(color.requested), 'rgb'),
-    [color.requested],
-  );
-  const activeDisplayedActive = useMemo(
-    () =>
-      color.activeGamut === 'display-p3'
-        ? toCss(toP3Gamut(color.requested), 'p3')
-        : activeDisplayedSrgb,
-    [activeDisplayedSrgb, color.activeGamut, color.requested],
-  );
-  const activeDisplayedHex = useMemo(
-    () => toHex(toSrgbGamut(color.requested)).toUpperCase(),
-    [color.requested],
-  );
-
   const setAxis = (axis: 'x' | 'y', channel: ColorAreaChannel) => {
     setAxisState((current) => {
       if (axis === 'x') {
@@ -917,7 +1435,47 @@ export function PlaygroundPage() {
   };
 
   const primitiveScrubPixelsPerStep =
-    1 / PRIMITIVE_SCRUB_MULTIPLIER[primitiveScrubMultiplier];
+    1 / normalizePrimitiveScrubMultiplier(primitiveScrubMultiplier);
+
+  const primitiveHandleElement = useMemo<ReactNode>(() => {
+    switch (primitiveHandleContent) {
+      case 'none':
+        return null;
+      case 'letter':
+        return primitiveHandleLetter.trim().slice(0, 2);
+      case 'icon':
+        switch (primitiveHandleIcon) {
+          case 'cursor':
+            return (
+              <MousePointer2
+                aria-hidden="true"
+                className="size-3"
+                strokeWidth={1.75}
+              />
+            );
+          case 'radius':
+            return (
+              <Radius
+                aria-hidden="true"
+                className="size-3"
+                strokeWidth={1.75}
+              />
+            );
+          case 'delta':
+            return (
+              <Diff aria-hidden="true" className="size-3" strokeWidth={1.75} />
+            );
+        }
+        break;
+      case 'swatch':
+        return (
+          <span
+            aria-hidden="true"
+            className="size-3 rounded-[3px] border border-white/20 bg-[conic-gradient(from_180deg,#ff5f6d,#ffc371,#47d16c,#4cc9f0,#845ef7,#ff5f6d)]"
+          />
+        );
+    }
+  }, [primitiveHandleContent, primitiveHandleIcon, primitiveHandleLetter]);
 
   return (
     <div className="ck-shell-bg min-h-screen">
@@ -941,7 +1499,7 @@ export function PlaygroundPage() {
                 <Link to="/docs/shadcn-registry">Registry</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/playground">Playground</Link>
+                <Link to="/playground">Lab</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
                 <a
@@ -1015,10 +1573,11 @@ export function PlaygroundPage() {
                   ) : null}
                 </ColorArea>
               </div>
-            ) : (
+            ) : activePage === 'input' ? (
               <PrimitiveValueInput
                 value={primitiveValue}
                 onValueChange={setPrimitiveValue}
+                leadingElement={primitiveHandleElement}
                 min={primitiveMin}
                 max={primitiveMax}
                 wrapMode={primitiveWrapMode}
@@ -1027,6 +1586,7 @@ export function PlaygroundPage() {
                 coarseStep={primitiveCoarseStep}
                 pageStep={primitivePageStep}
                 precision={primitivePrecision}
+                autoTrim={primitiveAutoTrim}
                 allowExpressions={primitiveAllowExpressions}
                 selectAllOnFocus={primitiveSelectAllOnFocus}
                 commitOnBlur={primitiveCommitOnBlur}
@@ -1034,11 +1594,20 @@ export function PlaygroundPage() {
                 scrubPixelsPerStep={primitiveScrubPixelsPerStep}
                 scrubThreshold={primitiveScrubThreshold}
                 pointerLockEnabled={primitivePointerLockEnabled}
+                horizontalArrowKeysMoveCaret={
+                  primitiveHorizontalArrowKeysMoveCaret
+                }
                 disabled={primitiveDisabled}
                 readOnly={primitiveReadOnly}
                 visualState={primitiveVisualState}
                 size={primitiveSize}
                 density={primitiveDensity}
+              />
+            ) : (
+              <TooltipPlaygroundStage
+                delayDuration={tooltipDelayDuration}
+                skipDelayDuration={tooltipSkipDelayDuration}
+                side={tooltipSide}
               />
             )}
           </section>
@@ -1046,411 +1615,566 @@ export function PlaygroundPage() {
           <aside className="border-t border-white/8 p-3 lg:min-h-0 lg:border-t-0 lg:p-4">
             <div className="h-full rounded-[24px] border border-white/8 bg-white/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur lg:min-h-0">
               <ScrollArea className="h-full">
-                <div className="space-y-6 p-4">
-                  <PanelSection
-                    title={activePage === 'plane' ? 'ColorPlane' : 'ColorInput'}
-                    description={
-                      activePage === 'plane'
-                        ? 'Drag inside the color area and tune the plane from this properties rail.'
-                        : 'Tune the centered input and its editing behavior from this rail.'
-                    }
-                  >
+                <TooltipProvider>
+                  <div className="space-y-6 p-4">
                     {activePage === 'plane' ? (
-                      <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-black/20 p-3">
-                        <div
-                          className="size-12 shrink-0 rounded-xl border border-white/10"
-                          style={{
-                            backgroundColor: activeDisplayedSrgb,
-                            background: activeDisplayedActive,
-                          }}
-                          aria-hidden="true"
-                        />
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-white">
-                            {activeDisplayedHex}
-                          </div>
-                          <div className="text-xs text-white/55">
-                            {color.activeGamut === 'display-p3'
-                              ? 'Display P3'
-                              : 'sRGB'}{' '}
-                            preview
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-white/8 bg-black/20 p-3">
-                        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                          Current value
-                        </div>
-                        <div className="mt-1 font-mono text-lg text-white">
-                          {formatPrimitiveValue(
-                            primitiveValue,
-                            primitivePrecision,
-                          )}
-                        </div>
-                        <div className="mt-1 text-xs text-white/55">
-                          {primitiveMin} to {primitiveMax} · {primitiveWrapMode}
-                        </div>
-                      </div>
-                    )}
-                  </PanelSection>
+                      <>
+                        <PanelSection
+                          title="Color"
+                          description="Drive the current sample color."
+                        >
+                          <div className="space-y-3">
+                            <PropertyFieldTooltip label="Hex">
+                              <div className="space-y-2">
+                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Hex
+                                </p>
+                                <ColorStringInput
+                                  format="hex"
+                                  className="ck-input"
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  aria-label="Hex color input"
+                                />
+                              </div>
+                            </PropertyFieldTooltip>
 
-                  <Separator className="bg-white/8" />
+                            <PropertyFieldTooltip label="Hue">
+                              <div className="space-y-2">
+                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Hue
+                                </p>
+                                <ColorSlider
+                                  channel="h"
+                                  className="ck-slider ck-slider-v2"
+                                  data-color-space={hueRail.colorSpace}
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  style={hueRail.style}
+                                />
+                              </div>
+                            </PropertyFieldTooltip>
 
-                  {activePage === 'plane' ? (
-                    <>
-                      <PanelSection
-                        title="Color"
-                        description="Drive the current sample color."
-                      >
-                        <div className="space-y-3">
-                          <div className="space-y-2">
-                            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                              Hex
-                            </p>
-                            <ColorStringInput
-                              format="hex"
-                              className="ck-input"
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              aria-label="Hex color input"
+                            <div className="grid grid-cols-3 gap-3">
+                              <PropertyFieldTooltip label="Lightness">
+                                <ColorInput
+                                  model="oklch"
+                                  channel="l"
+                                  className="ck-input"
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  aria-label="Lightness input"
+                                />
+                              </PropertyFieldTooltip>
+                              <PropertyFieldTooltip label="Chroma">
+                                <ColorInput
+                                  model="oklch"
+                                  channel="c"
+                                  className="ck-input"
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  aria-label="Chroma input"
+                                />
+                              </PropertyFieldTooltip>
+                              <PropertyFieldTooltip label="Hue">
+                                <ColorInput
+                                  model="oklch"
+                                  channel="h"
+                                  className="ck-input"
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  aria-label="Hue input"
+                                />
+                              </PropertyFieldTooltip>
+                            </div>
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Plane"
+                          description="Change the displayed gamut and the axes mapped into the square."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Preview gamut"
+                              value={color.activeGamut}
+                              onChange={(next) =>
+                                color.setActiveGamut(next, 'programmatic')
+                              }
+                              options={[
+                                { value: 'display-p3', label: 'P3' },
+                                { value: 'srgb', label: 'sRGB' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="X axis"
+                              value={axisState.x}
+                              onChange={(next) => setAxis('x', next)}
+                              options={[
+                                { value: 'l', label: 'L' },
+                                { value: 'c', label: 'C' },
+                                { value: 'h', label: 'H' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Y axis"
+                              value={axisState.y}
+                              onChange={(next) => setAxis('y', next)}
+                              options={[
+                                { value: 'l', label: 'L' },
+                                { value: 'c', label: 'C' },
+                                { value: 'h', label: 'H' },
+                              ]}
+                            />
+                            <ToggleField
+                              label="Repeat edge pixels"
+                              checked={repeatEdgePixels}
+                              onChange={setRepeatEdgePixels}
+                            />
+                            <ToggleField
+                              label="Checkerboard background"
+                              checked={checkerboard}
+                              onChange={setCheckerboard}
                             />
                           </div>
+                        </PanelSection>
 
-                          <div className="space-y-2">
-                            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                              Hue
-                            </p>
-                            <ColorSlider
-                              channel="h"
-                              className="ck-slider ck-slider-v2"
-                              data-color-space={hueRail.colorSpace}
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              style={hueRail.style}
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Overlays"
+                          description="Optional helpers for reading the active gamut geometry."
+                        >
+                          <div className="space-y-3">
+                            <ToggleField
+                              label="Display P3 boundary"
+                              checked={showP3Boundary}
+                              onChange={setShowP3Boundary}
+                            />
+                            <ToggleField
+                              label="sRGB boundary"
+                              checked={showSrgbBoundary}
+                              onChange={setShowSrgbBoundary}
+                            />
+                            <ToggleField
+                              label="Fallback points"
+                              checked={showFallbackPoints}
+                              onChange={setShowFallbackPoints}
                             />
                           </div>
+                        </PanelSection>
 
-                          <div className="grid grid-cols-3 gap-3">
-                            <ColorInput
-                              model="oklch"
-                              channel="l"
-                              className="ck-input"
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              aria-label="Lightness input"
-                            />
-                            <ColorInput
-                              model="oklch"
-                              channel="c"
-                              className="ck-input"
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              aria-label="Chroma input"
-                            />
-                            <ColorInput
-                              model="oklch"
-                              channel="h"
-                              className="ck-input"
-                              requested={color.requested}
-                              onChangeRequested={color.setRequested}
-                              aria-label="Hue input"
-                            />
-                          </div>
-                        </div>
-                      </PanelSection>
+                        <Separator className="bg-white/8" />
 
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Plane"
-                        description="Change the displayed gamut and the axes mapped into the square."
-                      >
-                        <div className="space-y-3">
+                        <PanelSection
+                          title="Rendering"
+                          description="Tune how aggressively the area optimizes pointer updates."
+                        >
                           <SegmentedField
-                            label="Preview gamut"
-                            value={color.activeGamut}
-                            onChange={(next) =>
-                              color.setActiveGamut(next, 'programmatic')
-                            }
+                            label="Performance profile"
+                            value={performanceProfile}
+                            onChange={setPerformanceProfile}
                             options={[
-                              { value: 'display-p3', label: 'P3' },
-                              { value: 'srgb', label: 'sRGB' },
+                              { value: 'auto', label: 'Auto' },
+                              { value: 'quality', label: 'Quality' },
+                              { value: 'balanced', label: 'Balanced' },
+                              { value: 'performance', label: 'Perf' },
                             ]}
                           />
-                          <SegmentedField
-                            label="X axis"
-                            value={axisState.x}
-                            onChange={(next) => setAxis('x', next)}
-                            options={[
-                              { value: 'l', label: 'L' },
-                              { value: 'c', label: 'C' },
-                              { value: 'h', label: 'H' },
-                            ]}
-                          />
-                          <SegmentedField
-                            label="Y axis"
-                            value={axisState.y}
-                            onChange={(next) => setAxis('y', next)}
-                            options={[
-                              { value: 'l', label: 'L' },
-                              { value: 'c', label: 'C' },
-                              { value: 'h', label: 'H' },
-                            ]}
-                          />
-                          <ToggleField
-                            label="Repeat edge pixels"
-                            checked={repeatEdgePixels}
-                            onChange={setRepeatEdgePixels}
-                          />
-                          <ToggleField
-                            label="Checkerboard background"
-                            checked={checkerboard}
-                            onChange={setCheckerboard}
-                          />
-                        </div>
-                      </PanelSection>
+                        </PanelSection>
+                      </>
+                    ) : activePage === 'input' ? (
+                      <>
+                        <PanelSection title="Input">
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                              <PropertyFieldTooltip label="Value">
+                                <label className="block space-y-2">
+                                  <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                    Value
+                                  </span>
+                                  <PrimitiveValueInput
+                                    value={primitiveValue}
+                                    onValueChange={setPrimitiveValue}
+                                    ariaLabel="Value"
+                                    leadingElement={primitiveHandleElement}
+                                    min={primitiveMin}
+                                    max={primitiveMax}
+                                    wrapMode={primitiveWrapMode}
+                                    step={primitiveStep}
+                                    fineStep={primitiveFineStep}
+                                    coarseStep={primitiveCoarseStep}
+                                    pageStep={primitivePageStep}
+                                    precision={primitivePrecision}
+                                    autoTrim={primitiveAutoTrim}
+                                    allowExpressions={primitiveAllowExpressions}
+                                    selectAllOnFocus={primitiveSelectAllOnFocus}
+                                    commitOnBlur={primitiveCommitOnBlur}
+                                    scrubEnabled={primitiveScrubEnabled}
+                                    scrubPixelsPerStep={
+                                      primitiveScrubPixelsPerStep
+                                    }
+                                    scrubThreshold={primitiveScrubThreshold}
+                                    pointerLockEnabled={
+                                      primitivePointerLockEnabled
+                                    }
+                                    horizontalArrowKeysMoveCaret={
+                                      primitiveHorizontalArrowKeysMoveCaret
+                                    }
+                                    disabled={primitiveDisabled}
+                                    readOnly={primitiveReadOnly}
+                                    visualState={primitiveVisualState}
+                                    size="full"
+                                  />
+                                </label>
+                              </PropertyFieldTooltip>
+                              <PrecisionConfigInput
+                                value={primitivePrecision}
+                                onChange={setPrimitivePrecision}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <BoundsConfigInput
+                                label="Min"
+                                value={primitiveMin}
+                                onValueChange={setPrimitiveMin}
+                                leadingElement={
+                                  <ArrowLeftToLine
+                                    aria-hidden="true"
+                                    className="size-3"
+                                    strokeWidth={1.75}
+                                  />
+                                }
+                              />
+                              <BoundsConfigInput
+                                label="Max"
+                                value={primitiveMax}
+                                onValueChange={setPrimitiveMax}
+                                leadingElement={
+                                  <ArrowRightToLine
+                                    aria-hidden="true"
+                                    className="size-3"
+                                    strokeWidth={1.75}
+                                  />
+                                }
+                              />
+                            </div>
+                            <SegmentedField
+                              label="Bounds"
+                              value={primitiveWrapMode}
+                              onChange={setPrimitiveWrapMode}
+                              options={[
+                                {
+                                  value: 'clamp',
+                                  label: 'Clamp',
+                                  icon: (
+                                    <ChevronsRightLeft
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                      strokeWidth={1.75}
+                                    />
+                                  ),
+                                  tooltip: 'Clamp values',
+                                },
+                                {
+                                  value: 'wrap',
+                                  label: 'Wrap',
+                                  icon: (
+                                    <RotateCw
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                      strokeWidth={1.75}
+                                    />
+                                  ),
+                                  tooltip: 'Wrap values',
+                                },
+                                {
+                                  value: 'free',
+                                  label: 'Free',
+                                  icon: (
+                                    <ChevronsLeftRight
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                      strokeWidth={1.75}
+                                    />
+                                  ),
+                                  tooltip: 'Unbounded values',
+                                },
+                              ]}
+                            />
+                          </div>
+                        </PanelSection>
 
-                      <Separator className="bg-white/8" />
+                        <Separator className="bg-white/8" />
 
-                      <PanelSection
-                        title="Overlays"
-                        description="Optional helpers for reading the active gamut geometry."
-                      >
-                        <div className="space-y-3">
-                          <ToggleField
-                            label="Display P3 boundary"
-                            checked={showP3Boundary}
-                            onChange={setShowP3Boundary}
-                          />
-                          <ToggleField
-                            label="sRGB boundary"
-                            checked={showSrgbBoundary}
-                            onChange={setShowSrgbBoundary}
-                          />
-                          <ToggleField
-                            label="Fallback points"
-                            checked={showFallbackPoints}
-                            onChange={setShowFallbackPoints}
-                          />
-                        </div>
-                      </PanelSection>
+                        <PanelSection
+                          title="Drag Handle"
+                          description="Choose what appears inside the scrub handle."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Content"
+                              value={primitiveHandleContent}
+                              onChange={setPrimitiveHandleContent}
+                              options={[
+                                { value: 'none', label: 'None' },
+                                { value: 'letter', label: 'Letter' },
+                                { value: 'icon', label: 'Icon' },
+                                { value: 'swatch', label: 'Swatch' },
+                              ]}
+                            />
+                            {primitiveHandleContent === 'letter' ? (
+                              <TextConfigField
+                                label="Letter"
+                                value={primitiveHandleLetter}
+                                onChange={setPrimitiveHandleLetter}
+                                maxLength={2}
+                              />
+                            ) : null}
+                            {primitiveHandleContent === 'icon' ? (
+                              <SegmentedField
+                                label="Icon"
+                                value={primitiveHandleIcon}
+                                onChange={setPrimitiveHandleIcon}
+                                options={[
+                                  {
+                                    value: 'cursor',
+                                    label: 'Cursor',
+                                    icon: (
+                                      <MousePointer2
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'Cursor icon',
+                                  },
+                                  {
+                                    value: 'radius',
+                                    label: 'Radius',
+                                    icon: (
+                                      <Radius
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'Radius icon',
+                                  },
+                                  {
+                                    value: 'delta',
+                                    label: 'Delta',
+                                    icon: (
+                                      <Diff
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'Delta icon',
+                                  },
+                                ]}
+                              />
+                            ) : null}
+                          </div>
+                        </PanelSection>
 
-                      <Separator className="bg-white/8" />
+                        <Separator className="bg-white/8" />
 
-                      <PanelSection
-                        title="Rendering"
-                        description="Tune how aggressively the area optimizes pointer updates."
-                      >
-                        <SegmentedField
-                          label="Performance profile"
-                          value={performanceProfile}
-                          onChange={setPerformanceProfile}
-                          options={[
-                            { value: 'auto', label: 'Auto' },
-                            { value: 'quality', label: 'Quality' },
-                            { value: 'balanced', label: 'Balanced' },
-                            { value: 'performance', label: 'Perf' },
-                          ]}
-                        />
-                      </PanelSection>
-                    </>
-                  ) : (
-                    <>
-                      <PanelSection
-                        title="Input"
-                        description="Plain value state for the centered input primitive."
-                      >
-                        <div className="space-y-3">
-                          <NumberConfigField
-                            label="Value"
-                            value={primitiveValue}
-                            onChange={setPrimitiveValue}
-                            step={primitiveStep}
-                          />
+                        <PanelSection title="Stepping">
                           <div className="grid grid-cols-2 gap-3">
-                            <NumberConfigField
-                              label="Min"
-                              value={primitiveMin}
-                              onChange={setPrimitiveMin}
+                            <StepConfigInput
+                              label="Step"
+                              value={primitiveStep}
+                              onValueChange={setPrimitiveStep}
+                              leadingElement={
+                                <Diff
+                                  aria-hidden="true"
+                                  className="size-3"
+                                  strokeWidth={1.75}
+                                />
+                              }
+                              step={0.1}
                             />
-                            <NumberConfigField
-                              label="Max"
-                              value={primitiveMax}
-                              onChange={setPrimitiveMax}
+                            <DragStepConfigInput
+                              value={primitiveScrubMultiplier}
+                              onValueChange={setPrimitiveScrubMultiplier}
+                            />
+                            <StepConfigInput
+                              label="Fine"
+                              value={primitiveFineStep}
+                              onValueChange={setPrimitiveFineStep}
+                              leadingElement={
+                                <Option
+                                  aria-hidden="true"
+                                  className="size-3"
+                                  strokeWidth={1.75}
+                                />
+                              }
+                              step={0.1}
+                            />
+                            <StepConfigInput
+                              label="Coarse"
+                              value={primitiveCoarseStep}
+                              onValueChange={setPrimitiveCoarseStep}
+                              leadingElement={
+                                <ArrowBigUp
+                                  aria-hidden="true"
+                                  className="size-3"
+                                  strokeWidth={1.75}
+                                />
+                              }
+                              step={1}
                             />
                           </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Behavior"
+                          description="Toggle text-entry affordances for the focused input."
+                        >
+                          <div className="space-y-3">
+                            <ToggleField
+                              label="Select all on focus"
+                              checked={primitiveSelectAllOnFocus}
+                              onChange={setPrimitiveSelectAllOnFocus}
+                            />
+                            <ToggleField
+                              label="Allow expressions"
+                              checked={primitiveAllowExpressions}
+                              onChange={setPrimitiveAllowExpressions}
+                            />
+                            <ToggleField
+                              label="Commit on blur"
+                              checked={primitiveCommitOnBlur}
+                              onChange={setPrimitiveCommitOnBlur}
+                            />
+                            <ToggleField
+                              label="Horizontal arrows move caret"
+                              checked={primitiveHorizontalArrowKeysMoveCaret}
+                              onChange={
+                                setPrimitiveHorizontalArrowKeysMoveCaret
+                              }
+                            />
+                            <ToggleField
+                              label="Trim trailing zeros"
+                              checked={primitiveAutoTrim}
+                              onChange={setPrimitiveAutoTrim}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Scrub"
+                          description="Adjust how far the pointer moves per channel step."
+                        >
+                          <div className="space-y-3">
+                            <ToggleField
+                              label="Enable scrub handle"
+                              checked={primitiveScrubEnabled}
+                              onChange={setPrimitiveScrubEnabled}
+                            />
+                            <ToggleField
+                              label="Use pointer lock"
+                              checked={primitivePointerLockEnabled}
+                              onChange={setPrimitivePointerLockEnabled}
+                            />
+                            <DragThresholdConfigInput
+                              value={primitiveScrubThreshold}
+                              onValueChange={setPrimitiveScrubThreshold}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Visual State"
+                          description="Preview primitive sizing and state variants."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Density"
+                              value={primitiveDensity}
+                              onChange={setPrimitiveDensity}
+                              options={[
+                                { value: 'compact', label: 'Compact' },
+                                { value: 'comfortable', label: 'Comfort' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Validity"
+                              value={primitiveVisualState}
+                              onChange={setPrimitiveVisualState}
+                              options={[
+                                { value: 'auto', label: 'Auto' },
+                                { value: 'valid', label: 'Valid' },
+                                { value: 'invalid', label: 'Invalid' },
+                              ]}
+                            />
+                            <ToggleField
+                              label="Disabled"
+                              checked={primitiveDisabled}
+                              onChange={setPrimitiveDisabled}
+                            />
+                            <ToggleField
+                              label="Read only"
+                              checked={primitiveReadOnly}
+                              onChange={setPrimitiveReadOnly}
+                            />
+                          </div>
+                        </PanelSection>
+                      </>
+                    ) : (
+                      <>
+                        <PanelSection
+                          title="Timing"
+                          description="Tune the Radix initial hover delay and the cooldown window that marks tooltip handoffs."
+                        >
+                          <div className="space-y-3">
+                            <NumberConfigField
+                              label="Initial delay"
+                              value={tooltipDelayDuration}
+                              onChange={setTooltipDelayDuration}
+                              step={50}
+                            />
+                            <NumberConfigField
+                              label="Handoff cooldown"
+                              value={tooltipSkipDelayDuration}
+                              onChange={setTooltipSkipDelayDuration}
+                              step={50}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Placement"
+                          description="Move the tooltip around each trigger while preserving the same handoff behavior."
+                        >
                           <SegmentedField
-                            label="Bounds"
-                            value={primitiveWrapMode}
-                            onChange={setPrimitiveWrapMode}
+                            label="Side"
+                            value={tooltipSide}
+                            onChange={setTooltipSide}
                             options={[
-                              { value: 'clamp', label: 'Clamp' },
-                              { value: 'wrap', label: 'Wrap' },
-                              { value: 'free', label: 'Free' },
+                              { value: 'top', label: 'Top' },
+                              { value: 'right', label: 'Right' },
+                              { value: 'bottom', label: 'Bottom' },
+                              { value: 'left', label: 'Left' },
                             ]}
                           />
-                          <SegmentedField
-                            label="Precision"
-                            value={primitivePrecision}
-                            onChange={setPrimitivePrecision}
-                            options={[
-                              { value: 'auto', label: 'Auto' },
-                              { value: '0', label: '0' },
-                              { value: '1', label: '1' },
-                              { value: '2', label: '2' },
-                              { value: '3', label: '3' },
-                            ]}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Stepping"
-                        description="Configure keyboard and pointer step sizes."
-                      >
-                        <div className="grid grid-cols-2 gap-3">
-                          <NumberConfigField
-                            label="Step"
-                            value={primitiveStep}
-                            onChange={setPrimitiveStep}
-                            step={0.1}
-                          />
-                          <NumberConfigField
-                            label="Fine"
-                            value={primitiveFineStep}
-                            onChange={setPrimitiveFineStep}
-                            step={0.1}
-                          />
-                          <NumberConfigField
-                            label="Coarse"
-                            value={primitiveCoarseStep}
-                            onChange={setPrimitiveCoarseStep}
-                            step={1}
-                          />
-                          <NumberConfigField
-                            label="Page"
-                            value={primitivePageStep}
-                            onChange={setPrimitivePageStep}
-                            step={1}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Behavior"
-                        description="Toggle text-entry affordances for the focused input."
-                      >
-                        <div className="space-y-3">
-                          <ToggleField
-                            label="Select all on focus"
-                            checked={primitiveSelectAllOnFocus}
-                            onChange={setPrimitiveSelectAllOnFocus}
-                          />
-                          <ToggleField
-                            label="Allow expressions"
-                            checked={primitiveAllowExpressions}
-                            onChange={setPrimitiveAllowExpressions}
-                          />
-                          <ToggleField
-                            label="Commit on blur"
-                            checked={primitiveCommitOnBlur}
-                            onChange={setPrimitiveCommitOnBlur}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Scrub"
-                        description="Adjust how far the pointer moves per channel step."
-                      >
-                        <div className="space-y-3">
-                          <ToggleField
-                            label="Enable scrub handle"
-                            checked={primitiveScrubEnabled}
-                            onChange={setPrimitiveScrubEnabled}
-                          />
-                          <ToggleField
-                            label="Use pointer lock"
-                            checked={primitivePointerLockEnabled}
-                            onChange={setPrimitivePointerLockEnabled}
-                          />
-                          <NumberConfigField
-                            label="Drag threshold"
-                            value={primitiveScrubThreshold}
-                            onChange={setPrimitiveScrubThreshold}
-                            step={1}
-                          />
-                          <SegmentedField
-                            label="Drag step"
-                            value={primitiveScrubMultiplier}
-                            onChange={setPrimitiveScrubMultiplier}
-                            options={[
-                              { value: '1', label: '1' },
-                              { value: '0.1', label: '0.1' },
-                              { value: '0.01', label: '0.01' },
-                            ]}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Visual State"
-                        description="Preview primitive sizing and state variants."
-                      >
-                        <div className="space-y-3">
-                          <SegmentedField
-                            label="Size"
-                            value={primitiveSize}
-                            onChange={setPrimitiveSize}
-                            options={[
-                              { value: 'sm', label: 'Sm' },
-                              { value: 'md', label: 'Md' },
-                              { value: 'lg', label: 'Lg' },
-                            ]}
-                          />
-                          <SegmentedField
-                            label="Density"
-                            value={primitiveDensity}
-                            onChange={setPrimitiveDensity}
-                            options={[
-                              { value: 'compact', label: 'Compact' },
-                              { value: 'comfortable', label: 'Comfort' },
-                            ]}
-                          />
-                          <SegmentedField
-                            label="Validity"
-                            value={primitiveVisualState}
-                            onChange={setPrimitiveVisualState}
-                            options={[
-                              { value: 'auto', label: 'Auto' },
-                              { value: 'valid', label: 'Valid' },
-                              { value: 'invalid', label: 'Invalid' },
-                            ]}
-                          />
-                          <ToggleField
-                            label="Disabled"
-                            checked={primitiveDisabled}
-                            onChange={setPrimitiveDisabled}
-                          />
-                          <ToggleField
-                            label="Read only"
-                            checked={primitiveReadOnly}
-                            onChange={setPrimitiveReadOnly}
-                          />
-                        </div>
-                      </PanelSection>
-                    </>
-                  )}
-                </div>
+                        </PanelSection>
+                      </>
+                    )}
+                  </div>
+                </TooltipProvider>
               </ScrollArea>
             </div>
           </aside>

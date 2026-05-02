@@ -125,10 +125,25 @@ This file defines top-level guidance for Codex in this repository.
 - The user prefers playground page navigation to use minimal side-nav-like list items with active state shown through lightness and font weight, not button treatments, cards, or multiline descriptions.
 - The user prefers explicit control labels over ambiguous labels like `Auto` when showing defaults such as input precision.
 - The user prefers border-box based outlines for input defaults because borders are expected across use cases, while inset shadows are more of a styling decision.
+- The user expects provided visual assets to be used directly when requested, rather than approximating them with library icons or hand-drawn SVGs.
+- The user prefers Lab input microinteractions to keep dragging, focus, and hover states visually distinct instead of sharing the same outline treatment.
+- The user prefers Lab segmented controls to use item-level tooltips and keep the selected segment visibly outlined at rest; Bounds segments should be icon-only with `ChevronsRightLeft`/`RotateCw`/`ChevronsLeftRight` and tooltips "Clamp values", "Wrap values", and "Unbounded values".
+- The user prefers icon-based Lab control grids to avoid visible labels above inputs when accessible names and hover/focus tooltips already identify each field.
+- The user prefers Lab checkbox controls to follow Figma UI3 compact rows without hover tooltips: leading 16px rounded checkbox, 8px label gap, 11px medium label text, and blue checked state rather than large card-like toggles.
 
 ## Learned Workspace Facts
 
 - The Input Primitive Lab is intended to be color-agnostic: it should refine, test, and visualize a standalone input component primitive independently from ColorPlane state.
-- The Input Primitive Lab should keep the standalone input directly on the page without decorative wrappers such as cards or background gradients.
-- The standalone input should inherit the default spacing, sizing, font, and cursor treatment refined in the color plane playground while remaining state-independent from the color plane.
+- The Input Primitive Lab should keep the standalone input directly on the page without decorative wrappers while inheriting the default spacing, sizing, font, and cursor treatment refined in the color plane playground.
 - Invalid raw input content should not automatically trigger a visible error state in the Input Primitive Lab.
+- Dogfooding the input primitive in the properties panel should preserve the existing ColorPlane `L`, `C`, and `H` leading labels rather than replacing them with property-panel icons.
+- `PrimitiveValueInput` should default to the compact 24px height, and the Input Lab should default to `sm` sizing with width treated as style-driven rather than prop-driven.
+- Input primitive min/max controls in the properties panel should be icon-only fields with accessible names and hover/focus tooltips, not visible labels above each input.
+- The docs playground is now the Lab and includes Plane, Input, and Tooltip pages.
+- The Lab tooltip component should preserve provider-scoped handoff behavior: 450ms default initial hover delay, cooldown-backed sequential handoffs, one visible tooltip at a time, and first-open/last-close animations.
+- `PrimitiveValueInput` scrub math should quantize pointer deltas to whole CSS pixels before applying the configured step so `step={1}` stays integer-per-pixel.
+- `PrimitiveValueInput` scrub interactions should honor the same Shift/Alt coarse/fine step modifiers as keyboard stepping, including the final pointer-up commit.
+- `PrimitiveValueInput` precision should mean max decimal places, while `autoTrim` separately controls trailing-zero trimming; the Input Lab defaults precision to `3` with trimming enabled.
+- `PrimitiveValueInput` should default horizontal arrow keys to normal caret movement so users can edit text while up/down and page keys remain available for stepping.
+- Input Lab Step-adjacent controls should use icon-only draggable numeric inputs for Step, Drag step, Fine, Coarse, Precision, and Drag threshold, with accessible names and tooltips instead of visible labels.
+- The Input Lab should include a Drag Handle section for selecting whether the scrub handle renders nothing, a typed letter, an icon, or a swatch/image-like element.
