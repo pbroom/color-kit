@@ -11,6 +11,12 @@ This archive is the source of truth for reusable agent learnings in this reposit
 
 ## Entries
 
+- **2026-04-27 — Keep segment tooltip triggers off toggle buttons**: In Lab segmented controls, put `TooltipTrigger asChild` on a per-item wrapper and keep `ToggleGroupItem` as the inner button; sharing one element lets Radix Tooltip and ToggleGroup compose pointer/focus state in ways that can miss first-click activation.
+- **2026-04-27 — Segment hover keeps borders stable**: In the Input Lab segmented control, keep the selected segment to a single 1px `#4C4C4C` border and avoid adding borders on hover so selection does not visually thicken.
+- **2026-04-27 — Tooltip triggers can mask Radix item state**: When `TooltipTrigger asChild` wraps a Radix toggle item, tooltip `data-state` can overwrite toggle `data-state`; derive selected styling from React value state instead of `data-[state=on]`.
+- **2026-04-27 — Keep step inputs icon-only**: In the Input Lab Stepping panel, preserve accessible labels and tooltips but do not render visible labels above the Step, Drag step, Fine, or Coarse inputs.
+- **2026-04-27 — Segment tooltips belong on items**: For Radix segmented controls in the Lab, wrap each `ToggleGroupItem` in its own `Tooltip`/`TooltipTrigger asChild`; wrapping the field container makes the whole group one tooltip target.
+- **2026-04-27 — Figma UI3 segments are 24px controls**: When matching Figma UI3 segmented controls in the Lab, model label variants as 24px-tall groups with 5px radius, 8px/4px item padding, and 11px medium text before mapping colors to the local dark palette.
 - **2026-02-17 — Pin exploration subagent model explicitly**: For codebase discovery workflows, set `model: gpt-5.3-codex-high` in subagent frontmatter and repeat the model preference in the prompt body so delegation stays consistent.
 - **2026-02-13 — Compiler lint can be clean while memo cleanup is still worthwhile**: Enabling both `react-hooks` recommended-latest and `eslint-plugin-react-compiler` catches compiler-safety issues, but it does not automatically identify all low-value `useMemo`/`useCallback` usage; targeted manual cleanup plus tests/bench checks is still needed.
 - **2026-02-13 — Land compiler lint gates with baseline remediations**: Adding `pnpm lint` to CI is only actionable if the current mainline is already clean under `react-hooks` compiler rules; include baseline fixes (for example removing direct `setState` in effects) in the same change.

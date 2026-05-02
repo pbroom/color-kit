@@ -25,11 +25,16 @@ import {
   ArrowBigUp,
   ArrowLeftToLine,
   ArrowRightToLine,
+  Check,
+  ChevronsLeftRight,
+  ChevronsRightLeft,
   DecimalsArrowRight,
   Diff,
   Github,
   MousePointer2,
   Option,
+  Radius,
+  RotateCw,
 } from 'lucide-react';
 import {
   useCallback,
@@ -63,6 +68,8 @@ type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
 type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
 type PrimitiveDensity = 'compact' | 'comfortable';
 type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
+type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
+type PrimitiveHandleIcon = 'cursor' | 'radius' | 'delta';
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
 
 const MAX_PRIMITIVE_PRECISION_DIGITS = 12;
@@ -346,37 +353,62 @@ function SegmentedField<T extends string>({
   label: string;
   value: T;
   onChange: (value: T) => void;
-  options: Array<{ value: T; label: string }>;
+  options: Array<{
+    value: T;
+    label: string;
+    icon?: ReactNode;
+    tooltip?: string;
+  }>;
 }) {
   return (
-    <PropertyFieldTooltip label={label}>
-      <div className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-          {label}
-        </p>
-        <ToggleGroup
-          type="single"
-          value={value}
-          className="h-auto w-full justify-start rounded-xl border border-white/8 bg-white/[0.03] p-1"
-          onValueChange={(next) => {
-            if (next) {
-              onChange(next as T);
-            }
-          }}
-        >
-          {options.map((option) => (
-            <ToggleGroupItem
-              key={option.value}
-              value={option.value}
-              className="h-8 flex-1 rounded-lg px-2 text-xs text-white/70 data-[state=on]:bg-white/10 data-[state=on]:text-white data-[state=on]:shadow-none"
-              aria-label={`${label}: ${option.label}`}
-            >
-              {option.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
-    </PropertyFieldTooltip>
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+        {label}
+      </p>
+      <ToggleGroup
+        type="single"
+        value={value}
+        className="h-6 w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none"
+        onValueChange={(next) => {
+          if (next) {
+            onChange(next as T);
+          }
+        }}
+      >
+        {options.map((option) => {
+          const isSelected = value === option.value;
+
+          return (
+            <Tooltip key={option.value}>
+              <TooltipTrigger asChild>
+                <span className="flex min-w-0 flex-1">
+                  <ToggleGroupItem
+                    value={option.value}
+                    className={`h-6 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[state=on]:bg-[#1f1f1f] data-[state=on]:shadow-none ${
+                      isSelected
+                        ? 'border-[#4C4C4C] bg-[#1f1f1f] text-white/90 shadow-none'
+                        : 'border-transparent bg-transparent text-white/50 shadow-none'
+                    }`}
+                    aria-label={`${label}: ${option.label}`}
+                  >
+                    {option.icon ? (
+                      <span className="flex size-3.5 items-center justify-center text-current">
+                        {option.icon}
+                      </span>
+                    ) : (
+                      <span>{option.label}</span>
+                    )}
+                  </ToggleGroupItem>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="pointer-events-none">
+                {option.tooltip ?? `${label}: ${option.label}`}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </ToggleGroup>
+    </div>
   );
 }
 
@@ -390,17 +422,23 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <PropertyFieldTooltip label={label}>
-      <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-sm text-white/78">
-        <span>{label}</span>
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(event) => onChange(event.target.checked)}
-          className="size-4 rounded border-white/20 bg-transparent accent-white"
-        />
-      </label>
-    </PropertyFieldTooltip>
+    <label className="flex min-h-6 items-center gap-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden="true"
+        className="flex size-4 shrink-0 items-center justify-center rounded-[5px] border border-[#4C4C4C] bg-[#383838] text-white transition-[background-color,border-color] peer-checked:border-[#007be5] peer-checked:bg-[#0d99ff] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0d99ff]/80"
+      >
+        {checked ? (
+          <Check aria-hidden="true" className="size-3" strokeWidth={3} />
+        ) : null}
+      </span>
+      <span>{label}</span>
+    </label>
   );
 }
 
@@ -474,6 +512,35 @@ function NumberConfigField({
   );
 }
 
+function TextConfigField({
+  label,
+  value,
+  onChange,
+  maxLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  maxLength?: number;
+}) {
+  return (
+    <PropertyFieldTooltip label={label}>
+      <label className="block space-y-2">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+          {label}
+        </span>
+        <input
+          type="text"
+          value={value}
+          maxLength={maxLength}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-6 w-full rounded-[4px] border border-transparent bg-[#383838] px-2 text-[11px] font-medium text-white outline-none transition-[border-color] hover:border-[#4C4C4C] focus:border-[#5288db]"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
 function PrecisionConfigInput({
   value,
   onChange,
@@ -541,10 +608,7 @@ function StepConfigInput({
 }) {
   return (
     <PropertyFieldTooltip label={label}>
-      <label className="block space-y-2">
-        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-          {label}
-        </span>
+      <label className="block">
         <PrimitiveValueInput
           value={value}
           onValueChange={onValueChange}
@@ -585,10 +649,7 @@ function DragStepConfigInput({
 }) {
   return (
     <PropertyFieldTooltip label="Drag step">
-      <label className="block space-y-2">
-        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-          Drag step
-        </span>
+      <label className="block">
         <PrimitiveValueInput
           value={value}
           onValueChange={(nextValue) =>
@@ -650,6 +711,49 @@ function BoundsConfigInput({
           min={-1000}
           max={1000}
           wrapMode="free"
+          step={1}
+          fineStep={0.1}
+          coarseStep={10}
+          pageStep={10}
+          precision={6}
+          autoTrim
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
+        />
+      </label>
+    </PropertyFieldTooltip>
+  );
+}
+
+function DragThresholdConfigInput({
+  value,
+  onValueChange,
+}: {
+  value: number;
+  onValueChange: (value: number) => void;
+}) {
+  return (
+    <PropertyFieldTooltip label="Drag threshold">
+      <label className="block">
+        <PrimitiveValueInput
+          value={value}
+          onValueChange={onValueChange}
+          ariaLabel="Drag threshold"
+          leadingElement={
+            <Radius aria-hidden="true" className="size-3" strokeWidth={1.75} />
+          }
+          min={0}
+          max={1000}
+          wrapMode="clamp"
           step={1}
           fineStep={0.1}
           coarseStep={10}
@@ -746,6 +850,7 @@ function PrimitiveValueInput({
   const scrubStartXRef = useRef(0);
   const scrubStartValueRef = useRef(0);
   const lastScrubXRef = useRef(0);
+  const activeScrubStepRef = useRef(step);
   const hasDragStartedRef = useRef(false);
   const [draft, setDraft] = useState(() =>
     formatPrimitiveValue(value, precision, autoTrim),
@@ -963,14 +1068,19 @@ function PrimitiveValueInput({
   }, []);
 
   const endScrub = useCallback(
-    (clientX = lastScrubXRef.current) => {
+    (clientX = lastScrubXRef.current, shiftKey?: boolean, altKey?: boolean) => {
       if (activePointerIdRef.current !== null && hasDragStartedRef.current) {
+        const activeStep =
+          shiftKey === undefined || altKey === undefined
+            ? activeScrubStepRef.current
+            : getModifiedStep(shiftKey, altKey);
+        activeScrubStepRef.current = activeStep;
         const deltaPixels = clientX - scrubStartXRef.current;
         const wholeDeltaPixels = Math.round(deltaPixels);
         const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
         commitValue(
           scrubStartValueRef.current +
-            (wholeDeltaPixels / pixelsPerStep) * step,
+            (wholeDeltaPixels / pixelsPerStep) * activeStep,
         );
       }
       activePointerIdRef.current = null;
@@ -983,15 +1093,15 @@ function PrimitiveValueInput({
     },
     [
       commitValue,
+      getModifiedStep,
       hasPointerLock,
       scheduleClearPreservedSelection,
       scrubPixelsPerStep,
-      step,
     ],
   );
 
   const queueScrubValue = useCallback(
-    (clientX: number) => {
+    (clientX: number, shiftKey: boolean, altKey: boolean) => {
       lastScrubXRef.current = clientX;
       const deltaPixels = clientX - scrubStartXRef.current;
       if (
@@ -1002,13 +1112,16 @@ function PrimitiveValueInput({
       }
       hasDragStartedRef.current = true;
       setIsScrubbing(true);
+      const activeStep = getModifiedStep(shiftKey, altKey);
+      activeScrubStepRef.current = activeStep;
       const wholeDeltaPixels = Math.round(deltaPixels);
       const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
       commitValue(
-        scrubStartValueRef.current + (wholeDeltaPixels / pixelsPerStep) * step,
+        scrubStartValueRef.current +
+          (wholeDeltaPixels / pixelsPerStep) * activeStep,
       );
     },
-    [commitValue, scrubPixelsPerStep, scrubThreshold, step],
+    [commitValue, getModifiedStep, scrubPixelsPerStep, scrubThreshold],
   );
 
   const handlePointerDown = useCallback(
@@ -1023,6 +1136,10 @@ function PrimitiveValueInput({
       scrubStartXRef.current = event.clientX;
       lastScrubXRef.current = event.clientX;
       scrubStartValueRef.current = value;
+      activeScrubStepRef.current = getModifiedStep(
+        event.shiftKey,
+        event.altKey,
+      );
       hasDragStartedRef.current = false;
       event.currentTarget.setPointerCapture?.(event.pointerId);
       if (pointerLockEnabled) {
@@ -1038,6 +1155,7 @@ function PrimitiveValueInput({
       disabled,
       pointerLockEnabled,
       preserveCurrentSelection,
+      getModifiedStep,
       readOnly,
       scrubEnabled,
       value,
@@ -1049,7 +1167,7 @@ function PrimitiveValueInput({
       if (event.pointerId !== activePointerIdRef.current || hasPointerLock()) {
         return;
       }
-      queueScrubValue(event.clientX);
+      queueScrubValue(event.clientX, event.shiftKey, event.altKey);
     },
     [hasPointerLock, queueScrubValue],
   );
@@ -1059,7 +1177,11 @@ function PrimitiveValueInput({
       if (event.pointerId !== activePointerIdRef.current) {
         return;
       }
-      endScrub(hasPointerLock() ? lastScrubXRef.current : event.clientX);
+      endScrub(
+        hasPointerLock() ? lastScrubXRef.current : event.clientX,
+        event.shiftKey,
+        event.altKey,
+      );
     },
     [endScrub, hasPointerLock],
   );
@@ -1069,7 +1191,11 @@ function PrimitiveValueInput({
       if (activePointerIdRef.current === null || !hasPointerLock()) {
         return;
       }
-      queueScrubValue(lastScrubXRef.current + event.movementX);
+      queueScrubValue(
+        lastScrubXRef.current + event.movementX,
+        event.shiftKey,
+        event.altKey,
+      );
     };
 
     const handlePointerLockChange = () => {
@@ -1098,7 +1224,7 @@ function PrimitiveValueInput({
       : isEditing
         ? '#5288db'
         : isHovered
-          ? 'rgba(255, 255, 255, 0.1)'
+          ? '#4C4C4C'
           : 'transparent';
 
   return (
@@ -1256,8 +1382,12 @@ export function PlaygroundPage() {
   const [primitivePointerLockEnabled, setPrimitivePointerLockEnabled] =
     useState(true);
   const [primitiveScrubThreshold, setPrimitiveScrubThreshold] = useState(2);
-  const [primitiveScrubMultiplier, setPrimitiveScrubMultiplier] =
-    useState(1);
+  const [primitiveScrubMultiplier, setPrimitiveScrubMultiplier] = useState(1);
+  const [primitiveHandleContent, setPrimitiveHandleContent] =
+    useState<PrimitiveHandleContent>('letter');
+  const [primitiveHandleLetter, setPrimitiveHandleLetter] = useState('V');
+  const [primitiveHandleIcon, setPrimitiveHandleIcon] =
+    useState<PrimitiveHandleIcon>('cursor');
   const [primitiveDisabled, setPrimitiveDisabled] = useState(false);
   const [primitiveReadOnly, setPrimitiveReadOnly] = useState(false);
   const [primitiveVisualState, setPrimitiveVisualState] =
@@ -1306,6 +1436,46 @@ export function PlaygroundPage() {
 
   const primitiveScrubPixelsPerStep =
     1 / normalizePrimitiveScrubMultiplier(primitiveScrubMultiplier);
+
+  const primitiveHandleElement = useMemo<ReactNode>(() => {
+    switch (primitiveHandleContent) {
+      case 'none':
+        return null;
+      case 'letter':
+        return primitiveHandleLetter.trim().slice(0, 2);
+      case 'icon':
+        switch (primitiveHandleIcon) {
+          case 'cursor':
+            return (
+              <MousePointer2
+                aria-hidden="true"
+                className="size-3"
+                strokeWidth={1.75}
+              />
+            );
+          case 'radius':
+            return (
+              <Radius
+                aria-hidden="true"
+                className="size-3"
+                strokeWidth={1.75}
+              />
+            );
+          case 'delta':
+            return (
+              <Diff aria-hidden="true" className="size-3" strokeWidth={1.75} />
+            );
+        }
+        break;
+      case 'swatch':
+        return (
+          <span
+            aria-hidden="true"
+            className="size-3 rounded-[3px] border border-white/20 bg-[conic-gradient(from_180deg,#ff5f6d,#ffc371,#47d16c,#4cc9f0,#845ef7,#ff5f6d)]"
+          />
+        );
+    }
+  }, [primitiveHandleContent, primitiveHandleIcon, primitiveHandleLetter]);
 
   return (
     <div className="ck-shell-bg min-h-screen">
@@ -1407,6 +1577,7 @@ export function PlaygroundPage() {
               <PrimitiveValueInput
                 value={primitiveValue}
                 onValueChange={setPrimitiveValue}
+                leadingElement={primitiveHandleElement}
                 min={primitiveMin}
                 max={primitiveMax}
                 wrapMode={primitiveWrapMode}
@@ -1446,454 +1617,562 @@ export function PlaygroundPage() {
               <ScrollArea className="h-full">
                 <TooltipProvider>
                   <div className="space-y-6 p-4">
-                  {activePage === 'plane' ? (
-                    <>
-                      <PanelSection
-                        title="Color"
-                        description="Drive the current sample color."
-                      >
-                        <div className="space-y-3">
-                          <PropertyFieldTooltip label="Hex">
-                            <div className="space-y-2">
-                              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                                Hex
-                              </p>
-                              <ColorStringInput
-                                format="hex"
-                                className="ck-input"
-                                requested={color.requested}
-                                onChangeRequested={color.setRequested}
-                                aria-label="Hex color input"
-                              />
-                            </div>
-                          </PropertyFieldTooltip>
-
-                          <PropertyFieldTooltip label="Hue">
-                            <div className="space-y-2">
-                              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                                Hue
-                              </p>
-                              <ColorSlider
-                                channel="h"
-                                className="ck-slider ck-slider-v2"
-                                data-color-space={hueRail.colorSpace}
-                                requested={color.requested}
-                                onChangeRequested={color.setRequested}
-                                style={hueRail.style}
-                              />
-                            </div>
-                          </PropertyFieldTooltip>
-
-                          <div className="grid grid-cols-3 gap-3">
-                            <PropertyFieldTooltip label="Lightness">
-                              <ColorInput
-                                model="oklch"
-                                channel="l"
-                                className="ck-input"
-                                requested={color.requested}
-                                onChangeRequested={color.setRequested}
-                                aria-label="Lightness input"
-                              />
+                    {activePage === 'plane' ? (
+                      <>
+                        <PanelSection
+                          title="Color"
+                          description="Drive the current sample color."
+                        >
+                          <div className="space-y-3">
+                            <PropertyFieldTooltip label="Hex">
+                              <div className="space-y-2">
+                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Hex
+                                </p>
+                                <ColorStringInput
+                                  format="hex"
+                                  className="ck-input"
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  aria-label="Hex color input"
+                                />
+                              </div>
                             </PropertyFieldTooltip>
-                            <PropertyFieldTooltip label="Chroma">
-                              <ColorInput
-                                model="oklch"
-                                channel="c"
-                                className="ck-input"
-                                requested={color.requested}
-                                onChangeRequested={color.setRequested}
-                                aria-label="Chroma input"
-                              />
-                            </PropertyFieldTooltip>
+
                             <PropertyFieldTooltip label="Hue">
-                              <ColorInput
-                                model="oklch"
-                                channel="h"
-                                className="ck-input"
-                                requested={color.requested}
-                                onChangeRequested={color.setRequested}
-                                aria-label="Hue input"
-                              />
+                              <div className="space-y-2">
+                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Hue
+                                </p>
+                                <ColorSlider
+                                  channel="h"
+                                  className="ck-slider ck-slider-v2"
+                                  data-color-space={hueRail.colorSpace}
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  style={hueRail.style}
+                                />
+                              </div>
                             </PropertyFieldTooltip>
-                          </div>
-                        </div>
-                      </PanelSection>
 
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Plane"
-                        description="Change the displayed gamut and the axes mapped into the square."
-                      >
-                        <div className="space-y-3">
-                          <SegmentedField
-                            label="Preview gamut"
-                            value={color.activeGamut}
-                            onChange={(next) =>
-                              color.setActiveGamut(next, 'programmatic')
-                            }
-                            options={[
-                              { value: 'display-p3', label: 'P3' },
-                              { value: 'srgb', label: 'sRGB' },
-                            ]}
-                          />
-                          <SegmentedField
-                            label="X axis"
-                            value={axisState.x}
-                            onChange={(next) => setAxis('x', next)}
-                            options={[
-                              { value: 'l', label: 'L' },
-                              { value: 'c', label: 'C' },
-                              { value: 'h', label: 'H' },
-                            ]}
-                          />
-                          <SegmentedField
-                            label="Y axis"
-                            value={axisState.y}
-                            onChange={(next) => setAxis('y', next)}
-                            options={[
-                              { value: 'l', label: 'L' },
-                              { value: 'c', label: 'C' },
-                              { value: 'h', label: 'H' },
-                            ]}
-                          />
-                          <ToggleField
-                            label="Repeat edge pixels"
-                            checked={repeatEdgePixels}
-                            onChange={setRepeatEdgePixels}
-                          />
-                          <ToggleField
-                            label="Checkerboard background"
-                            checked={checkerboard}
-                            onChange={setCheckerboard}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Overlays"
-                        description="Optional helpers for reading the active gamut geometry."
-                      >
-                        <div className="space-y-3">
-                          <ToggleField
-                            label="Display P3 boundary"
-                            checked={showP3Boundary}
-                            onChange={setShowP3Boundary}
-                          />
-                          <ToggleField
-                            label="sRGB boundary"
-                            checked={showSrgbBoundary}
-                            onChange={setShowSrgbBoundary}
-                          />
-                          <ToggleField
-                            label="Fallback points"
-                            checked={showFallbackPoints}
-                            onChange={setShowFallbackPoints}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Rendering"
-                        description="Tune how aggressively the area optimizes pointer updates."
-                      >
-                        <SegmentedField
-                          label="Performance profile"
-                          value={performanceProfile}
-                          onChange={setPerformanceProfile}
-                          options={[
-                            { value: 'auto', label: 'Auto' },
-                            { value: 'quality', label: 'Quality' },
-                            { value: 'balanced', label: 'Balanced' },
-                            { value: 'performance', label: 'Perf' },
-                          ]}
-                        />
-                      </PanelSection>
-                    </>
-                  ) : activePage === 'input' ? (
-                    <>
-                      <PanelSection
-                        title="Input"
-                      >
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <PropertyFieldTooltip label="Value">
-                              <label className="block space-y-2">
-                                <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                                  Value
-                                </span>
-                                <PrimitiveValueInput
-                                  value={primitiveValue}
-                                  onValueChange={setPrimitiveValue}
-                                  ariaLabel="Value"
-                                  min={primitiveMin}
-                                  max={primitiveMax}
-                                  wrapMode={primitiveWrapMode}
-                                  step={primitiveStep}
-                                  fineStep={primitiveFineStep}
-                                  coarseStep={primitiveCoarseStep}
-                                  pageStep={primitivePageStep}
-                                  precision={primitivePrecision}
-                                  autoTrim={primitiveAutoTrim}
-                                  allowExpressions={primitiveAllowExpressions}
-                                  selectAllOnFocus={primitiveSelectAllOnFocus}
-                                  commitOnBlur={primitiveCommitOnBlur}
-                                  scrubEnabled={primitiveScrubEnabled}
-                                  scrubPixelsPerStep={primitiveScrubPixelsPerStep}
-                                  scrubThreshold={primitiveScrubThreshold}
-                                  pointerLockEnabled={primitivePointerLockEnabled}
-                                  horizontalArrowKeysMoveCaret={
-                                    primitiveHorizontalArrowKeysMoveCaret
-                                  }
-                                  disabled={primitiveDisabled}
-                                  readOnly={primitiveReadOnly}
-                                  visualState={primitiveVisualState}
-                                  size="full"
+                            <div className="grid grid-cols-3 gap-3">
+                              <PropertyFieldTooltip label="Lightness">
+                                <ColorInput
+                                  model="oklch"
+                                  channel="l"
+                                  className="ck-input"
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  aria-label="Lightness input"
                                 />
-                              </label>
-                            </PropertyFieldTooltip>
-                            <PrecisionConfigInput
-                              value={primitivePrecision}
-                              onChange={setPrimitivePrecision}
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <BoundsConfigInput
-                              label="Min"
-                              value={primitiveMin}
-                              onValueChange={setPrimitiveMin}
-                              leadingElement={
-                                <ArrowLeftToLine
-                                  aria-hidden="true"
-                                  className="size-3"
-                                  strokeWidth={1.75}
+                              </PropertyFieldTooltip>
+                              <PropertyFieldTooltip label="Chroma">
+                                <ColorInput
+                                  model="oklch"
+                                  channel="c"
+                                  className="ck-input"
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  aria-label="Chroma input"
                                 />
+                              </PropertyFieldTooltip>
+                              <PropertyFieldTooltip label="Hue">
+                                <ColorInput
+                                  model="oklch"
+                                  channel="h"
+                                  className="ck-input"
+                                  requested={color.requested}
+                                  onChangeRequested={color.setRequested}
+                                  aria-label="Hue input"
+                                />
+                              </PropertyFieldTooltip>
+                            </div>
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Plane"
+                          description="Change the displayed gamut and the axes mapped into the square."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Preview gamut"
+                              value={color.activeGamut}
+                              onChange={(next) =>
+                                color.setActiveGamut(next, 'programmatic')
                               }
+                              options={[
+                                { value: 'display-p3', label: 'P3' },
+                                { value: 'srgb', label: 'sRGB' },
+                              ]}
                             />
-                            <BoundsConfigInput
-                              label="Max"
-                              value={primitiveMax}
-                              onValueChange={setPrimitiveMax}
-                              leadingElement={
-                                <ArrowRightToLine
-                                  aria-hidden="true"
-                                  className="size-3"
-                                  strokeWidth={1.75}
-                                />
-                              }
+                            <SegmentedField
+                              label="X axis"
+                              value={axisState.x}
+                              onChange={(next) => setAxis('x', next)}
+                              options={[
+                                { value: 'l', label: 'L' },
+                                { value: 'c', label: 'C' },
+                                { value: 'h', label: 'H' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Y axis"
+                              value={axisState.y}
+                              onChange={(next) => setAxis('y', next)}
+                              options={[
+                                { value: 'l', label: 'L' },
+                                { value: 'c', label: 'C' },
+                                { value: 'h', label: 'H' },
+                              ]}
+                            />
+                            <ToggleField
+                              label="Repeat edge pixels"
+                              checked={repeatEdgePixels}
+                              onChange={setRepeatEdgePixels}
+                            />
+                            <ToggleField
+                              label="Checkerboard background"
+                              checked={checkerboard}
+                              onChange={setCheckerboard}
                             />
                           </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Overlays"
+                          description="Optional helpers for reading the active gamut geometry."
+                        >
+                          <div className="space-y-3">
+                            <ToggleField
+                              label="Display P3 boundary"
+                              checked={showP3Boundary}
+                              onChange={setShowP3Boundary}
+                            />
+                            <ToggleField
+                              label="sRGB boundary"
+                              checked={showSrgbBoundary}
+                              onChange={setShowSrgbBoundary}
+                            />
+                            <ToggleField
+                              label="Fallback points"
+                              checked={showFallbackPoints}
+                              onChange={setShowFallbackPoints}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Rendering"
+                          description="Tune how aggressively the area optimizes pointer updates."
+                        >
                           <SegmentedField
-                            label="Bounds"
-                            value={primitiveWrapMode}
-                            onChange={setPrimitiveWrapMode}
-                            options={[
-                              { value: 'clamp', label: 'Clamp' },
-                              { value: 'wrap', label: 'Wrap' },
-                              { value: 'free', label: 'Free' },
-                            ]}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Stepping"
-                      >
-                        <div className="grid grid-cols-2 gap-3">
-                          <StepConfigInput
-                            label="Step"
-                            value={primitiveStep}
-                            onValueChange={setPrimitiveStep}
-                            leadingElement={
-                              <Diff
-                                aria-hidden="true"
-                                className="size-3"
-                                strokeWidth={1.75}
-                              />
-                            }
-                            step={0.1}
-                          />
-                          <DragStepConfigInput
-                            value={primitiveScrubMultiplier}
-                            onValueChange={setPrimitiveScrubMultiplier}
-                          />
-                          <StepConfigInput
-                            label="Fine"
-                            value={primitiveFineStep}
-                            onValueChange={setPrimitiveFineStep}
-                            leadingElement={
-                              <Option
-                                aria-hidden="true"
-                                className="size-3"
-                                strokeWidth={1.75}
-                              />
-                            }
-                            step={0.1}
-                          />
-                          <StepConfigInput
-                            label="Coarse"
-                            value={primitiveCoarseStep}
-                            onValueChange={setPrimitiveCoarseStep}
-                            leadingElement={
-                              <ArrowBigUp
-                                aria-hidden="true"
-                                className="size-3"
-                                strokeWidth={1.75}
-                              />
-                            }
-                            step={1}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Behavior"
-                        description="Toggle text-entry affordances for the focused input."
-                      >
-                        <div className="space-y-3">
-                          <ToggleField
-                            label="Select all on focus"
-                            checked={primitiveSelectAllOnFocus}
-                            onChange={setPrimitiveSelectAllOnFocus}
-                          />
-                          <ToggleField
-                            label="Allow expressions"
-                            checked={primitiveAllowExpressions}
-                            onChange={setPrimitiveAllowExpressions}
-                          />
-                          <ToggleField
-                            label="Commit on blur"
-                            checked={primitiveCommitOnBlur}
-                            onChange={setPrimitiveCommitOnBlur}
-                          />
-                          <ToggleField
-                            label="Horizontal arrows move caret"
-                            checked={primitiveHorizontalArrowKeysMoveCaret}
-                            onChange={setPrimitiveHorizontalArrowKeysMoveCaret}
-                          />
-                          <ToggleField
-                            label="Trim trailing zeros"
-                            checked={primitiveAutoTrim}
-                            onChange={setPrimitiveAutoTrim}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Scrub"
-                        description="Adjust how far the pointer moves per channel step."
-                      >
-                        <div className="space-y-3">
-                          <ToggleField
-                            label="Enable scrub handle"
-                            checked={primitiveScrubEnabled}
-                            onChange={setPrimitiveScrubEnabled}
-                          />
-                          <ToggleField
-                            label="Use pointer lock"
-                            checked={primitivePointerLockEnabled}
-                            onChange={setPrimitivePointerLockEnabled}
-                          />
-                          <NumberConfigField
-                            label="Drag threshold"
-                            value={primitiveScrubThreshold}
-                            onChange={setPrimitiveScrubThreshold}
-                            step={1}
-                          />
-                        </div>
-                      </PanelSection>
-
-                      <Separator className="bg-white/8" />
-
-                      <PanelSection
-                        title="Visual State"
-                        description="Preview primitive sizing and state variants."
-                      >
-                        <div className="space-y-3">
-                          <SegmentedField
-                            label="Density"
-                            value={primitiveDensity}
-                            onChange={setPrimitiveDensity}
-                            options={[
-                              { value: 'compact', label: 'Compact' },
-                              { value: 'comfortable', label: 'Comfort' },
-                            ]}
-                          />
-                          <SegmentedField
-                            label="Validity"
-                            value={primitiveVisualState}
-                            onChange={setPrimitiveVisualState}
+                            label="Performance profile"
+                            value={performanceProfile}
+                            onChange={setPerformanceProfile}
                             options={[
                               { value: 'auto', label: 'Auto' },
-                              { value: 'valid', label: 'Valid' },
-                              { value: 'invalid', label: 'Invalid' },
+                              { value: 'quality', label: 'Quality' },
+                              { value: 'balanced', label: 'Balanced' },
+                              { value: 'performance', label: 'Perf' },
                             ]}
                           />
-                          <ToggleField
-                            label="Disabled"
-                            checked={primitiveDisabled}
-                            onChange={setPrimitiveDisabled}
-                          />
-                          <ToggleField
-                            label="Read only"
-                            checked={primitiveReadOnly}
-                            onChange={setPrimitiveReadOnly}
-                          />
-                        </div>
-                      </PanelSection>
-                    </>
-                  ) : (
-                    <>
-                      <PanelSection
-                        title="Timing"
-                        description="Tune the Radix initial hover delay and the cooldown window that marks tooltip handoffs."
-                      >
-                        <div className="space-y-3">
-                          <NumberConfigField
-                            label="Initial delay"
-                            value={tooltipDelayDuration}
-                            onChange={setTooltipDelayDuration}
-                            step={50}
-                          />
-                          <NumberConfigField
-                            label="Handoff cooldown"
-                            value={tooltipSkipDelayDuration}
-                            onChange={setTooltipSkipDelayDuration}
-                            step={50}
-                          />
-                        </div>
-                      </PanelSection>
+                        </PanelSection>
+                      </>
+                    ) : activePage === 'input' ? (
+                      <>
+                        <PanelSection title="Input">
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                              <PropertyFieldTooltip label="Value">
+                                <label className="block space-y-2">
+                                  <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                    Value
+                                  </span>
+                                  <PrimitiveValueInput
+                                    value={primitiveValue}
+                                    onValueChange={setPrimitiveValue}
+                                    ariaLabel="Value"
+                                    leadingElement={primitiveHandleElement}
+                                    min={primitiveMin}
+                                    max={primitiveMax}
+                                    wrapMode={primitiveWrapMode}
+                                    step={primitiveStep}
+                                    fineStep={primitiveFineStep}
+                                    coarseStep={primitiveCoarseStep}
+                                    pageStep={primitivePageStep}
+                                    precision={primitivePrecision}
+                                    autoTrim={primitiveAutoTrim}
+                                    allowExpressions={primitiveAllowExpressions}
+                                    selectAllOnFocus={primitiveSelectAllOnFocus}
+                                    commitOnBlur={primitiveCommitOnBlur}
+                                    scrubEnabled={primitiveScrubEnabled}
+                                    scrubPixelsPerStep={
+                                      primitiveScrubPixelsPerStep
+                                    }
+                                    scrubThreshold={primitiveScrubThreshold}
+                                    pointerLockEnabled={
+                                      primitivePointerLockEnabled
+                                    }
+                                    horizontalArrowKeysMoveCaret={
+                                      primitiveHorizontalArrowKeysMoveCaret
+                                    }
+                                    disabled={primitiveDisabled}
+                                    readOnly={primitiveReadOnly}
+                                    visualState={primitiveVisualState}
+                                    size="full"
+                                  />
+                                </label>
+                              </PropertyFieldTooltip>
+                              <PrecisionConfigInput
+                                value={primitivePrecision}
+                                onChange={setPrimitivePrecision}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <BoundsConfigInput
+                                label="Min"
+                                value={primitiveMin}
+                                onValueChange={setPrimitiveMin}
+                                leadingElement={
+                                  <ArrowLeftToLine
+                                    aria-hidden="true"
+                                    className="size-3"
+                                    strokeWidth={1.75}
+                                  />
+                                }
+                              />
+                              <BoundsConfigInput
+                                label="Max"
+                                value={primitiveMax}
+                                onValueChange={setPrimitiveMax}
+                                leadingElement={
+                                  <ArrowRightToLine
+                                    aria-hidden="true"
+                                    className="size-3"
+                                    strokeWidth={1.75}
+                                  />
+                                }
+                              />
+                            </div>
+                            <SegmentedField
+                              label="Bounds"
+                              value={primitiveWrapMode}
+                              onChange={setPrimitiveWrapMode}
+                              options={[
+                                {
+                                  value: 'clamp',
+                                  label: 'Clamp',
+                                  icon: (
+                                    <ChevronsRightLeft
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                      strokeWidth={1.75}
+                                    />
+                                  ),
+                                  tooltip: 'Clamp values',
+                                },
+                                {
+                                  value: 'wrap',
+                                  label: 'Wrap',
+                                  icon: (
+                                    <RotateCw
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                      strokeWidth={1.75}
+                                    />
+                                  ),
+                                  tooltip: 'Wrap values',
+                                },
+                                {
+                                  value: 'free',
+                                  label: 'Free',
+                                  icon: (
+                                    <ChevronsLeftRight
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                      strokeWidth={1.75}
+                                    />
+                                  ),
+                                  tooltip: 'Unbounded values',
+                                },
+                              ]}
+                            />
+                          </div>
+                        </PanelSection>
 
-                      <Separator className="bg-white/8" />
+                        <Separator className="bg-white/8" />
 
-                      <PanelSection
-                        title="Placement"
-                        description="Move the tooltip around each trigger while preserving the same handoff behavior."
-                      >
-                        <SegmentedField
-                          label="Side"
-                          value={tooltipSide}
-                          onChange={setTooltipSide}
-                          options={[
-                            { value: 'top', label: 'Top' },
-                            { value: 'right', label: 'Right' },
-                            { value: 'bottom', label: 'Bottom' },
-                            { value: 'left', label: 'Left' },
-                          ]}
-                        />
-                      </PanelSection>
-                    </>
-                  )}
+                        <PanelSection
+                          title="Drag Handle"
+                          description="Choose what appears inside the scrub handle."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Content"
+                              value={primitiveHandleContent}
+                              onChange={setPrimitiveHandleContent}
+                              options={[
+                                { value: 'none', label: 'None' },
+                                { value: 'letter', label: 'Letter' },
+                                { value: 'icon', label: 'Icon' },
+                                { value: 'swatch', label: 'Swatch' },
+                              ]}
+                            />
+                            {primitiveHandleContent === 'letter' ? (
+                              <TextConfigField
+                                label="Letter"
+                                value={primitiveHandleLetter}
+                                onChange={setPrimitiveHandleLetter}
+                                maxLength={2}
+                              />
+                            ) : null}
+                            {primitiveHandleContent === 'icon' ? (
+                              <SegmentedField
+                                label="Icon"
+                                value={primitiveHandleIcon}
+                                onChange={setPrimitiveHandleIcon}
+                                options={[
+                                  {
+                                    value: 'cursor',
+                                    label: 'Cursor',
+                                    icon: (
+                                      <MousePointer2
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'Cursor icon',
+                                  },
+                                  {
+                                    value: 'radius',
+                                    label: 'Radius',
+                                    icon: (
+                                      <Radius
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'Radius icon',
+                                  },
+                                  {
+                                    value: 'delta',
+                                    label: 'Delta',
+                                    icon: (
+                                      <Diff
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'Delta icon',
+                                  },
+                                ]}
+                              />
+                            ) : null}
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection title="Stepping">
+                          <div className="grid grid-cols-2 gap-3">
+                            <StepConfigInput
+                              label="Step"
+                              value={primitiveStep}
+                              onValueChange={setPrimitiveStep}
+                              leadingElement={
+                                <Diff
+                                  aria-hidden="true"
+                                  className="size-3"
+                                  strokeWidth={1.75}
+                                />
+                              }
+                              step={0.1}
+                            />
+                            <DragStepConfigInput
+                              value={primitiveScrubMultiplier}
+                              onValueChange={setPrimitiveScrubMultiplier}
+                            />
+                            <StepConfigInput
+                              label="Fine"
+                              value={primitiveFineStep}
+                              onValueChange={setPrimitiveFineStep}
+                              leadingElement={
+                                <Option
+                                  aria-hidden="true"
+                                  className="size-3"
+                                  strokeWidth={1.75}
+                                />
+                              }
+                              step={0.1}
+                            />
+                            <StepConfigInput
+                              label="Coarse"
+                              value={primitiveCoarseStep}
+                              onValueChange={setPrimitiveCoarseStep}
+                              leadingElement={
+                                <ArrowBigUp
+                                  aria-hidden="true"
+                                  className="size-3"
+                                  strokeWidth={1.75}
+                                />
+                              }
+                              step={1}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Behavior"
+                          description="Toggle text-entry affordances for the focused input."
+                        >
+                          <div className="space-y-3">
+                            <ToggleField
+                              label="Select all on focus"
+                              checked={primitiveSelectAllOnFocus}
+                              onChange={setPrimitiveSelectAllOnFocus}
+                            />
+                            <ToggleField
+                              label="Allow expressions"
+                              checked={primitiveAllowExpressions}
+                              onChange={setPrimitiveAllowExpressions}
+                            />
+                            <ToggleField
+                              label="Commit on blur"
+                              checked={primitiveCommitOnBlur}
+                              onChange={setPrimitiveCommitOnBlur}
+                            />
+                            <ToggleField
+                              label="Horizontal arrows move caret"
+                              checked={primitiveHorizontalArrowKeysMoveCaret}
+                              onChange={
+                                setPrimitiveHorizontalArrowKeysMoveCaret
+                              }
+                            />
+                            <ToggleField
+                              label="Trim trailing zeros"
+                              checked={primitiveAutoTrim}
+                              onChange={setPrimitiveAutoTrim}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Scrub"
+                          description="Adjust how far the pointer moves per channel step."
+                        >
+                          <div className="space-y-3">
+                            <ToggleField
+                              label="Enable scrub handle"
+                              checked={primitiveScrubEnabled}
+                              onChange={setPrimitiveScrubEnabled}
+                            />
+                            <ToggleField
+                              label="Use pointer lock"
+                              checked={primitivePointerLockEnabled}
+                              onChange={setPrimitivePointerLockEnabled}
+                            />
+                            <DragThresholdConfigInput
+                              value={primitiveScrubThreshold}
+                              onValueChange={setPrimitiveScrubThreshold}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Visual State"
+                          description="Preview primitive sizing and state variants."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Density"
+                              value={primitiveDensity}
+                              onChange={setPrimitiveDensity}
+                              options={[
+                                { value: 'compact', label: 'Compact' },
+                                { value: 'comfortable', label: 'Comfort' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Validity"
+                              value={primitiveVisualState}
+                              onChange={setPrimitiveVisualState}
+                              options={[
+                                { value: 'auto', label: 'Auto' },
+                                { value: 'valid', label: 'Valid' },
+                                { value: 'invalid', label: 'Invalid' },
+                              ]}
+                            />
+                            <ToggleField
+                              label="Disabled"
+                              checked={primitiveDisabled}
+                              onChange={setPrimitiveDisabled}
+                            />
+                            <ToggleField
+                              label="Read only"
+                              checked={primitiveReadOnly}
+                              onChange={setPrimitiveReadOnly}
+                            />
+                          </div>
+                        </PanelSection>
+                      </>
+                    ) : (
+                      <>
+                        <PanelSection
+                          title="Timing"
+                          description="Tune the Radix initial hover delay and the cooldown window that marks tooltip handoffs."
+                        >
+                          <div className="space-y-3">
+                            <NumberConfigField
+                              label="Initial delay"
+                              value={tooltipDelayDuration}
+                              onChange={setTooltipDelayDuration}
+                              step={50}
+                            />
+                            <NumberConfigField
+                              label="Handoff cooldown"
+                              value={tooltipSkipDelayDuration}
+                              onChange={setTooltipSkipDelayDuration}
+                              step={50}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Placement"
+                          description="Move the tooltip around each trigger while preserving the same handoff behavior."
+                        >
+                          <SegmentedField
+                            label="Side"
+                            value={tooltipSide}
+                            onChange={setTooltipSide}
+                            options={[
+                              { value: 'top', label: 'Top' },
+                              { value: 'right', label: 'Right' },
+                              { value: 'bottom', label: 'Bottom' },
+                              { value: 'left', label: 'Left' },
+                            ]}
+                          />
+                        </PanelSection>
+                      </>
+                    )}
                   </div>
                 </TooltipProvider>
               </ScrollArea>
