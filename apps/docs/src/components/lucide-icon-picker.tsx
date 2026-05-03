@@ -458,6 +458,10 @@ export function LucideIconPicker({
     () => searchLucideSlugs(LUCIDE_DYNAMIC_ICON_SLUGS, deferredSearch),
     [deferredSearch],
   );
+  const immediateFiltered = useMemo(
+    () => searchLucideSlugs(LUCIDE_DYNAMIC_ICON_SLUGS, search),
+    [search],
+  );
 
   const getOptionId = useCallback(
     (slug: string) => `${pickerId}-lucide-icon-option-${slug}`,
@@ -507,13 +511,22 @@ export function LucideIconPicker({
         return;
       }
 
-      if (filtered.length === 0) {
+      if (event.key === 'Enter') {
+        const selectedSlug =
+          activeSlug !== null && immediateFiltered.includes(activeSlug)
+            ? activeSlug
+            : immediateFiltered[0];
+
+        if (!selectedSlug) {
+          return;
+        }
+
+        event.preventDefault();
+        pickSlug(selectedSlug);
         return;
       }
 
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        pickSlug(activeSlug ?? filtered[0]);
+      if (filtered.length === 0) {
         return;
       }
 
@@ -544,7 +557,7 @@ export function LucideIconPicker({
         setActiveSlug(filtered[filtered.length - 1] ?? null);
       }
     },
-    [activeSlug, filtered, pickSlug],
+    [activeSlug, filtered, immediateFiltered, pickSlug],
   );
 
   useLayoutEffect(() => {
