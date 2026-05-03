@@ -50,6 +50,10 @@ import {
 } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import {
+  DynamicLucideIcon,
+  LucideIconPicker,
+} from '@/components/lucide-icon-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -69,7 +73,6 @@ type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
 type PrimitiveDensity = 'compact' | 'comfortable';
 type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
 type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
-type PrimitiveHandleIcon = 'cursor' | 'radius' | 'delta';
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
 
 const MAX_PRIMITIVE_PRECISION_DIGITS = 12;
@@ -1386,8 +1389,9 @@ export function PlaygroundPage() {
   const [primitiveHandleContent, setPrimitiveHandleContent] =
     useState<PrimitiveHandleContent>('letter');
   const [primitiveHandleLetter, setPrimitiveHandleLetter] = useState('V');
-  const [primitiveHandleIcon, setPrimitiveHandleIcon] =
-    useState<PrimitiveHandleIcon>('cursor');
+  const [primitiveHandleLucideSlug, setPrimitiveHandleLucideSlug] = useState(
+    'mouse-pointer-2',
+  );
   const [primitiveDisabled, setPrimitiveDisabled] = useState(false);
   const [primitiveReadOnly, setPrimitiveReadOnly] = useState(false);
   const [primitiveVisualState, setPrimitiveVisualState] =
@@ -1444,29 +1448,13 @@ export function PlaygroundPage() {
       case 'letter':
         return primitiveHandleLetter.trim().slice(0, 2);
       case 'icon':
-        switch (primitiveHandleIcon) {
-          case 'cursor':
-            return (
-              <MousePointer2
-                aria-hidden="true"
-                className="size-3"
-                strokeWidth={1.75}
-              />
-            );
-          case 'radius':
-            return (
-              <Radius
-                aria-hidden="true"
-                className="size-3"
-                strokeWidth={1.75}
-              />
-            );
-          case 'delta':
-            return (
-              <Diff aria-hidden="true" className="size-3" strokeWidth={1.75} />
-            );
-        }
-        break;
+        return (
+          <DynamicLucideIcon
+            slug={primitiveHandleLucideSlug}
+            className="size-3"
+            strokeWidth={1.75}
+          />
+        );
       case 'swatch':
         return (
           <span
@@ -1475,7 +1463,7 @@ export function PlaygroundPage() {
           />
         );
     }
-  }, [primitiveHandleContent, primitiveHandleIcon, primitiveHandleLetter]);
+  }, [primitiveHandleContent, primitiveHandleLucideSlug, primitiveHandleLetter]);
 
   return (
     <div className="ck-shell-bg min-h-screen">
@@ -1708,26 +1696,28 @@ export function PlaygroundPage() {
                                 { value: 'srgb', label: 'sRGB' },
                               ]}
                             />
-                            <SegmentedField
-                              label="X axis"
-                              value={axisState.x}
-                              onChange={(next) => setAxis('x', next)}
-                              options={[
-                                { value: 'l', label: 'L' },
-                                { value: 'c', label: 'C' },
-                                { value: 'h', label: 'H' },
-                              ]}
-                            />
-                            <SegmentedField
-                              label="Y axis"
-                              value={axisState.y}
-                              onChange={(next) => setAxis('y', next)}
-                              options={[
-                                { value: 'l', label: 'L' },
-                                { value: 'c', label: 'C' },
-                                { value: 'h', label: 'H' },
-                              ]}
-                            />
+                            <div className="grid grid-cols-2 gap-3">
+                              <SegmentedField
+                                label="X axis"
+                                value={axisState.x}
+                                onChange={(next) => setAxis('x', next)}
+                                options={[
+                                  { value: 'l', label: 'L' },
+                                  { value: 'c', label: 'C' },
+                                  { value: 'h', label: 'H' },
+                                ]}
+                              />
+                              <SegmentedField
+                                label="Y axis"
+                                value={axisState.y}
+                                onChange={(next) => setAxis('y', next)}
+                                options={[
+                                  { value: 'l', label: 'L' },
+                                  { value: 'c', label: 'C' },
+                                  { value: 'h', label: 'H' },
+                                ]}
+                              />
+                            </div>
                             <ToggleField
                               label="Repeat edge pixels"
                               checked={repeatEdgePixels}
@@ -1934,49 +1924,15 @@ export function PlaygroundPage() {
                               />
                             ) : null}
                             {primitiveHandleContent === 'icon' ? (
-                              <SegmentedField
-                                label="Icon"
-                                value={primitiveHandleIcon}
-                                onChange={setPrimitiveHandleIcon}
-                                options={[
-                                  {
-                                    value: 'cursor',
-                                    label: 'Cursor',
-                                    icon: (
-                                      <MousePointer2
-                                        aria-hidden="true"
-                                        className="size-3.5"
-                                        strokeWidth={1.75}
-                                      />
-                                    ),
-                                    tooltip: 'Cursor icon',
-                                  },
-                                  {
-                                    value: 'radius',
-                                    label: 'Radius',
-                                    icon: (
-                                      <Radius
-                                        aria-hidden="true"
-                                        className="size-3.5"
-                                        strokeWidth={1.75}
-                                      />
-                                    ),
-                                    tooltip: 'Radius icon',
-                                  },
-                                  {
-                                    value: 'delta',
-                                    label: 'Delta',
-                                    icon: (
-                                      <Diff
-                                        aria-hidden="true"
-                                        className="size-3.5"
-                                        strokeWidth={1.75}
-                                      />
-                                    ),
-                                    tooltip: 'Delta icon',
-                                  },
-                                ]}
-                              />
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Icon
+                                </p>
+                                <LucideIconPicker
+                                  value={primitiveHandleLucideSlug}
+                                  onChange={setPrimitiveHandleLucideSlug}
+                                />
+                              </div>
                             ) : null}
                           </div>
                         </PanelSection>
