@@ -58,8 +58,7 @@ type LazyLucideEntry = LazyExoticComponent<LucideGlyphComponent>;
 
 function createLazyLucideGlyph(slug: string): LazyLucideEntry {
   return lazy(async () => {
-    const load =
-      dynamicIconImports[slug as keyof typeof dynamicIconImports];
+    const load = dynamicIconImports[slug as keyof typeof dynamicIconImports];
     if (!load) {
       const Fallback: LucideGlyphComponent = () => null;
       return { default: Fallback };
@@ -89,10 +88,7 @@ export function formatLucideSlugLabel(slug: string): string {
 }
 
 function resolveDynamicSlug(slug: string): string {
-  if (
-    slug &&
-    dynamicIconImports[slug as keyof typeof dynamicIconImports]
-  ) {
+  if (slug && dynamicIconImports[slug as keyof typeof dynamicIconImports]) {
     return slug;
   }
   return 'circle-help';
@@ -324,8 +320,7 @@ const VirtualLucideRows = memo(function VirtualLucideRows({
   );
   const endIdx = Math.min(
     slugs.length,
-    Math.ceil((scrollTop + LIST_MAX_HEIGHT_PX) / ROW_HEIGHT_PX) +
-      ROW_OVERSCAN,
+    Math.ceil((scrollTop + LIST_MAX_HEIGHT_PX) / ROW_HEIGHT_PX) + ROW_OVERSCAN,
   );
 
   const topSpacer = startIdx * ROW_HEIGHT_PX;
@@ -494,15 +489,12 @@ export function LucideIconPicker({
     [resolvedValue],
   );
 
-  const handleSearchChange = useCallback(
-    (nextSearch: string) => {
-      setSearch(nextSearch);
-      setActiveSlug(
-        searchLucideSlugs(LUCIDE_DYNAMIC_ICON_SLUGS, nextSearch)[0] ?? null,
-      );
-    },
-    [],
-  );
+  const handleSearchChange = useCallback((nextSearch: string) => {
+    setSearch(nextSearch);
+    setActiveSlug(
+      searchLucideSlugs(LUCIDE_DYNAMIC_ICON_SLUGS, nextSearch)[0] ?? null,
+    );
+  }, []);
 
   const handleSearchKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {

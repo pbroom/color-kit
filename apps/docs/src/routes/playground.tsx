@@ -1394,9 +1394,8 @@ export function PlaygroundPage() {
   const [primitiveHandleContent, setPrimitiveHandleContent] =
     useState<PrimitiveHandleContent>('letter');
   const [primitiveHandleLetter, setPrimitiveHandleLetter] = useState('V');
-  const [primitiveHandleLucideSlug, setPrimitiveHandleLucideSlug] = useState(
-    'mouse-pointer-2',
-  );
+  const [primitiveHandleLucideSlug, setPrimitiveHandleLucideSlug] =
+    useState('mouse-pointer-2');
   const [primitiveDisabled, setPrimitiveDisabled] = useState(false);
   const [primitiveReadOnly, setPrimitiveReadOnly] = useState(false);
   const [primitiveVisualState, setPrimitiveVisualState] =
@@ -1469,7 +1468,11 @@ export function PlaygroundPage() {
           />
         );
     }
-  }, [primitiveHandleContent, primitiveHandleLucideSlug, primitiveHandleLetter]);
+  }, [
+    primitiveHandleContent,
+    primitiveHandleLucideSlug,
+    primitiveHandleLetter,
+  ]);
 
   return (
     <div className="ck-shell-bg min-h-screen">
