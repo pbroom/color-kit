@@ -285,7 +285,7 @@ type VirtualLucideRowsProps = {
   listboxId: string;
   slugs: readonly string[];
   selectedSlug: string;
-  /** Live search text (not deferred): non-empty resets scroll to top; empty aligns to the selection. */
+  /** Live search text (not deferred): query changes reset scroll to top. */
   searchTrimmed: string;
   onActiveChange: (slug: string) => void;
   onPick: (slug: string) => void;
@@ -329,6 +329,17 @@ const VirtualLucideRows = memo(function VirtualLucideRows({
   const slice = slugs.slice(startIdx, endIdx);
 
   useLayoutEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- Virtual list scroll state mirrors the DOM scrollTop before paint. */
+    const el = scrollRef.current;
+    if (!el || searchTrimmed === '') {
+      return;
+    }
+    el.scrollTop = 0;
+    setScrollTop(0);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [searchTrimmed]);
+
+  useLayoutEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- Virtual list state must match programmatic scrollTop before paint. */
     const el = scrollRef.current;
     if (!el) {
@@ -349,13 +360,11 @@ const VirtualLucideRows = memo(function VirtualLucideRows({
     const maxScroll = Math.max(0, totalH - LIST_MAX_HEIGHT_PX);
     const rowTop = idx * ROW_HEIGHT_PX;
     const rowBottom = rowTop + ROW_HEIGHT_PX;
-    const visibleTop = searchTrimmed !== '' ? 0 : el.scrollTop;
+    const visibleTop = el.scrollTop;
     const visibleBottom = visibleTop + LIST_MAX_HEIGHT_PX;
     let nextTop = visibleTop;
 
-    if (searchTrimmed !== '') {
-      nextTop = 0;
-    } else if (rowTop < visibleTop) {
+    if (rowTop < visibleTop) {
       nextTop = rowTop;
     } else if (rowBottom > visibleBottom) {
       nextTop = rowBottom - LIST_MAX_HEIGHT_PX;
@@ -365,7 +374,7 @@ const VirtualLucideRows = memo(function VirtualLucideRows({
     el.scrollTop = nextTop;
     setScrollTop(nextTop);
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [activeSlug, searchTrimmed, slugs, selectedSlug]);
+  }, [activeSlug, slugs, selectedSlug]);
 
   return (
     <div
@@ -610,9 +619,6 @@ export function LucideIconPicker({
           sideOffset={6}
           className="z-[80] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-md border border-white/10 bg-[#2a2a2a] p-0 text-white shadow-lg outline-none"
           onOpenAutoFocus={(event) => {
-            event.preventDefault();
-          }}
-          onCloseAutoFocus={(event) => {
             event.preventDefault();
           }}
         >
