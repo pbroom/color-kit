@@ -50,6 +50,10 @@ import {
 } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import {
+  DynamicLucideIcon,
+  LucideIconPicker,
+} from '@/components/lucide-icon-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -69,7 +73,6 @@ type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
 type PrimitiveDensity = 'compact' | 'comfortable';
 type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
 type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
-type PrimitiveHandleIcon = 'cursor' | 'radius' | 'delta';
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
 
 const MAX_PRIMITIVE_PRECISION_DIGITS = 12;
@@ -349,10 +352,12 @@ function SegmentedField<T extends string>({
   value,
   onChange,
   options,
+  controlClassName = '',
 }: {
   label: string;
   value: T;
   onChange: (value: T) => void;
+  controlClassName?: string;
   options: Array<{
     value: T;
     label: string;
@@ -368,7 +373,7 @@ function SegmentedField<T extends string>({
       <ToggleGroup
         type="single"
         value={value}
-        className="h-6 w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none"
+        className={`box-border h-6 min-h-6 w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none ${controlClassName}`}
         onValueChange={(next) => {
           if (next) {
             onChange(next as T);
@@ -381,10 +386,10 @@ function SegmentedField<T extends string>({
           return (
             <Tooltip key={option.value}>
               <TooltipTrigger asChild>
-                <span className="flex min-w-0 flex-1">
+                <span className="flex h-full min-w-0 flex-1">
                   <ToggleGroupItem
                     value={option.value}
-                    className={`h-6 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[state=on]:bg-[#1f1f1f] data-[state=on]:shadow-none ${
+                    className={`h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[state=on]:bg-[#1f1f1f] data-[state=on]:shadow-none ${
                       isSelected
                         ? 'border-[#4C4C4C] bg-[#1f1f1f] text-white/90 shadow-none'
                         : 'border-transparent bg-transparent text-white/50 shadow-none'
@@ -491,7 +496,7 @@ function NumberConfigField({
 }) {
   return (
     <PropertyFieldTooltip label={label}>
-      <label className="space-y-2">
+      <label className="block space-y-1.5">
         <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
           {label}
         </span>
@@ -781,6 +786,7 @@ interface PrimitiveValueInputProps {
   value: number;
   onValueChange: (value: number) => void;
   ariaLabel?: string;
+  placeholder?: string;
   leadingElement?: ReactNode;
   min: number;
   max: number;
@@ -816,6 +822,7 @@ function PrimitiveValueInput({
   value,
   onValueChange,
   ariaLabel,
+  placeholder,
   leadingElement = 'V',
   min,
   max,
@@ -1262,6 +1269,7 @@ function PrimitiveValueInput({
         readOnly={readOnly}
         aria-label={ariaLabel}
         aria-invalid={showInvalidState || (isEditing && !isDraftValid)}
+        placeholder={placeholder}
         onFocus={handleFocus}
         onBlur={handleBlur}
         onChange={(event) => {
@@ -1386,8 +1394,8 @@ export function PlaygroundPage() {
   const [primitiveHandleContent, setPrimitiveHandleContent] =
     useState<PrimitiveHandleContent>('letter');
   const [primitiveHandleLetter, setPrimitiveHandleLetter] = useState('V');
-  const [primitiveHandleIcon, setPrimitiveHandleIcon] =
-    useState<PrimitiveHandleIcon>('cursor');
+  const [primitiveHandleLucideSlug, setPrimitiveHandleLucideSlug] =
+    useState('mouse-pointer-2');
   const [primitiveDisabled, setPrimitiveDisabled] = useState(false);
   const [primitiveReadOnly, setPrimitiveReadOnly] = useState(false);
   const [primitiveVisualState, setPrimitiveVisualState] =
@@ -1398,6 +1406,7 @@ export function PlaygroundPage() {
   const [tooltipSide, setTooltipSide] = useState<TooltipSide>('top');
   const [tooltipDelayDuration, setTooltipDelayDuration] = useState(450);
   const [tooltipSkipDelayDuration, setTooltipSkipDelayDuration] = useState(300);
+  const [primitivePlaceholder, setPrimitivePlaceholder] = useState('0');
 
   const channels = useMemo(
     () => normalizeAxes(axisState.x, axisState.y),
@@ -1444,29 +1453,13 @@ export function PlaygroundPage() {
       case 'letter':
         return primitiveHandleLetter.trim().slice(0, 2);
       case 'icon':
-        switch (primitiveHandleIcon) {
-          case 'cursor':
-            return (
-              <MousePointer2
-                aria-hidden="true"
-                className="size-3"
-                strokeWidth={1.75}
-              />
-            );
-          case 'radius':
-            return (
-              <Radius
-                aria-hidden="true"
-                className="size-3"
-                strokeWidth={1.75}
-              />
-            );
-          case 'delta':
-            return (
-              <Diff aria-hidden="true" className="size-3" strokeWidth={1.75} />
-            );
-        }
-        break;
+        return (
+          <DynamicLucideIcon
+            slug={primitiveHandleLucideSlug}
+            className="size-3"
+            strokeWidth={1.75}
+          />
+        );
       case 'swatch':
         return (
           <span
@@ -1475,7 +1468,11 @@ export function PlaygroundPage() {
           />
         );
     }
-  }, [primitiveHandleContent, primitiveHandleIcon, primitiveHandleLetter]);
+  }, [
+    primitiveHandleContent,
+    primitiveHandleLucideSlug,
+    primitiveHandleLetter,
+  ]);
 
   return (
     <div className="ck-shell-bg min-h-screen">
@@ -1577,6 +1574,7 @@ export function PlaygroundPage() {
               <PrimitiveValueInput
                 value={primitiveValue}
                 onValueChange={setPrimitiveValue}
+                placeholder={primitivePlaceholder}
                 leadingElement={primitiveHandleElement}
                 min={primitiveMin}
                 max={primitiveMax}
@@ -1708,26 +1706,28 @@ export function PlaygroundPage() {
                                 { value: 'srgb', label: 'sRGB' },
                               ]}
                             />
-                            <SegmentedField
-                              label="X axis"
-                              value={axisState.x}
-                              onChange={(next) => setAxis('x', next)}
-                              options={[
-                                { value: 'l', label: 'L' },
-                                { value: 'c', label: 'C' },
-                                { value: 'h', label: 'H' },
-                              ]}
-                            />
-                            <SegmentedField
-                              label="Y axis"
-                              value={axisState.y}
-                              onChange={(next) => setAxis('y', next)}
-                              options={[
-                                { value: 'l', label: 'L' },
-                                { value: 'c', label: 'C' },
-                                { value: 'h', label: 'H' },
-                              ]}
-                            />
+                            <div className="grid grid-cols-2 gap-3">
+                              <SegmentedField
+                                label="X axis"
+                                value={axisState.x}
+                                onChange={(next) => setAxis('x', next)}
+                                options={[
+                                  { value: 'l', label: 'L' },
+                                  { value: 'c', label: 'C' },
+                                  { value: 'h', label: 'H' },
+                                ]}
+                              />
+                              <SegmentedField
+                                label="Y axis"
+                                value={axisState.y}
+                                onChange={(next) => setAxis('y', next)}
+                                options={[
+                                  { value: 'l', label: 'L' },
+                                  { value: 'c', label: 'C' },
+                                  { value: 'h', label: 'H' },
+                                ]}
+                              />
+                            </div>
                             <ToggleField
                               label="Repeat edge pixels"
                               checked={repeatEdgePixels}
@@ -1799,6 +1799,7 @@ export function PlaygroundPage() {
                                     value={primitiveValue}
                                     onValueChange={setPrimitiveValue}
                                     ariaLabel="Value"
+                                    placeholder={primitivePlaceholder}
                                     leadingElement={primitiveHandleElement}
                                     min={primitiveMin}
                                     max={primitiveMax}
@@ -1830,9 +1831,11 @@ export function PlaygroundPage() {
                                   />
                                 </label>
                               </PropertyFieldTooltip>
-                              <PrecisionConfigInput
-                                value={primitivePrecision}
-                                onChange={setPrimitivePrecision}
+                              <TextConfigField
+                                label="Placeholder"
+                                value={primitivePlaceholder}
+                                onChange={setPrimitivePlaceholder}
+                                maxLength={12}
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
@@ -1861,49 +1864,56 @@ export function PlaygroundPage() {
                                 }
                               />
                             </div>
-                            <SegmentedField
-                              label="Bounds"
-                              value={primitiveWrapMode}
-                              onChange={setPrimitiveWrapMode}
-                              options={[
-                                {
-                                  value: 'clamp',
-                                  label: 'Clamp',
-                                  icon: (
-                                    <ChevronsRightLeft
-                                      aria-hidden="true"
-                                      className="size-3.5"
-                                      strokeWidth={1.75}
-                                    />
-                                  ),
-                                  tooltip: 'Clamp values',
-                                },
-                                {
-                                  value: 'wrap',
-                                  label: 'Wrap',
-                                  icon: (
-                                    <RotateCw
-                                      aria-hidden="true"
-                                      className="size-3.5"
-                                      strokeWidth={1.75}
-                                    />
-                                  ),
-                                  tooltip: 'Wrap values',
-                                },
-                                {
-                                  value: 'free',
-                                  label: 'Free',
-                                  icon: (
-                                    <ChevronsLeftRight
-                                      aria-hidden="true"
-                                      className="size-3.5"
-                                      strokeWidth={1.75}
-                                    />
-                                  ),
-                                  tooltip: 'Unbounded values',
-                                },
-                              ]}
-                            />
+                            <div className="grid grid-cols-2 gap-3">
+                              <PrecisionConfigInput
+                                value={primitivePrecision}
+                                onChange={setPrimitivePrecision}
+                              />
+                              <SegmentedField
+                                label="Bounds"
+                                value={primitiveWrapMode}
+                                onChange={setPrimitiveWrapMode}
+                                controlClassName="translate-y-px"
+                                options={[
+                                  {
+                                    value: 'clamp',
+                                    label: 'Clamp',
+                                    icon: (
+                                      <ChevronsRightLeft
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'Clamp bounds',
+                                  },
+                                  {
+                                    value: 'wrap',
+                                    label: 'Wrap',
+                                    icon: (
+                                      <RotateCw
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'Wrap bounds',
+                                  },
+                                  {
+                                    value: 'free',
+                                    label: 'Free',
+                                    icon: (
+                                      <ChevronsLeftRight
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                        strokeWidth={1.75}
+                                      />
+                                    ),
+                                    tooltip: 'No input bounds',
+                                  },
+                                ]}
+                              />
+                            </div>
                           </div>
                         </PanelSection>
 
@@ -1934,49 +1944,15 @@ export function PlaygroundPage() {
                               />
                             ) : null}
                             {primitiveHandleContent === 'icon' ? (
-                              <SegmentedField
-                                label="Icon"
-                                value={primitiveHandleIcon}
-                                onChange={setPrimitiveHandleIcon}
-                                options={[
-                                  {
-                                    value: 'cursor',
-                                    label: 'Cursor',
-                                    icon: (
-                                      <MousePointer2
-                                        aria-hidden="true"
-                                        className="size-3.5"
-                                        strokeWidth={1.75}
-                                      />
-                                    ),
-                                    tooltip: 'Cursor icon',
-                                  },
-                                  {
-                                    value: 'radius',
-                                    label: 'Radius',
-                                    icon: (
-                                      <Radius
-                                        aria-hidden="true"
-                                        className="size-3.5"
-                                        strokeWidth={1.75}
-                                      />
-                                    ),
-                                    tooltip: 'Radius icon',
-                                  },
-                                  {
-                                    value: 'delta',
-                                    label: 'Delta',
-                                    icon: (
-                                      <Diff
-                                        aria-hidden="true"
-                                        className="size-3.5"
-                                        strokeWidth={1.75}
-                                      />
-                                    ),
-                                    tooltip: 'Delta icon',
-                                  },
-                                ]}
-                              />
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Icon
+                                </p>
+                                <LucideIconPicker
+                                  value={primitiveHandleLucideSlug}
+                                  onChange={setPrimitiveHandleLucideSlug}
+                                />
+                              </div>
                             ) : null}
                           </div>
                         </PanelSection>
