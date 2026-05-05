@@ -30,7 +30,7 @@ import {
   ChevronsRightLeft,
   DecimalsArrowRight,
   Diff,
-  Github,
+  Menu,
   MousePointer2,
   Option,
   Radius,
@@ -49,7 +49,6 @@ import {
   type ReactNode,
 } from 'react';
 import { Link } from 'react-router';
-import { Button } from '@/components/ui/button';
 import {
   DynamicLucideIcon,
   LucideIconPicker,
@@ -66,7 +65,7 @@ import {
 import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
-type PlaygroundPageKey = 'plane' | 'input' | 'tooltip';
+type LabPageKey = 'plane' | 'input' | 'tooltip';
 type PrimitivePrecision = number;
 type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
 type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
@@ -89,8 +88,8 @@ type SliderRailStyle = CSSProperties & {
   '--ck-slider-thumb-fill-srgb': string;
 };
 
-const PLAYGROUND_PAGES: Array<{
-  value: PlaygroundPageKey;
+const LAB_PAGES: Array<{
+  value: LabPageKey;
   label: string;
 }> = [
   {
@@ -451,33 +450,70 @@ function PagesPanel({
   activePage,
   onPageChange,
 }: {
-  activePage: PlaygroundPageKey;
-  onPageChange: (page: PlaygroundPageKey) => void;
+  activePage: LabPageKey;
+  onPageChange: (page: LabPageKey) => void;
 }) {
+  const [isPagesOpen, setIsPagesOpen] = useState(true);
+
   return (
     <div className="absolute left-4 top-4 z-20 w-[250px] rounded-[24px] border border-white/8 bg-white/[0.03] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur">
-      <div className="px-1 pb-2">
-        <h2 className="text-sm font-medium tracking-tight text-white">Pages</h2>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={isPagesOpen ? 'Hide Lab pages' : 'Show Lab pages'}
+          aria-expanded={isPagesOpen}
+          className="flex size-8 shrink-0 items-center justify-center rounded-xl text-white/65 outline-none transition-[background-color,color] hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-[#5288db]"
+          onClick={() => setIsPagesOpen((current) => !current)}
+        >
+          <Menu aria-hidden="true" className="size-4" />
+        </button>
+        <Link
+          to="/"
+          className="flex min-w-0 items-center rounded-lg px-1 py-1 font-[var(--font-brand)] text-[15px] font-bold text-white outline-none focus-visible:ring-2 focus-visible:ring-[#5288db]"
+        >
+          <span className="truncate">color kit</span>
+        </Link>
+        <div className="ml-auto [&_[data-slot=button]]:size-8 [&_[data-slot=button]]:min-h-8 [&_[data-slot=button]]:rounded-xl [&_[data-slot=button]]:text-white/65 [&_[data-slot=button]]:hover:bg-white/8 [&_[data-slot=button]]:hover:text-white">
+          <ThemeSwitcher />
+        </div>
       </div>
-      <div className="space-y-0.5">
-        {PLAYGROUND_PAGES.map((page) => {
-          const isActive = activePage === page.value;
-          return (
-            <button
-              key={page.value}
-              type="button"
-              className={`flex w-full items-center px-1 py-1.5 text-left text-sm transition-colors ${
-                isActive
-                  ? 'font-semibold text-white'
-                  : 'font-medium text-white/55 hover:text-white/80'
-              }`}
-              aria-pressed={isActive}
-              onClick={() => onPageChange(page.value)}
-            >
-              {page.label}
-            </button>
-          );
-        })}
+      {isPagesOpen ? (
+        <div className="mt-3 space-y-0.5">
+          {LAB_PAGES.map((page) => {
+            const isActive = activePage === page.value;
+            return (
+              <button
+                key={page.value}
+                type="button"
+                className={`flex w-full items-center rounded-lg px-1 py-1.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#5288db] ${
+                  isActive
+                    ? 'font-semibold text-white'
+                    : 'font-medium text-white/55 hover:text-white/80'
+                }`}
+                aria-pressed={isActive}
+                onClick={() => onPageChange(page.value)}
+              >
+                {page.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function LabHeaderExit() {
+  return (
+    <div
+      aria-hidden="true"
+      className="ck-lab-header-exit pointer-events-none fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl [animation:ck-lab-header-slide-up_320ms_ease-out_forwards]"
+    >
+      <div className="mx-auto flex h-14 w-full max-w-[1560px] items-center justify-between gap-4 px-4">
+        <div className="docs-brand">
+          <span className="docs-brand-dot" />
+          Color Kit
+        </div>
       </div>
     </div>
   );
@@ -1345,12 +1381,12 @@ function TooltipPlaygroundStage({
   );
 }
 
-export function PlaygroundPage() {
+export function LabPage() {
   const color = useColor({
     defaultColor: 'oklch(0.64 0.24 28)',
     defaultGamut: 'display-p3',
   });
-  const [activePage, setActivePage] = useState<PlaygroundPageKey>('plane');
+  const [activePage, setActivePage] = useState<LabPageKey>('plane');
   const [axisState, setAxisState] = useState<{
     x: ColorAreaChannel;
     y: ColorAreaChannel;
@@ -1475,47 +1511,11 @@ export function PlaygroundPage() {
   ]);
 
   return (
-    <div className="ck-shell-bg min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 w-full max-w-[1560px] items-center justify-between gap-4 px-4">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="docs-brand">
-              <span className="docs-brand-dot" />
-              Color Kit
-            </Link>
-          </div>
-          <div className="flex items-center gap-2">
-            <nav className="hidden items-center gap-1 md:flex">
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/introduction">Docs</Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/components/color-area">Components</Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/shadcn-registry">Registry</Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/playground">Lab</Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <a
-                  href="https://github.com/pbroom/color-kit"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Github className="size-4" />
-                  GitHub
-                </a>
-              </Button>
-            </nav>
-            <ThemeSwitcher />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen overflow-hidden bg-[#171717]">
+      <LabHeaderExit />
 
-      <main className="min-h-[calc(100vh-3.5rem)] bg-[#171717] text-white lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden">
-        <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-1 lg:h-full lg:grid-cols-[minmax(0,1fr)_300px]">
+      <main className="h-screen min-h-screen bg-[#171717] text-white lg:overflow-hidden">
+        <div className="grid min-h-screen grid-cols-1 lg:h-full lg:grid-cols-[minmax(0,1fr)_300px]">
           <section className="relative flex min-h-[420px] items-center justify-center overflow-hidden px-6 py-10 lg:min-h-0 lg:py-14">
             {activePage === 'plane' ? (
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_42%)]" />

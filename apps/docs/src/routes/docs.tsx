@@ -1,14 +1,21 @@
 import { Suspense } from 'react';
 import { useParams } from 'react-router';
+import { ErrorPageContent } from '@/components/error-pages';
 import { Skeleton } from '@/components/ui/skeleton';
 import { docsPages } from '../content/docs-registry.js';
 
 function NotFound() {
   return (
-    <div>
-      <h1>Page not found</h1>
-      <p>The documentation page you're looking for doesn't exist yet.</p>
-    </div>
+    <ErrorPageContent
+      status="404"
+      eyebrow="Missing document"
+      title="That docs page does not exist"
+      description="The documentation page you opened is not in the registry yet. Start from the introduction or browse the Lab."
+      primaryAction="Open docs"
+      primaryLink="/docs/introduction"
+      secondaryAction="Open Lab"
+      secondaryLink="/lab"
+    />
   );
 }
 
