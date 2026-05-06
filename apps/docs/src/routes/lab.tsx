@@ -1291,10 +1291,12 @@ function PrimitiveValueInput({
         : isHovered
           ? '#4C4C4C'
           : 'transparent';
+  const hasLeadingElement =
+    leadingElement !== null && leadingElement !== undefined && leadingElement !== false;
 
   return (
     <div
-      className={`box-border flex items-center rounded-[4px] border bg-[#383838] p-0 font-sans text-white ${
+      className={`relative box-border flex items-center rounded-[4px] border bg-[#383838] p-0 font-sans text-white ${
         PRIMITIVE_SIZE_CLASS[size]
       } ${PRIMITIVE_DENSITY_CLASS[density]} ${disabled ? 'opacity-45' : ''}`}
       style={{ borderColor }}
@@ -1307,7 +1309,11 @@ function PrimitiveValueInput({
         <div
           ref={scrubHandleRef}
           aria-hidden="true"
-          className="flex h-full w-6 shrink-0 cursor-ew-resize select-none items-center justify-center font-medium tabular-nums text-white/55"
+          className={
+            hasLeadingElement
+              ? 'flex h-full w-6 shrink-0 cursor-ew-resize select-none items-center justify-center font-medium tabular-nums text-white/55'
+              : 'absolute -left-0.5 top-0 z-10 h-full w-[5px] cursor-ew-resize select-none'
+          }
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
