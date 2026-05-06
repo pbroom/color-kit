@@ -453,17 +453,18 @@ function PagesPanel({
   activePage: LabPageKey;
   onPageChange: (page: LabPageKey) => void;
 }) {
-  const [isPagesOpen, setIsPagesOpen] = useState(true);
+  const [isSiteNavOpen, setIsSiteNavOpen] = useState(false);
 
   return (
-    <div className="absolute left-4 top-4 z-20 w-[250px] rounded-[24px] border border-white/8 bg-white/[0.03] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur">
+    <div className="absolute left-4 top-4 z-20 w-[250px]">
       <div className="flex items-center gap-2">
         <button
           type="button"
-          aria-label={isPagesOpen ? 'Hide Lab pages' : 'Show Lab pages'}
-          aria-expanded={isPagesOpen}
+          aria-label={isSiteNavOpen ? 'Hide site navigation' : 'Show site navigation'}
+          aria-expanded={isSiteNavOpen}
+          aria-controls="lab-site-nav"
           className="flex size-8 shrink-0 items-center justify-center rounded-xl text-white/65 outline-none transition-[background-color,color] hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-[#5288db]"
-          onClick={() => setIsPagesOpen((current) => !current)}
+          onClick={() => setIsSiteNavOpen((current) => !current)}
         >
           <Menu aria-hidden="true" className="size-4" />
         </button>
@@ -477,28 +478,49 @@ function PagesPanel({
           <ThemeSwitcher />
         </div>
       </div>
-      {isPagesOpen ? (
-        <div className="mt-3 space-y-0.5">
-          {LAB_PAGES.map((page) => {
-            const isActive = activePage === page.value;
-            return (
-              <button
-                key={page.value}
-                type="button"
-                className={`flex w-full items-center rounded-lg px-1 py-1.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#5288db] ${
-                  isActive
-                    ? 'font-semibold text-white'
-                    : 'font-medium text-white/55 hover:text-white/80'
-                }`}
-                aria-pressed={isActive}
-                onClick={() => onPageChange(page.value)}
+      {isSiteNavOpen ? (
+        <nav
+          id="lab-site-nav"
+          aria-label="Site navigation"
+          className="mt-3"
+        >
+          <div className="space-y-0.5">
+            {[
+              { label: 'Docs', to: '/docs/introduction' },
+              { label: 'Components', to: '/docs/components/color-area' },
+              { label: 'Registry', to: '/docs/shadcn-registry' },
+            ].map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="flex w-full items-center rounded-lg px-1 py-1.5 text-left text-sm font-medium text-white/55 outline-none transition-colors hover:text-white/80 focus-visible:ring-2 focus-visible:ring-[#5288db]"
               >
-                {page.label}
-              </button>
-            );
-          })}
-        </div>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
       ) : null}
+      <div className="mt-3 space-y-0.5">
+        {LAB_PAGES.map((page) => {
+          const isActive = activePage === page.value;
+          return (
+            <button
+              key={page.value}
+              type="button"
+              className={`flex w-full items-center rounded-lg px-1 py-1.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#5288db] ${
+                isActive
+                  ? 'font-semibold text-white'
+                  : 'font-medium text-white/55 hover:text-white/80'
+              }`}
+              aria-pressed={isActive}
+              onClick={() => onPageChange(page.value)}
+            >
+              {page.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
