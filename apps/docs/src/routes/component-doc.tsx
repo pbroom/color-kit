@@ -1,15 +1,22 @@
 import { Suspense } from 'react';
 import { useParams } from 'react-router';
+import { ErrorPageContent } from '@/components/error-pages';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ComponentDocPage } from '../components/component-doc-page.js';
 import { getComponentDoc } from '../content/components/component-docs-data.js';
 
 function NotFound() {
   return (
-    <div>
-      <h1>Page not found</h1>
-      <p>The documentation page you're looking for doesn't exist yet.</p>
-    </div>
+    <ErrorPageContent
+      status="404"
+      eyebrow="Missing component"
+      title="That component page does not exist"
+      description="The component route you opened is not registered yet. Head back to the component docs or browse the full documentation."
+      primaryAction="View components"
+      primaryLink="/docs/components/color-area"
+      secondaryAction="Open docs"
+      secondaryLink="/docs/introduction"
+    />
   );
 }
 

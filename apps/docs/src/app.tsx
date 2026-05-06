@@ -1,5 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router';
+import { Navigate, Routes, Route } from 'react-router';
+import {
+  ErrorPageContent,
+  RouteErrorBoundary,
+  StandaloneErrorPage,
+} from './components/error-pages.js';
 import { ThemeProvider } from './components/theme-context.js';
 
 const HomePage = lazy(() =>
@@ -22,9 +27,9 @@ const ComponentDocRoute = lazy(() =>
     default: module.ComponentDocRoute,
   })),
 );
-const PlaygroundPage = lazy(() =>
-  import('./routes/playground.js').then((module) => ({
-    default: module.PlaygroundPage,
+const LabPage = lazy(() =>
+  import('./routes/lab.js').then((module) => ({
+    default: module.LabPage,
   })),
 );
 
@@ -35,57 +40,90 @@ function RouteFallback() {
 export function App() {
   return (
     <ThemeProvider>
-      <Routes>
-        <Route
-          index
-          element={
-            <Suspense fallback={<RouteFallback />}>
-              <HomePage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="playground"
-          element={
-            <Suspense fallback={<RouteFallback />}>
-              <PlaygroundPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="docs"
-          element={
-            <Suspense fallback={<RouteFallback />}>
-              <DocsLayout />
-            </Suspense>
-          }
-        >
+      <RouteErrorBoundary>
+        <Routes>
           <Route
-            path="components/:slug"
+            index
             element={
               <Suspense fallback={<RouteFallback />}>
-                <ComponentDocRoute />
+                <HomePage />
               </Suspense>
             }
           />
           <Route
-            path=":slug"
+            path="lab"
             element={
               <Suspense fallback={<RouteFallback />}>
-                <DocsPage />
+                <LabPage />
               </Suspense>
             }
           />
+          <Route path="playground" element={<Navigate to="/lab" replace />} />
           <Route
-            path=":category/:slug"
+            path="docs"
             element={
               <Suspense fallback={<RouteFallback />}>
-                <DocsPage />
+                <DocsLayout />
               </Suspense>
             }
+          >
+            <Route
+              path="components/:slug"
+              element={
+                <Suspense fallback={<RouteFallback />}>
+                  <ComponentDocRoute />
+                </Suspense>
+              }
+            />
+            <Route
+              path=":slug"
+              element={
+                <Suspense fallback={<RouteFallback />}>
+                  <DocsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path=":category/:slug"
+              element={
+                <Suspense fallback={<RouteFallback />}>
+                  <DocsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <ErrorPageContent
+                  status="404"
+                  eyebrow="Not found"
+                  title="That docs page does not exist"
+                  description="The documentation route you opened is not in the docs registry. Check the URL or start from the docs introduction."
+                  primaryAction="Open docs"
+                  primaryLink="/docs/introduction"
+                  secondaryAction="Go home"
+                  secondaryLink="/"
+                />
+              }
+            />
+          </Route>
+          <Route
+            path="*"
+            element={
+              <StandaloneErrorPage
+                status="404"
+                eyebrow="Not found"
+                title="This page does not exist"
+                description="The page you opened is not part of Color Kit docs. You can head home or jump into the documentation."
+                primaryAction="Go home"
+                primaryLink="/"
+                secondaryAction="Open docs"
+                secondaryLink="/docs/introduction"
+              />
+            }
           />
-        </Route>
-      </Routes>
+        </Routes>
+      </RouteErrorBoundary>
     </ThemeProvider>
   );
 }
