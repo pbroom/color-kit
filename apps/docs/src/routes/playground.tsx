@@ -1885,7 +1885,7 @@ export function PlaygroundPage() {
                                         strokeWidth={1.75}
                                       />
                                     ),
-                                    tooltip: 'Clamp bounds',
+                                    tooltip: 'Clamp values',
                                   },
                                   {
                                     value: 'wrap',
@@ -1897,7 +1897,7 @@ export function PlaygroundPage() {
                                         strokeWidth={1.75}
                                       />
                                     ),
-                                    tooltip: 'Wrap bounds',
+                                    tooltip: 'Wrap values',
                                   },
                                   {
                                     value: 'free',
@@ -1909,7 +1909,7 @@ export function PlaygroundPage() {
                                         strokeWidth={1.75}
                                       />
                                     ),
-                                    tooltip: 'No input bounds',
+                                    tooltip: 'Unbounded values',
                                   },
                                 ]}
                               />

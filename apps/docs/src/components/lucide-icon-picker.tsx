@@ -9,7 +9,6 @@ import {
   useDeferredValue,
   useId,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type ComponentType,
@@ -451,11 +450,14 @@ export function LucideIconPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [immediateFiltered, setImmediateFiltered] = useState<readonly string[]>(
+    LUCIDE_DYNAMIC_ICON_SLUGS,
+  );
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const pickerId = useId();
-  const deferredSearch = useDeferredValue(search);
+  const filtered = useDeferredValue(immediateFiltered);
   const resolvedValue = resolveDynamicSlug(value);
   const listboxId = `${pickerId}-lucide-icon-listbox`;
   const activeOptionId =
@@ -463,29 +465,25 @@ export function LucideIconPicker({
       ? `${pickerId}-lucide-icon-option-${activeSlug}`
       : undefined;
 
-  const filtered = useMemo(
-    () => searchLucideSlugs(LUCIDE_DYNAMIC_ICON_SLUGS, deferredSearch),
-    [deferredSearch],
-  );
-  const immediateFiltered = useMemo(
-    () => searchLucideSlugs(LUCIDE_DYNAMIC_ICON_SLUGS, search),
-    [search],
-  );
-
   const getOptionId = useCallback(
     (slug: string) => `${pickerId}-lucide-icon-option-${slug}`,
     [pickerId],
   );
 
+  const resetSearch = useCallback(() => {
+    setSearch('');
+    setImmediateFiltered(LUCIDE_DYNAMIC_ICON_SLUGS);
+  }, []);
+
   const pickSlug = useCallback(
     (slug: string) => {
       onChange(slug);
       setOpen(false);
-      setSearch('');
+      resetSearch();
       setActiveSlug(null);
       triggerRef.current?.focus({ preventScroll: true });
     },
-    [onChange],
+    [onChange, resetSearch],
   );
 
   const handleOpenChange = useCallback(
@@ -496,17 +494,20 @@ export function LucideIconPicker({
         return;
       }
 
-      setSearch('');
+      resetSearch();
       setActiveSlug(null);
     },
-    [resolvedValue],
+    [resetSearch, resolvedValue],
   );
 
   const handleSearchChange = useCallback((nextSearch: string) => {
-    setSearch(nextSearch);
-    setActiveSlug(
-      searchLucideSlugs(LUCIDE_DYNAMIC_ICON_SLUGS, nextSearch)[0] ?? null,
+    const nextFiltered = searchLucideSlugs(
+      LUCIDE_DYNAMIC_ICON_SLUGS,
+      nextSearch,
     );
+    setSearch(nextSearch);
+    setImmediateFiltered(nextFiltered);
+    setActiveSlug(nextFiltered[0] ?? null);
   }, []);
 
   const handleSearchKeyDown = useCallback(
@@ -514,7 +515,7 @@ export function LucideIconPicker({
       if (event.key === 'Escape') {
         event.preventDefault();
         setOpen(false);
-        setSearch('');
+        resetSearch();
         setActiveSlug(null);
         triggerRef.current?.focus({ preventScroll: true });
         return;
@@ -535,38 +536,40 @@ export function LucideIconPicker({
         return;
       }
 
-      if (filtered.length === 0) {
+      if (immediateFiltered.length === 0) {
         return;
       }
 
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
         setActiveSlug((current) => {
-          const currentIdx = current === null ? -1 : filtered.indexOf(current);
+          const currentIdx =
+            current === null ? -1 : immediateFiltered.indexOf(current);
           const offset = event.key === 'ArrowDown' ? 1 : -1;
           const nextIdx =
             currentIdx < 0
               ? event.key === 'ArrowDown'
                 ? 0
-                : filtered.length - 1
-              : (currentIdx + offset + filtered.length) % filtered.length;
-          return filtered[nextIdx] ?? null;
+                : immediateFiltered.length - 1
+              : (currentIdx + offset + immediateFiltered.length) %
+                immediateFiltered.length;
+          return immediateFiltered[nextIdx] ?? null;
         });
         return;
       }
 
       if (event.key === 'Home') {
         event.preventDefault();
-        setActiveSlug(filtered[0] ?? null);
+        setActiveSlug(immediateFiltered[0] ?? null);
         return;
       }
 
       if (event.key === 'End') {
         event.preventDefault();
-        setActiveSlug(filtered[filtered.length - 1] ?? null);
+        setActiveSlug(immediateFiltered[immediateFiltered.length - 1] ?? null);
       }
     },
-    [activeSlug, filtered, immediateFiltered, pickSlug],
+    [activeSlug, immediateFiltered, pickSlug, resetSearch],
   );
 
   useLayoutEffect(() => {
@@ -649,7 +652,7 @@ export function LucideIconPicker({
               className="px-3 py-6 text-center text-[11px] text-white/45"
             >
               <span role="status" aria-live="polite">
-                No icons match “{deferredSearch.trim()}”.
+                No icons match “{search.trim()}”.
               </span>
             </div>
           ) : (
