@@ -23,18 +23,61 @@ import {
 } from 'color-kit';
 import {
   ArrowBigUp,
+  Bell,
+  Blend,
+  Bookmark,
+  Box,
+  Brush,
+  Calendar,
+  Camera,
   ArrowLeftToLine,
   ArrowRightToLine,
+  Braces,
   Check,
-  ChevronsLeftRight,
-  ChevronsRightLeft,
+  Circle,
+  Clipboard,
+  Clock,
+  Code,
+  Command,
+  Compass,
+  Copy,
   DecimalsArrowRight,
   Diff,
+  Download,
+  Eye,
+  FileText,
+  Filter,
+  Flag,
+  Folder,
+  Gauge,
+  Grid3X3,
+  Heart,
+  Image,
+  Infinity as InfinityIcon,
+  Info,
+  Layers,
+  LinkIcon,
+  Lock,
+  Mail,
   Menu,
   MousePointer2,
   Option,
+  Palette,
+  Pencil,
+  Pipette,
+  Play,
+  Plus,
   Radius,
+  RefreshCw,
   RotateCw,
+  Save,
+  Search,
+  Settings,
+  Share2,
+  SlidersHorizontal,
+  Sparkles,
+  Star,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   useCallback,
@@ -65,14 +108,18 @@ import {
 import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
-type LabPageKey = 'plane' | 'input' | 'tooltip';
+type LabPageKey = 'plane' | 'input' | 'inputMulti' | 'tooltip' | 'toggle';
 type PrimitivePrecision = number;
 type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
 type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
 type PrimitiveDensity = 'compact' | 'comfortable';
 type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
 type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
+type PrimitiveHandleSide = 'leading' | 'trailing';
+type MultiInputFieldId = 'x' | 'y' | 'w' | 'h' | 'r';
+type MultiInputDensity = 'compact' | 'comfortable';
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
+type ToggleGroupIconMode = 'none' | 'leading' | 'trailing' | 'iconOnly';
 
 const MAX_PRIMITIVE_PRECISION_DIGITS = 12;
 
@@ -101,45 +148,78 @@ const LAB_PAGES: Array<{
     label: 'Input Primitive',
   },
   {
+    value: 'inputMulti',
+    label: 'Input Multi',
+  },
+  {
     value: 'tooltip',
     label: 'Tooltip',
   },
+  {
+    value: 'toggle',
+    label: 'Toggle Group',
+  },
 ];
 
-const TOOLTIP_DEMO_ITEMS: Array<{
-  label: string;
-  tooltip: string;
+const TOOLTIP_RAPID_TRIGGER_ITEMS: Array<{
+  name: string;
+  Icon: LucideIcon;
 }> = [
-  {
-    label: 'Plane',
-    tooltip: 'Show color-plane controls',
-  },
-  {
-    label: 'Input',
-    tooltip: 'Tune channel input behavior',
-  },
-  {
-    label: 'Copy',
-    tooltip: 'Copy the current value',
-  },
-  {
-    label: 'Inspect',
-    tooltip: 'Open inspector details',
-  },
+  { name: 'Bell', Icon: Bell },
+  { name: 'Blend', Icon: Blend },
+  { name: 'Bookmark', Icon: Bookmark },
+  { name: 'Box', Icon: Box },
+  { name: 'Brush', Icon: Brush },
+  { name: 'Calendar', Icon: Calendar },
+  { name: 'Camera', Icon: Camera },
+  { name: 'Check', Icon: Check },
+  { name: 'Circle', Icon: Circle },
+  { name: 'Clipboard', Icon: Clipboard },
+  { name: 'Clock', Icon: Clock },
+  { name: 'Code', Icon: Code },
+  { name: 'Command', Icon: Command },
+  { name: 'Compass', Icon: Compass },
+  { name: 'Copy', Icon: Copy },
+  { name: 'Diff', Icon: Diff },
+  { name: 'Download', Icon: Download },
+  { name: 'Eye', Icon: Eye },
+  { name: 'File Text', Icon: FileText },
+  { name: 'Filter', Icon: Filter },
+  { name: 'Flag', Icon: Flag },
+  { name: 'Folder', Icon: Folder },
+  { name: 'Gauge', Icon: Gauge },
+  { name: 'Grid', Icon: Grid3X3 },
+  { name: 'Heart', Icon: Heart },
+  { name: 'Image', Icon: Image },
+  { name: 'Info', Icon: Info },
+  { name: 'Layers', Icon: Layers },
+  { name: 'Link', Icon: LinkIcon },
+  { name: 'Lock', Icon: Lock },
+  { name: 'Mail', Icon: Mail },
+  { name: 'Menu', Icon: Menu },
+  { name: 'Mouse Pointer', Icon: MousePointer2 },
+  { name: 'Option', Icon: Option },
+  { name: 'Palette', Icon: Palette },
+  { name: 'Pencil', Icon: Pencil },
+  { name: 'Pipette', Icon: Pipette },
+  { name: 'Play', Icon: Play },
+  { name: 'Plus', Icon: Plus },
+  { name: 'Radius', Icon: Radius },
+  { name: 'Refresh', Icon: RefreshCw },
+  { name: 'Rotate', Icon: RotateCw },
+  { name: 'Save', Icon: Save },
+  { name: 'Search', Icon: Search },
+  { name: 'Settings', Icon: Settings },
+  { name: 'Share', Icon: Share2 },
+  { name: 'Sliders', Icon: SlidersHorizontal },
+  { name: 'Sparkles', Icon: Sparkles },
+  { name: 'Star', Icon: Star },
 ];
 
 const TOOLTIP_SIDE_DEMO_ITEMS: Array<{
   side: TooltipSide;
   tooltip: string;
 }> = [
-  {
-    side: 'top',
-    tooltip: 'This tooltip opens above the trigger',
-  },
-  {
-    side: 'right',
-    tooltip: 'This tooltip opens to the right',
-  },
   {
     side: 'bottom',
     tooltip: 'This tooltip opens below the trigger',
@@ -148,6 +228,63 @@ const TOOLTIP_SIDE_DEMO_ITEMS: Array<{
     side: 'left',
     tooltip: 'This tooltip opens to the left',
   },
+  {
+    side: 'top',
+    tooltip: 'This tooltip opens above the trigger',
+  },
+  {
+    side: 'right',
+    tooltip: 'This tooltip opens to the right',
+  },
+];
+
+const TOGGLE_GROUP_ITEMS = [
+  {
+    value: 'plane',
+    label: 'Plane',
+    icon: <Option aria-hidden="true" className="size-3.5" strokeWidth={1.75} />,
+  },
+  {
+    value: 'input',
+    label: 'Input',
+    icon: (
+      <MousePointer2
+        aria-hidden="true"
+        className="size-3.5"
+        strokeWidth={1.75}
+      />
+    ),
+  },
+  {
+    value: 'copy',
+    label: 'Copy',
+    icon: <Diff aria-hidden="true" className="size-3.5" strokeWidth={1.75} />,
+  },
+];
+
+const MULTI_INPUT_FIELDS: Array<{
+  value: MultiInputFieldId;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { value: 'x', label: 'X', min: -999, max: 999, step: 1 },
+  { value: 'y', label: 'Y', min: -999, max: 999, step: 1 },
+  { value: 'w', label: 'W', min: 0, max: 999, step: 1 },
+  { value: 'h', label: 'H', min: 0, max: 999, step: 1 },
+  { value: 'r', label: 'R', min: 0, max: 999, step: 1 },
+];
+
+const MULTI_INPUT_PRESETS: Array<{
+  value: string;
+  label: string;
+  fields: MultiInputFieldId[];
+}> = [
+  { value: 'position', label: 'XY', fields: ['x', 'y'] },
+  { value: 'size', label: 'WH', fields: ['w', 'h'] },
+  { value: 'rect', label: 'Rect', fields: ['x', 'y', 'w', 'h'] },
+  { value: 'radius', label: 'Radius', fields: ['r'] },
 ];
 
 const PRIMITIVE_SIZE_CLASS: Record<PrimitiveSize, string> = {
@@ -161,6 +298,18 @@ const PRIMITIVE_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
   compact: 'h-6 min-h-6 text-[11px] leading-4',
   comfortable: 'h-8 min-h-8 text-xs leading-4',
 };
+
+const SEGMENTED_FIELD_GROUP_CLASS =
+  'box-border h-6 min-h-6 w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none';
+
+const SEGMENTED_FIELD_ITEM_CLASS =
+  'h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[state=on]:bg-[#1f1f1f] data-[state=on]:shadow-none';
+
+function getSegmentedFieldItemStateClass(isSelected: boolean): string {
+  return isSelected
+    ? 'border-[#4C4C4C] bg-[#1f1f1f] text-white/90 shadow-none'
+    : 'border-transparent bg-transparent text-white/50 shadow-none';
+}
 
 function normalizePrimitiveValue(
   value: number,
@@ -372,7 +521,7 @@ function SegmentedField<T extends string>({
       <ToggleGroup
         type="single"
         value={value}
-        className={`box-border h-6 min-h-6 w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none ${controlClassName}`}
+        className={`${SEGMENTED_FIELD_GROUP_CLASS} ${controlClassName}`}
         onValueChange={(next) => {
           if (next) {
             onChange(next as T);
@@ -388,11 +537,7 @@ function SegmentedField<T extends string>({
                 <span className="flex h-full min-w-0 flex-1">
                   <ToggleGroupItem
                     value={option.value}
-                    className={`h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[state=on]:bg-[#1f1f1f] data-[state=on]:shadow-none ${
-                      isSelected
-                        ? 'border-[#4C4C4C] bg-[#1f1f1f] text-white/90 shadow-none'
-                        : 'border-transparent bg-transparent text-white/50 shadow-none'
-                    }`}
+                    className={`${SEGMENTED_FIELD_ITEM_CLASS} ${getSegmentedFieldItemStateClass(isSelected)}`}
                     aria-label={`${label}: ${option.label}`}
                   >
                     {option.icon ? (
@@ -546,7 +691,7 @@ function NumberConfigField({
   label,
   value,
   onChange,
-  step,
+  step = 1,
 }: {
   label: string;
   value: number;
@@ -555,21 +700,35 @@ function NumberConfigField({
 }) {
   return (
     <PropertyFieldTooltip label={label}>
-      <label className="block space-y-1.5">
+      <label className="block space-y-2">
         <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
           {label}
         </span>
-        <input
-          type="number"
+        <PrimitiveValueInput
           value={value}
+          onValueChange={(nextValue) => onChange(Math.max(0, nextValue))}
+          ariaLabel={label}
+          leadingElement={null}
+          min={0}
+          max={5000}
+          wrapMode="clamp"
           step={step}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            if (Number.isFinite(next)) {
-              onChange(next);
-            }
-          }}
-          className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-[#5288db]"
+          fineStep={step / 10}
+          coarseStep={step * 10}
+          pageStep={step * 10}
+          precision={0}
+          autoTrim
+          allowExpressions
+          selectAllOnFocus
+          commitOnBlur
+          scrubEnabled
+          scrubPixelsPerStep={1}
+          scrubThreshold={1}
+          pointerLockEnabled={false}
+          disabled={false}
+          readOnly={false}
+          visualState="auto"
+          size="full"
         />
       </label>
     </PropertyFieldTooltip>
@@ -847,6 +1006,7 @@ interface PrimitiveValueInputProps {
   ariaLabel?: string;
   placeholder?: string;
   leadingElement?: ReactNode;
+  handleSide?: PrimitiveHandleSide;
   min: number;
   max: number;
   wrapMode: PrimitiveWrapMode;
@@ -883,6 +1043,7 @@ function PrimitiveValueInput({
   ariaLabel,
   placeholder,
   leadingElement = 'V',
+  handleSide = 'leading',
   min,
   max,
   wrapMode,
@@ -915,6 +1076,7 @@ function PrimitiveValueInput({
   const activePointerIdRef = useRef<number | null>(null);
   const scrubStartXRef = useRef(0);
   const scrubStartValueRef = useRef(0);
+  const scrubCurrentValueRef = useRef(0);
   const lastScrubXRef = useRef(0);
   const activeScrubStepRef = useRef(step);
   const hasDragStartedRef = useRef(false);
@@ -1136,18 +1298,23 @@ function PrimitiveValueInput({
   const endScrub = useCallback(
     (clientX = lastScrubXRef.current, shiftKey?: boolean, altKey?: boolean) => {
       if (activePointerIdRef.current !== null && hasDragStartedRef.current) {
-        const activeStep =
-          shiftKey === undefined || altKey === undefined
-            ? activeScrubStepRef.current
-            : getModifiedStep(shiftKey, altKey);
-        activeScrubStepRef.current = activeStep;
-        const deltaPixels = clientX - scrubStartXRef.current;
-        const wholeDeltaPixels = Math.round(deltaPixels);
-        const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-        commitValue(
-          scrubStartValueRef.current +
-            (wholeDeltaPixels / pixelsPerStep) * activeStep,
-        );
+        if (shiftKey !== undefined && altKey !== undefined) {
+          const activeStep = getModifiedStep(shiftKey, altKey);
+          const previousStep = activeScrubStepRef.current;
+          if (activeStep !== previousStep) {
+            scrubStartXRef.current = lastScrubXRef.current;
+            scrubStartValueRef.current = scrubCurrentValueRef.current;
+          }
+          activeScrubStepRef.current = activeStep;
+          const deltaPixels = clientX - scrubStartXRef.current;
+          const wholeDeltaPixels = Math.round(deltaPixels);
+          const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
+          const nextValue =
+            scrubStartValueRef.current +
+            (wholeDeltaPixels / pixelsPerStep) * activeStep;
+          scrubCurrentValueRef.current = nextValue;
+          commitValue(nextValue);
+        }
       }
       activePointerIdRef.current = null;
       hasDragStartedRef.current = false;
@@ -1168,24 +1335,32 @@ function PrimitiveValueInput({
 
   const queueScrubValue = useCallback(
     (clientX: number, shiftKey: boolean, altKey: boolean) => {
-      lastScrubXRef.current = clientX;
       const deltaPixels = clientX - scrubStartXRef.current;
       if (
         !hasDragStartedRef.current &&
         Math.abs(deltaPixels) < scrubThreshold
       ) {
+        lastScrubXRef.current = clientX;
         return;
+      }
+      const activeStep = getModifiedStep(shiftKey, altKey);
+      const previousStep = activeScrubStepRef.current;
+      if (hasDragStartedRef.current && activeStep !== previousStep) {
+        scrubStartXRef.current = lastScrubXRef.current;
+        scrubStartValueRef.current = scrubCurrentValueRef.current;
       }
       hasDragStartedRef.current = true;
       setIsScrubbing(true);
-      const activeStep = getModifiedStep(shiftKey, altKey);
       activeScrubStepRef.current = activeStep;
-      const wholeDeltaPixels = Math.round(deltaPixels);
+      const rebasedDeltaPixels = clientX - scrubStartXRef.current;
+      const wholeDeltaPixels = Math.round(rebasedDeltaPixels);
       const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-      commitValue(
+      const nextValue =
         scrubStartValueRef.current +
-          (wholeDeltaPixels / pixelsPerStep) * activeStep,
-      );
+        (wholeDeltaPixels / pixelsPerStep) * activeStep;
+      lastScrubXRef.current = clientX;
+      scrubCurrentValueRef.current = nextValue;
+      commitValue(nextValue);
     },
     [commitValue, getModifiedStep, scrubPixelsPerStep, scrubThreshold],
   );
@@ -1202,6 +1377,7 @@ function PrimitiveValueInput({
       scrubStartXRef.current = event.clientX;
       lastScrubXRef.current = event.clientX;
       scrubStartValueRef.current = value;
+      scrubCurrentValueRef.current = value;
       activeScrubStepRef.current = getModifiedStep(
         event.shiftKey,
         event.altKey,
@@ -1296,6 +1472,28 @@ function PrimitiveValueInput({
     leadingElement !== null &&
     leadingElement !== undefined &&
     leadingElement !== false;
+  const scrubHandle = scrubEnabled ? (
+    <div
+      ref={scrubHandleRef}
+      aria-hidden="true"
+      className={
+        hasLeadingElement
+          ? 'flex h-full w-6 shrink-0 cursor-ew-resize select-none items-center justify-center font-medium tabular-nums text-white/55'
+          : `absolute ${
+              handleSide === 'leading' ? '-left-0.5' : '-right-0.5'
+            } top-0 z-10 h-full w-[5px] cursor-ew-resize select-none`
+      }
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => endScrub()}
+      onLostPointerCapture={() => {
+        if (!hasPointerLock()) endScrub();
+      }}
+    >
+      {leadingElement}
+    </div>
+  ) : null;
 
   return (
     <div
@@ -1308,26 +1506,7 @@ function PrimitiveValueInput({
       onPointerEnter={() => setIsHovered(true)}
       onPointerLeave={() => setIsHovered(false)}
     >
-      {scrubEnabled ? (
-        <div
-          ref={scrubHandleRef}
-          aria-hidden="true"
-          className={
-            hasLeadingElement
-              ? 'flex h-full w-6 shrink-0 cursor-ew-resize select-none items-center justify-center font-medium tabular-nums text-white/55'
-              : 'absolute -left-0.5 top-0 z-10 h-full w-[5px] cursor-ew-resize select-none'
-          }
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={() => endScrub()}
-          onLostPointerCapture={() => {
-            if (!hasPointerLock()) endScrub();
-          }}
-        >
-          {leadingElement}
-        </div>
-      ) : null}
+      {handleSide === 'leading' ? scrubHandle : null}
       <input
         ref={inputRef}
         type="text"
@@ -1346,6 +1525,7 @@ function PrimitiveValueInput({
         onKeyDown={handleKeyDown}
         className="h-full min-w-0 flex-1 cursor-default bg-transparent py-0 pl-1 pr-0 font-sans tabular-nums text-white outline-none focus:cursor-text disabled:cursor-not-allowed"
       />
+      {handleSide === 'trailing' ? scrubHandle : null}
     </div>
   );
 }
@@ -1364,28 +1544,44 @@ function TooltipPlaygroundStage({
       delayDuration={delayDuration}
       skipDelayDuration={skipDelayDuration}
     >
-      <div className="relative flex w-full max-w-xl flex-col items-center gap-8 rounded-[28px] border border-white/8 bg-black/20 px-8 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-        <div className="space-y-2 text-center">
-          <p className="text-sm font-medium text-white">Tooltip handoff lab</p>
-          <p className="mx-auto max-w-sm text-xs leading-relaxed text-white/55">
-            Hover the buttons left to right, then pause and enter again. The
-            first and final tooltip animate; handoffs stay immediate.
-          </p>
+      <div className="relative flex w-full max-w-xl flex-col items-center gap-8">
+        <div className="flex justify-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="h-10 rounded-xl border border-white/10 bg-white/[0.06] px-4 text-sm font-medium text-white/75 outline-none transition-[background-color,border-color,color] hover:border-white/20 hover:bg-white/[0.1] hover:text-white focus-visible:ring-2 focus-visible:ring-white/35"
+              >
+                Hover
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={side}>Hover trigger</TooltipContent>
+          </Tooltip>
         </div>
-        <div className="flex flex-wrap justify-center gap-2">
-          {TOOLTIP_DEMO_ITEMS.map((item) => (
-            <Tooltip key={item.label}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="h-10 rounded-xl border border-white/10 bg-white/[0.06] px-4 text-sm font-medium text-white/75 outline-none transition-[background-color,border-color,color] hover:border-white/20 hover:bg-white/[0.1] hover:text-white focus-visible:ring-2 focus-visible:ring-white/35"
-                >
-                  {item.label}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side={side}>{item.tooltip}</TooltipContent>
-            </Tooltip>
-          ))}
+        <div className="space-y-3 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/40">
+            Rapid succession triggering
+          </p>
+          <div className="grid grid-cols-7 gap-0">
+            {TOOLTIP_RAPID_TRIGGER_ITEMS.map(({ name, Icon }) => (
+              <Tooltip key={name}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={name}
+                    className="flex size-[37px] items-center justify-center rounded-none text-white/50 outline-none transition-[background-color,box-shadow,color,transform] hover:bg-white/[0.07] hover:text-white/90 focus-visible:bg-white/[0.06] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#5288db]/80 active:scale-[0.96] active:bg-white/[0.12] active:text-white"
+                  >
+                    <Icon
+                      aria-hidden="true"
+                      className="size-3.5"
+                      strokeWidth={1.75}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={side}>{name}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
         </div>
         <div className="space-y-3 text-center">
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/40">
@@ -1409,6 +1605,197 @@ function TooltipPlaygroundStage({
         </div>
       </div>
     </TooltipProvider>
+  );
+}
+
+function ToggleGroupPlaygroundStage({
+  value,
+  onValueChange,
+  iconMode,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  iconMode: ToggleGroupIconMode;
+}) {
+  return (
+    <div className="w-[248px] max-w-full">
+      <ToggleGroup
+        type="single"
+        value={value}
+        className={SEGMENTED_FIELD_GROUP_CLASS}
+        onValueChange={(next) => {
+          if (next) {
+            onValueChange(next);
+          }
+        }}
+      >
+        {TOGGLE_GROUP_ITEMS.map((item) => {
+          const isSelected = value === item.value;
+          const icon =
+            iconMode !== 'none' ? (
+              <span className="flex size-3.5 shrink-0 items-center justify-center text-current">
+                {item.icon}
+              </span>
+            ) : null;
+          const label =
+            iconMode === 'iconOnly' ? (
+              <span className="sr-only">{item.label}</span>
+            ) : (
+              <span className="min-w-0 truncate">{item.label}</span>
+            );
+
+          return (
+            <ToggleGroupItem
+              key={item.value}
+              value={item.value}
+              className={`${SEGMENTED_FIELD_ITEM_CLASS} gap-1.5 ${iconMode === 'iconOnly' ? 'px-0' : ''} ${getSegmentedFieldItemStateClass(isSelected)}`}
+              aria-label={item.label}
+            >
+              {iconMode === 'leading' || iconMode === 'iconOnly' ? icon : null}
+              {label}
+              {iconMode === 'trailing' ? icon : null}
+            </ToggleGroupItem>
+          );
+        })}
+      </ToggleGroup>
+    </div>
+  );
+}
+
+function MultiInputSegment({
+  field,
+  value,
+  onValueChange,
+  density,
+  disabled,
+}: {
+  field: (typeof MULTI_INPUT_FIELDS)[number];
+  value: number;
+  onValueChange: (value: number) => void;
+  density: MultiInputDensity;
+  disabled: boolean;
+}) {
+  return (
+    <label className="flex min-w-[62px] flex-1 items-center border-r border-[#2c2c2c] last:border-r-0 [&>div]:rounded-none [&>div]:border-0 [&>div]:bg-transparent">
+      <span className="flex h-full w-6 shrink-0 select-none items-center justify-center text-[11px] font-medium leading-4 text-white/45">
+        {field.label}
+      </span>
+      <PrimitiveValueInput
+        value={value}
+        onValueChange={onValueChange}
+        ariaLabel={field.label}
+        leadingElement={null}
+        min={field.min}
+        max={field.max}
+        wrapMode="clamp"
+        step={field.step}
+        fineStep={0.1}
+        coarseStep={10}
+        pageStep={10}
+        precision={1}
+        autoTrim
+        allowExpressions
+        selectAllOnFocus
+        commitOnBlur
+        scrubEnabled
+        scrubPixelsPerStep={1}
+        scrubThreshold={1}
+        pointerLockEnabled={false}
+        disabled={disabled}
+        readOnly={false}
+        visualState="auto"
+        size="full"
+        density={density}
+      />
+    </label>
+  );
+}
+
+function MultiInputControl({
+  fields,
+  values,
+  onFieldChange,
+  density,
+  disabled,
+}: {
+  fields: MultiInputFieldId[];
+  values: Record<MultiInputFieldId, number>;
+  onFieldChange: (field: MultiInputFieldId, value: number) => void;
+  density: MultiInputDensity;
+  disabled: boolean;
+}) {
+  const visibleFields = MULTI_INPUT_FIELDS.filter((field) =>
+    fields.includes(field.value),
+  );
+
+  return (
+    <div
+      className={`flex min-w-0 overflow-hidden rounded-[5px] border border-[#4c4c4c] bg-[#383838] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${
+        disabled ? 'opacity-45' : ''
+      }`}
+    >
+      {visibleFields.map((field) => (
+        <div
+          key={field.value}
+          data-multi-input-segment=""
+          className="min-w-0 flex-1"
+        >
+          <MultiInputSegment
+            field={field}
+            value={values[field.value]}
+            onValueChange={(nextValue) => onFieldChange(field.value, nextValue)}
+            density={density}
+            disabled={disabled}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MultiInputPlaygroundStage({
+  fields,
+  values,
+  onFieldChange,
+  density,
+  disabled,
+}: {
+  fields: MultiInputFieldId[];
+  values: Record<MultiInputFieldId, number>;
+  onFieldChange: (field: MultiInputFieldId, value: number) => void;
+  density: MultiInputDensity;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-white">Multi-input control</p>
+        <p className="mx-auto max-w-sm text-xs leading-relaxed text-white/55">
+          Combine primitive numeric fields into a compact segmented input for
+          position, size, radius, or mixed inspector rows.
+        </p>
+      </div>
+      <div className="w-full max-w-[360px] space-y-3">
+        <MultiInputControl
+          fields={fields}
+          values={values}
+          onFieldChange={onFieldChange}
+          density={density}
+          disabled={disabled}
+        />
+        <div className="rounded-[10px] border border-white/8 bg-[#222] p-3 text-left">
+          <div
+            className="rounded-[6px] border border-[#0d99ff]/70 bg-[#0d99ff]/20"
+            style={{
+              width: Math.max(40, Math.min(220, values.w)),
+              height: Math.max(32, Math.min(160, values.h)),
+              transform: `translate(${Math.max(-24, Math.min(24, values.x / 6))}px, ${Math.max(-18, Math.min(18, values.y / 6))}px)`,
+              borderRadius: Math.max(0, Math.min(32, values.r)),
+            }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1460,6 +1847,8 @@ export function LabPage() {
   const [primitiveScrubMultiplier, setPrimitiveScrubMultiplier] = useState(1);
   const [primitiveHandleContent, setPrimitiveHandleContent] =
     useState<PrimitiveHandleContent>('letter');
+  const [primitiveHandleSide, setPrimitiveHandleSide] =
+    useState<PrimitiveHandleSide>('leading');
   const [primitiveHandleLetter, setPrimitiveHandleLetter] = useState('V');
   const [primitiveHandleLucideSlug, setPrimitiveHandleLucideSlug] =
     useState('mouse-pointer-2');
@@ -1474,6 +1863,24 @@ export function LabPage() {
   const [tooltipDelayDuration, setTooltipDelayDuration] = useState(1000);
   const [tooltipSkipDelayDuration, setTooltipSkipDelayDuration] = useState(300);
   const [primitivePlaceholder, setPrimitivePlaceholder] = useState('0');
+  const [multiInputFields, setMultiInputFields] = useState<MultiInputFieldId[]>(
+    ['x', 'y', 'w', 'h'],
+  );
+  const [multiInputValues, setMultiInputValues] = useState<
+    Record<MultiInputFieldId, number>
+  >({
+    x: 24,
+    y: 16,
+    w: 180,
+    h: 96,
+    r: 12,
+  });
+  const [multiInputDensity, setMultiInputDensity] =
+    useState<MultiInputDensity>('compact');
+  const [multiInputDisabled, setMultiInputDisabled] = useState(false);
+  const [toggleGroupValue, setToggleGroupValue] = useState('plane');
+  const [toggleGroupIconMode, setToggleGroupIconMode] =
+    useState<ToggleGroupIconMode>('none');
 
   const channels = useMemo(
     () => normalizeAxes(axisState.x, axisState.y),
@@ -1512,6 +1919,16 @@ export function LabPage() {
 
   const primitiveScrubPixelsPerStep =
     1 / normalizePrimitiveScrubMultiplier(primitiveScrubMultiplier);
+
+  const setMultiInputFieldValue = useCallback(
+    (field: MultiInputFieldId, value: number) => {
+      setMultiInputValues((current) => ({
+        ...current,
+        [field]: value,
+      }));
+    },
+    [],
+  );
 
   const primitiveHandleElement = useMemo<ReactNode>(() => {
     switch (primitiveHandleContent) {
@@ -1607,6 +2024,7 @@ export function LabPage() {
                 onValueChange={setPrimitiveValue}
                 placeholder={primitivePlaceholder}
                 leadingElement={primitiveHandleElement}
+                handleSide={primitiveHandleSide}
                 min={primitiveMin}
                 max={primitiveMax}
                 wrapMode={primitiveWrapMode}
@@ -1632,11 +2050,25 @@ export function LabPage() {
                 size={primitiveSize}
                 density={primitiveDensity}
               />
-            ) : (
+            ) : activePage === 'inputMulti' ? (
+              <MultiInputPlaygroundStage
+                fields={multiInputFields}
+                values={multiInputValues}
+                onFieldChange={setMultiInputFieldValue}
+                density={multiInputDensity}
+                disabled={multiInputDisabled}
+              />
+            ) : activePage === 'tooltip' ? (
               <TooltipPlaygroundStage
                 delayDuration={tooltipDelayDuration}
                 skipDelayDuration={tooltipSkipDelayDuration}
                 side={tooltipSide}
+              />
+            ) : (
+              <ToggleGroupPlaygroundStage
+                value={toggleGroupValue}
+                onValueChange={setToggleGroupValue}
+                iconMode={toggleGroupIconMode}
               />
             )}
           </section>
@@ -1644,7 +2076,10 @@ export function LabPage() {
           <aside className="border-t border-white/8 p-3 lg:min-h-0 lg:border-t-0 lg:p-4">
             <div className="h-full rounded-[24px] border border-white/8 bg-white/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur lg:min-h-0">
               <ScrollArea className="h-full">
-                <TooltipProvider>
+                <TooltipProvider
+                  delayDuration={tooltipDelayDuration}
+                  skipDelayDuration={tooltipSkipDelayDuration}
+                >
                   <div className="space-y-6 p-4">
                     {activePage === 'plane' ? (
                       <>
@@ -1832,6 +2267,7 @@ export function LabPage() {
                                     ariaLabel="Value"
                                     placeholder={primitivePlaceholder}
                                     leadingElement={primitiveHandleElement}
+                                    handleSide={primitiveHandleSide}
                                     min={primitiveMin}
                                     max={primitiveMax}
                                     wrapMode={primitiveWrapMode}
@@ -1910,7 +2346,7 @@ export function LabPage() {
                                     value: 'clamp',
                                     label: 'Clamp',
                                     icon: (
-                                      <ChevronsRightLeft
+                                      <Braces
                                         aria-hidden="true"
                                         className="size-3.5"
                                         strokeWidth={1.75}
@@ -1934,7 +2370,7 @@ export function LabPage() {
                                     value: 'free',
                                     label: 'Free',
                                     icon: (
-                                      <ChevronsLeftRight
+                                      <InfinityIcon
                                         aria-hidden="true"
                                         className="size-3.5"
                                         strokeWidth={1.75}
@@ -1964,6 +2400,15 @@ export function LabPage() {
                                 { value: 'letter', label: 'Letter' },
                                 { value: 'icon', label: 'Icon' },
                                 { value: 'swatch', label: 'Swatch' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Side"
+                              value={primitiveHandleSide}
+                              onChange={setPrimitiveHandleSide}
+                              options={[
+                                { value: 'leading', label: 'Leading' },
+                                { value: 'trailing', label: 'Trailing' },
                               ]}
                             />
                             {primitiveHandleContent === 'letter' ? (
@@ -2138,13 +2583,136 @@ export function LabPage() {
                           </div>
                         </PanelSection>
                       </>
-                    ) : (
+                    ) : activePage === 'inputMulti' ? (
+                      <>
+                        <PanelSection
+                          title="Composition"
+                          description="Choose which primitive inputs are grouped into one compact inspector row."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Preset"
+                              value={
+                                MULTI_INPUT_PRESETS.find(
+                                  (preset) =>
+                                    preset.fields.length ===
+                                      multiInputFields.length &&
+                                    preset.fields.every(
+                                      (field, index) =>
+                                        field === multiInputFields[index],
+                                    ),
+                                )?.value ?? 'custom'
+                              }
+                              onChange={(nextPreset) => {
+                                const preset = MULTI_INPUT_PRESETS.find(
+                                  (item) => item.value === nextPreset,
+                                );
+                                if (preset) {
+                                  setMultiInputFields(preset.fields);
+                                }
+                              }}
+                              options={[
+                                ...MULTI_INPUT_PRESETS.map((preset) => ({
+                                  value: preset.value,
+                                  label: preset.label,
+                                })),
+                              ]}
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              {MULTI_INPUT_FIELDS.map((field) => (
+                                <ToggleField
+                                  key={field.value}
+                                  label={field.label}
+                                  checked={multiInputFields.includes(
+                                    field.value,
+                                  )}
+                                  onChange={(checked) => {
+                                    setMultiInputFields((current) => {
+                                      if (checked) {
+                                        return MULTI_INPUT_FIELDS.filter(
+                                          (item) =>
+                                            item.value === field.value ||
+                                            current.includes(item.value),
+                                        ).map((item) => item.value);
+                                      }
+
+                                      const next = current.filter(
+                                        (value) => value !== field.value,
+                                      );
+                                      return next.length > 0 ? next : current;
+                                    });
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Values"
+                          description="Edit the same values rendered in the stage preview."
+                        >
+                          <div className="space-y-3">
+                            <MultiInputControl
+                              fields={multiInputFields}
+                              values={multiInputValues}
+                              onFieldChange={setMultiInputFieldValue}
+                              density={multiInputDensity}
+                              disabled={multiInputDisabled}
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                              {MULTI_INPUT_FIELDS.map((field) => (
+                                <StepConfigInput
+                                  key={field.value}
+                                  label={field.label}
+                                  value={multiInputValues[field.value]}
+                                  onValueChange={(nextValue) =>
+                                    setMultiInputFieldValue(
+                                      field.value,
+                                      nextValue,
+                                    )
+                                  }
+                                  leadingElement={field.label}
+                                  step={field.step}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Appearance"
+                          description="Preview density and disabled treatment for the grouped control."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Density"
+                              value={multiInputDensity}
+                              onChange={setMultiInputDensity}
+                              options={[
+                                { value: 'compact', label: 'Compact' },
+                                { value: 'comfortable', label: 'Comfort' },
+                              ]}
+                            />
+                            <ToggleField
+                              label="Disabled"
+                              checked={multiInputDisabled}
+                              onChange={setMultiInputDisabled}
+                            />
+                          </div>
+                        </PanelSection>
+                      </>
+                    ) : activePage === 'tooltip' ? (
                       <>
                         <PanelSection
                           title="Timing"
                           description="Tune the Radix initial hover delay and the cooldown window that marks tooltip handoffs."
                         >
-                          <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
                             <NumberConfigField
                               label="Initial delay"
                               value={tooltipDelayDuration}
@@ -2152,7 +2720,7 @@ export function LabPage() {
                               step={50}
                             />
                             <NumberConfigField
-                              label="Handoff cooldown"
+                              label="Handoff"
                               value={tooltipSkipDelayDuration}
                               onChange={setTooltipSkipDelayDuration}
                               step={50}
@@ -2177,6 +2745,27 @@ export function LabPage() {
                               { value: 'left', label: 'Left' },
                             ]}
                           />
+                        </PanelSection>
+                      </>
+                    ) : (
+                      <>
+                        <PanelSection
+                          title="Icon"
+                          description="Preview the toggle group icon layout."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Icon"
+                              value={toggleGroupIconMode}
+                              onChange={setToggleGroupIconMode}
+                              options={[
+                                { value: 'none', label: 'None' },
+                                { value: 'leading', label: 'Leading' },
+                                { value: 'trailing', label: 'Trailing' },
+                                { value: 'iconOnly', label: 'No text' },
+                              ]}
+                            />
+                          </div>
                         </PanelSection>
                       </>
                     )}
