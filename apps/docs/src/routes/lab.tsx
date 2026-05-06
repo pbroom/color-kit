@@ -1468,7 +1468,7 @@ export function LabPage() {
   const [primitiveDensity, setPrimitiveDensity] =
     useState<PrimitiveDensity>('compact');
   const [tooltipSide, setTooltipSide] = useState<TooltipSide>('top');
-  const [tooltipDelayDuration, setTooltipDelayDuration] = useState(450);
+  const [tooltipDelayDuration, setTooltipDelayDuration] = useState(1000);
   const [tooltipSkipDelayDuration, setTooltipSkipDelayDuration] = useState(300);
   const [primitivePlaceholder, setPrimitivePlaceholder] = useState('0');
 

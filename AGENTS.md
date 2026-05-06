@@ -135,7 +135,6 @@ This file defines top-level guidance for Codex in this repository.
 
 - The Input Primitive Lab is intended to be color-agnostic: it should refine, test, and visualize a standalone input component primitive independently from ColorPlane state.
 - The Input Primitive Lab should keep the standalone input directly on the page without decorative wrappers while inheriting the default spacing, sizing, font, and cursor treatment refined in the color plane playground.
-- Invalid raw input content should not automatically trigger a visible error state in the Input Primitive Lab.
 - Dogfooding the input primitive in the properties panel should preserve the existing ColorPlane `L`, `C`, and `H` leading labels rather than replacing them with property-panel icons.
 - `PrimitiveValueInput` should default to the compact 24px height, and the Input Lab should default to `sm` sizing with width treated as style-driven rather than prop-driven.
 - Input primitive min/max controls in the properties panel should be icon-only fields with accessible names and hover/focus tooltips, not visible labels above each input.
@@ -145,5 +144,4 @@ This file defines top-level guidance for Codex in this repository.
 - `PrimitiveValueInput` scrub interactions should honor the same Shift/Alt coarse/fine step modifiers as keyboard stepping, including the final pointer-up commit.
 - `PrimitiveValueInput` precision should mean max decimal places, while `autoTrim` separately controls trailing-zero trimming; the Input Lab defaults precision to `3` with trimming enabled.
 - `PrimitiveValueInput` should default horizontal arrow keys to normal caret movement so users can edit text while up/down and page keys remain available for stepping.
-- Input Lab Step-adjacent controls should use icon-only draggable numeric inputs for Step, Drag step, Fine, Coarse, Precision, and Drag threshold, with accessible names and tooltips instead of visible labels.
-- The Input Lab should include a Drag Handle section for selecting whether the scrub handle renders nothing, a typed letter, an icon, or a swatch/image-like element.
+- `PrimitiveValueInput` should collapse the leading content cell when drag handle content is `none` and use a narrow 5px leading-edge scrub target that straddles the input edge.
