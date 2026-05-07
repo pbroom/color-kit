@@ -360,6 +360,14 @@ const DEFAULT_MULTI_INPUT_CONFIG: MultiInputConfig = MULTI_INPUT_FIELDS.reduce(
   {} as MultiInputConfig,
 );
 
+const MULTI_INPUT_FIELD_BY_ID = MULTI_INPUT_FIELDS.reduce(
+  (fields, field) => ({
+    ...fields,
+    [field.value]: field,
+  }),
+  {} as Record<MultiInputFieldId, (typeof MULTI_INPUT_FIELDS)[number]>,
+);
+
 const PRIMITIVE_SIZE_CLASS: Record<PrimitiveSize, string> = {
   sm: 'w-32',
   md: 'w-44',
@@ -644,12 +652,12 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex min-h-6 items-center gap-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80">
+    <label className="relative flex min-h-6 items-center gap-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80">
       <input
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="peer sr-only"
+        className="peer absolute left-0 top-1 size-4 cursor-default opacity-0"
       />
       <span
         aria-hidden="true"
@@ -990,11 +998,21 @@ function BoundsConfigInput({
   value,
   onValueChange,
   leadingElement,
+  step = 1,
+  fineStep = 0.1,
+  coarseStep = 10,
+  pageStep = 10,
+  precision = 6,
 }: {
   label: string;
   value: number;
   onValueChange: (value: number) => void;
   leadingElement: ReactNode;
+  step?: number;
+  fineStep?: number;
+  coarseStep?: number;
+  pageStep?: number;
+  precision?: PrimitivePrecision;
 }) {
   return (
     <PropertyFieldTooltip label={label}>
@@ -1007,11 +1025,11 @@ function BoundsConfigInput({
           min={-1000}
           max={1000}
           wrapMode="free"
-          step={1}
-          fineStep={0.1}
-          coarseStep={10}
-          pageStep={10}
-          precision={6}
+          step={step}
+          fineStep={fineStep}
+          coarseStep={coarseStep}
+          pageStep={pageStep}
+          precision={precision}
           autoTrim
           allowExpressions
           selectAllOnFocus
@@ -2071,17 +2089,32 @@ export function LabPage() {
       key: K,
       value: MultiInputConfig[MultiInputFieldId][K],
     ) => {
-      setMultiInputConfig((current) => ({
-        ...current,
-        [field]: {
-          ...current[field],
+      setMultiInputConfig((current) => {
+        const fieldConfig = current[field];
+        const nextFieldConfig = {
+          ...fieldConfig,
           [key]: value,
-        },
-      }));
+        };
+
+        if (key === 'min') {
+          nextFieldConfig.min = Math.min(Number(value), fieldConfig.max);
+        } else if (key === 'max') {
+          nextFieldConfig.max = Math.max(Number(value), fieldConfig.min);
+        }
+
+        return {
+          ...current,
+          [field]: nextFieldConfig,
+        };
+      });
     },
     [],
   );
   const activeMultiInputConfig = multiInputConfig[activeMultiInputField];
+  const activeMultiInputFieldDefinition =
+    MULTI_INPUT_FIELD_BY_ID[activeMultiInputField];
+  const activeMultiInputDisplayScale =
+    activeMultiInputFieldDefinition.unit === '%' ? 100 : 1;
 
   const primitiveHandleElement = useMemo<ReactNode>(() => {
     switch (primitiveHandleContent) {
@@ -2754,12 +2787,15 @@ export function LabPage() {
                             <div className="grid grid-cols-2 gap-3">
                               <BoundsConfigInput
                                 label="Min"
-                                value={activeMultiInputConfig.min}
+                                value={
+                                  activeMultiInputConfig.min *
+                                  activeMultiInputDisplayScale
+                                }
                                 onValueChange={(nextValue) =>
                                   setMultiInputFieldConfig(
                                     activeMultiInputField,
                                     'min',
-                                    nextValue,
+                                    nextValue / activeMultiInputDisplayScale,
                                   )
                                 }
                                 leadingElement={
@@ -2769,15 +2805,35 @@ export function LabPage() {
                                     strokeWidth={1.75}
                                   />
                                 }
+                                step={
+                                  activeMultiInputFieldDefinition.step *
+                                  activeMultiInputDisplayScale
+                                }
+                                fineStep={
+                                  activeMultiInputFieldDefinition.fineStep *
+                                  activeMultiInputDisplayScale
+                                }
+                                coarseStep={
+                                  activeMultiInputFieldDefinition.coarseStep *
+                                  activeMultiInputDisplayScale
+                                }
+                                pageStep={
+                                  activeMultiInputFieldDefinition.pageStep *
+                                  activeMultiInputDisplayScale
+                                }
+                                precision={activeMultiInputConfig.precision}
                               />
                               <BoundsConfigInput
                                 label="Max"
-                                value={activeMultiInputConfig.max}
+                                value={
+                                  activeMultiInputConfig.max *
+                                  activeMultiInputDisplayScale
+                                }
                                 onValueChange={(nextValue) =>
                                   setMultiInputFieldConfig(
                                     activeMultiInputField,
                                     'max',
-                                    nextValue,
+                                    nextValue / activeMultiInputDisplayScale,
                                   )
                                 }
                                 leadingElement={
@@ -2787,6 +2843,23 @@ export function LabPage() {
                                     strokeWidth={1.75}
                                   />
                                 }
+                                step={
+                                  activeMultiInputFieldDefinition.step *
+                                  activeMultiInputDisplayScale
+                                }
+                                fineStep={
+                                  activeMultiInputFieldDefinition.fineStep *
+                                  activeMultiInputDisplayScale
+                                }
+                                coarseStep={
+                                  activeMultiInputFieldDefinition.coarseStep *
+                                  activeMultiInputDisplayScale
+                                }
+                                pageStep={
+                                  activeMultiInputFieldDefinition.pageStep *
+                                  activeMultiInputDisplayScale
+                                }
+                                precision={activeMultiInputConfig.precision}
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
