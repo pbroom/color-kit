@@ -2933,12 +2933,15 @@ export function LabPage() {
                           <div className="grid grid-cols-2 gap-3">
                             <StepConfigInput
                               label="Step"
-                              value={activeMultiInputConfig.step}
+                              value={
+                                activeMultiInputConfig.step *
+                                activeMultiInputDisplayScale
+                              }
                               onValueChange={(nextValue) =>
                                 setMultiInputFieldConfig(
                                   activeMultiInputField,
                                   'step',
-                                  nextValue,
+                                  nextValue / activeMultiInputDisplayScale,
                                 )
                               }
                               leadingElement={
@@ -2952,12 +2955,15 @@ export function LabPage() {
                             />
                             <StepConfigInput
                               label="Fine"
-                              value={activeMultiInputConfig.fineStep}
+                              value={
+                                activeMultiInputConfig.fineStep *
+                                activeMultiInputDisplayScale
+                              }
                               onValueChange={(nextValue) =>
                                 setMultiInputFieldConfig(
                                   activeMultiInputField,
                                   'fineStep',
-                                  nextValue,
+                                  nextValue / activeMultiInputDisplayScale,
                                 )
                               }
                               leadingElement={
@@ -2971,12 +2977,15 @@ export function LabPage() {
                             />
                             <StepConfigInput
                               label="Coarse"
-                              value={activeMultiInputConfig.coarseStep}
+                              value={
+                                activeMultiInputConfig.coarseStep *
+                                activeMultiInputDisplayScale
+                              }
                               onValueChange={(nextValue) =>
                                 setMultiInputFieldConfig(
                                   activeMultiInputField,
                                   'coarseStep',
-                                  nextValue,
+                                  nextValue / activeMultiInputDisplayScale,
                                 )
                               }
                               leadingElement={
@@ -2990,12 +2999,15 @@ export function LabPage() {
                             />
                             <StepConfigInput
                               label="Page"
-                              value={activeMultiInputConfig.pageStep}
+                              value={
+                                activeMultiInputConfig.pageStep *
+                                activeMultiInputDisplayScale
+                              }
                               onValueChange={(nextValue) =>
                                 setMultiInputFieldConfig(
                                   activeMultiInputField,
                                   'pageStep',
-                                  nextValue,
+                                  nextValue / activeMultiInputDisplayScale,
                                 )
                               }
                               leadingElement={
