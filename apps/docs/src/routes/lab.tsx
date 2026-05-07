@@ -1103,6 +1103,7 @@ interface PrimitiveValueInputProps {
   readOnly: boolean;
   visualState: PrimitiveVisualState;
   visualTreatment?: PrimitiveVisualTreatment;
+  showInvalidBorder?: boolean;
   onScrubbingChange?: (isScrubbing: boolean) => void;
   size: PrimitiveSize;
   density?: PrimitiveDensity;
@@ -1144,6 +1145,7 @@ function PrimitiveValueInput({
   readOnly,
   visualState,
   visualTreatment = 'default',
+  showInvalidBorder = false,
   onScrubbingChange,
   size,
   density = 'compact',
@@ -1545,17 +1547,18 @@ function PrimitiveValueInput({
 
   const isEmbeddedVisual = visualTreatment === 'embedded';
   const isInvalid = showInvalidState || (isEditing && !isDraftValid);
-  const borderColor = isInvalid
-    ? '#ff4e4e'
-    : isEmbeddedVisual
-      ? 'transparent'
-      : isScrubbing
-        ? '#97c1ef'
-        : isEditing
-          ? '#5288db'
-          : isHovered
-            ? '#4C4C4C'
-            : 'transparent';
+  const borderColor =
+    showInvalidBorder && isInvalid
+      ? '#ff4e4e'
+      : isEmbeddedVisual
+        ? 'transparent'
+        : isScrubbing
+          ? '#97c1ef'
+          : isEditing
+            ? '#5288db'
+            : isHovered
+              ? '#4C4C4C'
+              : 'transparent';
   const hasLeadingElement =
     leadingElement !== null &&
     leadingElement !== undefined &&
