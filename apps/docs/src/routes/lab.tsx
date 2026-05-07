@@ -1544,10 +1544,11 @@ function PrimitiveValueInput({
   }, [isScrubbing, onScrubbingChange]);
 
   const isEmbeddedVisual = visualTreatment === 'embedded';
-  const borderColor = isEmbeddedVisual
-    ? 'transparent'
-    : showInvalidState
-      ? '#ff4e4e'
+  const isInvalid = showInvalidState || (isEditing && !isDraftValid);
+  const borderColor = isInvalid
+    ? '#ff4e4e'
+    : isEmbeddedVisual
+      ? 'transparent'
       : isScrubbing
         ? '#97c1ef'
         : isEditing
@@ -1608,7 +1609,7 @@ function PrimitiveValueInput({
         disabled={disabled}
         readOnly={readOnly}
         aria-label={ariaLabel}
-        aria-invalid={showInvalidState || (isEditing && !isDraftValid)}
+        aria-invalid={isInvalid}
         placeholder={placeholder}
         onFocus={handleFocus}
         onBlur={handleBlur}
@@ -1793,10 +1794,10 @@ function MultiInputSegment({
               onValueChange(nextValue / displayScale)
             }
             ariaLabel={field.tooltip}
-            leadingElement={isOpacityField ? field.unit : null}
-            trailingElement={null}
-            handleSide={isOpacityField ? 'trailing' : 'leading'}
-            handleContentWidth={isOpacityField ? 16 : undefined}
+            leadingElement={field.label}
+            trailingElement={isOpacityField ? field.unit : null}
+            handleSide="leading"
+            handleContentWidth={18}
             min={config.min * displayScale}
             max={config.max * displayScale}
             wrapMode={config.wrapMode}
