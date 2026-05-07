@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@600;700&family=Inter:opsz,wght@14..32,100..900&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 @import 'tw-animate-css';
@@ -9,6 +9,7 @@
 
 @theme inline {
   --font-sans: 'Inter', 'Avenir Next', 'Segoe UI', sans-serif;
+  --font-brand: 'DM Sans', var(--font-sans);
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', 'Menlo', monospace;
 
   --color-background: var(--background);
@@ -121,5 +122,24 @@
   kbd,
   samp {
     font-family: var(--font-mono);
+  }
+}
+
+@keyframes ck-lab-header-slide-up {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-100%);
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ck-lab-header-exit {
+    animation-duration: 1ms;
   }
 }
