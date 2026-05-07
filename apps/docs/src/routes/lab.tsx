@@ -1559,26 +1559,28 @@ function PrimitiveValueInput({
             : isHovered
               ? '#4C4C4C'
               : 'transparent';
-  const hasLeadingElement =
-    leadingElement !== null &&
-    leadingElement !== undefined &&
-    leadingElement !== false;
   const hasTrailingElement =
     trailingElement !== null &&
     trailingElement !== undefined &&
     trailingElement !== false;
+  const handleElement =
+    handleSide === 'trailing' ? trailingElement : leadingElement;
+  const hasHandleElement =
+    handleElement !== null &&
+    handleElement !== undefined &&
+    handleElement !== false;
   const scrubHandle = scrubEnabled ? (
     <div
       ref={scrubHandleRef}
       aria-hidden="true"
       className={
-        hasLeadingElement
+        hasHandleElement
           ? 'flex h-full shrink-0 cursor-ew-resize select-none items-center justify-center font-medium tabular-nums text-white/55'
           : `absolute ${
               handleSide === 'leading' ? '-left-0.5' : '-right-0.5'
             } top-0 z-10 h-full w-[5px] cursor-ew-resize select-none`
       }
-      style={hasLeadingElement ? { width: handleContentWidth } : undefined}
+      style={hasHandleElement ? { width: handleContentWidth } : undefined}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -1587,7 +1589,7 @@ function PrimitiveValueInput({
         if (!hasPointerLock()) endScrub();
       }}
     >
-      {leadingElement}
+      {handleElement}
     </div>
   ) : null;
 
@@ -1623,7 +1625,7 @@ function PrimitiveValueInput({
         onKeyDown={handleKeyDown}
         className="h-full min-w-0 flex-1 cursor-default bg-transparent py-0 pl-1 pr-0 font-sans tabular-nums text-white outline-none focus:cursor-text disabled:cursor-not-allowed"
       />
-      {hasTrailingElement ? (
+      {hasTrailingElement && handleSide !== 'trailing' ? (
         <span className="flex h-full w-5 shrink-0 select-none items-center justify-center text-[11px] font-medium leading-4 text-white/50">
           {trailingElement}
         </span>
@@ -1797,10 +1799,10 @@ function MultiInputSegment({
               onValueChange(nextValue / displayScale)
             }
             ariaLabel={field.tooltip}
-            leadingElement={field.label}
+            leadingElement={null}
             trailingElement={isOpacityField ? field.unit : null}
-            handleSide="leading"
-            handleContentWidth={18}
+            handleSide={isOpacityField ? 'trailing' : 'leading'}
+            handleContentWidth={16}
             min={config.min * displayScale}
             max={config.max * displayScale}
             wrapMode={config.wrapMode}
