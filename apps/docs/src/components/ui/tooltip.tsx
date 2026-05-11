@@ -176,12 +176,21 @@ function TooltipTrigger({
   );
 }
 
+type TooltipContentProps = React.ComponentProps<
+  typeof TooltipPrimitive.Content
+> & {
+  highContrast?: boolean;
+  showPointer?: boolean;
+};
+
 function TooltipContent({
   className,
   sideOffset = 0,
   children,
+  highContrast = true,
+  showPointer = true,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+}: TooltipContentProps) {
   const tooltipAnimation = React.useContext(TooltipAnimationContext);
   const disableCloseAnimation =
     tooltipAnimation?.disableCloseAnimation ?? false;
@@ -193,7 +202,10 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          'z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background',
+          'z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance',
+          highContrast
+            ? 'bg-foreground text-background'
+            : 'border border-border bg-background text-foreground shadow-md',
           disableOpenAnimation
             ? 'animate-none'
             : 'animate-in fade-in-0 zoom-in-95',
@@ -206,7 +218,16 @@ function TooltipContent({
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-foreground fill-foreground" />
+        {showPointer ? (
+          <TooltipPrimitive.Arrow
+            className={cn(
+              'z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]',
+              highContrast
+                ? 'bg-foreground fill-foreground'
+                : 'border border-border bg-background fill-background',
+            )}
+          />
+        ) : null}
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );
