@@ -2,7 +2,6 @@ import {
   Background,
   ColorApi,
   ColorArea,
-  ColorInput,
   ColorPlane,
   ColorSlider,
   ColorStringInput,
@@ -22,14 +21,17 @@ import {
   type Color as ColorValue,
 } from 'color-kit';
 import {
+  ArrowBigDown,
   ArrowBigUp,
   Bell,
   Blend,
   Bookmark,
   Box,
+  BringToFront,
   Brush,
   Calendar,
   Camera,
+  ChevronDown,
   ArrowLeftToLine,
   ArrowRightToLine,
   Braces,
@@ -80,6 +82,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -98,6 +101,17 @@ import {
 } from '@/components/lucide-icon-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Tooltip,
@@ -108,7 +122,15 @@ import {
 import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
-type LabPageKey = 'plane' | 'input' | 'inputMulti' | 'tooltip' | 'toggle';
+type LabPageKey =
+  | 'plane'
+  | 'input'
+  | 'inputMulti'
+  | 'tooltip'
+  | 'menu'
+  | 'select'
+  | 'toggleButton'
+  | 'toggle';
 type PrimitivePrecision = number;
 type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
 type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
@@ -135,7 +157,19 @@ type MultiInputConfig = Record<
   }
 >;
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
+type ToggleButtonSelectionState = 'off' | 'on';
+type ToggleButtonInteractionState = 'default' | 'hovered' | 'pressedDown';
+type ToggleButtonContent = 'iconOnly' | 'iconLabel' | 'label';
 type ToggleGroupIconMode = 'none' | 'leading' | 'trailing' | 'iconOnly';
+type SelectTriggerContent = 'icon' | 'iconText' | 'text';
+type SelectTriggerIconTextPlacement = 'leading' | 'trailing' | 'both';
+type SelectTriggerBehavior = 'press' | 'release';
+type SelectOptionId =
+  | 'copy'
+  | 'pasteAs'
+  | 'selectLayer'
+  | 'bringToFront'
+  | 'groupSelection';
 
 const MAX_PRIMITIVE_PRECISION_DIGITS = 12;
 
@@ -170,6 +204,18 @@ const LAB_PAGES: Array<{
   {
     value: 'tooltip',
     label: 'Tooltip',
+  },
+  {
+    value: 'menu',
+    label: 'Menu',
+  },
+  {
+    value: 'select',
+    label: 'Select',
+  },
+  {
+    value: 'toggleButton',
+    label: 'Toggle Button',
   },
   {
     value: 'toggle',
@@ -278,6 +324,107 @@ const TOGGLE_GROUP_ITEMS = [
   },
 ];
 
+const TOGGLE_BUTTON_ICON = (
+  <svg
+    aria-hidden="true"
+    className="size-3.5"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeWidth="1.5"
+  >
+    <path d="M4.5 2.5H2.5v2" />
+    <path d="M9.5 2.5h2v2" />
+    <path d="M11.5 9.5v2h-2" />
+    <path d="M2.5 9.5v2h2" />
+  </svg>
+);
+
+type SelectSubmenuItem = {
+  label: string;
+  shortcut?: string;
+  disabled?: boolean;
+  icon?: LucideIcon;
+  trailingHint?: string;
+};
+
+type SelectOption = {
+  value: SelectOptionId;
+  label: string;
+  dividerBefore?: boolean;
+  disabled?: boolean;
+  icon?: LucideIcon;
+  trailingHint?: string;
+} & (
+  | {
+      shortcut?: string;
+      submenuItems?: never;
+    }
+  | {
+      shortcut?: never;
+      submenuItems: SelectSubmenuItem[];
+    }
+);
+
+const SELECT_OPTIONS: SelectOption[] = [
+  {
+    value: 'copy',
+    label: 'Copy',
+    shortcut: '⌥⇧⌘O',
+    icon: Copy,
+    trailingHint: '800',
+  },
+  {
+    value: 'pasteAs',
+    label: 'Copy / Paste as',
+    icon: Clipboard,
+    trailingHint: '88',
+    submenuItems: [
+      { label: 'PNG', shortcut: '⇧⌘C', icon: Image, trailingHint: '128' },
+      { label: 'SVG', shortcut: '⌥⌘C', icon: FileText, trailingHint: '96' },
+      { label: 'CSS', disabled: true, icon: Code },
+    ],
+  },
+  {
+    value: 'selectLayer',
+    label: 'Select layer',
+    icon: Layers,
+    trailingHint: '328',
+    submenuItems: [
+      { label: 'Parent layer', shortcut: '⌘↑', icon: ArrowBigUp },
+      { label: 'Child layer', shortcut: '⌘↓', icon: ArrowBigDown },
+      { label: 'Next sibling', shortcut: '⌘]', icon: ArrowRightToLine },
+      { label: 'Previous sibling', shortcut: '⌘[', icon: ArrowLeftToLine },
+    ],
+    dividerBefore: true,
+  },
+  {
+    value: 'bringToFront',
+    label: 'Bring to front',
+    shortcut: ']',
+    disabled: true,
+    icon: BringToFront,
+    trailingHint: '12',
+  },
+  {
+    value: 'groupSelection',
+    label: 'Group selection',
+    shortcut: '⌘G',
+    icon: Box,
+    trailingHint: '64',
+    dividerBefore: true,
+  },
+];
+
+const SELECT_OPTION_BY_ID = SELECT_OPTIONS.reduce(
+  (options, option) => ({
+    ...options,
+    [option.value]: option,
+  }),
+  {} as Record<SelectOptionId, SelectOption>,
+);
+
 const MULTI_INPUT_FIELDS: Array<{
   value: MultiInputFieldId;
   label: string;
@@ -342,6 +489,10 @@ const MULTI_INPUT_FIELDS: Array<{
   },
 ];
 
+const COLOR_PLANE_MULTI_INPUT_FIELDS = MULTI_INPUT_FIELDS.filter(
+  (field) => field.value !== 'a',
+);
+
 const DEFAULT_MULTI_INPUT_CONFIG: MultiInputConfig = MULTI_INPUT_FIELDS.reduce(
   (config, field) => ({
     ...config,
@@ -382,15 +533,256 @@ const PRIMITIVE_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
 };
 
 const SEGMENTED_FIELD_GROUP_CLASS =
-  'box-border h-6 min-h-6 w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none';
+  'box-border h-6 min-h-6 w-full min-w-0 max-w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none';
 
 const SEGMENTED_FIELD_ITEM_CLASS =
   'h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[state=on]:bg-[#1f1f1f] data-[state=on]:shadow-none';
+
+const TOGGLE_BUTTON_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
+  compact: 'h-6 min-h-6 min-w-6 text-[11px]',
+  comfortable: 'h-7 min-h-7 min-w-7 text-xs',
+};
+
+const TOGGLE_BUTTON_STATE_CLASS: Record<
+  ToggleButtonInteractionState,
+  Record<ToggleButtonSelectionState, string>
+> = {
+  default: {
+    off: 'border-transparent bg-transparent text-white',
+    on: 'border-transparent bg-[#4d5876] text-[#8dc2f3]',
+  },
+  hovered: {
+    off: 'border-transparent bg-[#373737] text-white',
+    on: 'border-transparent bg-[#3b435e] text-[#8dc2f3]',
+  },
+  pressedDown: {
+    off: 'border-transparent bg-[#303030] text-white',
+    on: 'border-transparent bg-[#4d5876] text-[#8dc2f3]',
+  },
+};
+
+const TOGGLE_BUTTON_INTERACTIVE_CLASS: Record<
+  ToggleButtonSelectionState,
+  string
+> = {
+  off: 'hover:border-transparent hover:bg-[#373737] hover:text-white active:border-transparent active:bg-[#303030] active:text-white',
+  on: 'hover:border-transparent hover:bg-[#3b435e] hover:text-[#8dc2f3] active:border-transparent active:bg-[#4d5876] active:text-[#8dc2f3]',
+};
+
+const SELECT_MENU_OPEN_ANIMATION_CLASS =
+  'data-[state=open]:[animation-delay:-35ms] data-[state=open]:[animation-duration:90ms] data-[state=open]:[animation-fill-mode:both] data-[state=open]:[animation-timing-function:cubic-bezier(0.16,1,0.3,1)] data-[state=open]:[--tw-enter-opacity:0.28] data-[state=open]:[--tw-enter-scale:0.985] data-[state=open]:[--tw-enter-translate-y:-1px] motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none';
+
+const SELECT_MENU_PANEL_CLASS = `w-[208px] rounded-[13px] border-0 bg-[#1e1e1e] p-2 text-white shadow-[0_0_0.5px_0_rgba(0,0,0,0.12),0_10px_16px_0_rgba(0,0,0,0.12),0_2px_5px_0_rgba(0,0,0,0.15)] ${SELECT_MENU_OPEN_ANIMATION_CLASS}`;
+
+const SELECT_MENU_ITEM_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
+  compact: 'h-6 min-h-6',
+  comfortable: 'h-7 min-h-7',
+};
+
+const SELECT_MENU_ITEM_CLASS =
+  'justify-start rounded-[5px] px-2 py-0 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white outline-none hover:bg-[#0d99ff] hover:text-white focus-visible:bg-[#0d99ff] focus-visible:text-white data-[highlighted]:bg-[#0d99ff] data-[highlighted]:text-white data-[state=open]:bg-[#303030] data-[state=open]:text-white data-[highlighted]:data-[state=open]:bg-[#0d99ff]';
+const SELECT_MENU_ITEM_DISABLED_CLASS =
+  'disabled:text-white/35 disabled:hover:bg-transparent data-[disabled]:text-white/35 data-[disabled]:hover:bg-transparent data-[disabled]:focus-visible:bg-transparent';
+
+/** Trailing shortcuts must not hardcode enabled meta color; overrides parent disabled foreground. */
+function selectMenuTrailingShortcutClass(disabled: boolean): string {
+  return disabled ? 'text-white/35' : 'text-white/70';
+}
+
+function resolveLabMenuTrailingText({
+  showShortcuts,
+  shortcut,
+  showTrailingHints,
+  trailingHint,
+}: {
+  showShortcuts: boolean;
+  shortcut?: string;
+  showTrailingHints: boolean;
+  trailingHint?: string;
+}): string | undefined {
+  if (showShortcuts && shortcut) {
+    return shortcut;
+  }
+
+  if (showTrailingHints && trailingHint) {
+    return trailingHint;
+  }
+
+  return undefined;
+}
+
+/** Fixed leading column for Lab menu rows, including checkable rows, so labels share one x-origin. */
+const LAB_MENU_LEADING_COLUMN_CLASS =
+  'flex size-6 shrink-0 items-center justify-center';
+
+type LabMenuItemSlotsProps = {
+  label: string;
+  disabled?: boolean;
+  /** Icon shown inside the leading column when set; column still reserves space when `showLeadingIcons`. */
+  leadingIcon?: LucideIcon;
+  showLeadingIcons: boolean;
+  showTrailingHints: boolean;
+  showShortcuts: boolean;
+  shortcut?: string;
+  trailingHint?: string;
+  /** Trailing submenu chevron; when true, hides shortcut/hint text. */
+  submenuCaret?: boolean;
+};
+
+function LabMenuItemSlots({
+  label,
+  disabled = false,
+  leadingIcon,
+  showLeadingIcons,
+  showTrailingHints,
+  showShortcuts,
+  shortcut,
+  trailingHint,
+  submenuCaret = false,
+}: LabMenuItemSlotsProps) {
+  const trailingText = submenuCaret
+    ? undefined
+    : resolveLabMenuTrailingText({
+        showShortcuts,
+        shortcut,
+        showTrailingHints,
+        trailingHint,
+      });
+  const showIconGlyph = Boolean(showLeadingIcons && leadingIcon);
+  const LeadingGlyph = leadingIcon;
+
+  return (
+    <span className="relative flex w-full min-w-0 items-center gap-2">
+      {showLeadingIcons ? (
+        <span className={`${LAB_MENU_LEADING_COLUMN_CLASS} text-current`}>
+          {showIconGlyph && LeadingGlyph ? (
+            <LeadingGlyph
+              aria-hidden="true"
+              className="size-4"
+              strokeWidth={1.75}
+            />
+          ) : null}
+        </span>
+      ) : null}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {trailingText ? (
+        <span
+          className={`min-w-0 shrink-0 text-right ${selectMenuTrailingShortcutClass(disabled)}`}
+        >
+          {trailingText}
+        </span>
+      ) : null}
+      {submenuCaret ? (
+        <svg
+          aria-hidden="true"
+          className="size-3 shrink-0"
+          viewBox="0 0 16 16"
+          fill="none"
+        >
+          <path
+            d="M6.5 4.75 9.75 8 6.5 11.25"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.4"
+          />
+        </svg>
+      ) : null}
+    </span>
+  );
+}
+
+const SELECT_MENU_SUBCONTENT_CLASS = `w-[176px] rounded-[13px] border-0 bg-[#1e1e1e] p-2 text-white shadow-[0_0_0.5px_0_rgba(0,0,0,0.12),0_10px_16px_0_rgba(0,0,0,0.12),0_2px_5px_0_rgba(0,0,0,0.15)] ${SELECT_MENU_OPEN_ANIMATION_CLASS}`;
+
+const SELECT_SUBMENU_HOVER_OPEN_DELAY_MS = 200;
+
+function useSubmenuHoverTimer({
+  enabled,
+  trappedOpenSubmenu = null,
+}: {
+  enabled: boolean;
+  trappedOpenSubmenu?: SelectOptionId | null;
+}) {
+  const [openSubmenu, setOpenSubmenu] = useState<SelectOptionId | null>(null);
+  const submenuHoverTimerRef = useRef<number | null>(null);
+  const activeOpenSubmenu = enabled
+    ? (openSubmenu ?? trappedOpenSubmenu)
+    : null;
+  const clearSubmenuHoverTimer = useCallback(() => {
+    if (submenuHoverTimerRef.current !== null) {
+      window.clearTimeout(submenuHoverTimerRef.current);
+      submenuHoverTimerRef.current = null;
+    }
+  }, []);
+  const openSubmenuImmediately = useCallback(
+    (optionValue: SelectOptionId) => {
+      clearSubmenuHoverTimer();
+      setOpenSubmenu(optionValue);
+    },
+    [clearSubmenuHoverTimer],
+  );
+  const scheduleSubmenuHoverOpen = useCallback(
+    (optionValue: SelectOptionId) => {
+      clearSubmenuHoverTimer();
+      setOpenSubmenu((current) => (current === optionValue ? current : null));
+      submenuHoverTimerRef.current = window.setTimeout(() => {
+        submenuHoverTimerRef.current = null;
+        setOpenSubmenu(optionValue);
+      }, SELECT_SUBMENU_HOVER_OPEN_DELAY_MS);
+    },
+    [clearSubmenuHoverTimer],
+  );
+  const closeSubmenu = useCallback(
+    (optionValue?: SelectOptionId) => {
+      clearSubmenuHoverTimer();
+      setOpenSubmenu((current) =>
+        optionValue && current !== optionValue ? current : null,
+      );
+    },
+    [clearSubmenuHoverTimer],
+  );
+
+  useEffect(() => clearSubmenuHoverTimer, [clearSubmenuHoverTimer]);
+
+  return {
+    activeOpenSubmenu,
+    clearSubmenuHoverTimer,
+    closeSubmenu,
+    openSubmenuImmediately,
+    scheduleSubmenuHoverOpen,
+  };
+}
+
+/** Selected selectable rows do not get a rest glyph or active background; hover/highlight classes still apply. */
+function labMenuItemSelectedRestClass(): string {
+  return '';
+}
+
+const PANEL_TWO_COLUMN_GRID_CLASS =
+  'grid w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3';
+
+const LAB_PANEL_SCROLL_AREA_CLASS =
+  'h-full w-full min-w-0 max-w-full overflow-hidden [&>[data-radix-scroll-area-viewport]]:w-full [&>[data-radix-scroll-area-viewport]]:min-w-0 [&>[data-radix-scroll-area-viewport]]:max-w-full [&>[data-radix-scroll-area-viewport]]:overflow-x-hidden [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!w-full [&>[data-radix-scroll-area-viewport]>div]:!min-w-0 [&>[data-radix-scroll-area-viewport]>div]:!max-w-full';
 
 function getSegmentedFieldItemStateClass(isSelected: boolean): string {
   return isSelected
     ? 'border-[#4C4C4C] bg-[#1f1f1f] text-white/90 shadow-none'
     : 'border-transparent bg-transparent text-white/50 shadow-none';
+}
+
+function getToggleButtonStateClass(
+  selected: boolean,
+  interactionState: ToggleButtonInteractionState,
+): string {
+  const selectionState: ToggleButtonSelectionState = selected ? 'on' : 'off';
+  return [
+    TOGGLE_BUTTON_STATE_CLASS[interactionState][selectionState],
+    interactionState === 'default'
+      ? TOGGLE_BUTTON_INTERACTIVE_CLASS[selectionState]
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 function normalizePrimitiveValue(
@@ -546,8 +938,8 @@ function PanelSection({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-3">
-      <div className="space-y-1">
+    <section className="w-full min-w-0 max-w-full space-y-3 overflow-x-hidden">
+      <div className="w-full min-w-0 max-w-full space-y-1">
         <h2 className="text-sm font-medium tracking-tight text-white">
           {title}
         </h2>
@@ -570,7 +962,7 @@ function PropertyFieldTooltip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="min-w-0">{children}</div>
+        <div className="w-full min-w-0 max-w-full">{children}</div>
       </TooltipTrigger>
       <TooltipContent side="bottom">{label}</TooltipContent>
     </Tooltip>
@@ -596,7 +988,7 @@ function SegmentedField<T extends string>({
   }>;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="w-full min-w-0 max-w-full space-y-1.5">
       <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
         {label}
       </p>
@@ -627,7 +1019,7 @@ function SegmentedField<T extends string>({
                         {option.icon}
                       </span>
                     ) : (
-                      <span>{option.label}</span>
+                      <span className="min-w-0 truncate">{option.label}</span>
                     )}
                   </ToggleGroupItem>
                 </span>
@@ -653,7 +1045,7 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="relative flex min-h-6 items-center gap-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80">
+    <label className="relative flex min-h-6 min-w-0 max-w-full items-center gap-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80">
       <input
         type="checkbox"
         checked={checked}
@@ -668,7 +1060,7 @@ function ToggleField({
           <Check aria-hidden="true" className="size-3" strokeWidth={3} />
         ) : null}
       </span>
-      <span>{label}</span>
+      <span className="min-w-0">{label}</span>
     </label>
   );
 }
@@ -683,7 +1075,7 @@ function PagesPanel({
   const [isSiteNavOpen, setIsSiteNavOpen] = useState(false);
 
   return (
-    <div className="absolute left-4 top-4 z-20 w-[250px]">
+    <div className="absolute left-4 top-4 z-20 w-[190px]">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -774,15 +1166,19 @@ function NumberConfigField({
   value,
   onChange,
   step = 1,
+  leadingAccessory,
+  trailingAccessory,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
   step?: number;
+  leadingAccessory?: ReactNode;
+  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label={label}>
-      <label className="block space-y-2">
+      <label className="block w-full min-w-0 max-w-full space-y-2">
         <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
           {label}
         </span>
@@ -790,6 +1186,8 @@ function NumberConfigField({
           value={value}
           onValueChange={(nextValue) => onChange(Math.max(0, nextValue))}
           ariaLabel={label}
+          leadingAccessory={leadingAccessory}
+          trailingAccessory={trailingAccessory}
           leadingElement={null}
           min={0}
           max={5000}
@@ -830,7 +1228,7 @@ function TextConfigField({
 }) {
   return (
     <PropertyFieldTooltip label={label}>
-      <label className="block space-y-2">
+      <label className="block w-full min-w-0 max-w-full space-y-2">
         <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
           {label}
         </span>
@@ -839,7 +1237,7 @@ function TextConfigField({
           value={value}
           maxLength={maxLength}
           onChange={(event) => onChange(event.target.value)}
-          className="h-6 w-full rounded-[4px] border border-transparent bg-[#383838] px-2 text-[11px] font-medium text-white outline-none transition-[border-color] hover:border-[#4C4C4C] focus:border-[#5288db]"
+          className="h-6 w-full min-w-0 max-w-full rounded-[4px] border border-transparent bg-[#383838] px-2 text-[11px] font-medium text-white outline-none transition-[border-color] hover:border-[#4C4C4C] focus:border-[#5288db]"
         />
       </label>
     </PropertyFieldTooltip>
@@ -849,13 +1247,17 @@ function TextConfigField({
 function PrecisionConfigInput({
   value,
   onChange,
+  leadingAccessory,
+  trailingAccessory,
 }: {
   value: PrimitivePrecision;
   onChange: (value: PrimitivePrecision) => void;
+  leadingAccessory?: ReactNode;
+  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label="Precision">
-      <label className="space-y-2">
+      <label className="block w-full min-w-0 max-w-full space-y-2">
         <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
           Precision
         </span>
@@ -865,6 +1267,8 @@ function PrecisionConfigInput({
             onChange(normalizePrimitivePrecision(nextValue))
           }
           ariaLabel="Precision"
+          leadingAccessory={leadingAccessory}
+          trailingAccessory={trailingAccessory}
           leadingElement={
             <DecimalsArrowRight
               aria-hidden="true"
@@ -904,20 +1308,26 @@ function StepConfigInput({
   onValueChange,
   leadingElement,
   step,
+  leadingAccessory,
+  trailingAccessory,
 }: {
   label: string;
   value: number;
   onValueChange: (value: number) => void;
   leadingElement: ReactNode;
   step: number;
+  leadingAccessory?: ReactNode;
+  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label={label}>
-      <label className="block">
+      <label className="block w-full min-w-0 max-w-full">
         <PrimitiveValueInput
           value={value}
           onValueChange={onValueChange}
           ariaLabel={label}
+          leadingAccessory={leadingAccessory}
+          trailingAccessory={trailingAccessory}
           leadingElement={leadingElement}
           min={0}
           max={1000}
@@ -948,19 +1358,25 @@ function StepConfigInput({
 function DragStepConfigInput({
   value,
   onValueChange,
+  leadingAccessory,
+  trailingAccessory,
 }: {
   value: number;
   onValueChange: (value: number) => void;
+  leadingAccessory?: ReactNode;
+  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label="Drag step">
-      <label className="block">
+      <label className="block w-full min-w-0 max-w-full">
         <PrimitiveValueInput
           value={value}
           onValueChange={(nextValue) =>
             onValueChange(normalizePrimitiveScrubMultiplier(nextValue))
           }
           ariaLabel="Drag step"
+          leadingAccessory={leadingAccessory}
+          trailingAccessory={trailingAccessory}
           leadingElement={
             <MousePointer2
               aria-hidden="true"
@@ -1004,6 +1420,8 @@ function BoundsConfigInput({
   coarseStep = 10,
   pageStep = 10,
   precision = 6,
+  leadingAccessory,
+  trailingAccessory,
 }: {
   label: string;
   value: number;
@@ -1014,14 +1432,18 @@ function BoundsConfigInput({
   coarseStep?: number;
   pageStep?: number;
   precision?: PrimitivePrecision;
+  leadingAccessory?: ReactNode;
+  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label={label}>
-      <label className="block">
+      <label className="block w-full min-w-0 max-w-full">
         <PrimitiveValueInput
           value={value}
           onValueChange={onValueChange}
           ariaLabel={label}
+          leadingAccessory={leadingAccessory}
+          trailingAccessory={trailingAccessory}
           leadingElement={leadingElement}
           min={-1000}
           max={1000}
@@ -1052,17 +1474,23 @@ function BoundsConfigInput({
 function DragThresholdConfigInput({
   value,
   onValueChange,
+  leadingAccessory,
+  trailingAccessory,
 }: {
   value: number;
   onValueChange: (value: number) => void;
+  leadingAccessory?: ReactNode;
+  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label="Drag threshold">
-      <label className="block">
+      <label className="block w-full min-w-0 max-w-full">
         <PrimitiveValueInput
           value={value}
           onValueChange={onValueChange}
           ariaLabel="Drag threshold"
+          leadingAccessory={leadingAccessory}
+          trailingAccessory={trailingAccessory}
           leadingElement={
             <Radius aria-hidden="true" className="size-3" strokeWidth={1.75} />
           }
@@ -1628,7 +2056,7 @@ function PrimitiveValueInput({
 
   return (
     <div
-      className={`relative box-border flex items-center ${
+      className={`relative box-border flex min-w-0 max-w-full items-center ${
         isEmbeddedVisual ? 'rounded-none' : 'rounded-[4px]'
       } border bg-[#383838] p-0 font-sans text-white ${
         PRIMITIVE_SIZE_CLASS[size]
@@ -1686,12 +2114,16 @@ function PrimitiveValueInput({
 
 function TooltipPlaygroundStage({
   delayDuration,
+  highContrast,
   skipDelayDuration,
   side,
+  showPointer,
 }: {
   delayDuration: number;
+  highContrast: boolean;
   skipDelayDuration: number;
   side: TooltipSide;
+  showPointer: boolean;
 }) {
   return (
     <TooltipProvider
@@ -1709,7 +2141,13 @@ function TooltipPlaygroundStage({
                 Hover
               </button>
             </TooltipTrigger>
-            <TooltipContent side={side}>Hover trigger</TooltipContent>
+            <TooltipContent
+              highContrast={highContrast}
+              side={side}
+              showPointer={showPointer}
+            >
+              Hover trigger
+            </TooltipContent>
           </Tooltip>
         </div>
         <div className="space-y-3 text-center">
@@ -1732,7 +2170,13 @@ function TooltipPlaygroundStage({
                     />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={side}>{name}</TooltipContent>
+                <TooltipContent
+                  highContrast={highContrast}
+                  side={side}
+                  showPointer={showPointer}
+                >
+                  {name}
+                </TooltipContent>
               </Tooltip>
             ))}
           </div>
@@ -1752,7 +2196,13 @@ function TooltipPlaygroundStage({
                     {item.side}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={item.side}>{item.tooltip}</TooltipContent>
+                <TooltipContent
+                  highContrast={highContrast}
+                  side={item.side}
+                  showPointer={showPointer}
+                >
+                  {item.tooltip}
+                </TooltipContent>
               </Tooltip>
             ))}
           </div>
@@ -1772,7 +2222,7 @@ function ToggleGroupPlaygroundStage({
   iconMode: ToggleGroupIconMode;
 }) {
   return (
-    <div className="w-[248px] max-w-full">
+    <div className="w-[248px] min-w-0 max-w-full">
       <ToggleGroup
         type="single"
         value={value}
@@ -1816,21 +2266,633 @@ function ToggleGroupPlaygroundStage({
   );
 }
 
+function ToggleButtonPlaygroundStage({
+  selected,
+  interactionState,
+  disabled,
+  density,
+  content,
+  label,
+  onSelectedChange,
+}: {
+  selected: boolean;
+  interactionState: ToggleButtonInteractionState;
+  disabled: boolean;
+  density: PrimitiveDensity;
+  content: ToggleButtonContent;
+  label: string;
+  onSelectedChange: (selected: boolean) => void;
+}) {
+  const showIcon = content !== 'label';
+  const showLabel = content !== 'iconOnly';
+  const accessibleLabel = label.trim() || 'Toggle button';
+
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      aria-label={showLabel ? undefined : accessibleLabel}
+      disabled={disabled}
+      data-selected={selected ? 'on' : 'off'}
+      data-interaction-state={interactionState}
+      className={`box-border inline-flex items-center justify-center gap-1.5 rounded-[5px] border px-2 py-0 font-medium leading-4 tracking-[0.005em] outline-none transition-[background-color,border-color,color] focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-white/25 disabled:hover:border-transparent disabled:hover:bg-transparent ${
+        TOGGLE_BUTTON_DENSITY_CLASS[density]
+      } ${
+        content === 'iconOnly'
+          ? density === 'compact'
+            ? 'w-6 px-0'
+            : 'w-7 px-0'
+          : ''
+      } ${getToggleButtonStateClass(selected, interactionState)}`}
+      onClick={() => onSelectedChange(!selected)}
+    >
+      {showIcon ? (
+        <span className="flex size-3.5 shrink-0 items-center justify-center text-current">
+          {TOGGLE_BUTTON_ICON}
+        </span>
+      ) : null}
+      {showLabel ? (
+        <span className="min-w-0 truncate">{accessibleLabel}</span>
+      ) : null}
+    </button>
+  );
+}
+
+function LabMenuContent({
+  onValueChange,
+  showShortcuts,
+  showSubmenus,
+  showDividers,
+  showDisabledOptions = true,
+  showLeadingIcons = true,
+  showTrailingHints = true,
+  trappedOpenSubmenu = null,
+}: {
+  onValueChange: (value: SelectOptionId) => void;
+  showShortcuts: boolean;
+  showSubmenus: boolean;
+  showDividers: boolean;
+  showDisabledOptions?: boolean;
+  showLeadingIcons?: boolean;
+  showTrailingHints?: boolean;
+  trappedOpenSubmenu?: SelectOptionId | null;
+}) {
+  const {
+    activeOpenSubmenu,
+    clearSubmenuHoverTimer,
+    closeSubmenu,
+    openSubmenuImmediately,
+    scheduleSubmenuHoverOpen,
+  } = useSubmenuHoverTimer({
+    enabled: showSubmenus,
+    trappedOpenSubmenu,
+  });
+  return (
+    <DropdownMenuContent
+      align="center"
+      sideOffset={4}
+      className={SELECT_MENU_PANEL_CLASS}
+    >
+      {SELECT_OPTIONS.filter(
+        (option) => showDisabledOptions || !option.disabled,
+      ).map((option) => {
+        const shortcut = option.shortcut;
+
+        return (
+          <Fragment key={option.value}>
+            {showDividers && option.dividerBefore ? (
+              <DropdownMenuSeparator className="mx-0 my-2 h-px bg-[#383838]" />
+            ) : null}
+            {showSubmenus && option.submenuItems ? (
+              <DropdownMenuSub
+                open={activeOpenSubmenu === option.value}
+                onOpenChange={(nextOpen) => {
+                  if (nextOpen) {
+                    return;
+                  }
+
+                  closeSubmenu(option.value);
+                }}
+              >
+                <DropdownMenuSubTrigger
+                  onClick={() => openSubmenuImmediately(option.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === 'ArrowRight' ||
+                      event.key === 'Enter' ||
+                      event.key === ' ' ||
+                      event.key === 'Spacebar'
+                    ) {
+                      openSubmenuImmediately(option.value);
+                    }
+                  }}
+                  onPointerEnter={() => scheduleSubmenuHoverOpen(option.value)}
+                  onPointerLeave={clearSubmenuHoverTimer}
+                  className={`relative ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${SELECT_MENU_ITEM_CLASS} ${SELECT_MENU_ITEM_DISABLED_CLASS} ${labMenuItemSelectedRestClass()} gap-0 pr-1 [&>svg:last-child]:hidden`}
+                >
+                  <LabMenuItemSlots
+                    label={option.label}
+                    disabled={option.disabled}
+                    leadingIcon={option.icon}
+                    showLeadingIcons={showLeadingIcons}
+                    showTrailingHints={showTrailingHints}
+                    showShortcuts={showShortcuts}
+                    shortcut={shortcut}
+                    trailingHint={option.trailingHint}
+                    submenuCaret
+                  />
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent
+                    sideOffset={8}
+                    alignOffset={-8}
+                    className={SELECT_MENU_SUBCONTENT_CLASS}
+                  >
+                    {option.submenuItems
+                      .filter(
+                        (submenuItem) =>
+                          showDisabledOptions || !submenuItem.disabled,
+                      )
+                      .map((submenuItem) => (
+                        <DropdownMenuItem
+                          key={submenuItem.label}
+                          disabled={submenuItem.disabled}
+                          onSelect={() => onValueChange(option.value)}
+                          className={`relative ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${SELECT_MENU_ITEM_CLASS} ${SELECT_MENU_ITEM_DISABLED_CLASS} gap-0 pr-1`}
+                        >
+                          <LabMenuItemSlots
+                            label={submenuItem.label}
+                            disabled={submenuItem.disabled}
+                            leadingIcon={submenuItem.icon}
+                            showLeadingIcons={showLeadingIcons}
+                            showTrailingHints={showTrailingHints}
+                            showShortcuts={showShortcuts}
+                            shortcut={submenuItem.shortcut}
+                            trailingHint={submenuItem.trailingHint}
+                          />
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            ) : (
+              <DropdownMenuItem
+                disabled={option.disabled}
+                onSelect={() => onValueChange(option.value)}
+                className={`relative ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${SELECT_MENU_ITEM_CLASS} ${SELECT_MENU_ITEM_DISABLED_CLASS} ${labMenuItemSelectedRestClass()} gap-0`}
+              >
+                <LabMenuItemSlots
+                  label={option.label}
+                  disabled={option.disabled}
+                  leadingIcon={option.icon}
+                  showLeadingIcons={showLeadingIcons}
+                  showTrailingHints={showTrailingHints}
+                  showShortcuts={showShortcuts}
+                  shortcut={shortcut}
+                  trailingHint={option.trailingHint}
+                />
+              </DropdownMenuItem>
+            )}
+          </Fragment>
+        );
+      })}
+    </DropdownMenuContent>
+  );
+}
+
+function MenuPlaygroundStage({
+  onValueChange,
+  showShortcuts,
+  onShowShortcutsChange,
+  showSubmenus,
+  onShowSubmenusChange,
+  showDividers,
+  onShowDividersChange,
+  showDisabledOptions,
+  showOnOffItems,
+  showHeadings,
+  showLeadingIcons,
+  showTrailingHints,
+}: {
+  onValueChange: (value: SelectOptionId) => void;
+  showShortcuts: boolean;
+  onShowShortcutsChange: (showShortcuts: boolean) => void;
+  showSubmenus: boolean;
+  onShowSubmenusChange: (showSubmenus: boolean) => void;
+  showDividers: boolean;
+  onShowDividersChange: (showDividers: boolean) => void;
+  showDisabledOptions: boolean;
+  showOnOffItems: boolean;
+  showHeadings: boolean;
+  showLeadingIcons: boolean;
+  showTrailingHints: boolean;
+}) {
+  return (
+    <InlineLabMenuContent
+      onValueChange={onValueChange}
+      showShortcuts={showShortcuts}
+      onShowShortcutsChange={onShowShortcutsChange}
+      showSubmenus={showSubmenus}
+      onShowSubmenusChange={onShowSubmenusChange}
+      showDividers={showDividers}
+      onShowDividersChange={onShowDividersChange}
+      showDisabledOptions={showDisabledOptions}
+      showOnOffItems={showOnOffItems}
+      showHeadings={showHeadings}
+      showLeadingIcons={showLeadingIcons}
+      showTrailingHints={showTrailingHints}
+    />
+  );
+}
+
+function InlineLabMenuContent({
+  onValueChange,
+  showShortcuts,
+  onShowShortcutsChange,
+  showSubmenus,
+  onShowSubmenusChange,
+  showDividers,
+  onShowDividersChange,
+  showDisabledOptions = true,
+  showOnOffItems = false,
+  showHeadings = false,
+  showLeadingIcons = true,
+  showTrailingHints = true,
+}: {
+  onValueChange: (value: SelectOptionId) => void;
+  showShortcuts: boolean;
+  onShowShortcutsChange?: (showShortcuts: boolean) => void;
+  showSubmenus: boolean;
+  onShowSubmenusChange?: (showSubmenus: boolean) => void;
+  showDividers: boolean;
+  onShowDividersChange?: (showDividers: boolean) => void;
+  showDisabledOptions?: boolean;
+  showOnOffItems?: boolean;
+  showHeadings?: boolean;
+  showLeadingIcons?: boolean;
+  showTrailingHints?: boolean;
+}) {
+  const {
+    activeOpenSubmenu,
+    clearSubmenuHoverTimer,
+    closeSubmenu,
+    openSubmenuImmediately,
+    scheduleSubmenuHoverOpen,
+  } = useSubmenuHoverTimer({
+    enabled: showSubmenus,
+  });
+  const closeSubmenuFromActionRow = useCallback(() => {
+    closeSubmenu();
+  }, [closeSubmenu]);
+  const menuOnOffItems = useMemo(
+    () => [
+      {
+        checked: showShortcuts,
+        label: 'Shortcuts',
+        onCheckedChange: onShowShortcutsChange,
+      },
+      {
+        checked: showSubmenus,
+        label: 'Submenus',
+        onCheckedChange: onShowSubmenusChange,
+      },
+      {
+        checked: showDividers,
+        label: 'Dividers',
+        onCheckedChange: onShowDividersChange,
+      },
+    ],
+    [
+      onShowDividersChange,
+      onShowShortcutsChange,
+      onShowSubmenusChange,
+      showDividers,
+      showShortcuts,
+      showSubmenus,
+    ],
+  );
+  const rootMenuItemClass = SELECT_MENU_ITEM_CLASS;
+  const menuHeadingClass =
+    'block w-full px-2 py-1 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white/40 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20';
+  const getHeadingForOption = useCallback((option: SelectOption) => {
+    switch (option.value) {
+      case 'copy':
+        return 'Clipboard';
+      case 'selectLayer':
+        return 'Layer';
+      case 'groupSelection':
+        return 'Selection';
+      case 'pasteAs':
+      case 'bringToFront':
+        return null;
+      default:
+        return null;
+    }
+  }, []);
+  return (
+    <div className="relative">
+      <div data-state="open" className={SELECT_MENU_PANEL_CLASS}>
+        {SELECT_OPTIONS.filter(
+          (option) => showDisabledOptions || !option.disabled,
+        ).map((option) => {
+          const shortcut = option.shortcut;
+          const isSubmenuOpen = activeOpenSubmenu === option.value;
+          const heading = showHeadings ? getHeadingForOption(option) : null;
+
+          return (
+            <Fragment key={option.value}>
+              {heading ? (
+                <div
+                  aria-label={`${heading} heading`}
+                  className={menuHeadingClass}
+                  role="heading"
+                >
+                  {heading}
+                </div>
+              ) : null}
+              {showDividers && option.dividerBefore ? (
+                <div className="mx-0 my-2 h-px bg-[#383838]" />
+              ) : null}
+              {showSubmenus && option.submenuItems ? (
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-expanded={isSubmenuOpen}
+                    onClick={() => openSubmenuImmediately(option.value)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === 'ArrowRight' ||
+                        event.key === 'Enter' ||
+                        event.key === ' ' ||
+                        event.key === 'Spacebar'
+                      ) {
+                        openSubmenuImmediately(option.value);
+                      }
+                    }}
+                    onPointerEnter={() =>
+                      scheduleSubmenuHoverOpen(option.value)
+                    }
+                    onPointerLeave={clearSubmenuHoverTimer}
+                    className={`relative flex w-full cursor-default select-none items-center ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${rootMenuItemClass} gap-0 pr-1 ${
+                      !option.disabled && isSubmenuOpen ? 'bg-[#303030]' : ''
+                    }`}
+                  >
+                    <LabMenuItemSlots
+                      label={option.label}
+                      disabled={option.disabled}
+                      leadingIcon={option.icon}
+                      showLeadingIcons={showLeadingIcons}
+                      showTrailingHints={showTrailingHints}
+                      showShortcuts={showShortcuts}
+                      shortcut={shortcut}
+                      trailingHint={option.trailingHint}
+                      submenuCaret
+                    />
+                  </button>
+                  {isSubmenuOpen ? (
+                    <div
+                      data-state="open"
+                      className={`absolute left-[calc(100%+8px)] top-[-8px] z-50 ${SELECT_MENU_SUBCONTENT_CLASS}`}
+                    >
+                      {option.submenuItems
+                        .filter(
+                          (submenuItem) =>
+                            showDisabledOptions || !submenuItem.disabled,
+                        )
+                        .map((submenuItem) => (
+                          <button
+                            key={submenuItem.label}
+                            type="button"
+                            disabled={submenuItem.disabled}
+                            onClick={() => onValueChange(option.value)}
+                            className={`relative flex w-full cursor-default select-none items-center ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${SELECT_MENU_ITEM_CLASS} ${SELECT_MENU_ITEM_DISABLED_CLASS} gap-0 pr-1`}
+                          >
+                            <LabMenuItemSlots
+                              label={submenuItem.label}
+                              disabled={submenuItem.disabled}
+                              leadingIcon={submenuItem.icon}
+                              showLeadingIcons={showLeadingIcons}
+                              showTrailingHints={showTrailingHints}
+                              showShortcuts={showShortcuts}
+                              shortcut={submenuItem.shortcut}
+                              trailingHint={submenuItem.trailingHint}
+                            />
+                          </button>
+                        ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={option.disabled}
+                  onFocus={closeSubmenuFromActionRow}
+                  onClick={() => onValueChange(option.value)}
+                  onPointerEnter={closeSubmenuFromActionRow}
+                  className={`relative flex w-full cursor-default select-none items-center ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${rootMenuItemClass} ${SELECT_MENU_ITEM_DISABLED_CLASS} gap-0 ${labMenuItemSelectedRestClass()}`}
+                >
+                  <LabMenuItemSlots
+                    label={option.label}
+                    disabled={option.disabled}
+                    leadingIcon={option.icon}
+                    showLeadingIcons={showLeadingIcons}
+                    showTrailingHints={showTrailingHints}
+                    showShortcuts={showShortcuts}
+                    shortcut={shortcut}
+                    trailingHint={option.trailingHint}
+                  />
+                </button>
+              )}
+            </Fragment>
+          );
+        })}
+        {showOnOffItems ? (
+          <>
+            {showDividers ? (
+              <div className="mx-0 my-2 h-px bg-[#383838]" />
+            ) : null}
+            {showHeadings ? (
+              <div
+                aria-label="Options heading"
+                className={menuHeadingClass}
+                role="heading"
+              >
+                Options
+              </div>
+            ) : null}
+            {menuOnOffItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={item.checked}
+                onClick={() => item.onCheckedChange?.(!item.checked)}
+                onFocus={closeSubmenuFromActionRow}
+                onPointerEnter={closeSubmenuFromActionRow}
+                className={`relative flex w-full cursor-default select-none items-center ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${rootMenuItemClass} gap-0`}
+              >
+                <span className="flex w-full min-w-0 items-center gap-2">
+                  <span
+                    className={`${LAB_MENU_LEADING_COLUMN_CLASS} text-current`}
+                    aria-hidden="true"
+                  >
+                    {item.checked ? (
+                      <Check className="size-4" strokeWidth={1.75} />
+                    ) : null}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {item.label}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SelectPlaygroundStage({
+  value,
+  onValueChange,
+  disabled,
+  triggerContent,
+  triggerIconTextPlacement,
+  triggerBehavior,
+  showShortcuts,
+  showSubmenus,
+  showDividers,
+  showLeadingIcons,
+  showTrailingHints,
+}: {
+  value: SelectOptionId;
+  onValueChange: (value: SelectOptionId) => void;
+  disabled: boolean;
+  triggerContent: SelectTriggerContent;
+  triggerIconTextPlacement: SelectTriggerIconTextPlacement;
+  triggerBehavior: SelectTriggerBehavior;
+  showShortcuts: boolean;
+  showSubmenus: boolean;
+  showDividers: boolean;
+  showLeadingIcons: boolean;
+  showTrailingHints: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedOption = SELECT_OPTION_BY_ID[value] ?? SELECT_OPTIONS[0];
+  const showTriggerText = triggerContent !== 'icon';
+  const showLeadingTriggerIcon =
+    triggerContent === 'icon' ||
+    (triggerContent === 'iconText' &&
+      (triggerIconTextPlacement === 'leading' ||
+        triggerIconTextPlacement === 'both'));
+  const showTrailingTriggerIcon =
+    triggerContent === 'iconText' &&
+    (triggerIconTextPlacement === 'trailing' ||
+      triggerIconTextPlacement === 'both');
+  const triggerLabel = 'Select';
+  const handleTriggerPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (
+        triggerBehavior !== 'release' ||
+        event.button !== 0 ||
+        event.ctrlKey
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.currentTarget.focus();
+    },
+    [triggerBehavior],
+  );
+  const handleTriggerClick = useCallback(() => {
+    if (triggerBehavior !== 'release') {
+      return;
+    }
+
+    setOpen(true);
+  }, [triggerBehavior]);
+
+  return (
+    <DropdownMenu
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (disabled && nextOpen) {
+          return;
+        }
+
+        setOpen(nextOpen);
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Menu action: ${selectedOption.label}`}
+          disabled={disabled}
+          onPointerDown={handleTriggerPointerDown}
+          onClick={handleTriggerClick}
+          className={`box-border inline-flex items-center justify-center gap-1.5 rounded-[5px] border py-0 font-medium leading-4 tracking-[0.005em] outline-none shadow-none transition-[background-color,border-color,color] focus:ring-0 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-white/25 disabled:hover:border-transparent disabled:hover:bg-transparent data-[state=open]:border-transparent data-[state=open]:bg-[#0d99ff] data-[state=open]:text-white ${
+            TOGGLE_BUTTON_DENSITY_CLASS.compact
+          } ${
+            triggerContent === 'icon'
+              ? 'w-6 px-0'
+              : 'w-auto min-w-6 max-w-[180px] px-2'
+          } ${getToggleButtonStateClass(false, 'default')}`}
+        >
+          {showLeadingTriggerIcon ? (
+            <span className="flex size-3.5 shrink-0 items-center justify-center text-current">
+              <Grid3X3
+                aria-hidden="true"
+                className="size-3.5"
+                strokeWidth={1.75}
+              />
+            </span>
+          ) : null}
+          {showTriggerText ? (
+            <span className="min-w-0 truncate">{triggerLabel}</span>
+          ) : null}
+          {showTrailingTriggerIcon ? (
+            <span className="flex size-3.5 shrink-0 items-center justify-center text-current">
+              <ChevronDown
+                aria-hidden="true"
+                className="size-3.5"
+                strokeWidth={1.75}
+              />
+            </span>
+          ) : null}
+        </button>
+      </DropdownMenuTrigger>
+      <LabMenuContent
+        onValueChange={onValueChange}
+        showShortcuts={showShortcuts}
+        showSubmenus={showSubmenus}
+        showDividers={showDividers}
+        showLeadingIcons={showLeadingIcons}
+        showTrailingHints={showTrailingHints}
+      />
+    </DropdownMenu>
+  );
+}
+
 function MultiInputSegment({
   field,
   config,
   value,
   onValueChange,
   onScrubbingChange,
+  showLeadingLabel = false,
 }: {
   field: (typeof MULTI_INPUT_FIELDS)[number];
   config: MultiInputConfig[MultiInputFieldId];
   value: number;
   onValueChange: (value: number) => void;
   onScrubbingChange: (field: MultiInputFieldId, isScrubbing: boolean) => void;
+  showLeadingLabel?: boolean;
 }) {
   const displayScale = field.unit === '%' ? 100 : 1;
   const isOpacityField = field.value === 'a';
+  const leadingElement = showLeadingLabel ? field.label : null;
   const handleScrubbingChange = useCallback(
     (isScrubbing: boolean) => {
       onScrubbingChange(field.value, isScrubbing);
@@ -1841,17 +2903,17 @@ function MultiInputSegment({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <label className="block h-6 min-w-[38px] flex-1">
+        <label className="block h-6 min-w-0 w-full">
           <PrimitiveValueInput
             value={value * displayScale}
             onValueChange={(nextValue) =>
               onValueChange(nextValue / displayScale)
             }
             ariaLabel={field.tooltip}
-            leadingElement={null}
+            leadingElement={leadingElement}
             trailingElement={isOpacityField ? field.unit : null}
             handleSide={isOpacityField ? 'trailing' : 'leading'}
-            handleContentWidth={16}
+            handleContentWidth={showLeadingLabel ? 18 : 16}
             min={config.min * displayScale}
             max={config.max * displayScale}
             wrapMode={config.wrapMode}
@@ -1887,10 +2949,14 @@ function MultiInputControl({
   values,
   config,
   onFieldChange,
+  fields = MULTI_INPUT_FIELDS,
+  showLeadingLabels = false,
 }: {
   values: Record<MultiInputFieldId, number>;
   config: MultiInputConfig;
   onFieldChange: (field: MultiInputFieldId, value: number) => void;
+  fields?: Array<(typeof MULTI_INPUT_FIELDS)[number]>;
+  showLeadingLabels?: boolean;
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -1919,7 +2985,7 @@ function MultiInputControl({
   return (
     <TooltipProvider delayDuration={1000} skipDelayDuration={300}>
       <div
-        className="relative h-6 min-h-6 min-w-0 overflow-hidden rounded-[4px]"
+        className="relative h-6 min-h-6 w-full min-w-0 max-w-full overflow-hidden rounded-[4px]"
         data-scrubbing={Boolean(scrubbingField) || undefined}
         onPointerEnter={() => setIsHovered(true)}
         onPointerLeave={() => setIsHovered(false)}
@@ -1935,13 +3001,17 @@ function MultiInputControl({
           setIsFocused(false);
         }}
       >
-        <div className="flex h-full min-w-0 gap-px bg-transparent">
-          {MULTI_INPUT_FIELDS.map((field) => (
+        <div className="flex h-full w-full min-w-0 max-w-full gap-px bg-transparent">
+          {fields.map((field) => (
             <div
               key={field.value}
               data-multi-input-segment=""
-              className={`min-w-0 ${
-                field.value === 'a' ? 'flex-[1_1_65px]' : 'flex-[0_1_44px]'
+              className={`min-w-0 max-w-full ${
+                fields.length === MULTI_INPUT_FIELDS.length
+                  ? field.value === 'a'
+                    ? 'flex-[1_1_65px]'
+                    : 'flex-[0_1_44px]'
+                  : 'flex-1'
               }`}
             >
               <MultiInputSegment
@@ -1952,6 +3022,7 @@ function MultiInputControl({
                   onFieldChange(field.value, nextValue)
                 }
                 onScrubbingChange={handleSegmentScrubbingChange}
+                showLeadingLabel={showLeadingLabels}
               />
             </div>
           ))}
@@ -1976,7 +3047,7 @@ function MultiInputPlaygroundStage({
   onFieldChange: (field: MultiInputFieldId, value: number) => void;
 }) {
   return (
-    <div className="w-[200px] max-w-full">
+    <div className="w-[200px] min-w-0 max-w-full">
       <MultiInputControl
         values={values}
         config={config}
@@ -2065,6 +3136,30 @@ export function LabPage() {
   const [tooltipSide, setTooltipSide] = useState<TooltipSide>('top');
   const [tooltipDelayDuration, setTooltipDelayDuration] = useState(1000);
   const [tooltipSkipDelayDuration, setTooltipSkipDelayDuration] = useState(300);
+  const [tooltipShowPointer, setTooltipShowPointer] = useState(true);
+  const [tooltipHighContrast, setTooltipHighContrast] = useState(true);
+  const [, setMenuValue] = useState<SelectOptionId>('copy');
+  const [menuShowShortcuts, setMenuShowShortcuts] = useState(true);
+  const [menuShowSubmenus, setMenuShowSubmenus] = useState(true);
+  const [menuShowDividers, setMenuShowDividers] = useState(true);
+  const [menuShowDisabledOptions, setMenuShowDisabledOptions] = useState(true);
+  const [menuShowOnOffItems, setMenuShowOnOffItems] = useState(true);
+  const [menuShowHeadings, setMenuShowHeadings] = useState(false);
+  const [menuShowLeadingIcons, setMenuShowLeadingIcons] = useState(true);
+  const [menuShowTrailingHints, setMenuShowTrailingHints] = useState(true);
+  const [selectValue, setSelectValue] = useState<SelectOptionId>('copy');
+  const [selectDisabled, setSelectDisabled] = useState(false);
+  const [selectTriggerContent, setSelectTriggerContent] =
+    useState<SelectTriggerContent>('icon');
+  const [selectTriggerIconTextPlacement, setSelectTriggerIconTextPlacement] =
+    useState<SelectTriggerIconTextPlacement>('trailing');
+  const [selectTriggerBehavior, setSelectTriggerBehavior] =
+    useState<SelectTriggerBehavior>('press');
+  const [selectShowShortcuts, setSelectShowShortcuts] = useState(true);
+  const [selectShowSubmenus, setSelectShowSubmenus] = useState(true);
+  const [selectShowDividers, setSelectShowDividers] = useState(true);
+  const [selectShowLeadingIcons, setSelectShowLeadingIcons] = useState(true);
+  const [selectShowTrailingHints, setSelectShowTrailingHints] = useState(true);
   const [primitivePlaceholder, setPrimitivePlaceholder] = useState('0');
   const [multiInputValues, setMultiInputValues] = useState<
     Record<MultiInputFieldId, number>
@@ -2079,6 +3174,16 @@ export function LabPage() {
   const [multiInputConfig, setMultiInputConfig] = useState<MultiInputConfig>(
     DEFAULT_MULTI_INPUT_CONFIG,
   );
+  const [toggleButtonSelectionState, setToggleButtonSelectionState] =
+    useState<ToggleButtonSelectionState>('off');
+  const [toggleButtonInteractionState, setToggleButtonInteractionState] =
+    useState<ToggleButtonInteractionState>('default');
+  const [toggleButtonDisabled, setToggleButtonDisabled] = useState(false);
+  const [toggleButtonDensity, setToggleButtonDensity] =
+    useState<PrimitiveDensity>('compact');
+  const [toggleButtonContent, setToggleButtonContent] =
+    useState<ToggleButtonContent>('iconOnly');
+  const [toggleButtonLabel, setToggleButtonLabel] = useState('Favorite');
   const [toggleGroupValue, setToggleGroupValue] = useState('plane');
   const [toggleGroupIconMode, setToggleGroupIconMode] =
     useState<ToggleGroupIconMode>('none');
@@ -2103,6 +3208,21 @@ export function LabPage() {
   const hueRail = useMemo(
     () => getOklchSliderRail('h', color.requested, color.activeGamut),
     [color.activeGamut, color.requested],
+  );
+  const colorPlaneMultiInputValues = useMemo<Record<MultiInputFieldId, number>>(
+    () => ({
+      l: color.requested.l,
+      c: color.requested.c,
+      h: color.requested.h,
+      a: color.requested.alpha,
+    }),
+    [color.requested],
+  );
+  const setColorPlaneMultiInputFieldValue = useCallback(
+    (field: MultiInputFieldId, value: number) => {
+      color.setChannel(field === 'a' ? 'alpha' : field, value);
+    },
+    [color],
   );
   const setAxis = (axis: 'x' | 'y', channel: ColorAreaChannel) => {
     setAxisState((current) => {
@@ -2237,12 +3357,9 @@ export function LabPage() {
     <div className="min-h-screen overflow-hidden bg-[#171717]">
       <LabHeaderExit />
 
-      <main className="h-screen min-h-screen bg-[#171717] text-white lg:overflow-hidden">
-        <div className="grid min-h-screen grid-cols-1 lg:h-full lg:grid-cols-[minmax(0,1fr)_300px]">
-          <section className="relative flex min-h-[420px] items-center justify-center overflow-hidden px-6 py-10 lg:min-h-0 lg:py-14">
-            {activePage === 'plane' ? (
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_42%)]" />
-            ) : null}
+      <main className="h-screen min-h-screen min-w-0 bg-[#171717] text-white lg:overflow-hidden">
+        <div className="grid min-h-screen min-w-0 grid-cols-1 lg:h-full lg:grid-cols-[minmax(0,1fr)_300px]">
+          <section className="relative flex min-h-[420px] min-w-0 items-center justify-center overflow-hidden px-6 py-10 lg:min-h-0 lg:py-14">
             <PagesPanel activePage={activePage} onPageChange={setActivePage} />
             {activePage === 'plane' ? (
               <div className="relative size-[300px]">
@@ -2336,8 +3453,51 @@ export function LabPage() {
             ) : activePage === 'tooltip' ? (
               <TooltipPlaygroundStage
                 delayDuration={tooltipDelayDuration}
+                highContrast={tooltipHighContrast}
                 skipDelayDuration={tooltipSkipDelayDuration}
                 side={tooltipSide}
+                showPointer={tooltipShowPointer}
+              />
+            ) : activePage === 'menu' ? (
+              <MenuPlaygroundStage
+                onValueChange={setMenuValue}
+                showShortcuts={menuShowShortcuts}
+                onShowShortcutsChange={setMenuShowShortcuts}
+                showSubmenus={menuShowSubmenus}
+                onShowSubmenusChange={setMenuShowSubmenus}
+                showDividers={menuShowDividers}
+                onShowDividersChange={setMenuShowDividers}
+                showDisabledOptions={menuShowDisabledOptions}
+                showOnOffItems={menuShowOnOffItems}
+                showHeadings={menuShowHeadings}
+                showLeadingIcons={menuShowLeadingIcons}
+                showTrailingHints={menuShowTrailingHints}
+              />
+            ) : activePage === 'select' ? (
+              <SelectPlaygroundStage
+                value={selectValue}
+                onValueChange={setSelectValue}
+                disabled={selectDisabled}
+                triggerContent={selectTriggerContent}
+                triggerIconTextPlacement={selectTriggerIconTextPlacement}
+                triggerBehavior={selectTriggerBehavior}
+                showShortcuts={selectShowShortcuts}
+                showSubmenus={selectShowSubmenus}
+                showDividers={selectShowDividers}
+                showLeadingIcons={selectShowLeadingIcons}
+                showTrailingHints={selectShowTrailingHints}
+              />
+            ) : activePage === 'toggleButton' ? (
+              <ToggleButtonPlaygroundStage
+                selected={toggleButtonSelectionState === 'on'}
+                interactionState={toggleButtonInteractionState}
+                disabled={toggleButtonDisabled}
+                density={toggleButtonDensity}
+                content={toggleButtonContent}
+                label={toggleButtonLabel}
+                onSelectedChange={(selected) =>
+                  setToggleButtonSelectionState(selected ? 'on' : 'off')
+                }
               />
             ) : (
               <ToggleGroupPlaygroundStage
@@ -2348,29 +3508,29 @@ export function LabPage() {
             )}
           </section>
 
-          <aside className="border-t border-white/8 p-3 lg:min-h-0 lg:border-t-0 lg:p-4">
-            <div className="h-full rounded-[24px] border border-white/8 bg-white/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur lg:min-h-0">
-              <ScrollArea className="h-full">
+          <aside className="min-w-0 max-w-full overflow-hidden border-t border-white/8 p-3 lg:min-h-0 lg:border-t-0 lg:p-4">
+            <div className="h-full w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur lg:min-h-0">
+              <ScrollArea className={LAB_PANEL_SCROLL_AREA_CLASS}>
                 <TooltipProvider
                   delayDuration={tooltipDelayDuration}
                   skipDelayDuration={tooltipSkipDelayDuration}
                 >
-                  <div className="space-y-6 p-4">
+                  <div className="w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-4">
                     {activePage === 'plane' ? (
                       <>
                         <PanelSection
                           title="Color"
                           description="Drive the current sample color."
                         >
-                          <div className="space-y-3">
+                          <div className="w-full min-w-0 max-w-full space-y-3">
                             <PropertyFieldTooltip label="Hex">
-                              <div className="space-y-2">
+                              <div className="w-full min-w-0 max-w-full space-y-2">
                                 <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
                                   Hex
                                 </p>
                                 <ColorStringInput
                                   format="hex"
-                                  className="ck-input"
+                                  className="ck-input w-full min-w-0 max-w-full"
                                   requested={color.requested}
                                   onChangeRequested={color.setRequested}
                                   aria-label="Hex color input"
@@ -2379,13 +3539,13 @@ export function LabPage() {
                             </PropertyFieldTooltip>
 
                             <PropertyFieldTooltip label="Hue">
-                              <div className="space-y-2">
+                              <div className="w-full min-w-0 max-w-full space-y-2">
                                 <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
                                   Hue
                                 </p>
                                 <ColorSlider
                                   channel="h"
-                                  className="ck-slider ck-slider-v2"
+                                  className="ck-slider ck-slider-v2 w-full min-w-0 max-w-full"
                                   data-color-space={hueRail.colorSpace}
                                   requested={color.requested}
                                   onChangeRequested={color.setRequested}
@@ -2394,38 +3554,13 @@ export function LabPage() {
                               </div>
                             </PropertyFieldTooltip>
 
-                            <div className="grid grid-cols-3 gap-3">
-                              <PropertyFieldTooltip label="Lightness">
-                                <ColorInput
-                                  model="oklch"
-                                  channel="l"
-                                  className="ck-input"
-                                  requested={color.requested}
-                                  onChangeRequested={color.setRequested}
-                                  aria-label="Lightness input"
-                                />
-                              </PropertyFieldTooltip>
-                              <PropertyFieldTooltip label="Chroma">
-                                <ColorInput
-                                  model="oklch"
-                                  channel="c"
-                                  className="ck-input"
-                                  requested={color.requested}
-                                  onChangeRequested={color.setRequested}
-                                  aria-label="Chroma input"
-                                />
-                              </PropertyFieldTooltip>
-                              <PropertyFieldTooltip label="Hue">
-                                <ColorInput
-                                  model="oklch"
-                                  channel="h"
-                                  className="ck-input"
-                                  requested={color.requested}
-                                  onChangeRequested={color.setRequested}
-                                  aria-label="Hue input"
-                                />
-                              </PropertyFieldTooltip>
-                            </div>
+                            <MultiInputControl
+                              values={colorPlaneMultiInputValues}
+                              config={DEFAULT_MULTI_INPUT_CONFIG}
+                              fields={COLOR_PLANE_MULTI_INPUT_FIELDS}
+                              onFieldChange={setColorPlaneMultiInputFieldValue}
+                              showLeadingLabels
+                            />
                           </div>
                         </PanelSection>
 
@@ -2447,7 +3582,7 @@ export function LabPage() {
                                 { value: 'srgb', label: 'sRGB' },
                               ]}
                             />
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                               <SegmentedField
                                 label="X axis"
                                 value={axisState.x}
@@ -2529,10 +3664,10 @@ export function LabPage() {
                     ) : activePage === 'input' ? (
                       <>
                         <PanelSection title="Input">
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
+                          <div className="w-full min-w-0 max-w-full space-y-4">
+                            <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                               <PropertyFieldTooltip label="Value">
-                                <label className="block space-y-2">
+                                <label className="block w-full min-w-0 max-w-full space-y-2">
                                   <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
                                     Value
                                   </span>
@@ -2584,11 +3719,13 @@ export function LabPage() {
                                 maxLength={12}
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                               <BoundsConfigInput
                                 label="Min"
                                 value={primitiveMin}
                                 onValueChange={setPrimitiveMin}
+                                leadingAccessory={primitiveLeadingAccessory}
+                                trailingAccessory={primitiveTrailingAccessory}
                                 leadingElement={
                                   <ArrowLeftToLine
                                     aria-hidden="true"
@@ -2601,6 +3738,8 @@ export function LabPage() {
                                 label="Max"
                                 value={primitiveMax}
                                 onValueChange={setPrimitiveMax}
+                                leadingAccessory={primitiveLeadingAccessory}
+                                trailingAccessory={primitiveTrailingAccessory}
                                 leadingElement={
                                   <ArrowRightToLine
                                     aria-hidden="true"
@@ -2610,10 +3749,12 @@ export function LabPage() {
                                 }
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                               <PrecisionConfigInput
                                 value={primitivePrecision}
                                 onChange={setPrimitivePrecision}
+                                leadingAccessory={primitiveLeadingAccessory}
+                                trailingAccessory={primitiveTrailingAccessory}
                               />
                               <SegmentedField
                                 label="Bounds"
@@ -2787,11 +3928,13 @@ export function LabPage() {
                         <Separator className="bg-white/8" />
 
                         <PanelSection title="Stepping">
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                             <StepConfigInput
                               label="Step"
                               value={primitiveStep}
                               onValueChange={setPrimitiveStep}
+                              leadingAccessory={primitiveLeadingAccessory}
+                              trailingAccessory={primitiveTrailingAccessory}
                               leadingElement={
                                 <Diff
                                   aria-hidden="true"
@@ -2804,11 +3947,15 @@ export function LabPage() {
                             <DragStepConfigInput
                               value={primitiveScrubMultiplier}
                               onValueChange={setPrimitiveScrubMultiplier}
+                              leadingAccessory={primitiveLeadingAccessory}
+                              trailingAccessory={primitiveTrailingAccessory}
                             />
                             <StepConfigInput
                               label="Fine"
                               value={primitiveFineStep}
                               onValueChange={setPrimitiveFineStep}
+                              leadingAccessory={primitiveLeadingAccessory}
+                              trailingAccessory={primitiveTrailingAccessory}
                               leadingElement={
                                 <Option
                                   aria-hidden="true"
@@ -2822,6 +3969,8 @@ export function LabPage() {
                               label="Coarse"
                               value={primitiveCoarseStep}
                               onValueChange={setPrimitiveCoarseStep}
+                              leadingAccessory={primitiveLeadingAccessory}
+                              trailingAccessory={primitiveTrailingAccessory}
                               leadingElement={
                                 <ArrowBigUp
                                   aria-hidden="true"
@@ -2891,6 +4040,8 @@ export function LabPage() {
                             <DragThresholdConfigInput
                               value={primitiveScrubThreshold}
                               onValueChange={setPrimitiveScrubThreshold}
+                              leadingAccessory={primitiveLeadingAccessory}
+                              trailingAccessory={primitiveTrailingAccessory}
                             />
                           </div>
                         </PanelSection>
@@ -2951,7 +4102,7 @@ export function LabPage() {
                                 tooltip: field.tooltip,
                               }))}
                             />
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                               <BoundsConfigInput
                                 label="Min"
                                 value={
@@ -3029,7 +4180,7 @@ export function LabPage() {
                                 precision={activeMultiInputConfig.precision}
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                               <PrecisionConfigInput
                                 value={activeMultiInputConfig.precision}
                                 onChange={(nextValue) =>
@@ -3097,7 +4248,7 @@ export function LabPage() {
                         <Separator className="bg-white/8" />
 
                         <PanelSection title="Stepping">
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                             <StepConfigInput
                               label="Step"
                               value={
@@ -3224,7 +4375,7 @@ export function LabPage() {
                           title="Timing"
                           description="Tune the Radix initial hover delay and the cooldown window that marks tooltip handoffs."
                         >
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
                             <NumberConfigField
                               label="Initial delay"
                               value={tooltipDelayDuration}
@@ -3257,6 +4408,209 @@ export function LabPage() {
                               { value: 'left', label: 'Left' },
                             ]}
                           />
+                          <div className="mt-3">
+                            <ToggleField
+                              label="High contrast"
+                              checked={tooltipHighContrast}
+                              onChange={setTooltipHighContrast}
+                            />
+                            <ToggleField
+                              label="Show pointer"
+                              checked={tooltipShowPointer}
+                              onChange={setTooltipShowPointer}
+                            />
+                          </div>
+                        </PanelSection>
+                      </>
+                    ) : activePage === 'menu' ? (
+                      <>
+                        <PanelSection
+                          title="Menu"
+                          description="Preview the reusable UI3 menu surface used by the Select demo."
+                        >
+                          <div className="space-y-3">
+                            <ToggleField
+                              label="Show on/off items"
+                              checked={menuShowOnOffItems}
+                              onChange={setMenuShowOnOffItems}
+                            />
+                            <ToggleField
+                              label="Show headings"
+                              checked={menuShowHeadings}
+                              onChange={setMenuShowHeadings}
+                            />
+                            <ToggleField
+                              label="Show leading icons"
+                              checked={menuShowLeadingIcons}
+                              onChange={setMenuShowLeadingIcons}
+                            />
+                            <ToggleField
+                              label="Show trailing hints"
+                              checked={menuShowTrailingHints}
+                              onChange={setMenuShowTrailingHints}
+                            />
+                            <ToggleField
+                              label="Show shortcuts"
+                              checked={menuShowShortcuts}
+                              onChange={setMenuShowShortcuts}
+                            />
+                            <ToggleField
+                              label="Show submenus"
+                              checked={menuShowSubmenus}
+                              onChange={setMenuShowSubmenus}
+                            />
+                            <ToggleField
+                              label="Show dividers"
+                              checked={menuShowDividers}
+                              onChange={setMenuShowDividers}
+                            />
+                            <ToggleField
+                              label="Show disabled options"
+                              checked={menuShowDisabledOptions}
+                              onChange={setMenuShowDisabledOptions}
+                            />
+                          </div>
+                        </PanelSection>
+                      </>
+                    ) : activePage === 'select' ? (
+                      <>
+                        <PanelSection
+                          title="Menu Select"
+                          description="Preview the UI3 menu trigger state."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Trigger content"
+                              value={selectTriggerContent}
+                              onChange={setSelectTriggerContent}
+                              options={[
+                                { value: 'icon', label: 'Icon' },
+                                { value: 'iconText', label: 'Icon + text' },
+                                { value: 'text', label: 'Text' },
+                              ]}
+                            />
+                            {selectTriggerContent === 'iconText' ? (
+                              <SegmentedField
+                                label="Icon position"
+                                value={selectTriggerIconTextPlacement}
+                                onChange={setSelectTriggerIconTextPlacement}
+                                options={[
+                                  { value: 'leading', label: 'Leading' },
+                                  { value: 'trailing', label: 'Trailing' },
+                                  { value: 'both', label: 'Both' },
+                                ]}
+                              />
+                            ) : null}
+                            <SegmentedField
+                              label="Trigger behavior"
+                              value={selectTriggerBehavior}
+                              onChange={setSelectTriggerBehavior}
+                              options={[
+                                { value: 'press', label: 'Press' },
+                                { value: 'release', label: 'Release' },
+                              ]}
+                            />
+                            <ToggleField
+                              label="Disabled trigger"
+                              checked={selectDisabled}
+                              onChange={setSelectDisabled}
+                            />
+                            <ToggleField
+                              label="Show leading icons"
+                              checked={selectShowLeadingIcons}
+                              onChange={setSelectShowLeadingIcons}
+                            />
+                            <ToggleField
+                              label="Show trailing hints"
+                              checked={selectShowTrailingHints}
+                              onChange={setSelectShowTrailingHints}
+                            />
+                            <ToggleField
+                              label="Show shortcuts"
+                              checked={selectShowShortcuts}
+                              onChange={setSelectShowShortcuts}
+                            />
+                            <ToggleField
+                              label="Show submenus"
+                              checked={selectShowSubmenus}
+                              onChange={setSelectShowSubmenus}
+                            />
+                            <ToggleField
+                              label="Show dividers"
+                              checked={selectShowDividers}
+                              onChange={setSelectShowDividers}
+                            />
+                          </div>
+                        </PanelSection>
+                      </>
+                    ) : activePage === 'toggleButton' ? (
+                      <>
+                        <PanelSection
+                          title="Button"
+                          description="Preview selection separately from interaction feedback."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Selected"
+                              value={toggleButtonSelectionState}
+                              onChange={setToggleButtonSelectionState}
+                              options={[
+                                { value: 'off', label: 'Off' },
+                                { value: 'on', label: 'On' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Interaction"
+                              value={toggleButtonInteractionState}
+                              onChange={setToggleButtonInteractionState}
+                              options={[
+                                { value: 'default', label: 'Default' },
+                                { value: 'hovered', label: 'Hover' },
+                                {
+                                  value: 'pressedDown',
+                                  label: 'Down',
+                                  tooltip: 'Interaction: pressed down',
+                                },
+                              ]}
+                            />
+                            <ToggleField
+                              label="Disabled"
+                              checked={toggleButtonDisabled}
+                              onChange={setToggleButtonDisabled}
+                            />
+                            <SegmentedField
+                              label="Density"
+                              value={toggleButtonDensity}
+                              onChange={setToggleButtonDensity}
+                              options={[
+                                { value: 'compact', label: 'Compact' },
+                                { value: 'comfortable', label: 'Comfort' },
+                              ]}
+                            />
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection title="Content">
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Content"
+                              value={toggleButtonContent}
+                              onChange={setToggleButtonContent}
+                              options={[
+                                { value: 'iconOnly', label: 'Icon' },
+                                { value: 'iconLabel', label: 'Icon + label' },
+                                { value: 'label', label: 'Label' },
+                              ]}
+                            />
+                            <TextConfigField
+                              label="Label"
+                              value={toggleButtonLabel}
+                              onChange={setToggleButtonLabel}
+                              maxLength={18}
+                            />
+                          </div>
                         </PanelSection>
                       </>
                     ) : (
