@@ -117,6 +117,7 @@ type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
 type PrimitiveVisualTreatment = 'default' | 'embedded';
 type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
 type PrimitiveHandleSide = 'leading' | 'trailing';
+type PrimitiveAccessoryKind = 'none' | 'icon' | 'label';
 type MultiInputFieldId = 'l' | 'c' | 'h' | 'a';
 type MultiInputConfig = Record<
   MultiInputFieldId,
@@ -1096,6 +1097,10 @@ interface PrimitiveValueInputProps {
   onValueChange: (value: number) => void;
   ariaLabel?: string;
   placeholder?: string;
+  /** Optional icon or label before the scrub handle and input (UI3 accessory column). */
+  leadingAccessory?: ReactNode;
+  /** Optional icon or label after the value area and before a trailing scrub handle. */
+  trailingAccessory?: ReactNode;
   leadingElement?: ReactNode;
   trailingElement?: ReactNode;
   handleSide?: PrimitiveHandleSide;
@@ -1138,6 +1143,8 @@ function PrimitiveValueInput({
   onValueChange,
   ariaLabel,
   placeholder,
+  leadingAccessory,
+  trailingAccessory,
   leadingElement = 'V',
   trailingElement,
   handleSide = 'leading',
@@ -1581,6 +1588,14 @@ function PrimitiveValueInput({
     trailingElement !== null &&
     trailingElement !== undefined &&
     trailingElement !== false;
+  const hasLeadingAccessory =
+    leadingAccessory !== null &&
+    leadingAccessory !== undefined &&
+    leadingAccessory !== false;
+  const hasTrailingAccessory =
+    trailingAccessory !== null &&
+    trailingAccessory !== undefined &&
+    trailingAccessory !== false;
   const handleElement =
     handleSide === 'trailing' ? trailingElement : leadingElement;
   const hasHandleElement =
@@ -1624,6 +1639,14 @@ function PrimitiveValueInput({
       onPointerEnter={() => setIsHovered(true)}
       onPointerLeave={() => setIsHovered(false)}
     >
+      {hasLeadingAccessory ? (
+        <span
+          aria-hidden="true"
+          className="flex h-full w-6 shrink-0 select-none items-center justify-center text-white/55"
+        >
+          {leadingAccessory}
+        </span>
+      ) : null}
       {handleSide === 'leading' ? scrubHandle : null}
       <input
         ref={inputRef}
@@ -1646,6 +1669,14 @@ function PrimitiveValueInput({
       {hasTrailingElement && handleSide !== 'trailing' ? (
         <span className="flex h-full w-5 shrink-0 select-none items-center justify-center text-[11px] font-medium leading-4 text-white/50">
           {trailingElement}
+        </span>
+      ) : null}
+      {hasTrailingAccessory ? (
+        <span
+          aria-hidden="true"
+          className="flex h-full min-w-6 shrink-0 select-none items-center justify-center px-1 text-[11px] font-medium leading-4 tabular-nums text-white/50"
+        >
+          {trailingAccessory}
         </span>
       ) : null}
       {handleSide === 'trailing' ? scrubHandle : null}
@@ -2008,6 +2039,22 @@ export function LabPage() {
   const [primitiveHandleLetter, setPrimitiveHandleLetter] = useState('V');
   const [primitiveHandleLucideSlug, setPrimitiveHandleLucideSlug] =
     useState('mouse-pointer-2');
+  const [primitiveLeadingAccessoryKind, setPrimitiveLeadingAccessoryKind] =
+    useState<PrimitiveAccessoryKind>('none');
+  const [primitiveLeadingAccessoryLabel, setPrimitiveLeadingAccessoryLabel] =
+    useState('W');
+  const [
+    primitiveLeadingAccessoryIconSlug,
+    setPrimitiveLeadingAccessoryIconSlug,
+  ] = useState('arrow-left-right');
+  const [primitiveTrailingAccessoryKind, setPrimitiveTrailingAccessoryKind] =
+    useState<PrimitiveAccessoryKind>('none');
+  const [primitiveTrailingAccessoryLabel, setPrimitiveTrailingAccessoryLabel] =
+    useState('px');
+  const [
+    primitiveTrailingAccessoryIconSlug,
+    setPrimitiveTrailingAccessoryIconSlug,
+  ] = useState('percent');
   const [primitiveDisabled, setPrimitiveDisabled] = useState(false);
   const [primitiveReadOnly, setPrimitiveReadOnly] = useState(false);
   const [primitiveVisualState, setPrimitiveVisualState] =
@@ -2144,6 +2191,48 @@ export function LabPage() {
     primitiveHandleLetter,
   ]);
 
+  const primitiveLeadingAccessory = useMemo<ReactNode>(() => {
+    switch (primitiveLeadingAccessoryKind) {
+      case 'none':
+        return null;
+      case 'label':
+        return primitiveLeadingAccessoryLabel.trim().slice(0, 4) || '—';
+      case 'icon':
+        return (
+          <DynamicLucideIcon
+            slug={primitiveLeadingAccessoryIconSlug}
+            className="size-3.5"
+            strokeWidth={1.75}
+          />
+        );
+    }
+  }, [
+    primitiveLeadingAccessoryIconSlug,
+    primitiveLeadingAccessoryKind,
+    primitiveLeadingAccessoryLabel,
+  ]);
+
+  const primitiveTrailingAccessory = useMemo<ReactNode>(() => {
+    switch (primitiveTrailingAccessoryKind) {
+      case 'none':
+        return null;
+      case 'label':
+        return primitiveTrailingAccessoryLabel.trim().slice(0, 6) || '—';
+      case 'icon':
+        return (
+          <DynamicLucideIcon
+            slug={primitiveTrailingAccessoryIconSlug}
+            className="size-3.5"
+            strokeWidth={1.75}
+          />
+        );
+    }
+  }, [
+    primitiveTrailingAccessoryIconSlug,
+    primitiveTrailingAccessoryKind,
+    primitiveTrailingAccessoryLabel,
+  ]);
+
   return (
     <div className="min-h-screen overflow-hidden bg-[#171717]">
       <LabHeaderExit />
@@ -2209,6 +2298,8 @@ export function LabPage() {
                 value={primitiveValue}
                 onValueChange={setPrimitiveValue}
                 placeholder={primitivePlaceholder}
+                leadingAccessory={primitiveLeadingAccessory}
+                trailingAccessory={primitiveTrailingAccessory}
                 leadingElement={primitiveHandleElement}
                 handleSide={primitiveHandleSide}
                 min={primitiveMin}
@@ -2450,6 +2541,10 @@ export function LabPage() {
                                     onValueChange={setPrimitiveValue}
                                     ariaLabel="Value"
                                     placeholder={primitivePlaceholder}
+                                    leadingAccessory={primitiveLeadingAccessory}
+                                    trailingAccessory={
+                                      primitiveTrailingAccessory
+                                    }
                                     leadingElement={primitiveHandleElement}
                                     handleSide={primitiveHandleSide}
                                     min={primitiveMin}
@@ -2565,6 +2660,78 @@ export function LabPage() {
                                 ]}
                               />
                             </div>
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
+                        <PanelSection
+                          title="Accessories"
+                          description="Optional leading and trailing slots outside the scrub handle (UI3-style)."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Leading"
+                              value={primitiveLeadingAccessoryKind}
+                              onChange={setPrimitiveLeadingAccessoryKind}
+                              options={[
+                                { value: 'none', label: 'None' },
+                                { value: 'icon', label: 'Icon' },
+                                { value: 'label', label: 'Label' },
+                              ]}
+                            />
+                            {primitiveLeadingAccessoryKind === 'label' ? (
+                              <TextConfigField
+                                label="Leading label"
+                                value={primitiveLeadingAccessoryLabel}
+                                onChange={setPrimitiveLeadingAccessoryLabel}
+                                maxLength={4}
+                              />
+                            ) : null}
+                            {primitiveLeadingAccessoryKind === 'icon' ? (
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Leading icon
+                                </p>
+                                <LucideIconPicker
+                                  value={primitiveLeadingAccessoryIconSlug}
+                                  onChange={
+                                    setPrimitiveLeadingAccessoryIconSlug
+                                  }
+                                />
+                              </div>
+                            ) : null}
+                            <SegmentedField
+                              label="Trailing"
+                              value={primitiveTrailingAccessoryKind}
+                              onChange={setPrimitiveTrailingAccessoryKind}
+                              options={[
+                                { value: 'none', label: 'None' },
+                                { value: 'icon', label: 'Icon' },
+                                { value: 'label', label: 'Label' },
+                              ]}
+                            />
+                            {primitiveTrailingAccessoryKind === 'label' ? (
+                              <TextConfigField
+                                label="Trailing label"
+                                value={primitiveTrailingAccessoryLabel}
+                                onChange={setPrimitiveTrailingAccessoryLabel}
+                                maxLength={6}
+                              />
+                            ) : null}
+                            {primitiveTrailingAccessoryKind === 'icon' ? (
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                  Trailing icon
+                                </p>
+                                <LucideIconPicker
+                                  value={primitiveTrailingAccessoryIconSlug}
+                                  onChange={
+                                    setPrimitiveTrailingAccessoryIconSlug
+                                  }
+                                />
+                              </div>
+                            ) : null}
                           </div>
                         </PanelSection>
 
