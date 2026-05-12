@@ -11,6 +11,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 
 ## Entries
 
+- **2026-05-11 — Verify `gt modify` with `git show --stat`**: A normal fix should touch tens of lines, not hundreds; if stats look like a full-file rewrite, the branch tip may not match Graphite’s expected parent—`git reset --hard origin/<branch>` and reapply a minimal patch instead of pushing the accidental squash.
 - **2026-05-09 — UI3 Lab menu rows use a slot composer, not leading checks**: Model menu rows as one flex row with optional `leadingIcon` (when demos enable icons), label, and a single trailing affordance (`submenuCaret` replaces shortcut/hint; else shortcut wins over trailing hint via demo toggles); reserve `bg-[#303030]` rest-state highlight for open submenu triggers, not normal selected or checkable flat rows.
 - **2026-05-06 — Rebase stack bottoms before submit**: If a Graphite stack PR targets `main` but the local stack is still ancestrally based on an older helper branch, rebase the bottom branch onto `origin/main` and restack descendants before `pnpm pr:stack`; otherwise mergeability preflight and GitHub can report add/add conflicts despite correct PR base metadata.
 - **2026-05-06 — Rebase active scrub modifier changes**: For drag scrubbing with Shift/Alt rate modifiers, track the last processed pointer position and committed drag value; when the effective step changes, rebase the scrub origin there so modifiers change rate without rescaling prior movement.
