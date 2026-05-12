@@ -19,7 +19,7 @@ const dropdownMenuUi3ItemDensityClass: Record<DropdownMenuDensity, string> = {
   comfortable: 'h-7 min-h-7',
 };
 const dropdownMenuUi3ItemClass =
-  'relative flex w-full cursor-default select-none items-center justify-start gap-0 rounded-[5px] px-2 py-0 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white outline-none hover:bg-[#0d99ff] hover:text-white focus-visible:bg-[#0d99ff] focus-visible:text-white data-[highlighted]:bg-[#0d99ff] data-[highlighted]:text-white data-[state=open]:bg-[#303030] data-[state=open]:text-white data-[highlighted]:data-[state=open]:bg-[#0d99ff]';
+  'group relative flex w-full cursor-default select-none items-center justify-start gap-0 rounded-[5px] px-2 py-0 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white outline-none hover:bg-[#0d99ff] hover:text-white focus-visible:bg-[#0d99ff] focus-visible:text-white data-[highlighted]:bg-[#0d99ff] data-[highlighted]:text-white data-[state=open]:bg-[#303030] data-[state=open]:text-white data-[highlighted]:data-[state=open]:bg-[#0d99ff]';
 const dropdownMenuUi3ItemDisabledClass =
   'disabled:text-white/35 disabled:hover:bg-transparent data-[disabled]:text-white/35 data-[disabled]:hover:bg-transparent data-[disabled]:focus-visible:bg-transparent';
 const dropdownMenuUi3SeparatorClass = 'mx-0 my-2 h-px bg-[#383838]';
@@ -32,10 +32,6 @@ const DropdownMenuItemLayoutContext = React.createContext({
   reserveCheckColumn: false,
   reserveLeadingColumn: false,
 });
-
-function dropdownMenuUi3TrailingClass(disabled: boolean): string {
-  return disabled ? 'text-white/35' : 'text-white/70';
-}
 
 function getDropdownMenuPanelClass({
   variant,
@@ -365,7 +361,7 @@ function DropdownMenuSubContent({
 
 function DropdownMenuPanel({
   className,
-  variant = 'default',
+  variant = 'ui3',
   panel = 'content',
   reserveCheckColumn = false,
   reserveLeadingColumn = false,
@@ -412,6 +408,7 @@ function DropdownMenuItemButton({
   className,
   variant = 'ui3',
   density = 'compact',
+  type = 'button',
   ...props
 }: React.ComponentProps<'button'> & {
   variant?: DropdownMenuVariant;
@@ -419,6 +416,7 @@ function DropdownMenuItemButton({
 }) {
   return (
     <button
+      type={type}
       data-slot="dropdown-menu-item-button"
       className={cn(
         variant === 'ui3'
@@ -513,8 +511,8 @@ function DropdownMenuItemContent({
       {trailingText ? (
         <span
           className={cn(
-            'min-w-0 shrink-0 text-right',
-            dropdownMenuUi3TrailingClass(disabled),
+            'min-w-0 shrink-0 text-right text-white/70 group-data-[disabled]:text-white/35',
+            disabled && 'text-white/35',
           )}
         >
           {trailingText}
