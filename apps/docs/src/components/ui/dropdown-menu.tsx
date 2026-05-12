@@ -365,6 +365,7 @@ function DropdownMenuPanel({
   panel = 'content',
   reserveCheckColumn = false,
   reserveLeadingColumn = false,
+  role = 'menu',
   ...props
 }: React.ComponentProps<'div'> & {
   variant?: DropdownMenuVariant;
@@ -378,6 +379,7 @@ function DropdownMenuPanel({
     >
       <div
         data-slot="dropdown-menu-panel"
+        role={role}
         className={cn(getDropdownMenuPanelClass({ variant, panel }), className)}
         {...props}
       />
@@ -409,6 +411,7 @@ function DropdownMenuItemButton({
   variant = 'ui3',
   density = 'compact',
   type = 'button',
+  role = 'menuitem',
   ...props
 }: React.ComponentProps<'button'> & {
   variant?: DropdownMenuVariant;
@@ -417,6 +420,7 @@ function DropdownMenuItemButton({
   return (
     <button
       type={type}
+      role={role}
       data-slot="dropdown-menu-item-button"
       className={cn(
         variant === 'ui3'
