@@ -79,6 +79,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Star,
+  User,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -105,6 +106,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemButton,
+  DropdownMenuItemContent,
+  DropdownMenuPanel,
+  DropdownMenuPanelSeparator,
   DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -157,6 +162,8 @@ type MultiInputConfig = Record<
   }
 >;
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
+type PlacementSide = TooltipSide;
+type PlacementAlign = 'start' | 'center' | 'end';
 type ToggleButtonSelectionState = 'off' | 'on';
 type ToggleButtonInteractionState = 'default' | 'hovered' | 'pressedDown';
 type ToggleButtonContent = 'iconOnly' | 'iconLabel' | 'label';
@@ -164,6 +171,17 @@ type ToggleGroupIconMode = 'none' | 'leading' | 'trailing' | 'iconOnly';
 type SelectTriggerContent = 'icon' | 'iconText' | 'text';
 type SelectTriggerIconTextPlacement = 'leading' | 'trailing' | 'both';
 type SelectTriggerBehavior = 'press' | 'release';
+type ConfigurableMenuItemId = 'itemOne' | 'itemTwo' | 'itemThree';
+type ConfigurableMenuItemType = 'default' | 'onOff' | 'submenu';
+type ConfigurableMenuItemLeading = 'none' | 'icon' | 'avatar';
+type ConfigurableMenuItemConfig = {
+  type: ConfigurableMenuItemType;
+  leading: ConfigurableMenuItemLeading;
+  label: string;
+  secondaryText: string;
+  checked: boolean;
+  disabled: boolean;
+};
 type SelectOptionId =
   | 'copy'
   | 'pasteAs'
@@ -300,6 +318,99 @@ const TOOLTIP_SIDE_DEMO_ITEMS: Array<{
   },
 ];
 
+const PLACEMENT_GRID_OPTIONS: Array<{
+  side: PlacementSide;
+  align: PlacementAlign;
+  label: string;
+  gridColumn: string;
+  gridRow: string;
+}> = [
+  {
+    side: 'top',
+    align: 'start',
+    label: 'Top start',
+    gridColumn: '2',
+    gridRow: '1',
+  },
+  {
+    side: 'top',
+    align: 'center',
+    label: 'Top center',
+    gridColumn: '3',
+    gridRow: '1',
+  },
+  {
+    side: 'top',
+    align: 'end',
+    label: 'Top end',
+    gridColumn: '4',
+    gridRow: '1',
+  },
+  {
+    side: 'right',
+    align: 'start',
+    label: 'Right start',
+    gridColumn: '5',
+    gridRow: '2',
+  },
+  {
+    side: 'right',
+    align: 'center',
+    label: 'Right center',
+    gridColumn: '5',
+    gridRow: '3',
+  },
+  {
+    side: 'right',
+    align: 'end',
+    label: 'Right end',
+    gridColumn: '5',
+    gridRow: '4',
+  },
+  {
+    side: 'bottom',
+    align: 'end',
+    label: 'Bottom end',
+    gridColumn: '4',
+    gridRow: '5',
+  },
+  {
+    side: 'bottom',
+    align: 'center',
+    label: 'Bottom center',
+    gridColumn: '3',
+    gridRow: '5',
+  },
+  {
+    side: 'bottom',
+    align: 'start',
+    label: 'Bottom start',
+    gridColumn: '2',
+    gridRow: '5',
+  },
+  {
+    side: 'left',
+    align: 'end',
+    label: 'Left end',
+    gridColumn: '1',
+    gridRow: '4',
+  },
+  {
+    side: 'left',
+    align: 'center',
+    label: 'Left center',
+    gridColumn: '1',
+    gridRow: '3',
+  },
+  {
+    side: 'left',
+    align: 'start',
+    label: 'Left start',
+    gridColumn: '1',
+    gridRow: '2',
+  },
+];
+
 const TOGGLE_GROUP_ITEMS = [
   {
     value: 'plane',
@@ -416,6 +527,48 @@ const SELECT_OPTIONS: SelectOption[] = [
     dividerBefore: true,
   },
 ];
+
+const CONFIGURABLE_MENU_ITEM_IDS: ConfigurableMenuItemId[] = [
+  'itemOne',
+  'itemTwo',
+  'itemThree',
+];
+
+const CONFIGURABLE_MENU_ITEM_LABELS: Record<ConfigurableMenuItemId, string> = {
+  itemOne: 'Item 1',
+  itemTwo: 'Item 2',
+  itemThree: 'Item 3',
+};
+
+const DEFAULT_CONFIGURABLE_MENU_ITEMS: Record<
+  ConfigurableMenuItemId,
+  ConfigurableMenuItemConfig
+> = {
+  itemOne: {
+    type: 'default',
+    leading: 'none',
+    label: 'Menu item',
+    secondaryText: '',
+    checked: true,
+    disabled: false,
+  },
+  itemTwo: {
+    type: 'default',
+    leading: 'none',
+    label: 'Menu item',
+    secondaryText: '',
+    checked: true,
+    disabled: false,
+  },
+  itemThree: {
+    type: 'default',
+    leading: 'none',
+    label: 'Menu item',
+    secondaryText: '',
+    checked: true,
+    disabled: false,
+  },
+};
 
 const SELECT_OPTION_BY_ID = SELECT_OPTIONS.reduce(
   (options, option) => ({
@@ -569,141 +722,16 @@ const TOGGLE_BUTTON_INTERACTIVE_CLASS: Record<
   on: 'hover:border-transparent hover:bg-[#3b435e] hover:text-[#8dc2f3] active:border-transparent active:bg-[#4d5876] active:text-[#8dc2f3]',
 };
 
-const SELECT_MENU_OPEN_ANIMATION_CLASS =
-  'data-[state=open]:[animation-delay:-35ms] data-[state=open]:[animation-duration:90ms] data-[state=open]:[animation-fill-mode:both] data-[state=open]:[animation-timing-function:cubic-bezier(0.16,1,0.3,1)] data-[state=open]:[--tw-enter-opacity:0.28] data-[state=open]:[--tw-enter-scale:0.985] data-[state=open]:[--tw-enter-translate-y:-1px] motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none';
-
-const SELECT_MENU_PANEL_CLASS = `w-[208px] rounded-[13px] border-0 bg-[#1e1e1e] p-2 text-white shadow-[0_0_0.5px_0_rgba(0,0,0,0.12),0_10px_16px_0_rgba(0,0,0,0.12),0_2px_5px_0_rgba(0,0,0,0.15)] ${SELECT_MENU_OPEN_ANIMATION_CLASS}`;
-
-const SELECT_MENU_ITEM_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
-  compact: 'h-6 min-h-6',
-  comfortable: 'h-7 min-h-7',
-};
-
-const SELECT_MENU_ITEM_CLASS =
-  'justify-start rounded-[5px] px-2 py-0 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white outline-none hover:bg-[#0d99ff] hover:text-white focus-visible:bg-[#0d99ff] focus-visible:text-white data-[highlighted]:bg-[#0d99ff] data-[highlighted]:text-white data-[state=open]:bg-[#303030] data-[state=open]:text-white data-[highlighted]:data-[state=open]:bg-[#0d99ff]';
-const SELECT_MENU_ITEM_DISABLED_CLASS =
-  'disabled:text-white/35 disabled:hover:bg-transparent data-[disabled]:text-white/35 data-[disabled]:hover:bg-transparent data-[disabled]:focus-visible:bg-transparent';
-
-/** Trailing shortcuts must not hardcode enabled meta color; overrides parent disabled foreground. */
-function selectMenuTrailingShortcutClass(disabled: boolean): string {
-  return disabled ? 'text-white/35' : 'text-white/70';
-}
-
-function resolveLabMenuTrailingText({
-  showShortcuts,
-  shortcut,
-  showTrailingHints,
-  trailingHint,
-}: {
-  showShortcuts: boolean;
-  shortcut?: string;
-  showTrailingHints: boolean;
-  trailingHint?: string;
-}): string | undefined {
-  if (showShortcuts && shortcut) {
-    return shortcut;
-  }
-
-  if (showTrailingHints && trailingHint) {
-    return trailingHint;
-  }
-
-  return undefined;
-}
-
-/** Fixed leading column for Lab menu rows, including checkable rows, so labels share one x-origin. */
-const LAB_MENU_LEADING_COLUMN_CLASS =
-  'flex size-6 shrink-0 items-center justify-center';
-
-type LabMenuItemSlotsProps = {
-  label: string;
-  disabled?: boolean;
-  /** Icon shown inside the leading column when set; column still reserves space when `showLeadingIcons`. */
-  leadingIcon?: LucideIcon;
-  showLeadingIcons: boolean;
-  showTrailingHints: boolean;
-  showShortcuts: boolean;
-  shortcut?: string;
-  trailingHint?: string;
-  /** Trailing submenu chevron; when true, hides shortcut/hint text. */
-  submenuCaret?: boolean;
-};
-
-function LabMenuItemSlots({
-  label,
-  disabled = false,
-  leadingIcon,
-  showLeadingIcons,
-  showTrailingHints,
-  showShortcuts,
-  shortcut,
-  trailingHint,
-  submenuCaret = false,
-}: LabMenuItemSlotsProps) {
-  const trailingText = submenuCaret
-    ? undefined
-    : resolveLabMenuTrailingText({
-        showShortcuts,
-        shortcut,
-        showTrailingHints,
-        trailingHint,
-      });
-  const showIconGlyph = Boolean(showLeadingIcons && leadingIcon);
-  const LeadingGlyph = leadingIcon;
-
-  return (
-    <span className="relative flex w-full min-w-0 items-center gap-2">
-      {showLeadingIcons ? (
-        <span className={`${LAB_MENU_LEADING_COLUMN_CLASS} text-current`}>
-          {showIconGlyph && LeadingGlyph ? (
-            <LeadingGlyph
-              aria-hidden="true"
-              className="size-4"
-              strokeWidth={1.75}
-            />
-          ) : null}
-        </span>
-      ) : null}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {trailingText ? (
-        <span
-          className={`min-w-0 shrink-0 text-right ${selectMenuTrailingShortcutClass(disabled)}`}
-        >
-          {trailingText}
-        </span>
-      ) : null}
-      {submenuCaret ? (
-        <svg
-          aria-hidden="true"
-          className="size-3 shrink-0"
-          viewBox="0 0 16 16"
-          fill="none"
-        >
-          <path
-            d="M6.5 4.75 9.75 8 6.5 11.25"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.4"
-          />
-        </svg>
-      ) : null}
-    </span>
-  );
-}
-
-const SELECT_MENU_SUBCONTENT_CLASS = `w-[176px] rounded-[13px] border-0 bg-[#1e1e1e] p-2 text-white shadow-[0_0_0.5px_0_rgba(0,0,0,0.12),0_10px_16px_0_rgba(0,0,0,0.12),0_2px_5px_0_rgba(0,0,0,0.15)] ${SELECT_MENU_OPEN_ANIMATION_CLASS}`;
-
 const SELECT_SUBMENU_HOVER_OPEN_DELAY_MS = 200;
 
-function useSubmenuHoverTimer({
+function useSubmenuHoverTimer<TSubmenuId extends string>({
   enabled,
   trappedOpenSubmenu = null,
 }: {
   enabled: boolean;
-  trappedOpenSubmenu?: SelectOptionId | null;
+  trappedOpenSubmenu?: TSubmenuId | null;
 }) {
-  const [openSubmenu, setOpenSubmenu] = useState<SelectOptionId | null>(null);
+  const [openSubmenu, setOpenSubmenu] = useState<TSubmenuId | null>(null);
   const submenuHoverTimerRef = useRef<number | null>(null);
   const activeOpenSubmenu = enabled
     ? (openSubmenu ?? trappedOpenSubmenu)
@@ -715,14 +743,14 @@ function useSubmenuHoverTimer({
     }
   }, []);
   const openSubmenuImmediately = useCallback(
-    (optionValue: SelectOptionId) => {
+    (optionValue: TSubmenuId) => {
       clearSubmenuHoverTimer();
       setOpenSubmenu(optionValue);
     },
     [clearSubmenuHoverTimer],
   );
   const scheduleSubmenuHoverOpen = useCallback(
-    (optionValue: SelectOptionId) => {
+    (optionValue: TSubmenuId) => {
       clearSubmenuHoverTimer();
       setOpenSubmenu((current) => (current === optionValue ? current : null));
       submenuHoverTimerRef.current = window.setTimeout(() => {
@@ -733,7 +761,7 @@ function useSubmenuHoverTimer({
     [clearSubmenuHoverTimer],
   );
   const closeSubmenu = useCallback(
-    (optionValue?: SelectOptionId) => {
+    (optionValue?: TSubmenuId) => {
       clearSubmenuHoverTimer();
       setOpenSubmenu((current) =>
         optionValue && current !== optionValue ? current : null,
@@ -751,11 +779,6 @@ function useSubmenuHoverTimer({
     openSubmenuImmediately,
     scheduleSubmenuHoverOpen,
   };
-}
-
-/** Selected selectable rows do not get a rest glyph or active background; hover/highlight classes still apply. */
-function labMenuItemSelectedRestClass(): string {
-  return '';
 }
 
 const PANEL_TWO_COLUMN_GRID_CLASS =
@@ -1035,6 +1058,76 @@ function SegmentedField<T extends string>({
   );
 }
 
+function PlacementGridField({
+  label,
+  side,
+  align,
+  onChange,
+}: {
+  label: string;
+  side: PlacementSide;
+  align: PlacementAlign;
+  onChange: (placement: { side: PlacementSide; align: PlacementAlign }) => void;
+}) {
+  return (
+    <div className="w-full min-w-0 max-w-full space-y-1.5">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+        {label}
+      </p>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="grid w-fit grid-cols-[repeat(5,22px)] grid-rows-[repeat(5,22px)] gap-1 rounded-[9px] bg-[#252525] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]"
+      >
+        <div
+          aria-hidden="true"
+          className="relative col-start-2 col-end-5 row-start-2 row-end-5 rounded-[7px] border border-[#4C4C4C] bg-[#383838] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+        >
+          <span className="absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border border-white/15 bg-[#2c2c2c]" />
+        </div>
+        {PLACEMENT_GRID_OPTIONS.map((option) => {
+          const isSelected = side === option.side && align === option.align;
+
+          return (
+            <Tooltip key={`${option.side}-${option.align}`}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={`${label}: ${option.label}`}
+                  className={`relative z-10 flex size-[22px] items-center justify-center rounded-[5px] border outline-none transition-[background-color,border-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-[#5288db]/80 ${
+                    isSelected
+                      ? 'border-[#0d99ff] bg-[#0d99ff] text-white shadow-[0_0_0_1px_rgba(13,153,255,0.25)]'
+                      : 'border-transparent bg-[#383838] text-white/45 hover:border-[#4C4C4C] hover:bg-[#444] hover:text-white/80'
+                  }`}
+                  style={{
+                    gridColumn: option.gridColumn,
+                    gridRow: option.gridRow,
+                  }}
+                  onClick={() =>
+                    onChange({ side: option.side, align: option.align })
+                  }
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`rounded-full ${
+                      isSelected ? 'size-1.5 bg-white' : 'size-1 bg-current'
+                    }`}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="pointer-events-none">
+                {option.label}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ToggleField({
   label,
   checked,
@@ -1045,23 +1138,27 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="relative flex min-h-6 min-w-0 max-w-full items-center gap-2 py-1 text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="peer absolute left-0 top-1 size-4 cursor-default opacity-0"
-      />
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      className="relative flex min-h-6 min-w-0 max-w-full items-center gap-2 py-1 text-left text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80 outline-none"
+      onClick={() => onChange(!checked)}
+    >
       <span
         aria-hidden="true"
-        className="flex size-4 shrink-0 items-center justify-center rounded-[5px] border border-[#4C4C4C] bg-[#383838] text-white transition-[background-color,border-color] peer-checked:border-[#007be5] peer-checked:bg-[#0d99ff] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0d99ff]/80"
+        className={`flex size-4 shrink-0 items-center justify-center rounded-[5px] border text-white transition-[background-color,border-color] ${
+          checked
+            ? 'border-[#007be5] bg-[#0d99ff]'
+            : 'border-[#4C4C4C] bg-[#383838]'
+        }`}
       >
         {checked ? (
           <Check aria-hidden="true" className="size-3" strokeWidth={3} />
         ) : null}
       </span>
       <span className="min-w-0">{label}</span>
-    </label>
+    </button>
   );
 }
 
@@ -1220,24 +1317,37 @@ function TextConfigField({
   value,
   onChange,
   maxLength,
+  showLabel = true,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   maxLength?: number;
+  showLabel?: boolean;
+  placeholder?: string;
 }) {
   return (
     <PropertyFieldTooltip label={label}>
-      <label className="block w-full min-w-0 max-w-full space-y-2">
-        <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+      <label
+        className={`block w-full min-w-0 max-w-full ${showLabel ? 'space-y-2' : ''}`}
+      >
+        <span
+          className={
+            showLabel
+              ? 'block text-[11px] font-medium uppercase tracking-[0.14em] text-white/45'
+              : 'sr-only'
+          }
+        >
           {label}
         </span>
         <input
           type="text"
           value={value}
           maxLength={maxLength}
+          placeholder={showLabel ? undefined : (placeholder ?? label)}
           onChange={(event) => onChange(event.target.value)}
-          className="h-6 w-full min-w-0 max-w-full rounded-[4px] border border-transparent bg-[#383838] px-2 text-[11px] font-medium text-white outline-none transition-[border-color] hover:border-[#4C4C4C] focus:border-[#5288db]"
+          className="h-6 w-full min-w-0 max-w-full rounded-[4px] border border-transparent bg-[#383838] px-2 text-[11px] font-medium text-white outline-none transition-[border-color] placeholder:text-white/35 hover:border-[#4C4C4C] focus:border-[#5288db]"
         />
       </label>
     </PropertyFieldTooltip>
@@ -2113,12 +2223,14 @@ function PrimitiveValueInput({
 }
 
 function TooltipPlaygroundStage({
+  align,
   delayDuration,
   highContrast,
   skipDelayDuration,
   side,
   showPointer,
 }: {
+  align: PlacementAlign;
   delayDuration: number;
   highContrast: boolean;
   skipDelayDuration: number;
@@ -2142,6 +2254,7 @@ function TooltipPlaygroundStage({
               </button>
             </TooltipTrigger>
             <TooltipContent
+              align={align}
               highContrast={highContrast}
               side={side}
               showPointer={showPointer}
@@ -2171,6 +2284,7 @@ function TooltipPlaygroundStage({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent
+                  align={align}
                   highContrast={highContrast}
                   side={side}
                   showPointer={showPointer}
@@ -2197,6 +2311,7 @@ function TooltipPlaygroundStage({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent
+                  align={align}
                   highContrast={highContrast}
                   side={item.side}
                   showPointer={showPointer}
@@ -2319,7 +2434,9 @@ function ToggleButtonPlaygroundStage({
 }
 
 function LabMenuContent({
+  align,
   onValueChange,
+  side,
   showShortcuts,
   showSubmenus,
   showDividers,
@@ -2328,7 +2445,9 @@ function LabMenuContent({
   showTrailingHints = true,
   trappedOpenSubmenu = null,
 }: {
+  align: PlacementAlign;
   onValueChange: (value: SelectOptionId) => void;
+  side: PlacementSide;
   showShortcuts: boolean;
   showSubmenus: boolean;
   showDividers: boolean;
@@ -2348,11 +2467,7 @@ function LabMenuContent({
     trappedOpenSubmenu,
   });
   return (
-    <DropdownMenuContent
-      align="center"
-      sideOffset={4}
-      className={SELECT_MENU_PANEL_CLASS}
-    >
+    <DropdownMenuContent align={align} side={side} sideOffset={4} variant="ui3">
       {SELECT_OPTIONS.filter(
         (option) => showDisabledOptions || !option.disabled,
       ).map((option) => {
@@ -2361,7 +2476,7 @@ function LabMenuContent({
         return (
           <Fragment key={option.value}>
             {showDividers && option.dividerBefore ? (
-              <DropdownMenuSeparator className="mx-0 my-2 h-px bg-[#383838]" />
+              <DropdownMenuSeparator variant="ui3" />
             ) : null}
             {showSubmenus && option.submenuItems ? (
               <DropdownMenuSub
@@ -2375,6 +2490,7 @@ function LabMenuContent({
                 }}
               >
                 <DropdownMenuSubTrigger
+                  variant="ui3"
                   onClick={() => openSubmenuImmediately(option.value)}
                   onKeyDown={(event) => {
                     if (
@@ -2388,13 +2504,13 @@ function LabMenuContent({
                   }}
                   onPointerEnter={() => scheduleSubmenuHoverOpen(option.value)}
                   onPointerLeave={clearSubmenuHoverTimer}
-                  className={`relative ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${SELECT_MENU_ITEM_CLASS} ${SELECT_MENU_ITEM_DISABLED_CLASS} ${labMenuItemSelectedRestClass()} gap-0 pr-1 [&>svg:last-child]:hidden`}
+                  className="pr-0"
                 >
-                  <LabMenuItemSlots
+                  <DropdownMenuItemContent
                     label={option.label}
                     disabled={option.disabled}
                     leadingIcon={option.icon}
-                    showLeadingIcons={showLeadingIcons}
+                    showLeadingIcon={showLeadingIcons}
                     showTrailingHints={showTrailingHints}
                     showShortcuts={showShortcuts}
                     shortcut={shortcut}
@@ -2406,7 +2522,7 @@ function LabMenuContent({
                   <DropdownMenuSubContent
                     sideOffset={8}
                     alignOffset={-8}
-                    className={SELECT_MENU_SUBCONTENT_CLASS}
+                    variant="ui3"
                   >
                     {option.submenuItems
                       .filter(
@@ -2416,15 +2532,15 @@ function LabMenuContent({
                       .map((submenuItem) => (
                         <DropdownMenuItem
                           key={submenuItem.label}
+                          variant="ui3"
                           disabled={submenuItem.disabled}
                           onSelect={() => onValueChange(option.value)}
-                          className={`relative ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${SELECT_MENU_ITEM_CLASS} ${SELECT_MENU_ITEM_DISABLED_CLASS} gap-0 pr-1`}
                         >
-                          <LabMenuItemSlots
+                          <DropdownMenuItemContent
                             label={submenuItem.label}
                             disabled={submenuItem.disabled}
                             leadingIcon={submenuItem.icon}
-                            showLeadingIcons={showLeadingIcons}
+                            showLeadingIcon={showLeadingIcons}
                             showTrailingHints={showTrailingHints}
                             showShortcuts={showShortcuts}
                             shortcut={submenuItem.shortcut}
@@ -2437,15 +2553,15 @@ function LabMenuContent({
               </DropdownMenuSub>
             ) : (
               <DropdownMenuItem
+                variant="ui3"
                 disabled={option.disabled}
                 onSelect={() => onValueChange(option.value)}
-                className={`relative ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${SELECT_MENU_ITEM_CLASS} ${SELECT_MENU_ITEM_DISABLED_CLASS} ${labMenuItemSelectedRestClass()} gap-0`}
               >
-                <LabMenuItemSlots
+                <DropdownMenuItemContent
                   label={option.label}
                   disabled={option.disabled}
                   leadingIcon={option.icon}
-                  showLeadingIcons={showLeadingIcons}
+                  showLeadingIcon={showLeadingIcons}
                   showTrailingHints={showTrailingHints}
                   showShortcuts={showShortcuts}
                   shortcut={shortcut}
@@ -2462,6 +2578,7 @@ function LabMenuContent({
 
 function MenuPlaygroundStage({
   onValueChange,
+  configurableItems,
   showShortcuts,
   onShowShortcutsChange,
   showSubmenus,
@@ -2475,6 +2592,7 @@ function MenuPlaygroundStage({
   showTrailingHints,
 }: {
   onValueChange: (value: SelectOptionId) => void;
+  configurableItems: Record<ConfigurableMenuItemId, ConfigurableMenuItemConfig>;
   showShortcuts: boolean;
   onShowShortcutsChange: (showShortcuts: boolean) => void;
   showSubmenus: boolean;
@@ -2488,20 +2606,161 @@ function MenuPlaygroundStage({
   showTrailingHints: boolean;
 }) {
   return (
-    <InlineLabMenuContent
-      onValueChange={onValueChange}
-      showShortcuts={showShortcuts}
-      onShowShortcutsChange={onShowShortcutsChange}
-      showSubmenus={showSubmenus}
-      onShowSubmenusChange={onShowSubmenusChange}
-      showDividers={showDividers}
-      onShowDividersChange={onShowDividersChange}
-      showDisabledOptions={showDisabledOptions}
-      showOnOffItems={showOnOffItems}
-      showHeadings={showHeadings}
-      showLeadingIcons={showLeadingIcons}
-      showTrailingHints={showTrailingHints}
-    />
+    <div className="flex flex-col items-center gap-5">
+      <InlineConfigurableMenuContent items={configurableItems} />
+      <InlineLabMenuContent
+        onValueChange={onValueChange}
+        showShortcuts={showShortcuts}
+        onShowShortcutsChange={onShowShortcutsChange}
+        showSubmenus={showSubmenus}
+        onShowSubmenusChange={onShowSubmenusChange}
+        showDividers={showDividers}
+        onShowDividersChange={onShowDividersChange}
+        showDisabledOptions={showDisabledOptions}
+        showOnOffItems={showOnOffItems}
+        showHeadings={showHeadings}
+        showLeadingIcons={showLeadingIcons}
+        showTrailingHints={showTrailingHints}
+      />
+    </div>
+  );
+}
+
+function InlineConfigurableMenuContent({
+  items,
+}: {
+  items: Record<ConfigurableMenuItemId, ConfigurableMenuItemConfig>;
+}) {
+  const {
+    activeOpenSubmenu,
+    clearSubmenuHoverTimer,
+    closeSubmenu,
+    openSubmenuImmediately,
+    scheduleSubmenuHoverOpen,
+  } = useSubmenuHoverTimer({
+    enabled: true,
+  });
+  const closeSubmenuFromActionRow = useCallback(() => {
+    closeSubmenu();
+  }, [closeSubmenu]);
+  const shouldAlignOnOffItems = CONFIGURABLE_MENU_ITEM_IDS.some(
+    (itemId) => items[itemId].type === 'onOff',
+  );
+  const shouldAlignLeadingItems = CONFIGURABLE_MENU_ITEM_IDS.some(
+    (itemId) => items[itemId].leading !== 'none',
+  );
+
+  return (
+    <div className="relative">
+      <DropdownMenuPanel
+        data-state="open"
+        variant="ui3"
+        reserveCheckColumn={shouldAlignOnOffItems}
+        reserveLeadingColumn={shouldAlignLeadingItems}
+      >
+        {CONFIGURABLE_MENU_ITEM_IDS.map((itemId) => {
+          const item = items[itemId];
+          const label = item.label.trim() || 'Menu item';
+          const leadingIcon = item.leading === 'icon' ? Sparkles : undefined;
+          const leadingAvatar =
+            item.leading === 'avatar'
+              ? label.trim().slice(0, 1).toUpperCase() || 'M'
+              : undefined;
+          const isSubmenu = item.type === 'submenu';
+          const isSubmenuOpen = activeOpenSubmenu === itemId;
+          const secondaryText = item.secondaryText.trim();
+          const isOnOff = item.type === 'onOff';
+          const isOnOffChecked = item.checked ?? true;
+          const showConfiguredLeading = item.leading !== 'none';
+
+          if (isSubmenu) {
+            return (
+              <div key={itemId} className="relative">
+                <DropdownMenuItemButton
+                  type="button"
+                  aria-expanded={isSubmenuOpen}
+                  disabled={item.disabled}
+                  onClick={() => openSubmenuImmediately(itemId)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === 'ArrowRight' ||
+                      event.key === 'Enter' ||
+                      event.key === ' ' ||
+                      event.key === 'Spacebar'
+                    ) {
+                      openSubmenuImmediately(itemId);
+                    }
+                  }}
+                  onPointerEnter={() => scheduleSubmenuHoverOpen(itemId)}
+                  onPointerLeave={clearSubmenuHoverTimer}
+                  className={
+                    !item.disabled && isSubmenuOpen
+                      ? 'pr-0 bg-[#303030]'
+                      : 'pr-0'
+                  }
+                >
+                  <DropdownMenuItemContent
+                    label={label}
+                    disabled={item.disabled}
+                    leadingIcon={leadingIcon}
+                    leadingAvatar={leadingAvatar}
+                    showLeadingIcon={showConfiguredLeading}
+                    showTrailingHints
+                    showShortcuts
+                    submenuCaret
+                  />
+                </DropdownMenuItemButton>
+                {isSubmenuOpen ? (
+                  <DropdownMenuPanel
+                    data-state="open"
+                    variant="ui3"
+                    panel="subcontent"
+                    reserveCheckColumn={false}
+                    reserveLeadingColumn={false}
+                    className="absolute left-[calc(100%+8px)] top-[-8px] z-50"
+                  >
+                    {['First action', 'Second action'].map((submenuLabel) => (
+                      <DropdownMenuItemButton key={submenuLabel} type="button">
+                        <DropdownMenuItemContent
+                          label={submenuLabel}
+                          showLeadingIcon={false}
+                          showTrailingHints
+                          showShortcuts
+                        />
+                      </DropdownMenuItemButton>
+                    ))}
+                  </DropdownMenuPanel>
+                ) : null}
+              </div>
+            );
+          }
+
+          return (
+            <DropdownMenuItemButton
+              key={itemId}
+              type="button"
+              role={isOnOff ? 'menuitemcheckbox' : undefined}
+              aria-checked={isOnOff ? isOnOffChecked : undefined}
+              disabled={item.disabled}
+              onFocus={closeSubmenuFromActionRow}
+              onPointerEnter={closeSubmenuFromActionRow}
+            >
+              <DropdownMenuItemContent
+                label={label}
+                disabled={item.disabled}
+                leadingIcon={leadingIcon}
+                leadingAvatar={leadingAvatar}
+                checked={isOnOff && isOnOffChecked}
+                showLeadingIcon={showConfiguredLeading}
+                showTrailingHints
+                showShortcuts
+                shortcut={secondaryText || undefined}
+              />
+            </DropdownMenuItemButton>
+          );
+        })}
+      </DropdownMenuPanel>
+    </div>
   );
 }
 
@@ -2571,7 +2830,6 @@ function InlineLabMenuContent({
       showSubmenus,
     ],
   );
-  const rootMenuItemClass = SELECT_MENU_ITEM_CLASS;
   const menuHeadingClass =
     'block w-full px-2 py-1 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white/40 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20';
   const getHeadingForOption = useCallback((option: SelectOption) => {
@@ -2591,7 +2849,12 @@ function InlineLabMenuContent({
   }, []);
   return (
     <div className="relative">
-      <div data-state="open" className={SELECT_MENU_PANEL_CLASS}>
+      <DropdownMenuPanel
+        data-state="open"
+        variant="ui3"
+        reserveCheckColumn={showOnOffItems}
+        reserveLeadingColumn={showOnOffItems && showLeadingIcons}
+      >
         {SELECT_OPTIONS.filter(
           (option) => showDisabledOptions || !option.disabled,
         ).map((option) => {
@@ -2611,11 +2874,11 @@ function InlineLabMenuContent({
                 </div>
               ) : null}
               {showDividers && option.dividerBefore ? (
-                <div className="mx-0 my-2 h-px bg-[#383838]" />
+                <DropdownMenuPanelSeparator />
               ) : null}
               {showSubmenus && option.submenuItems ? (
                 <div className="relative">
-                  <button
+                  <DropdownMenuItemButton
                     type="button"
                     aria-expanded={isSubmenuOpen}
                     onClick={() => openSubmenuImmediately(option.value)}
@@ -2633,26 +2896,30 @@ function InlineLabMenuContent({
                       scheduleSubmenuHoverOpen(option.value)
                     }
                     onPointerLeave={clearSubmenuHoverTimer}
-                    className={`relative flex w-full cursor-default select-none items-center ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${rootMenuItemClass} gap-0 pr-1 ${
-                      !option.disabled && isSubmenuOpen ? 'bg-[#303030]' : ''
-                    }`}
+                    className={
+                      !option.disabled && isSubmenuOpen
+                        ? 'pr-0 bg-[#303030]'
+                        : 'pr-0'
+                    }
                   >
-                    <LabMenuItemSlots
+                    <DropdownMenuItemContent
                       label={option.label}
                       disabled={option.disabled}
                       leadingIcon={option.icon}
-                      showLeadingIcons={showLeadingIcons}
+                      showLeadingIcon={showLeadingIcons}
                       showTrailingHints={showTrailingHints}
                       showShortcuts={showShortcuts}
                       shortcut={shortcut}
                       trailingHint={option.trailingHint}
                       submenuCaret
                     />
-                  </button>
+                  </DropdownMenuItemButton>
                   {isSubmenuOpen ? (
-                    <div
+                    <DropdownMenuPanel
                       data-state="open"
-                      className={`absolute left-[calc(100%+8px)] top-[-8px] z-50 ${SELECT_MENU_SUBCONTENT_CLASS}`}
+                      variant="ui3"
+                      panel="subcontent"
+                      className="absolute left-[calc(100%+8px)] top-[-8px] z-50"
                     >
                       {option.submenuItems
                         .filter(
@@ -2660,57 +2927,53 @@ function InlineLabMenuContent({
                             showDisabledOptions || !submenuItem.disabled,
                         )
                         .map((submenuItem) => (
-                          <button
+                          <DropdownMenuItemButton
                             key={submenuItem.label}
                             type="button"
                             disabled={submenuItem.disabled}
                             onClick={() => onValueChange(option.value)}
-                            className={`relative flex w-full cursor-default select-none items-center ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${SELECT_MENU_ITEM_CLASS} ${SELECT_MENU_ITEM_DISABLED_CLASS} gap-0 pr-1`}
                           >
-                            <LabMenuItemSlots
+                            <DropdownMenuItemContent
                               label={submenuItem.label}
                               disabled={submenuItem.disabled}
                               leadingIcon={submenuItem.icon}
-                              showLeadingIcons={showLeadingIcons}
+                              showLeadingIcon={showLeadingIcons}
                               showTrailingHints={showTrailingHints}
                               showShortcuts={showShortcuts}
                               shortcut={submenuItem.shortcut}
                               trailingHint={submenuItem.trailingHint}
                             />
-                          </button>
+                          </DropdownMenuItemButton>
                         ))}
-                    </div>
+                    </DropdownMenuPanel>
                   ) : null}
                 </div>
               ) : (
-                <button
+                <DropdownMenuItemButton
                   type="button"
                   disabled={option.disabled}
                   onFocus={closeSubmenuFromActionRow}
                   onClick={() => onValueChange(option.value)}
                   onPointerEnter={closeSubmenuFromActionRow}
-                  className={`relative flex w-full cursor-default select-none items-center ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${rootMenuItemClass} ${SELECT_MENU_ITEM_DISABLED_CLASS} gap-0 ${labMenuItemSelectedRestClass()}`}
                 >
-                  <LabMenuItemSlots
+                  <DropdownMenuItemContent
                     label={option.label}
                     disabled={option.disabled}
                     leadingIcon={option.icon}
-                    showLeadingIcons={showLeadingIcons}
+                    showLeadingIcon={showLeadingIcons}
                     showTrailingHints={showTrailingHints}
                     showShortcuts={showShortcuts}
                     shortcut={shortcut}
                     trailingHint={option.trailingHint}
                   />
-                </button>
+                </DropdownMenuItemButton>
               )}
             </Fragment>
           );
         })}
         {showOnOffItems ? (
           <>
-            {showDividers ? (
-              <div className="mx-0 my-2 h-px bg-[#383838]" />
-            ) : null}
+            {showDividers ? <DropdownMenuPanelSeparator /> : null}
             {showHeadings ? (
               <div
                 aria-label="Options heading"
@@ -2721,7 +2984,7 @@ function InlineLabMenuContent({
               </div>
             ) : null}
             {menuOnOffItems.map((item) => (
-              <button
+              <DropdownMenuItemButton
                 key={item.label}
                 type="button"
                 role="menuitemcheckbox"
@@ -2729,26 +2992,19 @@ function InlineLabMenuContent({
                 onClick={() => item.onCheckedChange?.(!item.checked)}
                 onFocus={closeSubmenuFromActionRow}
                 onPointerEnter={closeSubmenuFromActionRow}
-                className={`relative flex w-full cursor-default select-none items-center ${SELECT_MENU_ITEM_DENSITY_CLASS.compact} ${rootMenuItemClass} gap-0`}
               >
-                <span className="flex w-full min-w-0 items-center gap-2">
-                  <span
-                    className={`${LAB_MENU_LEADING_COLUMN_CLASS} text-current`}
-                    aria-hidden="true"
-                  >
-                    {item.checked ? (
-                      <Check className="size-4" strokeWidth={1.75} />
-                    ) : null}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-left">
-                    {item.label}
-                  </span>
-                </span>
-              </button>
+                <DropdownMenuItemContent
+                  label={item.label}
+                  checked={item.checked}
+                  showLeadingIcon={false}
+                  showTrailingHints={false}
+                  showShortcuts={false}
+                />
+              </DropdownMenuItemButton>
             ))}
           </>
         ) : null}
-      </div>
+      </DropdownMenuPanel>
     </div>
   );
 }
@@ -2756,7 +3012,9 @@ function InlineLabMenuContent({
 function SelectPlaygroundStage({
   value,
   onValueChange,
+  align,
   disabled,
+  side,
   triggerContent,
   triggerIconTextPlacement,
   triggerBehavior,
@@ -2768,7 +3026,9 @@ function SelectPlaygroundStage({
 }: {
   value: SelectOptionId;
   onValueChange: (value: SelectOptionId) => void;
+  align: PlacementAlign;
   disabled: boolean;
+  side: PlacementSide;
   triggerContent: SelectTriggerContent;
   triggerIconTextPlacement: SelectTriggerIconTextPlacement;
   triggerBehavior: SelectTriggerBehavior;
@@ -2864,7 +3124,9 @@ function SelectPlaygroundStage({
         </button>
       </DropdownMenuTrigger>
       <LabMenuContent
+        align={align}
         onValueChange={onValueChange}
+        side={side}
         showShortcuts={showShortcuts}
         showSubmenus={showSubmenus}
         showDividers={showDividers}
@@ -3134,6 +3396,7 @@ export function LabPage() {
   const [primitiveDensity, setPrimitiveDensity] =
     useState<PrimitiveDensity>('compact');
   const [tooltipSide, setTooltipSide] = useState<TooltipSide>('top');
+  const [tooltipAlign, setTooltipAlign] = useState<PlacementAlign>('center');
   const [tooltipDelayDuration, setTooltipDelayDuration] = useState(1000);
   const [tooltipSkipDelayDuration, setTooltipSkipDelayDuration] = useState(300);
   const [tooltipShowPointer, setTooltipShowPointer] = useState(true);
@@ -3146,9 +3409,14 @@ export function LabPage() {
   const [menuShowOnOffItems, setMenuShowOnOffItems] = useState(true);
   const [menuShowHeadings, setMenuShowHeadings] = useState(false);
   const [menuShowLeadingIcons, setMenuShowLeadingIcons] = useState(true);
-  const [menuShowTrailingHints, setMenuShowTrailingHints] = useState(true);
+  const menuShowTrailingHints = true;
+  const [configurableMenuItems, setConfigurableMenuItems] = useState(
+    DEFAULT_CONFIGURABLE_MENU_ITEMS,
+  );
   const [selectValue, setSelectValue] = useState<SelectOptionId>('copy');
   const [selectDisabled, setSelectDisabled] = useState(false);
+  const [selectSide, setSelectSide] = useState<PlacementSide>('bottom');
+  const [selectAlign, setSelectAlign] = useState<PlacementAlign>('center');
   const [selectTriggerContent, setSelectTriggerContent] =
     useState<SelectTriggerContent>('icon');
   const [selectTriggerIconTextPlacement, setSelectTriggerIconTextPlacement] =
@@ -3282,6 +3550,22 @@ export function LabPage() {
     MULTI_INPUT_FIELD_BY_ID[activeMultiInputField];
   const activeMultiInputDisplayScale =
     activeMultiInputFieldDefinition.unit === '%' ? 100 : 1;
+  const setConfigurableMenuItemConfig = useCallback(
+    <K extends keyof ConfigurableMenuItemConfig>(
+      itemId: ConfigurableMenuItemId,
+      key: K,
+      value: ConfigurableMenuItemConfig[K],
+    ) => {
+      setConfigurableMenuItems((current) => ({
+        ...current,
+        [itemId]: {
+          ...current[itemId],
+          [key]: value,
+        },
+      }));
+    },
+    [],
+  );
 
   const primitiveHandleElement = useMemo<ReactNode>(() => {
     switch (primitiveHandleContent) {
@@ -3452,6 +3736,7 @@ export function LabPage() {
               />
             ) : activePage === 'tooltip' ? (
               <TooltipPlaygroundStage
+                align={tooltipAlign}
                 delayDuration={tooltipDelayDuration}
                 highContrast={tooltipHighContrast}
                 skipDelayDuration={tooltipSkipDelayDuration}
@@ -3461,6 +3746,7 @@ export function LabPage() {
             ) : activePage === 'menu' ? (
               <MenuPlaygroundStage
                 onValueChange={setMenuValue}
+                configurableItems={configurableMenuItems}
                 showShortcuts={menuShowShortcuts}
                 onShowShortcutsChange={setMenuShowShortcuts}
                 showSubmenus={menuShowSubmenus}
@@ -3477,7 +3763,9 @@ export function LabPage() {
               <SelectPlaygroundStage
                 value={selectValue}
                 onValueChange={setSelectValue}
+                align={selectAlign}
                 disabled={selectDisabled}
+                side={selectSide}
                 triggerContent={selectTriggerContent}
                 triggerIconTextPlacement={selectTriggerIconTextPlacement}
                 triggerBehavior={selectTriggerBehavior}
@@ -4397,16 +4685,14 @@ export function LabPage() {
                           title="Placement"
                           description="Move the tooltip around each trigger while preserving the same handoff behavior."
                         >
-                          <SegmentedField
-                            label="Side"
-                            value={tooltipSide}
-                            onChange={setTooltipSide}
-                            options={[
-                              { value: 'top', label: 'Top' },
-                              { value: 'right', label: 'Right' },
-                              { value: 'bottom', label: 'Bottom' },
-                              { value: 'left', label: 'Left' },
-                            ]}
+                          <PlacementGridField
+                            label="Placement"
+                            side={tooltipSide}
+                            align={tooltipAlign}
+                            onChange={(placement) => {
+                              setTooltipSide(placement.side);
+                              setTooltipAlign(placement.align);
+                            }}
                           />
                           <div className="mt-3">
                             <ToggleField
@@ -4424,6 +4710,196 @@ export function LabPage() {
                       </>
                     ) : activePage === 'menu' ? (
                       <>
+                        <PanelSection
+                          title="Configurable Items"
+                          description="Tune the three-item menu shown above the reusable menu preview."
+                        >
+                          <div className="space-y-5">
+                            {CONFIGURABLE_MENU_ITEM_IDS.map((itemId) => {
+                              const item = configurableMenuItems[itemId];
+
+                              return (
+                                <div key={itemId} className="space-y-3">
+                                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                                    {CONFIGURABLE_MENU_ITEM_LABELS[itemId]}
+                                  </p>
+                                  <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
+                                    <SegmentedField
+                                      label="Item type"
+                                      value={item.type}
+                                      onChange={(value) =>
+                                        setConfigurableMenuItemConfig(
+                                          itemId,
+                                          'type',
+                                          value,
+                                        )
+                                      }
+                                      options={[
+                                        {
+                                          value: 'default',
+                                          label: 'Default',
+                                          icon: (
+                                            <MousePointer2
+                                              aria-hidden="true"
+                                              className="size-3.5"
+                                              strokeWidth={1.75}
+                                            />
+                                          ),
+                                          tooltip: 'Default item',
+                                        },
+                                        {
+                                          value: 'onOff',
+                                          label: 'On/Off',
+                                          icon: (
+                                            <Check
+                                              aria-hidden="true"
+                                              className="size-3.5"
+                                              strokeWidth={1.75}
+                                            />
+                                          ),
+                                          tooltip: 'On/off item',
+                                        },
+                                        {
+                                          value: 'submenu',
+                                          label: 'Submenu',
+                                          icon: (
+                                            <Menu
+                                              aria-hidden="true"
+                                              className="size-3.5"
+                                              strokeWidth={1.75}
+                                            />
+                                          ),
+                                          tooltip: 'Submenu item',
+                                        },
+                                      ]}
+                                    />
+                                    <SegmentedField
+                                      label="Leading item"
+                                      value={item.leading}
+                                      onChange={(value) =>
+                                        setConfigurableMenuItemConfig(
+                                          itemId,
+                                          'leading',
+                                          value,
+                                        )
+                                      }
+                                      options={[
+                                        {
+                                          value: 'none',
+                                          label: 'None',
+                                          icon: (
+                                            <Circle
+                                              aria-hidden="true"
+                                              className="size-3.5"
+                                              strokeWidth={1.75}
+                                            />
+                                          ),
+                                          tooltip: 'No leading item',
+                                        },
+                                        {
+                                          value: 'icon',
+                                          label: 'Icon',
+                                          icon: (
+                                            <Sparkles
+                                              aria-hidden="true"
+                                              className="size-3.5"
+                                              strokeWidth={1.75}
+                                            />
+                                          ),
+                                          tooltip: 'Icon leading item',
+                                        },
+                                        {
+                                          value: 'avatar',
+                                          label: 'Avatar',
+                                          icon: (
+                                            <User
+                                              aria-hidden="true"
+                                              className="size-3.5"
+                                              strokeWidth={1.75}
+                                            />
+                                          ),
+                                          tooltip: 'Avatar leading item',
+                                        },
+                                      ]}
+                                    />
+                                  </div>
+                                  {item.type === 'onOff' ? (
+                                    <ToggleField
+                                      label="Checked"
+                                      checked={item.checked ?? true}
+                                      onChange={(checked) =>
+                                        setConfigurableMenuItemConfig(
+                                          itemId,
+                                          'checked',
+                                          checked,
+                                        )
+                                      }
+                                    />
+                                  ) : null}
+                                  {item.type !== 'submenu' ? (
+                                    <div className="grid w-full min-w-0 max-w-full grid-cols-[minmax(0,7fr)_minmax(0,3fr)] gap-3">
+                                      <TextConfigField
+                                        label="Label"
+                                        value={item.label}
+                                        onChange={(value) =>
+                                          setConfigurableMenuItemConfig(
+                                            itemId,
+                                            'label',
+                                            value,
+                                          )
+                                        }
+                                        maxLength={32}
+                                        showLabel={false}
+                                      />
+                                      <TextConfigField
+                                        label="Shortcut/Secondary text"
+                                        value={item.secondaryText}
+                                        onChange={(value) =>
+                                          setConfigurableMenuItemConfig(
+                                            itemId,
+                                            'secondaryText',
+                                            value,
+                                          )
+                                        }
+                                        maxLength={16}
+                                        showLabel={false}
+                                        placeholder="Shortcut"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <TextConfigField
+                                      label="Label"
+                                      value={item.label}
+                                      onChange={(value) =>
+                                        setConfigurableMenuItemConfig(
+                                          itemId,
+                                          'label',
+                                          value,
+                                        )
+                                      }
+                                      maxLength={32}
+                                      showLabel={false}
+                                    />
+                                  )}
+                                  <ToggleField
+                                    label="Disabled"
+                                    checked={item.disabled}
+                                    onChange={(checked) =>
+                                      setConfigurableMenuItemConfig(
+                                        itemId,
+                                        'disabled',
+                                        checked,
+                                      )
+                                    }
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </PanelSection>
+
+                        <Separator className="bg-white/8" />
+
                         <PanelSection
                           title="Menu"
                           description="Preview the reusable UI3 menu surface used by the Select demo."
@@ -4443,11 +4919,6 @@ export function LabPage() {
                               label="Show leading icons"
                               checked={menuShowLeadingIcons}
                               onChange={setMenuShowLeadingIcons}
-                            />
-                            <ToggleField
-                              label="Show trailing hints"
-                              checked={menuShowTrailingHints}
-                              onChange={setMenuShowTrailingHints}
                             />
                             <ToggleField
                               label="Show shortcuts"
@@ -4479,6 +4950,15 @@ export function LabPage() {
                           description="Preview the UI3 menu trigger state."
                         >
                           <div className="space-y-3">
+                            <PlacementGridField
+                              label="Placement"
+                              side={selectSide}
+                              align={selectAlign}
+                              onChange={(placement) => {
+                                setSelectSide(placement.side);
+                                setSelectAlign(placement.align);
+                              }}
+                            />
                             <SegmentedField
                               label="Trigger content"
                               value={selectTriggerContent}
