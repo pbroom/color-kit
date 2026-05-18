@@ -232,6 +232,14 @@ function TooltipContent({
                 d="M0 0 L4.5 5 Q6 7 7.5 5 L12 0 Z"
                 className={highContrast ? 'fill-foreground' : 'fill-background'}
               />
+              {highContrast ? null : (
+                <path
+                  d="M0 0 L4.5 5 Q6 7 7.5 5 L12 0"
+                  fill="none"
+                  vectorEffect="non-scaling-stroke"
+                  className="stroke-border stroke-[1.25px]"
+                />
+              )}
             </svg>
           </TooltipPrimitive.Arrow>
         ) : null}
