@@ -39,6 +39,15 @@ const CHANNEL_LABELS: Record<string, string> = {
   alpha: 'Opacity',
 };
 
+function getSliderPositionInset(element: HTMLElement): number {
+  const rawInset = getComputedStyle(element)
+    .getPropertyValue('--ck-slider-position-inset')
+    .trim();
+  const inset = Number.parseFloat(rawInset);
+
+  return Number.isFinite(inset) ? inset : 0;
+}
+
 export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
   function ColorSlider(
     {
@@ -74,12 +83,24 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         if (!el) return;
 
         const rect = el.getBoundingClientRect();
+        const positionInset = clamp(
+          getSliderPositionInset(el),
+          0,
+          (orientation === 'horizontal' ? rect.width : rect.height) / 2,
+        );
+        const start =
+          (orientation === 'horizontal' ? rect.left : rect.top) + positionInset;
+        const size =
+          (orientation === 'horizontal' ? rect.width : rect.height) -
+          positionInset * 2;
         let t: number;
 
-        if (orientation === 'horizontal') {
-          t = clamp((clientX - rect.left) / rect.width, 0, 1);
+        if (size <= 0) {
+          t = 0;
+        } else if (orientation === 'horizontal') {
+          t = clamp((clientX - start) / size, 0, 1);
         } else {
-          t = 1 - clamp((clientY - rect.top) / rect.height, 0, 1);
+          t = 1 - clamp((clientY - start) / size, 0, 1);
         }
 
         const value = r[0] + t * (r[1] - r[0]);

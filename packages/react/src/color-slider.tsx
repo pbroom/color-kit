@@ -33,6 +33,15 @@ interface PointerSnapshot {
   clientY: number;
 }
 
+function getSliderPositionInset(element: HTMLElement): number {
+  const rawInset = getComputedStyle(element)
+    .getPropertyValue('--ck-slider-position-inset')
+    .trim();
+  const inset = Number.parseFloat(rawInset);
+
+  return Number.isFinite(inset) ? inset : 0;
+}
+
 export interface ColorSliderProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
@@ -138,12 +147,14 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         if (!element) return null;
 
         const rect = element.getBoundingClientRect();
+        const positionInset = getSliderPositionInset(element);
 
         return normalizeColorSliderPointer(
           orientation,
           orientation === 'horizontal' ? clientX : clientY,
           orientation === 'horizontal' ? rect.left : rect.top,
           orientation === 'horizontal' ? rect.width : rect.height,
+          positionInset,
         );
       },
       [orientation],

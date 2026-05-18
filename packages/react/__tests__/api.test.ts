@@ -19,6 +19,7 @@ import {
   getColorInputChannelValue,
   parseColorInputExpression,
   parseColorStringInputValue,
+  normalizeColorSliderPointer,
   resolveColorInputDraftValue,
   resolveColorAreaAxes,
 } from '../src/api/index.js';
@@ -199,6 +200,20 @@ describe('Color API helpers', () => {
   it('normalizes slider values into channel coordinates', () => {
     const norm = getColorSliderNormFromValue(0.2, [0, 0.4]);
     expect(norm).toBeCloseTo(0.5, 6);
+  });
+
+  it('normalizes slider pointers against the thumb-center track span', () => {
+    expect(normalizeColorSliderPointer('horizontal', 68, 10, 116)).toBeCloseTo(
+      0.5,
+      6,
+    );
+    expect(normalizeColorSliderPointer('horizontal', 18, 10, 116, 8)).toBe(0);
+    expect(
+      normalizeColorSliderPointer('horizontal', 68, 10, 116, 8),
+    ).toBeCloseTo(0.5, 6);
+    expect(
+      normalizeColorSliderPointer('vertical', 118, 10, 116, 8),
+    ).toBeCloseTo(0, 6);
   });
 
   it('maps channel values for color input models', () => {
