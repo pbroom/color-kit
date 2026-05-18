@@ -219,11 +219,7 @@ function TooltipContent({
       >
         {children}
         {showPointer ? (
-          <TooltipPrimitive.Arrow
-            asChild
-            width={12}
-            height={6}
-          >
+          <TooltipPrimitive.Arrow asChild width={12} height={6}>
             <svg
               aria-hidden="true"
               className="overflow-visible"
