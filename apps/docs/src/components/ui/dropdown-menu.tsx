@@ -6,6 +6,21 @@ import { cn } from '@/lib/utils';
 type DropdownMenuVariant = 'default' | 'ui3';
 type DropdownMenuDensity = 'compact' | 'comfortable';
 type DropdownMenuPanelKind = 'content' | 'subcontent';
+type SelectListOpenAlignment = 'selected' | 'none';
+type DropdownMenuTypeaheadItem = {
+  element: HTMLElement;
+  label: string;
+};
+type DropdownMenuTypeaheadKeyboardEvent = {
+  altKey: boolean;
+  ctrlKey: boolean;
+  defaultPrevented: boolean;
+  key: string;
+  metaKey: boolean;
+  preventDefault: () => void;
+  stopPropagation: () => void;
+  target: EventTarget | null;
+};
 type DropdownMenuItemIcon = React.ComponentType<
   React.SVGProps<SVGSVGElement> & { strokeWidth?: number }
 >;
@@ -19,7 +34,7 @@ const dropdownMenuUi3ItemDensityClass: Record<DropdownMenuDensity, string> = {
   comfortable: 'h-7 min-h-7',
 };
 const dropdownMenuUi3ItemClass =
-  'group relative flex w-full cursor-default select-none items-center justify-start gap-0 rounded-[5px] px-2 py-0 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white outline-none hover:bg-[#0d99ff] hover:text-white focus-visible:bg-[#0d99ff] focus-visible:text-white data-[highlighted]:bg-[#0d99ff] data-[highlighted]:text-white data-[state=open]:bg-[#303030] data-[state=open]:text-white data-[highlighted]:data-[state=open]:bg-[#0d99ff]';
+  'group relative flex w-full cursor-default select-none items-center justify-start gap-0 rounded-[5px] px-2 py-0 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white outline-none hover:bg-[#0d99ff] hover:text-white focus-visible:bg-[#0d99ff] focus-visible:text-white data-[dropdown-menu-typeahead-active=true]:!bg-[#0d99ff] data-[dropdown-menu-typeahead-active=true]:!text-white data-[highlighted]:bg-[#0d99ff] data-[highlighted]:text-white data-[state=open]:bg-[#303030] data-[state=open]:text-white data-[highlighted]:data-[state=open]:bg-[#0d99ff] data-[dropdown-menu-submenu-child-active=true]:!bg-[#303030] data-[dropdown-menu-submenu-child-active=true]:!text-white data-[dropdown-menu-suppress-pointer-hover=true]:hover:bg-transparent data-[dropdown-menu-suppress-pointer-hover=true]:hover:text-white data-[dropdown-menu-suppress-pointer-hover=true]:data-[highlighted]:bg-transparent data-[dropdown-menu-suppress-pointer-hover=true]:data-[highlighted]:text-white';
 const dropdownMenuUi3ItemDisabledClass =
   'disabled:text-white/35 disabled:hover:bg-transparent data-[disabled]:text-white/35 data-[disabled]:hover:bg-transparent data-[disabled]:focus-visible:bg-transparent';
 const dropdownMenuUi3SeparatorClass = 'mx-0 my-2 h-px bg-[#383838]';
@@ -27,12 +42,474 @@ const dropdownMenuUi3CheckColumnClass =
   '-ml-1 flex h-6 w-4 shrink-0 items-center justify-start';
 const dropdownMenuUi3LeadingColumnClass =
   'flex size-6 shrink-0 items-center justify-center';
+const DROPDOWN_MENU_TYPEAHEAD_RESET_MS = 500;
+const DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE =
+  'data-dropdown-menu-typeahead-active';
+const DROPDOWN_MENU_SUPPRESS_POINTER_HOVER_ATTRIBUTE =
+  'data-dropdown-menu-suppress-pointer-hover';
+const DROPDOWN_MENU_SUBMENU_CHILD_ACTIVE_ATTRIBUTE =
+  'data-dropdown-menu-submenu-child-active';
+const DROPDOWN_MENU_KEYBOARD_NAVIGATION_KEYS = new Set([
+  'ArrowDown',
+  'ArrowUp',
+  'End',
+  'Home',
+  'PageDown',
+  'PageUp',
+]);
 
 const DropdownMenuItemLayoutContext = React.createContext({
   reserveCheckColumn: false,
   reserveLeadingColumn: false,
 });
+const SelectListContext = React.createContext<{
+  closeOnSelect: boolean;
+  onValueChange?: (value: string) => void;
+  value?: string;
+} | null>(null);
 
+function clampValue(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getTextFromNode(node: React.ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return node.toString();
+  }
+
+  return '';
+}
+
+function normalizeTypeaheadLabel(label: string): string {
+  return label.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+function shouldHandleDropdownMenuTypeahead(
+  event: DropdownMenuTypeaheadKeyboardEvent,
+) {
+  const target = event.target;
+
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (
+    target.closest(
+      'input, textarea, select, [contenteditable="true"], [data-dropdown-menu-typeahead-ignore]',
+    )
+  ) {
+    return false;
+  }
+
+  return (
+    event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey
+  );
+}
+
+function shouldHandleDropdownMenuKeyboardNavigation(
+  event: DropdownMenuTypeaheadKeyboardEvent,
+) {
+  const target = event.target;
+
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (
+    target.closest(
+      'input, textarea, select, [contenteditable="true"], [data-dropdown-menu-typeahead-ignore]',
+    )
+  ) {
+    return false;
+  }
+
+  return (
+    DROPDOWN_MENU_KEYBOARD_NAVIGATION_KEYS.has(event.key) &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey
+  );
+}
+
+function shouldRouteDropdownMenuTypeaheadToContent(
+  content: HTMLElement,
+  target: EventTarget | null,
+) {
+  if (!(target instanceof Node)) {
+    return false;
+  }
+
+  if (content.contains(target)) {
+    return true;
+  }
+
+  const trigger = getOpenTriggerForContent(content);
+  return Boolean(trigger?.contains(target));
+}
+
+function getDropdownMenuTypeaheadItems(
+  content: HTMLElement,
+): DropdownMenuTypeaheadItem[] {
+  return Array.from(
+    content.querySelectorAll<HTMLElement>(
+      '[data-dropdown-menu-typeahead-item]',
+    ),
+  ).flatMap((element) => {
+    if (
+      element.matches(
+        '[disabled], [aria-disabled="true"], [data-disabled], [data-state="closed"]',
+      )
+    ) {
+      return [];
+    }
+
+    const label = normalizeTypeaheadLabel(
+      element.dataset.dropdownMenuTypeaheadLabel ?? element.textContent ?? '',
+    );
+
+    if (!label) {
+      return [];
+    }
+
+    return [{ element, label }];
+  });
+}
+
+function getDropdownMenuTypeaheadActiveIndex(
+  items: DropdownMenuTypeaheadItem[],
+) {
+  const activeAttributeIndex = items.findIndex((item) =>
+    item.element.hasAttribute(DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE),
+  );
+
+  if (activeAttributeIndex >= 0) {
+    return activeAttributeIndex;
+  }
+
+  return items.findIndex((item) => item.element === document.activeElement);
+}
+
+function getDropdownMenuTypeaheadMatchIndex({
+  buffer,
+  items,
+}: {
+  buffer: string;
+  items: DropdownMenuTypeaheadItem[];
+}) {
+  if (items.length === 0) {
+    return -1;
+  }
+
+  const activeIndex = getDropdownMenuTypeaheadActiveIndex(items);
+  const startIndex = activeIndex >= 0 ? activeIndex + 1 : 0;
+
+  for (let offset = 0; offset < items.length; offset += 1) {
+    const index = (startIndex + offset) % items.length;
+    if (items[index]?.label.startsWith(buffer)) {
+      return index;
+    }
+  }
+
+  const isRepeatedCharacter =
+    buffer.length > 1 && Array.from(buffer).every((char) => char === buffer[0]);
+  if (isRepeatedCharacter) {
+    const searchText = buffer[0];
+
+    for (let offset = 0; offset < items.length; offset += 1) {
+      const index = (startIndex + offset) % items.length;
+      if (items[index]?.label.startsWith(searchText)) {
+        return index;
+      }
+    }
+  }
+
+  return -1;
+}
+
+function suppressDropdownMenuPointerHover(content: HTMLElement) {
+  content
+    .querySelectorAll<HTMLElement>('[data-dropdown-menu-typeahead-item]')
+    .forEach((item) => {
+      item.setAttribute(DROPDOWN_MENU_SUPPRESS_POINTER_HOVER_ATTRIBUTE, 'true');
+    });
+}
+
+function setDropdownMenuTypeaheadActiveItem(
+  content: HTMLElement,
+  nextItem: HTMLElement,
+  {
+    focus = true,
+    scroll = true,
+  }: {
+    focus?: boolean;
+    scroll?: boolean;
+  } = {},
+) {
+  content
+    .querySelectorAll<HTMLElement>(
+      `[${DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE}]`,
+    )
+    .forEach((item) => {
+      item.removeAttribute(DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE);
+    });
+
+  const itemContent =
+    nextItem.closest<HTMLElement>(
+      '[data-slot="dropdown-menu-sub-content"], [data-slot="dropdown-menu-content"]',
+    ) ?? content;
+
+  nextItem.setAttribute(DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE, 'true');
+  setSubmenuTriggerChildActive(itemContent, true);
+  suppressDropdownMenuPointerHover(content);
+
+  if (focus) {
+    nextItem.focus({ preventScroll: true });
+  }
+
+  if (scroll) {
+    nextItem.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function clearDropdownMenuTypeaheadActiveItems(content: HTMLElement) {
+  content
+    .querySelectorAll<HTMLElement>(
+      `[${DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE}]`,
+    )
+    .forEach((item) => {
+      item.removeAttribute(DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE);
+    });
+}
+
+function clearDropdownMenuPointerHoverSuppression(content: HTMLElement) {
+  content
+    .querySelectorAll<HTMLElement>(
+      `[${DROPDOWN_MENU_SUPPRESS_POINTER_HOVER_ATTRIBUTE}]`,
+    )
+    .forEach((item) => {
+      item.removeAttribute(DROPDOWN_MENU_SUPPRESS_POINTER_HOVER_ATTRIBUTE);
+    });
+}
+
+function clearDocumentDropdownMenuKeyboardActiveItems(document: Document) {
+  document
+    .querySelectorAll<HTMLElement>(
+      `[${DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE}]`,
+    )
+    .forEach((item) => {
+      item.removeAttribute(DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE);
+    });
+
+  document
+    .querySelectorAll<HTMLElement>(
+      `[${DROPDOWN_MENU_SUPPRESS_POINTER_HOVER_ATTRIBUTE}]`,
+    )
+    .forEach((item) => {
+      item.removeAttribute(DROPDOWN_MENU_SUPPRESS_POINTER_HOVER_ATTRIBUTE);
+    });
+}
+
+function getDropdownMenuKeyboardNavigationActiveItem(
+  content: HTMLElement,
+): HTMLElement | null {
+  const activeElement = content.ownerDocument.activeElement;
+
+  if (activeElement instanceof HTMLElement && content.contains(activeElement)) {
+    const focusedItem = activeElement.closest<HTMLElement>(
+      '[data-dropdown-menu-typeahead-item]',
+    );
+
+    if (focusedItem) {
+      return focusedItem;
+    }
+  }
+
+  return content.querySelector<HTMLElement>(
+    '[data-dropdown-menu-typeahead-item][data-highlighted]',
+  );
+}
+
+function getDropdownMenuKeyboardNavigationBaseIndex({
+  content,
+  items,
+}: {
+  content: HTMLElement;
+  items: DropdownMenuTypeaheadItem[];
+}) {
+  const activeIndex = getDropdownMenuTypeaheadActiveIndex(items);
+
+  if (activeIndex >= 0) {
+    return activeIndex;
+  }
+
+  const highlightedIndex = items.findIndex((item) =>
+    item.element.matches('[data-highlighted]'),
+  );
+
+  if (highlightedIndex >= 0) {
+    return highlightedIndex;
+  }
+
+  const selectedIndex = items.findIndex((item) =>
+    item.element.matches('[data-select-list-item][aria-checked="true"]'),
+  );
+
+  if (selectedIndex >= 0) {
+    return selectedIndex;
+  }
+
+  const selectedItem = getSelectedListItemForOpenAlignment(content);
+  if (selectedItem) {
+    return items.findIndex((item) => item.element === selectedItem);
+  }
+
+  return -1;
+}
+
+function getDropdownMenuKeyboardNavigationFallbackItem(
+  content: HTMLElement,
+  key: string,
+): HTMLElement | null {
+  const items = getDropdownMenuTypeaheadItems(content);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  const baseIndex = getDropdownMenuKeyboardNavigationBaseIndex({
+    content,
+    items,
+  });
+  const lastIndex = items.length - 1;
+
+  switch (key) {
+    case 'ArrowDown':
+      return items[baseIndex < 0 ? 0 : clampValue(baseIndex + 1, 0, lastIndex)]
+        ?.element;
+    case 'ArrowUp':
+      return items[
+        baseIndex < 0 ? lastIndex : clampValue(baseIndex - 1, 0, lastIndex)
+      ]?.element;
+    case 'End':
+      return items[lastIndex]?.element;
+    case 'Home':
+      return items[0]?.element;
+    case 'PageDown':
+      return items[baseIndex < 0 ? 0 : clampValue(baseIndex + 10, 0, lastIndex)]
+        ?.element;
+    case 'PageUp':
+      return items[
+        baseIndex < 0 ? lastIndex : clampValue(baseIndex - 10, 0, lastIndex)
+      ]?.element;
+    default:
+      return null;
+  }
+}
+
+function getOpenTriggerForContent(content: HTMLElement): HTMLElement | null {
+  const ownerDocument = content.ownerDocument;
+  const ownerCss = ownerDocument.defaultView?.CSS;
+
+  if (content.id && ownerCss?.escape) {
+    const escapedContentId = ownerCss.escape(content.id);
+    const controlledTrigger = ownerDocument.querySelector<HTMLElement>(
+      `[data-slot="dropdown-menu-trigger"][aria-controls="${escapedContentId}"], [data-slot="dropdown-menu-sub-trigger"][aria-controls="${escapedContentId}"]`,
+    );
+    if (controlledTrigger) {
+      return controlledTrigger;
+    }
+  }
+
+  return ownerDocument.querySelector<HTMLElement>(
+    '[data-slot="dropdown-menu-trigger"][data-state="open"]',
+  );
+}
+
+function setSubmenuTriggerChildActive(content: HTMLElement, active: boolean) {
+  const trigger = getOpenTriggerForContent(content);
+  if (trigger?.dataset.slot !== 'dropdown-menu-sub-trigger') {
+    return;
+  }
+
+  if (active) {
+    trigger.setAttribute(DROPDOWN_MENU_SUBMENU_CHILD_ACTIVE_ATTRIBUTE, 'true');
+    trigger.removeAttribute(DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE);
+  } else {
+    trigger.removeAttribute(DROPDOWN_MENU_SUBMENU_CHILD_ACTIVE_ATTRIBUTE);
+  }
+}
+
+function clearSubmenuTriggerChildActive(trigger: HTMLElement) {
+  trigger.removeAttribute(DROPDOWN_MENU_SUBMENU_CHILD_ACTIVE_ATTRIBUTE);
+}
+
+function clearDocumentSubmenuTriggerChildActive(document: Document) {
+  document
+    .querySelectorAll<HTMLElement>(
+      `[${DROPDOWN_MENU_SUBMENU_CHILD_ACTIVE_ATTRIBUTE}]`,
+    )
+    .forEach(clearSubmenuTriggerChildActive);
+}
+
+function getSelectedListItemForOpenAlignment(
+  content: HTMLElement,
+): HTMLElement | null {
+  const list = content.querySelector<HTMLElement>(
+    '[data-select-list][data-select-list-open-alignment="selected"]',
+  );
+  return (
+    list?.querySelector<HTMLElement>(
+      '[data-select-list-item][aria-checked="true"]',
+    ) ?? null
+  );
+}
+
+function alignSelectedListItemToTrigger(content: HTMLElement): boolean {
+  content.style.translate = '';
+
+  const selectedItem = getSelectedListItemForOpenAlignment(content);
+
+  if (!selectedItem) {
+    return false;
+  }
+
+  const list = selectedItem.closest<HTMLElement>(
+    '[data-select-list][data-select-list-open-alignment="selected"]',
+  );
+
+  if (!list) {
+    return false;
+  }
+
+  const selectedItemCenter =
+    selectedItem.offsetTop + selectedItem.offsetHeight / 2;
+  const maxScrollTop = Math.max(0, content.scrollHeight - content.clientHeight);
+  const nextScrollTop = clampValue(
+    selectedItemCenter - content.clientHeight / 2,
+    0,
+    maxScrollTop,
+  );
+  content.scrollTop = nextScrollTop;
+
+  const trigger = getOpenTriggerForContent(content);
+  if (!trigger) {
+    return true;
+  }
+
+  const triggerRect = trigger.getBoundingClientRect();
+  const contentRect = content.getBoundingClientRect();
+  const selectedRect = selectedItem.getBoundingClientRect();
+  const triggerCenterY = triggerRect.top + triggerRect.height / 2;
+  const selectedCenterY = selectedRect.top + selectedRect.height / 2;
+  const desiredOffsetY = triggerCenterY - selectedCenterY;
+  const collisionPadding = 8;
+  const minOffsetY = collisionPadding - contentRect.top;
+  const maxOffsetY = window.innerHeight - collisionPadding - contentRect.bottom;
+  const offsetY = clampValue(desiredOffsetY, minOffsetY, maxOffsetY);
+
+  content.style.translate = offsetY === 0 ? '' : `0px ${offsetY}px`;
+  return true;
+}
 function getDropdownMenuPanelClass({
   variant,
   panel,
@@ -112,19 +589,370 @@ function DropdownMenuPortal(
   );
 }
 
-function DropdownMenuContent({
-  className,
-  sideOffset = 4,
-  variant = 'default',
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
-  variant?: DropdownMenuVariant;
-}) {
+function useDropdownMenuKeyboardController() {
+  const keyboardNavigationFrameRef = React.useRef<number | null>(null);
+  const lastPointerPositionRef = React.useRef<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const typeaheadKeydownCleanupRef = React.useRef<(() => void) | null>(null);
+  const typeaheadBufferRef = React.useRef('');
+  const typeaheadResetTimerRef = React.useRef<number | null>(null);
+  const resetTypeaheadBuffer = React.useCallback(() => {
+    typeaheadBufferRef.current = '';
+    if (typeaheadResetTimerRef.current !== null) {
+      window.clearTimeout(typeaheadResetTimerRef.current);
+      typeaheadResetTimerRef.current = null;
+    }
+  }, []);
+  const cancelKeyboardNavigationFrame = React.useCallback(() => {
+    if (keyboardNavigationFrameRef.current !== null) {
+      cancelAnimationFrame(keyboardNavigationFrameRef.current);
+      keyboardNavigationFrameRef.current = null;
+    }
+  }, []);
+  const scheduleKeyboardNavigationActiveSync = React.useCallback(
+    (node: HTMLElement, fallbackItem: HTMLElement | null) => {
+      cancelKeyboardNavigationFrame();
+
+      keyboardNavigationFrameRef.current = requestAnimationFrame(() => {
+        keyboardNavigationFrameRef.current = requestAnimationFrame(() => {
+          keyboardNavigationFrameRef.current = null;
+          if (!node.isConnected) {
+            return;
+          }
+
+          const activeItem =
+            getDropdownMenuKeyboardNavigationActiveItem(node) ?? fallbackItem;
+          if (!activeItem) {
+            return;
+          }
+
+          setDropdownMenuTypeaheadActiveItem(node, activeItem, {
+            focus: activeItem === fallbackItem,
+            scroll: activeItem === fallbackItem,
+          });
+        });
+      });
+    },
+    [cancelKeyboardNavigationFrame],
+  );
+  const handleKeyboardNavigationKeyDown = React.useCallback(
+    (
+      content: HTMLElement,
+      event: DropdownMenuTypeaheadKeyboardEvent,
+    ): boolean => {
+      if (
+        event.defaultPrevented ||
+        !shouldRouteDropdownMenuTypeaheadToContent(content, event.target) ||
+        !shouldHandleDropdownMenuKeyboardNavigation(event)
+      ) {
+        return false;
+      }
+
+      resetTypeaheadBuffer();
+      clearDropdownMenuTypeaheadActiveItems(content);
+      suppressDropdownMenuPointerHover(content);
+      const fallbackItem = getDropdownMenuKeyboardNavigationFallbackItem(
+        content,
+        event.key,
+      );
+      if (fallbackItem) {
+        setDropdownMenuTypeaheadActiveItem(content, fallbackItem, {
+          focus: false,
+          scroll: false,
+        });
+      }
+      scheduleKeyboardNavigationActiveSync(content, fallbackItem);
+      return true;
+    },
+    [resetTypeaheadBuffer, scheduleKeyboardNavigationActiveSync],
+  );
+  const handleTypeaheadKeyDown = React.useCallback(
+    (
+      content: HTMLElement,
+      event: DropdownMenuTypeaheadKeyboardEvent,
+    ): boolean => {
+      if (
+        event.defaultPrevented ||
+        !shouldRouteDropdownMenuTypeaheadToContent(content, event.target) ||
+        !shouldHandleDropdownMenuTypeahead(event)
+      ) {
+        return false;
+      }
+
+      const items = getDropdownMenuTypeaheadItems(content);
+      const nextBuffer = normalizeTypeaheadLabel(
+        `${typeaheadBufferRef.current}${event.key}`,
+      );
+      const matchIndex = getDropdownMenuTypeaheadMatchIndex({
+        buffer: nextBuffer,
+        items,
+      });
+
+      if (matchIndex < 0) {
+        resetTypeaheadBuffer();
+        return false;
+      }
+
+      typeaheadBufferRef.current = nextBuffer;
+      if (typeaheadResetTimerRef.current !== null) {
+        window.clearTimeout(typeaheadResetTimerRef.current);
+      }
+      typeaheadResetTimerRef.current = window.setTimeout(
+        resetTypeaheadBuffer,
+        DROPDOWN_MENU_TYPEAHEAD_RESET_MS,
+      );
+
+      const item = items[matchIndex];
+      if (item) {
+        cancelKeyboardNavigationFrame();
+        setDropdownMenuTypeaheadActiveItem(content, item.element);
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      return true;
+    },
+    [cancelKeyboardNavigationFrame, resetTypeaheadBuffer],
+  );
+  const handleKeyDown = React.useCallback(
+    (content: HTMLElement, event: DropdownMenuTypeaheadKeyboardEvent) => {
+      handleKeyboardNavigationKeyDown(content, event);
+      handleTypeaheadKeyDown(content, event);
+    },
+    [handleKeyboardNavigationKeyDown, handleTypeaheadKeyDown],
+  );
+  const handlePointerMove = React.useCallback(
+    (
+      content: HTMLElement,
+      event: {
+        clientX: number;
+        clientY: number;
+        movementX: number;
+        movementY: number;
+      },
+    ) => {
+      const previousPointerPosition = lastPointerPositionRef.current;
+      const nextPointerPosition = {
+        x: event.clientX,
+        y: event.clientY,
+      };
+      lastPointerPositionRef.current = nextPointerPosition;
+
+      const pointerActuallyMoved = previousPointerPosition
+        ? previousPointerPosition.x !== nextPointerPosition.x ||
+          previousPointerPosition.y !== nextPointerPosition.y
+        : event.movementX !== 0 || event.movementY !== 0;
+
+      if (!pointerActuallyMoved) {
+        content
+          .querySelector<HTMLElement>(
+            `[${DROPDOWN_MENU_TYPEAHEAD_ACTIVE_ATTRIBUTE}]`,
+          )
+          ?.focus({ preventScroll: true });
+        return;
+      }
+
+      cancelKeyboardNavigationFrame();
+      clearDocumentSubmenuTriggerChildActive(content.ownerDocument);
+      clearDocumentDropdownMenuKeyboardActiveItems(content.ownerDocument);
+    },
+    [cancelKeyboardNavigationFrame],
+  );
+  const handleFocusCapture = React.useCallback(
+    (content: HTMLElement, target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const focusedItem = target.closest<HTMLElement>(
+        '[data-dropdown-menu-typeahead-item]',
+      );
+      if (
+        !focusedItem ||
+        !content.contains(focusedItem) ||
+        !focusedItem.hasAttribute(
+          DROPDOWN_MENU_SUPPRESS_POINTER_HOVER_ATTRIBUTE,
+        )
+      ) {
+        return;
+      }
+
+      setDropdownMenuTypeaheadActiveItem(content, focusedItem, {
+        focus: false,
+        scroll: false,
+      });
+    },
+    [],
+  );
+  const clearKeyboardState = React.useCallback(
+    (content: HTMLElement) => {
+      cancelKeyboardNavigationFrame();
+      resetTypeaheadBuffer();
+      lastPointerPositionRef.current = null;
+      setSubmenuTriggerChildActive(content, false);
+      clearDropdownMenuTypeaheadActiveItems(content);
+      clearDropdownMenuPointerHoverSuppression(content);
+    },
+    [cancelKeyboardNavigationFrame, resetTypeaheadBuffer],
+  );
+  const registerKeyboardScope = React.useCallback(
+    (node: HTMLElement | null) => {
+      typeaheadKeydownCleanupRef.current?.();
+      typeaheadKeydownCleanupRef.current = null;
+      cancelKeyboardNavigationFrame();
+
+      if (!node) {
+        return;
+      }
+
+      const handleDocumentKeyDown = (event: KeyboardEvent) => {
+        handleKeyDown(node, event);
+      };
+      node.ownerDocument.addEventListener('keydown', handleDocumentKeyDown, {
+        capture: true,
+      });
+      typeaheadKeydownCleanupRef.current = () => {
+        node.ownerDocument.removeEventListener(
+          'keydown',
+          handleDocumentKeyDown,
+          {
+            capture: true,
+          },
+        );
+      };
+    },
+    [cancelKeyboardNavigationFrame, handleKeyDown],
+  );
+
+  return React.useMemo(
+    () => ({
+      cancelKeyboardNavigationFrame,
+      clearKeyboardState,
+      handleFocusCapture,
+      handleKeyDown,
+      handlePointerMove,
+      registerKeyboardScope,
+      resetTypeaheadBuffer,
+    }),
+    [
+      cancelKeyboardNavigationFrame,
+      clearKeyboardState,
+      handleFocusCapture,
+      handleKeyDown,
+      handlePointerMove,
+      registerKeyboardScope,
+      resetTypeaheadBuffer,
+    ],
+  );
+}
+
+const DropdownMenuContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
+    variant?: DropdownMenuVariant;
+  }
+>(function DropdownMenuContent(
+  {
+    className,
+    onCloseAutoFocus,
+    onKeyDown,
+    onOpenAutoFocus,
+    onPointerMove,
+    sideOffset = 4,
+    variant = 'default',
+    ...props
+  },
+  ref,
+) {
+  const contentRef = React.useRef<React.ElementRef<
+    typeof DropdownMenuPrimitive.Content
+  > | null>(null);
+  const hasAlignedOpenRef = React.useRef(false);
+  const alignFrameRef = React.useRef<number | null>(null);
+  const keyboardController = useDropdownMenuKeyboardController();
+  const cancelAlignFrame = React.useCallback(() => {
+    if (alignFrameRef.current !== null) {
+      cancelAnimationFrame(alignFrameRef.current);
+      alignFrameRef.current = null;
+    }
+  }, []);
+  const scheduleSelectedAlignment = React.useCallback(
+    (node: HTMLElement) => {
+      cancelAlignFrame();
+
+      if (hasAlignedOpenRef.current) {
+        return;
+      }
+
+      alignFrameRef.current = requestAnimationFrame(() => {
+        alignFrameRef.current = null;
+        if (!node.isConnected || hasAlignedOpenRef.current) {
+          return;
+        }
+
+        hasAlignedOpenRef.current = alignSelectedListItemToTrigger(node);
+      });
+    },
+    [cancelAlignFrame],
+  );
+  const setContentRef = React.useCallback(
+    (node: React.ElementRef<typeof DropdownMenuPrimitive.Content> | null) => {
+      contentRef.current = node;
+      keyboardController.registerKeyboardScope(node);
+
+      if (node && !hasAlignedOpenRef.current) {
+        scheduleSelectedAlignment(node);
+      }
+
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    },
+    [keyboardController, ref, scheduleSelectedAlignment],
+  );
+
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        ref={setContentRef}
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          keyboardController.handleKeyDown(event.currentTarget, event);
+        }}
+        onFocusCapture={(event) => {
+          keyboardController.handleFocusCapture(
+            event.currentTarget,
+            event.target,
+          );
+        }}
+        onPointerMove={(event) => {
+          keyboardController.handlePointerMove(event.currentTarget, event);
+          onPointerMove?.(event);
+        }}
+        onOpenAutoFocus={(event) => {
+          const hasSelectedListItem = Boolean(
+            getSelectedListItemForOpenAlignment(event.currentTarget),
+          );
+          if (hasSelectedListItem) {
+            scheduleSelectedAlignment(event.currentTarget);
+            event.preventDefault();
+          }
+
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          cancelAlignFrame();
+          hasAlignedOpenRef.current = false;
+          keyboardController.clearKeyboardState(event.currentTarget);
+          event.currentTarget.style.translate = '';
+          onCloseAutoFocus?.(event);
+        }}
         className={cn(
           variant === 'ui3'
             ? [
@@ -141,22 +969,26 @@ function DropdownMenuContent({
       />
     </DropdownMenuPrimitive.Portal>
   );
-}
+});
 
 function DropdownMenuItem({
   className,
   inset,
+  typeaheadLabel,
   variant = 'default',
   density = 'compact',
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
   inset?: boolean;
+  typeaheadLabel?: string;
   variant?: DropdownMenuVariant;
   density?: DropdownMenuDensity;
 }) {
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
+      data-dropdown-menu-typeahead-item=""
+      data-dropdown-menu-typeahead-label={typeaheadLabel}
       className={cn(
         variant === 'ui3'
           ? getDropdownMenuItemClass({ variant, density })
@@ -302,12 +1134,16 @@ function DropdownMenuSubTrigger({
   className,
   inset,
   children,
+  onFocusCapture,
+  onPointerMove,
+  typeaheadLabel,
   variant = 'default',
   density = 'compact',
   showDefaultChevron,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
   inset?: boolean;
+  typeaheadLabel?: string;
   variant?: DropdownMenuVariant;
   density?: DropdownMenuDensity;
   showDefaultChevron?: boolean;
@@ -315,6 +1151,16 @@ function DropdownMenuSubTrigger({
   return (
     <DropdownMenuPrimitive.SubTrigger
       data-slot="dropdown-menu-sub-trigger"
+      data-dropdown-menu-typeahead-item=""
+      data-dropdown-menu-typeahead-label={typeaheadLabel}
+      onFocusCapture={(event) => {
+        clearSubmenuTriggerChildActive(event.currentTarget);
+        onFocusCapture?.(event);
+      }}
+      onPointerMove={(event) => {
+        clearSubmenuTriggerChildActive(event.currentTarget);
+        onPointerMove?.(event);
+      }}
       className={cn(
         variant === 'ui3'
           ? getDropdownMenuItemClass({ variant, density })
@@ -332,16 +1178,59 @@ function DropdownMenuSubTrigger({
   );
 }
 
-function DropdownMenuSubContent({
-  className,
-  variant = 'default',
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent> & {
-  variant?: DropdownMenuVariant;
-}) {
+const DropdownMenuSubContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent> & {
+    variant?: DropdownMenuVariant;
+  }
+>(function DropdownMenuSubContent(
+  { className, onKeyDown, onPointerMove, variant = 'default', ...props },
+  ref,
+) {
+  const subContentRef = React.useRef<React.ElementRef<
+    typeof DropdownMenuPrimitive.SubContent
+  > | null>(null);
+  const keyboardController = useDropdownMenuKeyboardController();
+  const setSubContentRef = React.useCallback(
+    (
+      node: React.ElementRef<typeof DropdownMenuPrimitive.SubContent> | null,
+    ) => {
+      if (!node && subContentRef.current) {
+        setSubmenuTriggerChildActive(subContentRef.current, false);
+      }
+
+      subContentRef.current = node;
+      keyboardController.registerKeyboardScope(node);
+
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    },
+    [keyboardController, ref],
+  );
+
   return (
     <DropdownMenuPrimitive.SubContent
+      ref={setSubContentRef}
       data-slot="dropdown-menu-sub-content"
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        keyboardController.handleKeyDown(event.currentTarget, event);
+      }}
+      onFocusCapture={(event) => {
+        setSubmenuTriggerChildActive(event.currentTarget, true);
+        keyboardController.handleFocusCapture(
+          event.currentTarget,
+          event.target,
+        );
+      }}
+      onPointerMove={(event) => {
+        keyboardController.handlePointerMove(event.currentTarget, event);
+        setSubmenuTriggerChildActive(event.currentTarget, true);
+        onPointerMove?.(event);
+      }}
       className={cn(
         variant === 'ui3'
           ? [
@@ -357,7 +1246,7 @@ function DropdownMenuSubContent({
       {...props}
     />
   );
-}
+});
 
 function DropdownMenuPanel({
   className,
@@ -408,12 +1297,14 @@ function DropdownMenuPanelSeparator({
 
 function DropdownMenuItemButton({
   className,
+  typeaheadLabel,
   variant = 'ui3',
   density = 'compact',
   type = 'button',
   role = 'menuitem',
   ...props
 }: React.ComponentProps<'button'> & {
+  typeaheadLabel?: string;
   variant?: DropdownMenuVariant;
   density?: DropdownMenuDensity;
 }) {
@@ -422,6 +1313,8 @@ function DropdownMenuItemButton({
       type={type}
       role={role}
       data-slot="dropdown-menu-item-button"
+      data-dropdown-menu-typeahead-item=""
+      data-dropdown-menu-typeahead-label={typeaheadLabel}
       className={cn(
         variant === 'ui3'
           ? getDropdownMenuItemClass({ variant, density })
@@ -489,7 +1382,13 @@ function DropdownMenuItemContent({
       )}
     >
       {resolvedReserveCheckColumn || checked ? (
-        <span className={`${dropdownMenuUi3CheckColumnClass} text-current`}>
+        <span
+          className={cn(
+            dropdownMenuUi3CheckColumnClass,
+            'text-white/70 group-data-[disabled]:text-white/35',
+            disabled && 'text-white/35',
+          )}
+        >
           {checked ? <DropdownMenuUi3CheckIcon /> : null}
         </span>
       ) : null}
@@ -546,6 +1445,116 @@ function DropdownMenuItemContent({
   );
 }
 
+function SelectList({
+  children,
+  closeOnSelect = true,
+  onValueChange,
+  openAlignment = 'selected',
+  value,
+  ...props
+}: React.ComponentProps<'div'> & {
+  closeOnSelect?: boolean;
+  onValueChange?: (value: string) => void;
+  openAlignment?: SelectListOpenAlignment;
+  value?: string;
+}) {
+  const contextValue = React.useMemo(
+    () => ({
+      closeOnSelect,
+      onValueChange,
+      value,
+    }),
+    [closeOnSelect, onValueChange, value],
+  );
+
+  return (
+    <SelectListContext.Provider value={contextValue}>
+      <div
+        role="group"
+        data-select-list=""
+        data-select-list-open-alignment={openAlignment}
+        {...props}
+      >
+        {children}
+      </div>
+    </SelectListContext.Provider>
+  );
+}
+
+function SelectListItem({
+  children,
+  className,
+  density = 'compact',
+  disabled,
+  onSelect,
+  shortcut,
+  showShortcuts = true,
+  showTrailingHints = true,
+  trailingHint,
+  typeaheadLabel,
+  value,
+  variant = 'ui3',
+  ...props
+}: Omit<
+  React.ComponentProps<typeof DropdownMenuPrimitive.Item>,
+  'children' | 'onSelect'
+> & {
+  children: React.ReactNode;
+  density?: DropdownMenuDensity;
+  onSelect?: React.ComponentProps<
+    typeof DropdownMenuPrimitive.Item
+  >['onSelect'];
+  shortcut?: string;
+  showShortcuts?: boolean;
+  showTrailingHints?: boolean;
+  trailingHint?: string;
+  typeaheadLabel?: string;
+  value: string;
+  variant?: DropdownMenuVariant;
+}) {
+  const selectList = React.useContext(SelectListContext);
+  const checked = selectList?.value === value;
+  const label = typeaheadLabel ?? (getTextFromNode(children) || value);
+
+  return (
+    <DropdownMenuItem
+      aria-checked={checked}
+      className={className}
+      data-select-list-item=""
+      data-select-list-item-value={value}
+      density={density}
+      disabled={disabled}
+      role="menuitemradio"
+      typeaheadLabel={label}
+      variant={variant}
+      onSelect={(event) => {
+        onSelect?.(event);
+        if (event.defaultPrevented || disabled) {
+          return;
+        }
+
+        selectList?.onValueChange?.(value);
+        if (selectList && !selectList.closeOnSelect) {
+          event.preventDefault();
+        }
+      }}
+      {...props}
+    >
+      <DropdownMenuItemContent
+        label={children}
+        checked={checked}
+        disabled={disabled}
+        reserveCheckColumn
+        showLeadingIcon={false}
+        showShortcuts={showShortcuts}
+        showTrailingHints={showTrailingHints}
+        shortcut={shortcut}
+        trailingHint={trailingHint}
+      />
+    </DropdownMenuItem>
+  );
+}
+
 export {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -566,4 +1575,6 @@ export {
   DropdownMenuPanelSeparator,
   DropdownMenuItemButton,
   DropdownMenuItemContent,
+  SelectList,
+  SelectListItem,
 };
