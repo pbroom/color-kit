@@ -185,7 +185,7 @@ type TooltipContentProps = React.ComponentProps<
 
 function TooltipContent({
   className,
-  sideOffset = 0,
+  sideOffset = 4,
   children,
   highContrast = true,
   showPointer = true,
@@ -205,7 +205,7 @@ function TooltipContent({
           'z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance',
           highContrast
             ? 'bg-foreground text-background'
-            : 'border border-border bg-background text-foreground shadow-md',
+            : 'bg-background text-foreground [filter:drop-shadow(0_0_1px_var(--border))_drop-shadow(0_4px_6px_rgb(0_0_0/0.1))]',
           disableOpenAnimation
             ? 'animate-none'
             : 'animate-in fade-in-0 zoom-in-95',
@@ -220,13 +220,24 @@ function TooltipContent({
         {children}
         {showPointer ? (
           <TooltipPrimitive.Arrow
-            className={cn(
-              'z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]',
-              highContrast
-                ? 'bg-foreground fill-foreground'
-                : 'border border-border bg-background fill-background',
-            )}
-          />
+            asChild
+            width={12}
+            height={6}
+          >
+            <svg
+              aria-hidden="true"
+              className="overflow-visible"
+              style={{ width: 12, height: 6 }}
+              focusable="false"
+              viewBox="0 0 12 6"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <path
+                d="M0 0 L4.5 5 Q6 7 7.5 5 L12 0 Z"
+                className={highContrast ? 'fill-foreground' : 'fill-background'}
+              />
+            </svg>
+          </TooltipPrimitive.Arrow>
         ) : null}
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
