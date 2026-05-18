@@ -1,5 +1,6 @@
 import {
   Background,
+  ChromaMarkers,
   ColorApi,
   ColorArea,
   ColorPlane,
@@ -32,6 +33,7 @@ import {
   Calendar,
   Camera,
   ChevronDown,
+  ChevronsUpDown,
   ArrowLeftToLine,
   ArrowRightToLine,
   Braces,
@@ -100,6 +102,7 @@ import {
   DynamicLucideIcon,
   LucideIconPicker,
 } from '@/components/lucide-icon-picker';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -116,6 +119,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  SelectList,
+  SelectListItem,
 } from '@/components/ui/dropdown-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
@@ -131,6 +136,8 @@ type LabPageKey =
   | 'plane'
   | 'input'
   | 'inputMulti'
+  | 'checkbox'
+  | 'slider'
   | 'tooltip'
   | 'menu'
   | 'select'
@@ -190,6 +197,7 @@ type SelectOptionId =
   | 'groupSelection';
 
 const MAX_PRIMITIVE_PRECISION_DIGITS = 12;
+const SLIDER_RANGE_EPSILON = 0.0001;
 
 type SliderRailStyle = CSSProperties & {
   '--ck-slider-gradient-active': string;
@@ -202,6 +210,8 @@ type SliderRailStyle = CSSProperties & {
   '--ck-slider-thumb-fill-active': string;
   '--ck-slider-thumb-fill-srgb': string;
 };
+type SliderOrientation = 'horizontal' | 'vertical';
+type SliderMarkerMode = 'auto' | 'off';
 
 const LAB_PAGES: Array<{
   value: LabPageKey;
@@ -218,6 +228,14 @@ const LAB_PAGES: Array<{
   {
     value: 'inputMulti',
     label: 'Input Multi',
+  },
+  {
+    value: 'checkbox',
+    label: 'Checkbox',
+  },
+  {
+    value: 'slider',
+    label: 'Slider',
   },
   {
     value: 'tooltip',
@@ -527,6 +545,10 @@ const SELECT_OPTIONS: SelectOption[] = [
     dividerBefore: true,
   },
 ];
+
+const SELECT_LONG_MENU_NUMBERS = Array.from({ length: 101 }, (_, index) =>
+  index.toString(),
+);
 
 const CONFIGURABLE_MENU_ITEM_IDS: ConfigurableMenuItemId[] = [
   'itemOne',
@@ -902,8 +924,9 @@ function getOklchSliderRail(
   requested: ColorValue,
   gamut: OutputGamut,
   hueGradientMode?: SliderHueGradientMode,
+  rangeOverride?: [number, number],
 ): { colorSpace: OutputGamut; style: SliderRailStyle } {
-  const range = ColorApi.resolveColorSliderRange(channel);
+  const range = ColorApi.resolveColorSliderRange(channel, rangeOverride);
   const gradient = ColorApi.getSliderGradientStyles({
     model: 'oklch',
     channel,
@@ -1198,27 +1221,9 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={checked}
-      className="relative flex min-h-6 min-w-0 max-w-full items-center gap-2 py-1 text-left text-[11px] font-medium leading-4 tracking-[0.005em] text-white/80 outline-none focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80"
-      onClick={() => onChange(!checked)}
-    >
-      <span
-        aria-hidden="true"
-        className={`flex size-4 shrink-0 items-center justify-center rounded-[5px] border text-white transition-[background-color,border-color] ${
-          checked
-            ? 'border-[#007be5] bg-[#0d99ff]'
-            : 'border-[#4C4C4C] bg-[#383838]'
-        }`}
-      >
-        {checked ? (
-          <Check aria-hidden="true" className="size-3" strokeWidth={3} />
-        ) : null}
-      </span>
-      <span className="min-w-0">{label}</span>
-    </button>
+    <Checkbox checked={checked} onCheckedChange={onChange}>
+      {label}
+    </Checkbox>
   );
 }
 
@@ -1323,6 +1328,9 @@ function NumberConfigField({
   value,
   onChange,
   step = 1,
+  min = 0,
+  max = 5000,
+  precision = 0,
   leadingAccessory,
   trailingAccessory,
 }: {
@@ -1330,6 +1338,9 @@ function NumberConfigField({
   value: number;
   onChange: (value: number) => void;
   step?: number;
+  min?: number;
+  max?: number;
+  precision?: number;
   leadingAccessory?: ReactNode;
   trailingAccessory?: ReactNode;
 }) {
@@ -1341,19 +1352,21 @@ function NumberConfigField({
         </span>
         <PrimitiveValueInput
           value={value}
-          onValueChange={(nextValue) => onChange(Math.max(0, nextValue))}
+          onValueChange={(nextValue) =>
+            onChange(Math.min(max, Math.max(min, nextValue)))
+          }
           ariaLabel={label}
           leadingAccessory={leadingAccessory}
           trailingAccessory={trailingAccessory}
           leadingElement={null}
-          min={0}
-          max={5000}
+          min={min}
+          max={max}
           wrapMode="clamp"
           step={step}
           fineStep={step / 10}
           coarseStep={step * 10}
           pageStep={step * 10}
-          precision={0}
+          precision={precision}
           autoTrim
           allowExpressions
           selectAllOnFocus
@@ -2551,6 +2564,7 @@ function LabMenuContent({
               >
                 <DropdownMenuSubTrigger
                   variant="ui3"
+                  typeaheadLabel={option.label}
                   onClick={() => openSubmenuImmediately(option.value)}
                   onKeyDown={(event) => {
                     if (
@@ -2593,6 +2607,7 @@ function LabMenuContent({
                         <DropdownMenuItem
                           key={submenuItem.label}
                           variant="ui3"
+                          typeaheadLabel={submenuItem.label}
                           disabled={submenuItem.disabled}
                           onSelect={() => onValueChange(option.value)}
                         >
@@ -2614,6 +2629,7 @@ function LabMenuContent({
             ) : (
               <DropdownMenuItem
                 variant="ui3"
+                typeaheadLabel={option.label}
                 disabled={option.disabled}
                 onSelect={() => onValueChange(option.value)}
               >
@@ -3069,6 +3085,42 @@ function InlineLabMenuContent({
   );
 }
 
+function SelectLongMenuContent({
+  align,
+  onValueChange,
+  selectedValue,
+  side,
+}: {
+  align: PlacementAlign;
+  onValueChange: (value: string) => void;
+  selectedValue: string;
+  side: PlacementSide;
+}) {
+  return (
+    <DropdownMenuContent
+      aria-label="Number list"
+      align={align}
+      collisionPadding={8}
+      side={side}
+      sideOffset={4}
+      variant="ui3"
+      className="overflow-y-auto overscroll-contain"
+      style={{
+        maxHeight:
+          'min(420px, var(--radix-dropdown-menu-content-available-height))',
+      }}
+    >
+      <SelectList value={selectedValue} onValueChange={onValueChange}>
+        {SELECT_LONG_MENU_NUMBERS.map((number) => (
+          <SelectListItem key={number} value={number}>
+            {number}
+          </SelectListItem>
+        ))}
+      </SelectList>
+    </DropdownMenuContent>
+  );
+}
+
 function SelectPlaygroundStage({
   value,
   onValueChange,
@@ -3099,6 +3151,8 @@ function SelectPlaygroundStage({
   showTrailingHints: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [numberOpen, setNumberOpen] = useState(false);
+  const [numberValue, setNumberValue] = useState('0');
   const selectedOption = SELECT_OPTION_BY_ID[value] ?? SELECT_OPTIONS[0];
   const showTriggerText = triggerContent !== 'icon';
   const showLeadingTriggerIcon =
@@ -3133,67 +3187,124 @@ function SelectPlaygroundStage({
 
     setOpen(true);
   }, [triggerBehavior]);
+  const handleNumberTriggerPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (event.button !== 0 || event.ctrlKey) {
+        return;
+      }
+
+      event.preventDefault();
+      event.currentTarget.focus();
+    },
+    [],
+  );
+  const handleNumberTriggerClick = useCallback(() => {
+    setNumberOpen(true);
+  }, []);
+  const handleNumberValueChange = useCallback((nextValue: string) => {
+    setNumberValue(nextValue);
+    setNumberOpen(false);
+  }, []);
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (disabled && nextOpen) {
-          return;
-        }
+    <div className="inline-flex items-center gap-1">
+      <DropdownMenu
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (disabled && nextOpen) {
+            return;
+          }
 
-        setOpen(nextOpen);
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Menu action: ${selectedOption.label}`}
-          disabled={disabled}
-          onPointerDown={handleTriggerPointerDown}
-          onClick={handleTriggerClick}
-          className={`box-border inline-flex items-center justify-center gap-1.5 rounded-[5px] border py-0 font-medium leading-4 tracking-[0.005em] outline-none shadow-none transition-[background-color,border-color,color] focus:ring-0 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-white/25 disabled:hover:border-transparent disabled:hover:bg-transparent data-[state=open]:border-transparent data-[state=open]:bg-[#0d99ff] data-[state=open]:text-white ${
-            TOGGLE_BUTTON_DENSITY_CLASS.compact
-          } ${
-            triggerContent === 'icon'
-              ? 'w-6 px-0'
-              : 'w-auto min-w-6 max-w-[180px] px-2'
-          } ${getToggleButtonStateClass(false, 'default')}`}
-        >
-          {showLeadingTriggerIcon ? (
-            <span className="flex size-3.5 shrink-0 items-center justify-center text-current">
-              <Grid3X3
-                aria-hidden="true"
-                className="size-3.5"
-                strokeWidth={1.75}
-              />
-            </span>
-          ) : null}
-          {showTriggerText ? (
-            <span className="min-w-0 truncate">{triggerLabel}</span>
-          ) : null}
-          {showTrailingTriggerIcon ? (
-            <span className="flex size-3.5 shrink-0 items-center justify-center text-current">
-              <ChevronDown
-                aria-hidden="true"
-                className="size-3.5"
-                strokeWidth={1.75}
-              />
-            </span>
-          ) : null}
-        </button>
-      </DropdownMenuTrigger>
-      <LabMenuContent
-        align={align}
-        onValueChange={onValueChange}
-        side={side}
-        showShortcuts={showShortcuts}
-        showSubmenus={showSubmenus}
-        showDividers={showDividers}
-        showLeadingIcons={showLeadingIcons}
-        showTrailingHints={showTrailingHints}
-      />
-    </DropdownMenu>
+          setOpen(nextOpen);
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Menu action: ${selectedOption.label}`}
+            disabled={disabled}
+            onPointerDown={handleTriggerPointerDown}
+            onClick={handleTriggerClick}
+            className={`box-border inline-flex items-center justify-center gap-1.5 rounded-[5px] border py-0 font-medium leading-4 tracking-[0.005em] outline-none shadow-none transition-[background-color,border-color,color] focus:ring-0 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-white/25 disabled:hover:border-transparent disabled:hover:bg-transparent data-[state=open]:border-transparent data-[state=open]:bg-[#0d99ff] data-[state=open]:text-white ${
+              TOGGLE_BUTTON_DENSITY_CLASS.compact
+            } ${
+              triggerContent === 'icon'
+                ? 'w-6 px-0'
+                : 'w-auto min-w-6 max-w-[180px] px-2'
+            } ${getToggleButtonStateClass(false, 'default')}`}
+          >
+            {showLeadingTriggerIcon ? (
+              <span className="flex size-3.5 shrink-0 items-center justify-center text-current">
+                <Grid3X3
+                  aria-hidden="true"
+                  className="size-3.5"
+                  strokeWidth={1.75}
+                />
+              </span>
+            ) : null}
+            {showTriggerText ? (
+              <span className="min-w-0 truncate">{triggerLabel}</span>
+            ) : null}
+            {showTrailingTriggerIcon ? (
+              <span className="flex size-3.5 shrink-0 items-center justify-center text-current">
+                <ChevronDown
+                  aria-hidden="true"
+                  className="size-3.5"
+                  strokeWidth={1.75}
+                />
+              </span>
+            ) : null}
+          </button>
+        </DropdownMenuTrigger>
+        <LabMenuContent
+          align={align}
+          onValueChange={onValueChange}
+          side={side}
+          showShortcuts={showShortcuts}
+          showSubmenus={showSubmenus}
+          showDividers={showDividers}
+          showLeadingIcons={showLeadingIcons}
+          showTrailingHints={showTrailingHints}
+        />
+      </DropdownMenu>
+      <DropdownMenu
+        open={numberOpen}
+        onOpenChange={(nextOpen) => {
+          if (disabled && nextOpen) {
+            return;
+          }
+
+          setNumberOpen(nextOpen);
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Number: ${numberValue}`}
+            disabled={disabled}
+            onPointerDown={handleNumberTriggerPointerDown}
+            onClick={handleNumberTriggerClick}
+            className={`box-border inline-flex min-w-6 max-w-[180px] items-center justify-center gap-1.5 rounded-[5px] border px-2 py-0 font-medium leading-4 tracking-[0.005em] outline-none shadow-none transition-[background-color,border-color,color] focus:ring-0 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-white/25 disabled:hover:border-transparent disabled:hover:bg-transparent data-[state=open]:border-transparent data-[state=open]:bg-[#0d99ff] data-[state=open]:text-white ${TOGGLE_BUTTON_DENSITY_CLASS.compact} ${getToggleButtonStateClass(
+              false,
+              'default',
+            )}`}
+          >
+            <span className="min-w-0 truncate">{numberValue}</span>
+            <ChevronsUpDown
+              aria-hidden="true"
+              className="size-3.5"
+              strokeWidth={1.75}
+            />
+          </button>
+        </DropdownMenuTrigger>
+        <SelectLongMenuContent
+          align={align}
+          onValueChange={handleNumberValueChange}
+          selectedValue={numberValue}
+          side={side}
+        />
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -3379,6 +3490,104 @@ function MultiInputPlaygroundStage({
   );
 }
 
+function CheckboxPlaygroundStage({
+  checked,
+  disabled,
+  label,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  disabled: boolean;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="w-[160px] min-w-0 max-w-full">
+      <Checkbox
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      >
+        {label.trim() || 'Checkbox'}
+      </Checkbox>
+    </div>
+  );
+}
+
+function SliderPlaygroundStage({
+  channel,
+  gamut,
+  orientation,
+  range,
+  hueGradientMode,
+  dragEpsilon,
+  maxPointerRate,
+  markerMode,
+}: {
+  channel: ColorSliderChannel;
+  gamut: OutputGamut;
+  orientation: SliderOrientation;
+  range: [number, number];
+  hueGradientMode: SliderHueGradientMode;
+  dragEpsilon: number;
+  maxPointerRate: number;
+  markerMode: SliderMarkerMode;
+}) {
+  const color = useColor({
+    defaultColor: 'oklch(0.64 0.22 35)',
+    defaultGamut: gamut,
+  });
+  const setSliderGamutRef = useRef(color.setActiveGamut);
+
+  useEffect(() => {
+    setSliderGamutRef.current = color.setActiveGamut;
+  }, [color.setActiveGamut]);
+
+  useEffect(() => {
+    if (color.activeGamut === gamut) {
+      return;
+    }
+    setSliderGamutRef.current(gamut, 'programmatic');
+  }, [color.activeGamut, gamut]);
+
+  const sliderRail = useMemo(
+    () =>
+      getOklchSliderRail(
+        channel,
+        color.requested,
+        color.activeGamut,
+        hueGradientMode,
+        range,
+      ),
+    [channel, color.activeGamut, color.requested, hueGradientMode, range],
+  );
+
+  return (
+    <div
+      className={
+        orientation === 'vertical'
+          ? 'ck-demo-stack ck-slider-single-demo ck-slider-single-demo-vertical'
+          : 'ck-demo-stack ck-slider-single-demo'
+      }
+    >
+      <ColorSlider
+        channel={channel}
+        className="ck-slider ck-slider-v2"
+        data-color-space={sliderRail.colorSpace}
+        orientation={orientation}
+        range={range}
+        requested={color.requested}
+        onChangeRequested={color.setRequested}
+        dragEpsilon={dragEpsilon}
+        maxPointerRate={maxPointerRate}
+        style={sliderRail.style}
+      >
+        {channel === 'c' && markerMode === 'auto' ? <ChromaMarkers /> : null}
+      </ColorSlider>
+    </div>
+  );
+}
+
 export function LabPage() {
   const color = useColor({
     defaultColor: 'oklch(0.64 0.24 28)',
@@ -3476,7 +3685,7 @@ export function LabPage() {
   const [selectValue, setSelectValue] = useState<SelectOptionId>('copy');
   const [selectDisabled, setSelectDisabled] = useState(false);
   const [selectSide, setSelectSide] = useState<PlacementSide>('bottom');
-  const [selectAlign, setSelectAlign] = useState<PlacementAlign>('center');
+  const [selectAlign, setSelectAlign] = useState<PlacementAlign>('start');
   const [selectTriggerContent, setSelectTriggerContent] =
     useState<SelectTriggerContent>('icon');
   const [selectTriggerIconTextPlacement, setSelectTriggerIconTextPlacement] =
@@ -3502,6 +3711,21 @@ export function LabPage() {
   const [multiInputConfig, setMultiInputConfig] = useState<MultiInputConfig>(
     DEFAULT_MULTI_INPUT_CONFIG,
   );
+  const [checkboxChecked, setCheckboxChecked] = useState(true);
+  const [checkboxDisabled, setCheckboxDisabled] = useState(false);
+  const [checkboxLabel, setCheckboxLabel] = useState('Checkbox');
+  const [sliderChannel, setSliderChannel] = useState<ColorSliderChannel>('c');
+  const [sliderGamut, setSliderGamut] = useState<OutputGamut>('display-p3');
+  const [sliderOrientation, setSliderOrientation] =
+    useState<SliderOrientation>('horizontal');
+  const [sliderRangeMin, setSliderRangeMin] = useState(0);
+  const [sliderRangeMax, setSliderRangeMax] = useState(0.4);
+  const [sliderHueGradientMode, setSliderHueGradientMode] =
+    useState<SliderHueGradientMode>('static');
+  const [sliderDragEpsilon, setSliderDragEpsilon] = useState(0.0005);
+  const [sliderMaxPointerRate, setSliderMaxPointerRate] = useState(60);
+  const [sliderMarkerMode, setSliderMarkerMode] =
+    useState<SliderMarkerMode>('auto');
   const [toggleButtonSelectionState, setToggleButtonSelectionState] =
     useState<ToggleButtonSelectionState>('off');
   const [toggleButtonInteractionState, setToggleButtonInteractionState] =
@@ -3536,6 +3760,45 @@ export function LabPage() {
   const hueRail = useMemo(
     () => getOklchSliderRail('h', color.requested, color.activeGamut),
     [color.activeGamut, color.requested],
+  );
+  const sliderRangeBounds = useMemo(
+    () => ColorApi.resolveColorSliderRange(sliderChannel),
+    [sliderChannel],
+  );
+  const sliderRange = useMemo<[number, number]>(() => {
+    const [lowerBound, upperBound] = sliderRangeBounds;
+    const min = Math.max(
+      lowerBound,
+      Math.min(sliderRangeMin, sliderRangeMax - SLIDER_RANGE_EPSILON),
+    );
+    const max = Math.min(
+      upperBound,
+      Math.max(sliderRangeMax, min + SLIDER_RANGE_EPSILON),
+    );
+    return [min, max];
+  }, [sliderRangeBounds, sliderRangeMin, sliderRangeMax]);
+  const sliderRangeMinControlMax = Math.max(
+    sliderRangeBounds[0],
+    Math.min(
+      sliderRangeMax - SLIDER_RANGE_EPSILON,
+      sliderRangeBounds[1] - SLIDER_RANGE_EPSILON,
+    ),
+  );
+  const sliderRangeMaxControlMin = Math.min(
+    sliderRangeBounds[1],
+    Math.max(
+      sliderRangeMin + SLIDER_RANGE_EPSILON,
+      sliderRangeBounds[0] + SLIDER_RANGE_EPSILON,
+    ),
+  );
+  const setSliderChannelWithDefaultRange = useCallback(
+    (nextChannel: ColorSliderChannel) => {
+      const [min, max] = ColorApi.resolveColorSliderRange(nextChannel);
+      setSliderChannel(nextChannel);
+      setSliderRangeMin(min);
+      setSliderRangeMax(max);
+    },
+    [],
   );
   const colorPlaneMultiInputValues = useMemo<Record<MultiInputFieldId, number>>(
     () => ({
@@ -3793,6 +4056,24 @@ export function LabPage() {
                 values={multiInputValues}
                 config={multiInputConfig}
                 onFieldChange={setMultiInputFieldValue}
+              />
+            ) : activePage === 'checkbox' ? (
+              <CheckboxPlaygroundStage
+                checked={checkboxChecked}
+                disabled={checkboxDisabled}
+                label={checkboxLabel}
+                onCheckedChange={setCheckboxChecked}
+              />
+            ) : activePage === 'slider' ? (
+              <SliderPlaygroundStage
+                channel={sliderChannel}
+                gamut={sliderGamut}
+                orientation={sliderOrientation}
+                range={sliderRange}
+                hueGradientMode={sliderHueGradientMode}
+                dragEpsilon={sliderDragEpsilon}
+                maxPointerRate={sliderMaxPointerRate}
+                markerMode={sliderMarkerMode}
               />
             ) : activePage === 'tooltip' ? (
               <TooltipPlaygroundStage
@@ -4714,6 +4995,126 @@ export function LabPage() {
                                 )
                               }
                             />
+                          </div>
+                        </PanelSection>
+                      </>
+                    ) : activePage === 'checkbox' ? (
+                      <>
+                        <PanelSection
+                          title="Checkbox"
+                          description="Preview the compact checkbox row used throughout the properties panel."
+                        >
+                          <div className="space-y-3">
+                            <ToggleField
+                              label="Checked"
+                              checked={checkboxChecked}
+                              onChange={setCheckboxChecked}
+                            />
+                            <ToggleField
+                              label="Disabled"
+                              checked={checkboxDisabled}
+                              onChange={setCheckboxDisabled}
+                            />
+                            <TextConfigField
+                              label="Label"
+                              value={checkboxLabel}
+                              onChange={setCheckboxLabel}
+                              maxLength={24}
+                            />
+                          </div>
+                        </PanelSection>
+                      </>
+                    ) : activePage === 'slider' ? (
+                      <>
+                        <PanelSection
+                          title="Slider"
+                          description="Preview one ColorSlider instance and tune its slider-specific props."
+                        >
+                          <div className="space-y-3">
+                            <SegmentedField
+                              label="Channel"
+                              value={sliderChannel}
+                              onChange={setSliderChannelWithDefaultRange}
+                              options={[
+                                { value: 'l', label: 'L' },
+                                { value: 'c', label: 'C' },
+                                { value: 'h', label: 'H' },
+                                { value: 'alpha', label: 'A' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Preview gamut"
+                              value={sliderGamut}
+                              onChange={setSliderGamut}
+                              options={[
+                                { value: 'display-p3', label: 'P3' },
+                                { value: 'srgb', label: 'sRGB' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Orientation"
+                              value={sliderOrientation}
+                              onChange={setSliderOrientation}
+                              options={[
+                                { value: 'horizontal', label: 'Horizontal' },
+                                { value: 'vertical', label: 'Vertical' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Hue gradient"
+                              value={sliderHueGradientMode}
+                              onChange={setSliderHueGradientMode}
+                              options={[
+                                { value: 'static', label: 'Static' },
+                                { value: 'selected-color', label: 'Color' },
+                              ]}
+                            />
+                            <SegmentedField
+                              label="Markers"
+                              value={sliderMarkerMode}
+                              onChange={setSliderMarkerMode}
+                              options={[
+                                { value: 'auto', label: 'Auto' },
+                                { value: 'off', label: 'Off' },
+                              ]}
+                            />
+                            <div className={PANEL_TWO_COLUMN_GRID_CLASS}>
+                              <NumberConfigField
+                                label="Range min"
+                                value={sliderRangeMin}
+                                onChange={setSliderRangeMin}
+                                step={0.01}
+                                min={sliderRangeBounds[0]}
+                                max={sliderRangeMinControlMax}
+                                precision={4}
+                              />
+                              <NumberConfigField
+                                label="Range max"
+                                value={sliderRangeMax}
+                                onChange={setSliderRangeMax}
+                                step={0.01}
+                                min={sliderRangeMaxControlMin}
+                                max={sliderRangeBounds[1]}
+                                precision={4}
+                              />
+                              <NumberConfigField
+                                label="Drag epsilon"
+                                value={sliderDragEpsilon}
+                                onChange={setSliderDragEpsilon}
+                                step={0.0001}
+                                min={0}
+                                max={1}
+                                precision={4}
+                              />
+                              <NumberConfigField
+                                label="Max pointer rate"
+                                value={sliderMaxPointerRate}
+                                onChange={setSliderMaxPointerRate}
+                                step={1}
+                                min={1}
+                                max={240}
+                              />
+                            </div>
                           </div>
                         </PanelSection>
                       </>

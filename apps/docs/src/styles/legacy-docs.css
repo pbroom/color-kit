@@ -1454,6 +1454,17 @@ html:not(.dark) .prose .shiki span {
   min-width: 0;
 }
 
+.ck-slider-single-demo {
+  place-items: center stretch;
+  width: min(100%, 220px);
+}
+
+.ck-slider-single-demo-vertical {
+  width: min(100%, 160px);
+  min-height: 260px;
+  place-items: stretch center;
+}
+
 .ck-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1546,6 +1557,13 @@ html:not(.dark) .prose .shiki span {
   overflow: visible;
 }
 
+.ck-slider-v2[data-orientation='vertical'] {
+  width: var(--ck-slider-rail-height);
+  min-width: var(--ck-slider-rail-height);
+  min-height: 260px;
+  justify-self: center;
+}
+
 @media (hover: none), (pointer: coarse) {
   .ck-slider-v2 {
     min-height: var(--ck-slider-hit-height);
@@ -1555,6 +1573,7 @@ html:not(.dark) .prose .shiki span {
 .ck-slider-v2::before {
   content: '';
   position: absolute;
+  z-index: 0;
   top: 50%;
   left: 0;
   width: 100%;
@@ -1594,6 +1613,22 @@ html:not(.dark) .prose .shiki span {
     right center;
   background-repeat: no-repeat;
   pointer-events: none;
+}
+
+.ck-slider-v2[data-orientation='vertical']::before {
+  top: 0;
+  left: 50%;
+  width: var(--ck-slider-rail-height);
+  height: 100%;
+  transform: translateX(-50%);
+  background-size:
+    100% var(--ck-slider-thumb-radius),
+    100% calc(100% - var(--ck-slider-thumb-radius) * 2),
+    100% var(--ck-slider-thumb-radius);
+  background-position:
+    center bottom,
+    center center,
+    center top;
 }
 
 @supports (color: color(display-p3 1 1 1)) {
@@ -1650,6 +1685,7 @@ html:not(.dark) .prose .shiki span {
 }
 
 .ck-slider-v2 [data-color-slider-thumb] {
+  z-index: 2;
   width: var(--ck-slider-thumb-size);
   height: var(--ck-slider-thumb-size);
   border: 4px solid #ffffff;
@@ -1660,6 +1696,7 @@ html:not(.dark) .prose .shiki span {
 }
 
 .ck-slider-v2 [data-color-slider-marker] {
+  z-index: 1;
   border-radius: 999px;
   background: #ffffff;
 }
