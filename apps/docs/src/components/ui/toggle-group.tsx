@@ -1,5 +1,9 @@
 import * as React from 'react';
-import * as ToggleGroupPrimitive from '@radix-ui/react-toggle-group';
+import {
+  ToggleGroup as ToggleGroupPrimitive,
+  type ToggleGroupChangeEventDetails,
+} from '@base-ui/react/toggle-group';
+import { Toggle as TogglePrimitive } from '@base-ui/react/toggle';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +26,7 @@ const toggleGroupVariants = cva('flex items-center justify-center gap-1', {
 });
 
 const toggleGroupItemVariants = cva(
-  'inline-flex items-center justify-center rounded-md px-2.5 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center rounded-md px-2.5 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[pressed]:bg-background data-[pressed]:text-foreground data-[pressed]:shadow-sm disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       size: {
@@ -37,22 +41,92 @@ const toggleGroupItemVariants = cva(
   },
 );
 
+type ToggleGroupSingleProps = Omit<
+  React.ComponentProps<typeof ToggleGroupPrimitive>,
+  'className' | 'defaultValue' | 'multiple' | 'onValueChange' | 'value'
+> & {
+  type?: 'single';
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (
+    value: string,
+    eventDetails: ToggleGroupChangeEventDetails,
+  ) => void;
+};
+
+type ToggleGroupMultipleProps = Omit<
+  React.ComponentProps<typeof ToggleGroupPrimitive>,
+  'className' | 'defaultValue' | 'multiple' | 'onValueChange' | 'value'
+> & {
+  type: 'multiple';
+  value?: string[];
+  defaultValue?: string[];
+  onValueChange?: (
+    value: string[],
+    eventDetails: ToggleGroupChangeEventDetails,
+  ) => void;
+};
+
+type ToggleGroupProps = (ToggleGroupSingleProps | ToggleGroupMultipleProps) &
+  VariantProps<typeof toggleGroupVariants> & {
+    className?: string;
+    loop?: boolean;
+  };
+
 function ToggleGroup({
   className,
   variant,
   size,
   children,
+  defaultValue,
+  loop,
+  onValueChange,
+  type = 'single',
+  value,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
-  VariantProps<typeof toggleGroupVariants>) {
+}: ToggleGroupProps) {
+  const multiple = type === 'multiple';
+  const primitiveValue = React.useMemo(
+    () =>
+      value === undefined ? undefined : Array.isArray(value) ? value : [value],
+    [value],
+  );
+  const primitiveDefaultValue = React.useMemo(
+    () =>
+      defaultValue === undefined
+        ? undefined
+        : Array.isArray(defaultValue)
+          ? defaultValue
+          : [defaultValue],
+    [defaultValue],
+  );
+
   return (
-    <ToggleGroupPrimitive.Root
+    <ToggleGroupPrimitive
       data-slot="toggle-group"
       className={cn(toggleGroupVariants({ variant, size }), className)}
+      defaultValue={primitiveDefaultValue}
+      loopFocus={loop}
+      multiple={multiple}
+      value={primitiveValue}
+      onValueChange={(nextValue, eventDetails) => {
+        if (multiple) {
+          (
+            onValueChange as
+              | ToggleGroupMultipleProps['onValueChange']
+              | undefined
+          )?.(nextValue, eventDetails);
+          return;
+        }
+
+        (
+          onValueChange as ToggleGroupSingleProps['onValueChange'] | undefined
+        )?.(nextValue[0] ?? '', eventDetails);
+      }}
       {...props}
     >
       {children}
-    </ToggleGroupPrimitive.Root>
+    </ToggleGroupPrimitive>
   );
 }
 
@@ -60,10 +134,10 @@ function ToggleGroupItem({
   className,
   size,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
+}: React.ComponentProps<typeof TogglePrimitive> &
   VariantProps<typeof toggleGroupItemVariants>) {
   return (
-    <ToggleGroupPrimitive.Item
+    <TogglePrimitive
       data-slot="toggle-group-item"
       className={cn(toggleGroupItemVariants({ size }), className)}
       {...props}

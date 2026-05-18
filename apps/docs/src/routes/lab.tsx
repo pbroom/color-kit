@@ -3104,10 +3104,9 @@ function SelectLongMenuContent({
       side={side}
       sideOffset={4}
       variant="ui3"
-      className="overflow-y-auto overscroll-contain"
+      className="ck-lab-select-long-menu overflow-y-auto overscroll-contain"
       style={{
-        maxHeight:
-          'min(420px, var(--radix-dropdown-menu-content-available-height))',
+        maxHeight: 'min(420px, var(--available-height, 420px))',
       }}
     >
       <SelectList value={selectedValue} onValueChange={onValueChange}>
