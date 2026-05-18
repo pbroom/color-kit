@@ -77,14 +77,19 @@ export function normalizeColorSliderPointer(
   pointer: number,
   start: number,
   size: number,
+  positionInset = 0,
 ): number {
-  if (size <= 0) {
+  const inset = clamp(positionInset, 0, size / 2);
+  const trackStart = start + inset;
+  const trackSize = size - inset * 2;
+
+  if (trackSize <= 0) {
     return 0;
   }
   if (orientation === 'horizontal') {
-    return clamp((pointer - start) / size, 0, 1);
+    return clamp((pointer - trackStart) / trackSize, 0, 1);
   }
-  return 1 - clamp((pointer - start) / size, 0, 1);
+  return 1 - clamp((pointer - trackStart) / trackSize, 0, 1);
 }
 
 export function colorFromColorSliderKey(
