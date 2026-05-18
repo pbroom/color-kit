@@ -1,5 +1,5 @@
 import * as React from 'react';
-import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { Menu as DropdownMenuPrimitive } from '@base-ui/react/menu';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +26,7 @@ type DropdownMenuItemIcon = React.ComponentType<
 >;
 
 const dropdownMenuUi3OpenAnimationClass =
-  'data-[state=open]:[animation-delay:-35ms] data-[state=open]:[animation-duration:90ms] data-[state=open]:[animation-fill-mode:both] data-[state=open]:[animation-timing-function:cubic-bezier(0.16,1,0.3,1)] data-[state=open]:[--tw-enter-opacity:0.28] data-[state=open]:[--tw-enter-scale:0.985] data-[state=open]:[--tw-enter-translate-y:-1px] motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none';
+  'data-[open]:[animation-delay:-35ms] data-[open]:[animation-duration:90ms] data-[open]:[animation-fill-mode:both] data-[open]:[animation-timing-function:cubic-bezier(0.16,1,0.3,1)] data-[open]:[--tw-enter-opacity:0.28] data-[open]:[--tw-enter-scale:0.985] data-[open]:[--tw-enter-translate-y:-1px] motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none';
 const dropdownMenuUi3ContentClass = `w-[208px] rounded-[13px] border-0 bg-[#1e1e1e] p-2 text-white shadow-[0_0_0.5px_0_rgba(0,0,0,0.12),0_10px_16px_0_rgba(0,0,0,0.12),0_2px_5px_0_rgba(0,0,0,0.15)] ${dropdownMenuUi3OpenAnimationClass}`;
 const dropdownMenuUi3SubContentClass = `w-[176px] rounded-[13px] border-0 bg-[#1e1e1e] p-2 text-white shadow-[0_0_0.5px_0_rgba(0,0,0,0.12),0_10px_16px_0_rgba(0,0,0,0.12),0_2px_5px_0_rgba(0,0,0,0.15)] ${dropdownMenuUi3OpenAnimationClass}`;
 const dropdownMenuUi3ItemDensityClass: Record<DropdownMenuDensity, string> = {
@@ -34,7 +34,7 @@ const dropdownMenuUi3ItemDensityClass: Record<DropdownMenuDensity, string> = {
   comfortable: 'h-7 min-h-7',
 };
 const dropdownMenuUi3ItemClass =
-  'group relative flex w-full cursor-default select-none items-center justify-start gap-0 rounded-[5px] px-2 py-0 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white outline-none hover:bg-[#0d99ff] hover:text-white focus-visible:bg-[#0d99ff] focus-visible:text-white data-[dropdown-menu-typeahead-active=true]:!bg-[#0d99ff] data-[dropdown-menu-typeahead-active=true]:!text-white data-[highlighted]:bg-[#0d99ff] data-[highlighted]:text-white data-[state=open]:bg-[#303030] data-[state=open]:text-white data-[highlighted]:data-[state=open]:bg-[#0d99ff] data-[dropdown-menu-submenu-child-active=true]:!bg-[#303030] data-[dropdown-menu-submenu-child-active=true]:!text-white data-[dropdown-menu-suppress-pointer-hover=true]:hover:bg-transparent data-[dropdown-menu-suppress-pointer-hover=true]:hover:text-white data-[dropdown-menu-suppress-pointer-hover=true]:data-[highlighted]:bg-transparent data-[dropdown-menu-suppress-pointer-hover=true]:data-[highlighted]:text-white';
+  'group relative flex w-full cursor-default select-none items-center justify-start gap-0 rounded-[5px] px-2 py-0 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white outline-none hover:bg-[#0d99ff] hover:text-white focus-visible:bg-[#0d99ff] focus-visible:text-white data-[dropdown-menu-typeahead-active=true]:!bg-[#0d99ff] data-[dropdown-menu-typeahead-active=true]:!text-white data-[highlighted]:bg-[#0d99ff] data-[highlighted]:text-white data-[popup-open]:bg-[#303030] data-[popup-open]:text-white data-[highlighted]:data-[popup-open]:bg-[#0d99ff] data-[dropdown-menu-submenu-child-active=true]:!bg-[#303030] data-[dropdown-menu-submenu-child-active=true]:!text-white data-[dropdown-menu-suppress-pointer-hover=true]:hover:bg-transparent data-[dropdown-menu-suppress-pointer-hover=true]:hover:text-white data-[dropdown-menu-suppress-pointer-hover=true]:data-[highlighted]:bg-transparent data-[dropdown-menu-suppress-pointer-hover=true]:data-[highlighted]:text-white';
 const dropdownMenuUi3ItemDisabledClass =
   'disabled:text-white/35 disabled:hover:bg-transparent data-[disabled]:text-white/35 data-[disabled]:hover:bg-transparent data-[disabled]:focus-visible:bg-transparent';
 const dropdownMenuUi3SeparatorClass = 'mx-0 my-2 h-px bg-[#383838]';
@@ -67,6 +67,45 @@ const SelectListContext = React.createContext<{
   onValueChange?: (value: string) => void;
   value?: string;
 } | null>(null);
+
+function composeRefs<T>(
+  ...refs: Array<React.Ref<T> | undefined>
+): React.RefCallback<T> {
+  return (node) => {
+    for (const ref of refs) {
+      if (!ref) {
+        continue;
+      }
+
+      if (typeof ref === 'function') {
+        ref(node);
+      } else {
+        ref.current = node;
+      }
+    }
+  };
+}
+
+function cloneDropdownMenuRenderElement<P extends { className?: string }>(
+  element: React.ReactElement,
+  props: P,
+  extraProps?: Record<string, unknown>,
+) {
+  const elementProps = element.props as {
+    className?: string;
+    ref?: React.Ref<unknown>;
+  };
+
+  return React.cloneElement(element, {
+    ...props,
+    ...extraProps,
+    className: cn(elementProps.className, props.className),
+    ref: composeRefs(
+      elementProps.ref,
+      (props as { ref?: React.Ref<unknown> }).ref,
+    ),
+  });
+}
 
 function clampValue(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -157,7 +196,7 @@ function getDropdownMenuTypeaheadItems(
   ).flatMap((element) => {
     if (
       element.matches(
-        '[disabled], [aria-disabled="true"], [data-disabled], [data-state="closed"]',
+        '[disabled], [aria-disabled="true"], [data-disabled], [data-closed]',
       )
     ) {
       return [];
@@ -421,7 +460,7 @@ function getOpenTriggerForContent(content: HTMLElement): HTMLElement | null {
   }
 
   return ownerDocument.querySelector<HTMLElement>(
-    '[data-slot="dropdown-menu-trigger"][data-state="open"]',
+    '[data-slot="dropdown-menu-trigger"][data-popup-open]',
   );
 }
 
@@ -570,13 +609,41 @@ function DropdownMenu(
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
 }
 
-function DropdownMenuTrigger(
-  props: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>,
-) {
+type DropdownMenuTriggerProps = React.ComponentProps<
+  typeof DropdownMenuPrimitive.Trigger
+> & {
+  asChild?: boolean;
+};
+
+function DropdownMenuTrigger({
+  asChild,
+  children,
+  ...props
+}: DropdownMenuTriggerProps) {
+  if (asChild && React.isValidElement(children)) {
+    return (
+      <DropdownMenuPrimitive.Trigger
+        data-slot="dropdown-menu-trigger"
+        {...props}
+        render={(renderProps, state) =>
+          cloneDropdownMenuRenderElement(children, {
+            ...renderProps,
+            'data-state': state.open ? 'open' : 'closed',
+          })
+        }
+      />
+    );
+  }
+
   return (
     <DropdownMenuPrimitive.Trigger
       data-slot="dropdown-menu-trigger"
       {...props}
+      render={(renderProps, state) => (
+        <button {...renderProps} data-state={state.open ? 'open' : 'closed'}>
+          {children}
+        </button>
+      )}
     />
   );
 }
@@ -588,6 +655,39 @@ function DropdownMenuPortal(
     <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
   );
 }
+
+type DropdownMenuPositionerProps = React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Positioner
+>;
+type DropdownMenuPopupProps = React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Popup
+>;
+type DropdownMenuPositioningProps = Pick<
+  DropdownMenuPositionerProps,
+  | 'align'
+  | 'alignOffset'
+  | 'anchor'
+  | 'collisionAvoidance'
+  | 'collisionBoundary'
+  | 'collisionPadding'
+  | 'positionMethod'
+  | 'side'
+  | 'sideOffset'
+  | 'sticky'
+>;
+type DropdownMenuAutoFocusEvent = {
+  currentTarget: HTMLDivElement;
+  preventDefault: () => void;
+};
+type DropdownMenuContentProps = Omit<
+  DropdownMenuPopupProps,
+  keyof DropdownMenuPositioningProps
+> &
+  DropdownMenuPositioningProps & {
+    onCloseAutoFocus?: (event: DropdownMenuAutoFocusEvent) => void;
+    onOpenAutoFocus?: (event: DropdownMenuAutoFocusEvent) => void;
+    variant?: DropdownMenuVariant;
+  };
 
 function useDropdownMenuKeyboardController() {
   const keyboardNavigationFrameRef = React.useRef<number | null>(null);
@@ -848,26 +948,42 @@ function useDropdownMenuKeyboardController() {
   );
 }
 
+function createDropdownMenuAutoFocusEvent(
+  currentTarget: HTMLDivElement,
+): DropdownMenuAutoFocusEvent {
+  return {
+    currentTarget,
+    preventDefault: () => {},
+  };
+}
+
 const DropdownMenuContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
-    variant?: DropdownMenuVariant;
-  }
+  React.ElementRef<typeof DropdownMenuPrimitive.Popup>,
+  DropdownMenuContentProps
 >(function DropdownMenuContent(
   {
+    align,
+    alignOffset,
+    anchor,
     className,
+    collisionAvoidance,
+    collisionBoundary,
+    collisionPadding,
     onCloseAutoFocus,
     onKeyDown,
     onOpenAutoFocus,
     onPointerMove,
+    positionMethod,
+    side,
     sideOffset = 4,
+    sticky,
     variant = 'default',
     ...props
   },
   ref,
 ) {
   const contentRef = React.useRef<React.ElementRef<
-    typeof DropdownMenuPrimitive.Content
+    typeof DropdownMenuPrimitive.Popup
   > | null>(null);
   const hasAlignedOpenRef = React.useRef(false);
   const alignFrameRef = React.useRef<number | null>(null);
@@ -898,11 +1014,22 @@ const DropdownMenuContent = React.forwardRef<
     [cancelAlignFrame],
   );
   const setContentRef = React.useCallback(
-    (node: React.ElementRef<typeof DropdownMenuPrimitive.Content> | null) => {
+    (node: React.ElementRef<typeof DropdownMenuPrimitive.Popup> | null) => {
+      if (!node && contentRef.current) {
+        cancelAlignFrame();
+        hasAlignedOpenRef.current = false;
+        keyboardController.clearKeyboardState(contentRef.current);
+        contentRef.current.style.translate = '';
+        onCloseAutoFocus?.(
+          createDropdownMenuAutoFocusEvent(contentRef.current),
+        );
+      }
+
       contentRef.current = node;
       keyboardController.registerKeyboardScope(node);
 
       if (node && !hasAlignedOpenRef.current) {
+        onOpenAutoFocus?.(createDropdownMenuAutoFocusEvent(node));
         scheduleSelectedAlignment(node);
       }
 
@@ -912,83 +1039,103 @@ const DropdownMenuContent = React.forwardRef<
         ref.current = node;
       }
     },
-    [keyboardController, ref, scheduleSelectedAlignment],
+    [
+      cancelAlignFrame,
+      keyboardController,
+      onCloseAutoFocus,
+      onOpenAutoFocus,
+      ref,
+      scheduleSelectedAlignment,
+    ],
   );
 
   return (
     <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
-        ref={setContentRef}
-        data-slot="dropdown-menu-content"
+      <DropdownMenuPrimitive.Positioner
+        align={align}
+        alignOffset={alignOffset}
+        anchor={anchor}
+        className="z-50"
+        collisionAvoidance={collisionAvoidance}
+        collisionBoundary={collisionBoundary}
+        collisionPadding={collisionPadding}
+        positionMethod={positionMethod}
+        side={side}
         sideOffset={sideOffset}
-        onKeyDown={(event) => {
-          onKeyDown?.(event);
-          keyboardController.handleKeyDown(event.currentTarget, event);
-        }}
-        onFocusCapture={(event) => {
-          keyboardController.handleFocusCapture(
-            event.currentTarget,
-            event.target,
-          );
-        }}
-        onPointerMove={(event) => {
-          keyboardController.handlePointerMove(event.currentTarget, event);
-          onPointerMove?.(event);
-        }}
-        onOpenAutoFocus={(event) => {
-          const hasSelectedListItem = Boolean(
-            getSelectedListItemForOpenAlignment(event.currentTarget),
-          );
-          if (hasSelectedListItem) {
-            scheduleSelectedAlignment(event.currentTarget);
-            event.preventDefault();
-          }
-
-          onOpenAutoFocus?.(event);
-        }}
-        onCloseAutoFocus={(event) => {
-          cancelAlignFrame();
-          hasAlignedOpenRef.current = false;
-          keyboardController.clearKeyboardState(event.currentTarget);
-          event.currentTarget.style.translate = '';
-          onCloseAutoFocus?.(event);
-        }}
-        className={cn(
-          variant === 'ui3'
-            ? [
-                'z-50',
-                getDropdownMenuPanelClass({
-                  variant,
-                  panel: 'content',
-                }),
-              ]
-            : 'z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1',
-          className,
-        )}
-        {...props}
-      />
+        sticky={sticky}
+      >
+        <DropdownMenuPrimitive.Popup
+          ref={setContentRef}
+          data-slot="dropdown-menu-content"
+          onKeyDown={(event) => {
+            onKeyDown?.(event);
+            keyboardController.handleKeyDown(event.currentTarget, event);
+          }}
+          onFocusCapture={(event) => {
+            keyboardController.handleFocusCapture(
+              event.currentTarget,
+              event.target,
+            );
+          }}
+          onPointerMove={(event) => {
+            keyboardController.handlePointerMove(event.currentTarget, event);
+            onPointerMove?.(event);
+          }}
+          className={cn(
+            variant === 'ui3'
+              ? [
+                  'z-50',
+                  getDropdownMenuPanelClass({
+                    variant,
+                    panel: 'content',
+                  }),
+                ]
+              : 'z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1',
+            className,
+          )}
+          {...props}
+        />
+      </DropdownMenuPrimitive.Positioner>
     </DropdownMenuPrimitive.Portal>
   );
 });
 
+type DropdownMenuItemProps = Omit<
+  React.ComponentProps<typeof DropdownMenuPrimitive.Item>,
+  'label' | 'onSelect'
+> & {
+  inset?: boolean;
+  onSelect?: React.MouseEventHandler<HTMLElement>;
+  textValue?: string;
+  typeaheadLabel?: string;
+  variant?: DropdownMenuVariant;
+  density?: DropdownMenuDensity;
+};
+
 function DropdownMenuItem({
   className,
   inset,
+  label,
+  onClick,
+  onSelect,
+  textValue,
   typeaheadLabel,
   variant = 'default',
   density = 'compact',
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
-  inset?: boolean;
-  typeaheadLabel?: string;
-  variant?: DropdownMenuVariant;
-  density?: DropdownMenuDensity;
-}) {
+}: DropdownMenuItemProps & { label?: string }) {
+  const resolvedLabel = typeaheadLabel ?? textValue ?? label;
+
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
       data-dropdown-menu-typeahead-item=""
-      data-dropdown-menu-typeahead-label={typeaheadLabel}
+      data-dropdown-menu-typeahead-label={resolvedLabel}
+      label={resolvedLabel}
+      onClick={(event) => {
+        onClick?.(event);
+        onSelect?.(event);
+      }}
       className={cn(
         variant === 'ui3'
           ? getDropdownMenuItemClass({ variant, density })
@@ -1005,6 +1152,7 @@ function DropdownMenuCheckboxItem({
   className,
   children,
   checked,
+  closeOnClick = true,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem>) {
   return (
@@ -1015,12 +1163,13 @@ function DropdownMenuCheckboxItem({
         className,
       )}
       checked={checked}
+      closeOnClick={closeOnClick}
       {...props}
     >
       <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
-        <DropdownMenuPrimitive.ItemIndicator>
+        <DropdownMenuPrimitive.CheckboxItemIndicator>
           <Check className="size-4" />
-        </DropdownMenuPrimitive.ItemIndicator>
+        </DropdownMenuPrimitive.CheckboxItemIndicator>
       </span>
       {children}
     </DropdownMenuPrimitive.CheckboxItem>
@@ -1041,6 +1190,7 @@ function DropdownMenuRadioGroup(
 function DropdownMenuRadioItem({
   className,
   children,
+  closeOnClick = true,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) {
   return (
@@ -1050,12 +1200,13 @@ function DropdownMenuRadioItem({
         'relative flex cursor-default select-none items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className,
       )}
+      closeOnClick={closeOnClick}
       {...props}
     >
       <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
-        <DropdownMenuPrimitive.ItemIndicator>
+        <DropdownMenuPrimitive.RadioItemIndicator>
           <Circle className="size-2 fill-current" />
-        </DropdownMenuPrimitive.ItemIndicator>
+        </DropdownMenuPrimitive.RadioItemIndicator>
       </span>
       {children}
     </DropdownMenuPrimitive.RadioItem>
@@ -1066,11 +1217,11 @@ function DropdownMenuLabel({
   className,
   inset,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.GroupLabel> & {
   inset?: boolean;
 }) {
   return (
-    <DropdownMenuPrimitive.Label
+    <DropdownMenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
       className={cn(
         'px-2 py-1.5 text-sm font-semibold',
@@ -1125,9 +1276,14 @@ function DropdownMenuGroup(
 }
 
 function DropdownMenuSub(
-  props: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>,
+  props: React.ComponentProps<typeof DropdownMenuPrimitive.SubmenuRoot>,
 ) {
-  return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />;
+  return (
+    <DropdownMenuPrimitive.SubmenuRoot
+      data-slot="dropdown-menu-sub"
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuSubTrigger({
@@ -1136,23 +1292,29 @@ function DropdownMenuSubTrigger({
   children,
   onFocusCapture,
   onPointerMove,
+  textValue,
   typeaheadLabel,
   variant = 'default',
   density = 'compact',
   showDefaultChevron,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
+}: Omit<
+  React.ComponentProps<typeof DropdownMenuPrimitive.SubmenuTrigger>,
+  'label'
+> & {
   inset?: boolean;
   typeaheadLabel?: string;
+  textValue?: string;
   variant?: DropdownMenuVariant;
   density?: DropdownMenuDensity;
   showDefaultChevron?: boolean;
 }) {
   return (
-    <DropdownMenuPrimitive.SubTrigger
+    <DropdownMenuPrimitive.SubmenuTrigger
       data-slot="dropdown-menu-sub-trigger"
       data-dropdown-menu-typeahead-item=""
-      data-dropdown-menu-typeahead-label={typeaheadLabel}
+      data-dropdown-menu-typeahead-label={typeaheadLabel ?? textValue}
+      label={typeaheadLabel ?? textValue}
       onFocusCapture={(event) => {
         clearSubmenuTriggerChildActive(event.currentTarget);
         onFocusCapture?.(event);
@@ -1164,7 +1326,7 @@ function DropdownMenuSubTrigger({
       className={cn(
         variant === 'ui3'
           ? getDropdownMenuItemClass({ variant, density })
-          : 'flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent',
+          : 'flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[popup-open]:bg-accent',
         variant === 'default' && inset && 'pl-8',
         className,
       )}
@@ -1174,27 +1336,39 @@ function DropdownMenuSubTrigger({
       {(showDefaultChevron ?? variant === 'default') ? (
         <ChevronRight className="ml-auto size-4" />
       ) : null}
-    </DropdownMenuPrimitive.SubTrigger>
+    </DropdownMenuPrimitive.SubmenuTrigger>
   );
 }
 
 const DropdownMenuSubContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent> & {
-    variant?: DropdownMenuVariant;
-  }
+  React.ElementRef<typeof DropdownMenuPrimitive.Popup>,
+  DropdownMenuContentProps
 >(function DropdownMenuSubContent(
-  { className, onKeyDown, onPointerMove, variant = 'default', ...props },
+  {
+    align,
+    alignOffset,
+    anchor,
+    className,
+    collisionAvoidance,
+    collisionBoundary,
+    collisionPadding,
+    onKeyDown,
+    onPointerMove,
+    positionMethod,
+    side,
+    sideOffset,
+    sticky,
+    variant = 'default',
+    ...props
+  },
   ref,
 ) {
   const subContentRef = React.useRef<React.ElementRef<
-    typeof DropdownMenuPrimitive.SubContent
+    typeof DropdownMenuPrimitive.Popup
   > | null>(null);
   const keyboardController = useDropdownMenuKeyboardController();
   const setSubContentRef = React.useCallback(
-    (
-      node: React.ElementRef<typeof DropdownMenuPrimitive.SubContent> | null,
-    ) => {
+    (node: React.ElementRef<typeof DropdownMenuPrimitive.Popup> | null) => {
       if (!node && subContentRef.current) {
         setSubmenuTriggerChildActive(subContentRef.current, false);
       }
@@ -1212,39 +1386,53 @@ const DropdownMenuSubContent = React.forwardRef<
   );
 
   return (
-    <DropdownMenuPrimitive.SubContent
-      ref={setSubContentRef}
-      data-slot="dropdown-menu-sub-content"
-      onKeyDown={(event) => {
-        onKeyDown?.(event);
-        keyboardController.handleKeyDown(event.currentTarget, event);
-      }}
-      onFocusCapture={(event) => {
-        setSubmenuTriggerChildActive(event.currentTarget, true);
-        keyboardController.handleFocusCapture(
-          event.currentTarget,
-          event.target,
-        );
-      }}
-      onPointerMove={(event) => {
-        keyboardController.handlePointerMove(event.currentTarget, event);
-        setSubmenuTriggerChildActive(event.currentTarget, true);
-        onPointerMove?.(event);
-      }}
-      className={cn(
-        variant === 'ui3'
-          ? [
-              'z-50',
-              getDropdownMenuPanelClass({
-                variant,
-                panel: 'subcontent',
-              }),
-            ]
-          : 'z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
-        className,
-      )}
-      {...props}
-    />
+    <DropdownMenuPrimitive.Positioner
+      align={align}
+      alignOffset={alignOffset}
+      anchor={anchor}
+      className="z-50"
+      collisionAvoidance={collisionAvoidance}
+      collisionBoundary={collisionBoundary}
+      collisionPadding={collisionPadding}
+      positionMethod={positionMethod}
+      side={side}
+      sideOffset={sideOffset}
+      sticky={sticky}
+    >
+      <DropdownMenuPrimitive.Popup
+        ref={setSubContentRef}
+        data-slot="dropdown-menu-sub-content"
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          keyboardController.handleKeyDown(event.currentTarget, event);
+        }}
+        onFocusCapture={(event) => {
+          setSubmenuTriggerChildActive(event.currentTarget, true);
+          keyboardController.handleFocusCapture(
+            event.currentTarget,
+            event.target,
+          );
+        }}
+        onPointerMove={(event) => {
+          keyboardController.handlePointerMove(event.currentTarget, event);
+          setSubmenuTriggerChildActive(event.currentTarget, true);
+          onPointerMove?.(event);
+        }}
+        className={cn(
+          variant === 'ui3'
+            ? [
+                'z-50',
+                getDropdownMenuPanelClass({
+                  variant,
+                  panel: 'subcontent',
+                }),
+              ]
+            : 'z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
+          className,
+        )}
+        {...props}
+      />
+    </DropdownMenuPrimitive.Positioner>
   );
 });
 
@@ -1495,15 +1683,10 @@ function SelectListItem({
   value,
   variant = 'ui3',
   ...props
-}: Omit<
-  React.ComponentProps<typeof DropdownMenuPrimitive.Item>,
-  'children' | 'onSelect'
-> & {
+}: Omit<DropdownMenuItemProps, 'children' | 'onSelect'> & {
   children: React.ReactNode;
   density?: DropdownMenuDensity;
-  onSelect?: React.ComponentProps<
-    typeof DropdownMenuPrimitive.Item
-  >['onSelect'];
+  onSelect?: DropdownMenuItemProps['onSelect'];
   shortcut?: string;
   showShortcuts?: boolean;
   showTrailingHints?: boolean;
@@ -1525,6 +1708,7 @@ function SelectListItem({
       density={density}
       disabled={disabled}
       role="menuitemradio"
+      closeOnClick={selectList?.closeOnSelect ?? true}
       typeaheadLabel={label}
       variant={variant}
       onSelect={(event) => {

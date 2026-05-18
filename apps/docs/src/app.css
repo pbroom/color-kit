@@ -143,3 +143,35 @@
     animation-duration: 1ms;
   }
 }
+
+.ck-lab-select-long-menu {
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+.ck-lab-select-long-menu:hover,
+.ck-lab-select-long-menu:focus,
+.ck-lab-select-long-menu:focus-within {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.ck-lab-select-long-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ck-lab-select-long-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ck-lab-select-long-menu::-webkit-scrollbar-thumb {
+  background-clip: content-box;
+  background-color: transparent;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+.ck-lab-select-long-menu:hover::-webkit-scrollbar-thumb,
+.ck-lab-select-long-menu:focus::-webkit-scrollbar-thumb,
+.ck-lab-select-long-menu:focus-within::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.22);
+}
