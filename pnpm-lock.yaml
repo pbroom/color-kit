@@ -51,6 +51,9 @@ importers:
       '@codesandbox/sandpack-themes':
         specifier: file:../../vendor/sandpack/sandpack-themes
         version: file:vendor/sandpack/sandpack-themes
+      '@color-kit/control-kit':
+        specifier: workspace:*
+        version: link:../../packages/control-kit
       '@color-kit/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -166,15 +169,33 @@ importers:
 
   packages/color-kit:
     dependencies:
+      '@base-ui/react':
+        specifier: ^1.4.1
+        version: 1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@legendapp/state':
         specifier: ^2.1.15
         version: 2.1.15(react@19.2.4)
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      lucide-react:
+        specifier: ^0.575.0
+        version: 0.575.0(react@19.2.4)
+      radix-ui:
+        specifier: ^1.4.3
+        version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: ^19.2.4
         version: 19.2.4
       react-dom:
         specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
+      tailwind-merge:
+        specifier: ^3.5.0
+        version: 3.5.0
 
   packages/control-kit:
     dependencies:
@@ -253,6 +274,9 @@ importers:
 
   packages/react:
     dependencies:
+      '@color-kit/control-kit':
+        specifier: workspace:*
+        version: link:../control-kit
       '@color-kit/core':
         specifier: workspace:*
         version: link:../core
