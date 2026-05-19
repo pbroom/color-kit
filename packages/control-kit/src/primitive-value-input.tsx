@@ -604,7 +604,12 @@ export function PrimitiveValueInput({
   useEffect(() => {
     onScrubbingChangeRef.current = onScrubbingChange;
   }, [onScrubbingChange]);
+  const hasReportedScrubbingRef = useRef(false);
   useEffect(() => {
+    if (!hasReportedScrubbingRef.current) {
+      hasReportedScrubbingRef.current = true;
+      return;
+    }
     onScrubbingChangeRef.current?.(isScrubbing);
   }, [isScrubbing]);
 

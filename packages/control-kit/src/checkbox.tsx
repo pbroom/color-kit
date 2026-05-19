@@ -12,7 +12,6 @@ export type CheckboxProps = Omit<
   indicatorClassName?: string;
   labelClassName?: string;
   className?: string;
-  type?: React.ButtonHTMLAttributes<HTMLButtonElement>['type'];
 };
 
 export function Checkbox({
@@ -23,7 +22,6 @@ export function Checkbox({
   className,
   children,
   disabled,
-  type: _type = 'button',
   ...props
 }: CheckboxProps) {
   return (
