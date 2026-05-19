@@ -713,7 +713,7 @@ const SEGMENTED_FIELD_ITEM_ACTIVE_BG_CLASS =
   'bg-[var(--ck-lab-segmented-active-bg,#171717)] data-[pressed]:!bg-[var(--ck-lab-segmented-active-bg,#171717)]';
 
 const SEGMENTED_FIELD_ITEM_CLASS =
-  'h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[pressed]:!text-white/90 data-[pressed]:!shadow-none';
+  `h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[pressed]:!text-white/90 data-[pressed]:!shadow-none ${SEGMENTED_FIELD_ITEM_ACTIVE_BG_CLASS}`;
 
 const TOGGLE_BUTTON_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
   compact: 'h-6 min-h-6 min-w-6 text-[11px]',
