@@ -22,6 +22,28 @@ import {
   type Color as ColorValue,
 } from 'color-kit';
 import {
+  Checkbox,
+  MultiInputControl,
+  PrimitiveValueInput,
+  ToggleGroup,
+  ToggleGroupItem,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+  normalizePrimitivePrecision,
+  normalizePrimitiveScrubMultiplier,
+  type MultiInputConfig as ControlMultiInputConfig,
+  type MultiInputField,
+  type PrimitiveDensity,
+  type PrimitiveExpressionParser,
+  type PrimitiveHandleSide,
+  type PrimitivePrecision,
+  type PrimitiveSize,
+  type PrimitiveVisualState,
+  type PrimitiveWrapMode,
+} from '@color-kit/control-kit';
+import {
   ArrowBigDown,
   ArrowBigUp,
   Bell,
@@ -88,7 +110,6 @@ import {
   Fragment,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -102,7 +123,6 @@ import {
   DynamicLucideIcon,
   LucideIconPicker,
 } from '@/components/lucide-icon-picker';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -122,13 +142,6 @@ import {
   SelectList,
   SelectListItem,
 } from '@/components/ui/dropdown-menu';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { ThemeSwitcher } from '../components/theme-switcher.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
@@ -143,30 +156,9 @@ type LabPageKey =
   | 'select'
   | 'toggleButton'
   | 'toggle';
-type PrimitivePrecision = number;
-type PrimitiveWrapMode = 'clamp' | 'wrap' | 'free';
-type PrimitiveSize = 'sm' | 'md' | 'lg' | 'full';
-type PrimitiveDensity = 'compact' | 'comfortable';
-type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
-type PrimitiveVisualTreatment = 'default' | 'embedded';
 type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
-type PrimitiveHandleSide = 'leading' | 'trailing';
 type MultiInputFieldId = 'l' | 'c' | 'h' | 'a';
-type MultiInputConfig = Record<
-  MultiInputFieldId,
-  {
-    min: number;
-    max: number;
-    step: number;
-    fineStep: number;
-    coarseStep: number;
-    pageStep: number;
-    precision: PrimitivePrecision;
-    autoTrim: boolean;
-    wrapMode: PrimitiveWrapMode;
-    disabled: boolean;
-  }
->;
+type MultiInputConfig = ControlMultiInputConfig<MultiInputFieldId>;
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
 type PlacementSide = TooltipSide;
 type PlacementAlign = 'start' | 'center' | 'end';
@@ -599,10 +591,7 @@ const SELECT_OPTION_BY_ID = SELECT_OPTIONS.reduce(
   {} as Record<SelectOptionId, SelectOption>,
 );
 
-const MULTI_INPUT_FIELDS: Array<{
-  value: MultiInputFieldId;
-  label: string;
-  tooltip: string;
+type LabMultiInputField = MultiInputField<MultiInputFieldId> & {
   min: number;
   max: number;
   step: number;
@@ -610,8 +599,9 @@ const MULTI_INPUT_FIELDS: Array<{
   coarseStep: number;
   pageStep: number;
   precision: number;
-  unit?: string;
-}> = [
+};
+
+const MULTI_INPUT_FIELDS: Array<LabMultiInputField> = [
   {
     value: 'l',
     label: 'L',
@@ -623,6 +613,7 @@ const MULTI_INPUT_FIELDS: Array<{
     coarseStep: 0.1,
     pageStep: 0.1,
     precision: 3,
+    weight: 'flex-[0_1_44px]',
   },
   {
     value: 'c',
@@ -635,6 +626,7 @@ const MULTI_INPUT_FIELDS: Array<{
     coarseStep: 0.05,
     pageStep: 0.05,
     precision: 3,
+    weight: 'flex-[0_1_44px]',
   },
   {
     value: 'h',
@@ -647,6 +639,7 @@ const MULTI_INPUT_FIELDS: Array<{
     coarseStep: 15,
     pageStep: 30,
     precision: 1,
+    weight: 'flex-[0_1_44px]',
   },
   {
     value: 'a',
@@ -660,12 +653,13 @@ const MULTI_INPUT_FIELDS: Array<{
     pageStep: 0.1,
     precision: 3,
     unit: '%',
+    weight: 'flex-[1_1_65px]',
   },
 ];
 
 const COLOR_PLANE_MULTI_INPUT_FIELDS = MULTI_INPUT_FIELDS.filter(
   (field) => field.value !== 'a',
-);
+).map(({ weight: _weight, ...field }) => field);
 
 const DEFAULT_MULTI_INPUT_CONFIG: MultiInputConfig = MULTI_INPUT_FIELDS.reduce(
   (config, field) => ({
@@ -694,26 +688,13 @@ const MULTI_INPUT_FIELD_BY_ID = MULTI_INPUT_FIELDS.reduce(
   {} as Record<MultiInputFieldId, (typeof MULTI_INPUT_FIELDS)[number]>,
 );
 
-const PRIMITIVE_SIZE_CLASS: Record<PrimitiveSize, string> = {
-  sm: 'w-32',
-  md: 'w-44',
-  lg: 'w-60',
-  full: 'w-full',
-};
-
-const PRIMITIVE_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
-  compact: 'h-6 min-h-6 text-[11px] leading-4',
-  comfortable: 'h-8 min-h-8 text-xs leading-4',
-};
-
 const SEGMENTED_FIELD_GROUP_CLASS =
   'box-border h-6 min-h-6 w-full min-w-0 max-w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none';
 
 const SEGMENTED_FIELD_ITEM_ACTIVE_BG_CLASS =
   'bg-[var(--ck-lab-segmented-active-bg,#171717)] data-[pressed]:!bg-[var(--ck-lab-segmented-active-bg,#171717)]';
 
-const SEGMENTED_FIELD_ITEM_CLASS =
-  'h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[pressed]:!text-white/90 data-[pressed]:!shadow-none';
+const SEGMENTED_FIELD_ITEM_CLASS = `h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[pressed]:!text-white/90 data-[pressed]:!shadow-none ${SEGMENTED_FIELD_ITEM_ACTIVE_BG_CLASS}`;
 
 const TOGGLE_BUTTON_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
   compact: 'h-6 min-h-6 min-w-6 text-[11px]',
@@ -832,78 +813,8 @@ function getToggleButtonStateClass(
     .join(' ');
 }
 
-function normalizePrimitiveValue(
-  value: number,
-  min: number,
-  max: number,
-  mode: PrimitiveWrapMode,
-): number {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-
-  if (mode === 'free' || max <= min) {
-    return value;
-  }
-
-  if (mode === 'wrap') {
-    const span = max - min;
-    return ((((value - min) % span) + span) % span) + min;
-  }
-
-  return Math.min(max, Math.max(min, value));
-}
-
-function formatPrimitiveValue(
-  value: number,
-  precision: PrimitivePrecision,
-  autoTrim: boolean,
-): string {
-  if (!Number.isFinite(value)) {
-    return '0';
-  }
-
-  const fixed = value.toFixed(precision);
-  if (autoTrim) {
-    const rounded = Number(fixed);
-    return Object.is(rounded, -0) ? '0' : String(rounded);
-  }
-
-  return fixed;
-}
-
-function normalizePrimitivePrecision(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return Math.min(
-    MAX_PRIMITIVE_PRECISION_DIGITS,
-    Math.max(0, Math.round(value)),
-  );
-}
-
-function normalizePrimitiveScrubMultiplier(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 1;
-  }
-
-  return Math.min(1000, Math.max(0.01, Number(value.toFixed(4))));
-}
-
-function parsePrimitiveDraft(
-  draft: string,
-  currentValue: number,
-  min: number,
-  max: number,
-  allowExpressions: boolean,
-): number | null {
-  return ColorApi.parseColorInputExpression(draft, {
-    currentValue,
-    range: [min, max],
-    allowExpressions,
-  });
-}
+const parsePrimitiveExpression: PrimitiveExpressionParser = (draft, options) =>
+  ColorApi.parseColorInputExpression(draft, options);
 
 function alternateAxis(channel: ColorAreaChannel): ColorAreaChannel {
   if (channel === 'l') return 'c';
@@ -1365,6 +1276,7 @@ function NumberConfigField({
           precision={precision}
           autoTrim
           allowExpressions
+          parseExpression={parsePrimitiveExpression}
           selectAllOnFocus
           commitOnBlur
           scrubEnabled
@@ -1506,6 +1418,7 @@ function StepConfigInput({
           precision={6}
           autoTrim
           allowExpressions
+          parseExpression={parsePrimitiveExpression}
           selectAllOnFocus
           commitOnBlur
           scrubEnabled
@@ -1555,6 +1468,7 @@ function DragStepConfigInput({
           precision={4}
           autoTrim
           allowExpressions
+          parseExpression={parsePrimitiveExpression}
           selectAllOnFocus
           commitOnBlur
           scrubEnabled
@@ -1610,6 +1524,7 @@ function BoundsConfigInput({
           precision={precision}
           autoTrim
           allowExpressions
+          parseExpression={parsePrimitiveExpression}
           selectAllOnFocus
           commitOnBlur
           scrubEnabled
@@ -1653,6 +1568,7 @@ function DragThresholdConfigInput({
           precision={6}
           autoTrim
           allowExpressions
+          parseExpression={parsePrimitiveExpression}
           selectAllOnFocus
           commitOnBlur
           scrubEnabled
@@ -1666,568 +1582,6 @@ function DragThresholdConfigInput({
         />
       </label>
     </PropertyFieldTooltip>
-  );
-}
-
-interface PrimitiveValueInputProps {
-  value: number;
-  onValueChange: (value: number) => void;
-  ariaLabel?: string;
-  placeholder?: string;
-  leadingElement?: ReactNode;
-  trailingElement?: ReactNode;
-  handleSide?: PrimitiveHandleSide;
-  handleContentWidth?: number;
-  min: number;
-  max: number;
-  wrapMode: PrimitiveWrapMode;
-  step: number;
-  fineStep: number;
-  coarseStep: number;
-  pageStep: number;
-  precision: PrimitivePrecision;
-  autoTrim: boolean;
-  allowExpressions: boolean;
-  selectAllOnFocus: boolean;
-  commitOnBlur: boolean;
-  scrubEnabled: boolean;
-  scrubPixelsPerStep?: number;
-  scrubThreshold: number;
-  pointerLockEnabled: boolean;
-  horizontalArrowKeysMoveCaret?: boolean;
-  disabled: boolean;
-  readOnly: boolean;
-  visualState: PrimitiveVisualState;
-  visualTreatment?: PrimitiveVisualTreatment;
-  showInvalidBorder?: boolean;
-  onScrubbingChange?: (isScrubbing: boolean) => void;
-  size: PrimitiveSize;
-  density?: PrimitiveDensity;
-}
-
-interface PrimitiveInputSelectionSnapshot {
-  start: number;
-  end: number;
-  direction: HTMLInputElement['selectionDirection'];
-}
-
-function PrimitiveValueInput({
-  value,
-  onValueChange,
-  ariaLabel,
-  placeholder,
-  leadingElement = 'V',
-  trailingElement,
-  handleSide = 'leading',
-  handleContentWidth = 24,
-  min,
-  max,
-  wrapMode,
-  step,
-  fineStep,
-  coarseStep,
-  pageStep,
-  precision,
-  autoTrim,
-  allowExpressions,
-  selectAllOnFocus,
-  commitOnBlur,
-  scrubEnabled,
-  scrubPixelsPerStep = 1,
-  scrubThreshold,
-  pointerLockEnabled,
-  horizontalArrowKeysMoveCaret = true,
-  disabled,
-  readOnly,
-  visualState,
-  visualTreatment = 'default',
-  showInvalidBorder = false,
-  onScrubbingChange,
-  size,
-  density = 'compact',
-}: PrimitiveValueInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scrubHandleRef = useRef<HTMLDivElement>(null);
-  const preservedSelectionRef = useRef<PrimitiveInputSelectionSnapshot | null>(
-    null,
-  );
-  const clearPreservedSelectionFrameRef = useRef<number | null>(null);
-  const activePointerIdRef = useRef<number | null>(null);
-  const scrubStartXRef = useRef(0);
-  const scrubStartValueRef = useRef(0);
-  const scrubCurrentValueRef = useRef(0);
-  const lastScrubXRef = useRef(0);
-  const activeScrubStepRef = useRef(step);
-  const hasDragStartedRef = useRef(false);
-  const [draft, setDraft] = useState(() =>
-    formatPrimitiveValue(value, precision, autoTrim),
-  );
-  const [isEditing, setIsEditing] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isScrubbing, setIsScrubbing] = useState(false);
-
-  const displayValue = useMemo(
-    () => formatPrimitiveValue(value, precision, autoTrim),
-    [autoTrim, precision, value],
-  );
-
-  useEffect(() => {
-    if (!isEditing) {
-      setDraft(displayValue);
-    }
-  }, [displayValue, isEditing]);
-
-  const parsedDraft = useMemo(() => {
-    if (!isEditing) {
-      return value;
-    }
-
-    const parsed = parsePrimitiveDraft(
-      draft,
-      value,
-      min,
-      max,
-      allowExpressions,
-    );
-    return parsed === null
-      ? null
-      : normalizePrimitiveValue(parsed, min, max, wrapMode);
-  }, [allowExpressions, draft, isEditing, max, min, value, wrapMode]);
-
-  const isDraftValid = parsedDraft !== null;
-  const showInvalidState = visualState === 'invalid';
-  const isVisuallyValid =
-    visualState === 'valid' || (visualState === 'auto' && isDraftValid);
-  const currentValue = isEditing ? draft : displayValue;
-
-  const restorePreservedSelection = useCallback(() => {
-    const input = inputRef.current;
-    const snapshot = preservedSelectionRef.current;
-    if (!input || !snapshot || document.activeElement !== input) {
-      return;
-    }
-
-    const valueLength = input.value.length;
-    input.setSelectionRange(
-      Math.min(snapshot.start, valueLength),
-      Math.min(snapshot.end, valueLength),
-      snapshot.direction ?? undefined,
-    );
-  }, []);
-
-  const clearPreservedSelection = useCallback(() => {
-    if (clearPreservedSelectionFrameRef.current !== null) {
-      cancelAnimationFrame(clearPreservedSelectionFrameRef.current);
-      clearPreservedSelectionFrameRef.current = null;
-    }
-    preservedSelectionRef.current = null;
-  }, []);
-
-  const scheduleClearPreservedSelection = useCallback(() => {
-    if (clearPreservedSelectionFrameRef.current !== null) {
-      cancelAnimationFrame(clearPreservedSelectionFrameRef.current);
-    }
-    clearPreservedSelectionFrameRef.current = requestAnimationFrame(() => {
-      restorePreservedSelection();
-      preservedSelectionRef.current = null;
-      clearPreservedSelectionFrameRef.current = null;
-    });
-  }, [restorePreservedSelection]);
-
-  const preserveCurrentSelection = useCallback(() => {
-    const input = inputRef.current;
-    if (!input || document.activeElement !== input) {
-      preservedSelectionRef.current = null;
-      return;
-    }
-
-    const start = input.selectionStart ?? input.value.length;
-    const end = input.selectionEnd ?? start;
-    preservedSelectionRef.current = {
-      start,
-      end,
-      direction: input.selectionDirection,
-    };
-  }, []);
-
-  useLayoutEffect(() => {
-    restorePreservedSelection();
-  }, [currentValue, restorePreservedSelection]);
-
-  const commitValue = useCallback(
-    (nextValue: number) => {
-      const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
-      onValueChange(normalized);
-      setDraft(formatPrimitiveValue(normalized, precision, autoTrim));
-    },
-    [autoTrim, max, min, onValueChange, precision, wrapMode],
-  );
-
-  const commitDraft = useCallback(() => {
-    if (parsedDraft !== null) {
-      commitValue(parsedDraft);
-    } else {
-      setDraft(displayValue);
-    }
-    setIsEditing(false);
-  }, [commitValue, displayValue, parsedDraft]);
-
-  const getModifiedStep = useCallback(
-    (shiftKey: boolean, altKey: boolean) => {
-      if (altKey) return fineStep;
-      if (shiftKey) return coarseStep;
-      return step;
-    },
-    [coarseStep, fineStep, step],
-  );
-
-  const handleFocus = useCallback(() => {
-    setIsEditing(true);
-    setDraft(displayValue);
-    if (selectAllOnFocus) {
-      requestAnimationFrame(() => inputRef.current?.select());
-    }
-  }, [displayValue, selectAllOnFocus]);
-
-  const handleBlur = useCallback(() => {
-    if (commitOnBlur) {
-      commitDraft();
-      return;
-    }
-    setDraft(displayValue);
-    setIsEditing(false);
-  }, [commitDraft, commitOnBlur, displayValue]);
-
-  const handleKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLInputElement>) => {
-      if (disabled || readOnly) {
-        return;
-      }
-
-      if (
-        horizontalArrowKeysMoveCaret &&
-        (event.key === 'ArrowRight' || event.key === 'ArrowLeft')
-      ) {
-        return;
-      }
-
-      if (
-        event.key === 'ArrowRight' ||
-        event.key === 'ArrowLeft' ||
-        event.key === 'ArrowUp' ||
-        event.key === 'ArrowDown' ||
-        event.key === 'PageUp' ||
-        event.key === 'PageDown' ||
-        event.key === 'Home' ||
-        event.key === 'End'
-      ) {
-        event.preventDefault();
-        const activeStep = getModifiedStep(event.shiftKey, event.altKey);
-        const direction =
-          event.key === 'ArrowRight' || event.key === 'ArrowUp'
-            ? 1
-            : event.key === 'ArrowLeft' || event.key === 'ArrowDown'
-              ? -1
-              : 0;
-
-        if (direction !== 0) {
-          commitValue(value + direction * activeStep);
-        } else if (event.key === 'PageUp') {
-          commitValue(value + pageStep);
-        } else if (event.key === 'PageDown') {
-          commitValue(value - pageStep);
-        } else if (event.key === 'Home') {
-          commitValue(min);
-        } else if (event.key === 'End') {
-          commitValue(max);
-        }
-        setIsEditing(true);
-        return;
-      }
-
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        commitDraft();
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        setDraft(displayValue);
-        setIsEditing(false);
-        event.currentTarget.blur();
-      }
-    },
-    [
-      commitDraft,
-      commitValue,
-      disabled,
-      displayValue,
-      getModifiedStep,
-      horizontalArrowKeysMoveCaret,
-      max,
-      min,
-      pageStep,
-      readOnly,
-      value,
-    ],
-  );
-
-  const hasPointerLock = useCallback(() => {
-    return document.pointerLockElement === scrubHandleRef.current;
-  }, []);
-
-  const endScrub = useCallback(
-    (clientX = lastScrubXRef.current, shiftKey?: boolean, altKey?: boolean) => {
-      if (activePointerIdRef.current !== null && hasDragStartedRef.current) {
-        if (shiftKey !== undefined && altKey !== undefined) {
-          const activeStep = getModifiedStep(shiftKey, altKey);
-          const previousStep = activeScrubStepRef.current;
-          if (activeStep !== previousStep) {
-            scrubStartXRef.current = lastScrubXRef.current;
-            scrubStartValueRef.current = scrubCurrentValueRef.current;
-          }
-          activeScrubStepRef.current = activeStep;
-          const deltaPixels = clientX - scrubStartXRef.current;
-          const wholeDeltaPixels = Math.round(deltaPixels);
-          const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-          const nextValue =
-            scrubStartValueRef.current +
-            (wholeDeltaPixels / pixelsPerStep) * activeStep;
-          scrubCurrentValueRef.current = nextValue;
-          commitValue(nextValue);
-        }
-      }
-      activePointerIdRef.current = null;
-      hasDragStartedRef.current = false;
-      setIsScrubbing(false);
-      scheduleClearPreservedSelection();
-      if (hasPointerLock()) {
-        document.exitPointerLock?.();
-      }
-    },
-    [
-      commitValue,
-      getModifiedStep,
-      hasPointerLock,
-      scheduleClearPreservedSelection,
-      scrubPixelsPerStep,
-    ],
-  );
-
-  const queueScrubValue = useCallback(
-    (clientX: number, shiftKey: boolean, altKey: boolean) => {
-      const deltaPixels = clientX - scrubStartXRef.current;
-      if (
-        !hasDragStartedRef.current &&
-        Math.abs(deltaPixels) < scrubThreshold
-      ) {
-        lastScrubXRef.current = clientX;
-        return;
-      }
-      const activeStep = getModifiedStep(shiftKey, altKey);
-      const previousStep = activeScrubStepRef.current;
-      if (hasDragStartedRef.current && activeStep !== previousStep) {
-        scrubStartXRef.current = lastScrubXRef.current;
-        scrubStartValueRef.current = scrubCurrentValueRef.current;
-      }
-      hasDragStartedRef.current = true;
-      setIsScrubbing(true);
-      activeScrubStepRef.current = activeStep;
-      const rebasedDeltaPixels = clientX - scrubStartXRef.current;
-      const wholeDeltaPixels = Math.round(rebasedDeltaPixels);
-      const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-      const nextValue =
-        scrubStartValueRef.current +
-        (wholeDeltaPixels / pixelsPerStep) * activeStep;
-      lastScrubXRef.current = clientX;
-      scrubCurrentValueRef.current = nextValue;
-      commitValue(nextValue);
-    },
-    [commitValue, getModifiedStep, scrubPixelsPerStep, scrubThreshold],
-  );
-
-  const handlePointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!scrubEnabled || disabled || readOnly || event.button !== 0) {
-        return;
-      }
-      event.preventDefault();
-      clearPreservedSelection();
-      preserveCurrentSelection();
-      activePointerIdRef.current = event.pointerId;
-      scrubStartXRef.current = event.clientX;
-      lastScrubXRef.current = event.clientX;
-      scrubStartValueRef.current = value;
-      scrubCurrentValueRef.current = value;
-      activeScrubStepRef.current = getModifiedStep(
-        event.shiftKey,
-        event.altKey,
-      );
-      hasDragStartedRef.current = false;
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-      if (pointerLockEnabled) {
-        const lockRequest =
-          event.currentTarget.requestPointerLock?.() as Promise<void> | void;
-        if (lockRequest) {
-          void lockRequest.catch(() => {});
-        }
-      }
-    },
-    [
-      clearPreservedSelection,
-      disabled,
-      pointerLockEnabled,
-      preserveCurrentSelection,
-      getModifiedStep,
-      readOnly,
-      scrubEnabled,
-      value,
-    ],
-  );
-
-  const handlePointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.pointerId !== activePointerIdRef.current || hasPointerLock()) {
-        return;
-      }
-      queueScrubValue(event.clientX, event.shiftKey, event.altKey);
-    },
-    [hasPointerLock, queueScrubValue],
-  );
-
-  const handlePointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.pointerId !== activePointerIdRef.current) {
-        return;
-      }
-      endScrub(
-        hasPointerLock() ? lastScrubXRef.current : event.clientX,
-        event.shiftKey,
-        event.altKey,
-      );
-    },
-    [endScrub, hasPointerLock],
-  );
-
-  useEffect(() => {
-    const handleLockedMouseMove = (event: MouseEvent) => {
-      if (activePointerIdRef.current === null || !hasPointerLock()) {
-        return;
-      }
-      queueScrubValue(
-        lastScrubXRef.current + event.movementX,
-        event.shiftKey,
-        event.altKey,
-      );
-    };
-
-    const handlePointerLockChange = () => {
-      if (activePointerIdRef.current !== null && !hasPointerLock()) {
-        endScrub();
-      }
-    };
-
-    document.addEventListener('mousemove', handleLockedMouseMove);
-    document.addEventListener('pointerlockchange', handlePointerLockChange);
-    return () => {
-      document.removeEventListener('mousemove', handleLockedMouseMove);
-      document.removeEventListener(
-        'pointerlockchange',
-        handlePointerLockChange,
-      );
-    };
-  }, [endScrub, hasPointerLock, queueScrubValue]);
-
-  useEffect(() => clearPreservedSelection, [clearPreservedSelection]);
-  useEffect(() => {
-    onScrubbingChange?.(isScrubbing);
-  }, [isScrubbing, onScrubbingChange]);
-
-  const isEmbeddedVisual = visualTreatment === 'embedded';
-  const isInvalid = showInvalidState || (isEditing && !isDraftValid);
-  const borderColor =
-    showInvalidBorder && isInvalid
-      ? '#ff4e4e'
-      : isEmbeddedVisual
-        ? 'transparent'
-        : isScrubbing
-          ? '#97c1ef'
-          : isEditing
-            ? '#5288db'
-            : isHovered
-              ? '#4C4C4C'
-              : 'transparent';
-  const hasTrailingElement =
-    trailingElement !== null &&
-    trailingElement !== undefined &&
-    trailingElement !== false;
-  const handleElement =
-    handleSide === 'trailing' ? trailingElement : leadingElement;
-  const hasHandleElement =
-    handleElement !== null &&
-    handleElement !== undefined &&
-    handleElement !== false;
-  const scrubHandle = scrubEnabled ? (
-    <div
-      ref={scrubHandleRef}
-      aria-hidden="true"
-      className={
-        hasHandleElement
-          ? 'flex h-full shrink-0 cursor-ew-resize select-none items-center justify-center font-medium tabular-nums text-white/55'
-          : `absolute ${
-              handleSide === 'leading' ? '-left-0.5' : '-right-0.5'
-            } top-0 z-10 h-full w-[5px] cursor-ew-resize select-none`
-      }
-      style={hasHandleElement ? { width: handleContentWidth } : undefined}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={() => endScrub()}
-      onLostPointerCapture={() => {
-        if (!hasPointerLock()) endScrub();
-      }}
-    >
-      {handleElement}
-    </div>
-  ) : null;
-
-  return (
-    <div
-      className={`relative box-border flex min-w-0 max-w-full items-center ${
-        isEmbeddedVisual ? 'rounded-none' : 'rounded-[4px]'
-      } border bg-[#383838] p-0 font-sans text-white ${
-        PRIMITIVE_SIZE_CLASS[size]
-      } ${PRIMITIVE_DENSITY_CLASS[density]} ${disabled ? 'opacity-45' : ''}`}
-      style={{ borderColor }}
-      data-scrubbing={isScrubbing || undefined}
-      data-valid={isVisuallyValid || undefined}
-      onPointerEnter={() => setIsHovered(true)}
-      onPointerLeave={() => setIsHovered(false)}
-    >
-      {handleSide === 'leading' ? scrubHandle : null}
-      <input
-        ref={inputRef}
-        type="text"
-        value={currentValue}
-        disabled={disabled}
-        readOnly={readOnly}
-        aria-label={ariaLabel}
-        aria-invalid={isInvalid}
-        placeholder={placeholder}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onChange={(event) => {
-          setDraft(event.target.value);
-          setIsEditing(true);
-        }}
-        onKeyDown={handleKeyDown}
-        className="h-full min-w-0 flex-1 cursor-default bg-transparent py-0 pl-1 pr-0 font-sans tabular-nums text-white outline-none focus:cursor-text disabled:cursor-not-allowed"
-      />
-      {hasTrailingElement && handleSide !== 'trailing' ? (
-        <span className="flex h-full w-5 shrink-0 select-none items-center justify-center text-[11px] font-medium leading-4 text-white/50">
-          {trailingElement}
-        </span>
-      ) : null}
-      {handleSide === 'trailing' ? scrubHandle : null}
-    </div>
   );
 }
 
@@ -3243,168 +2597,6 @@ function SelectPlaygroundStage({
   );
 }
 
-function MultiInputSegment({
-  field,
-  config,
-  value,
-  onValueChange,
-  onScrubbingChange,
-  showLeadingLabel = false,
-}: {
-  field: (typeof MULTI_INPUT_FIELDS)[number];
-  config: MultiInputConfig[MultiInputFieldId];
-  value: number;
-  onValueChange: (value: number) => void;
-  onScrubbingChange: (field: MultiInputFieldId, isScrubbing: boolean) => void;
-  showLeadingLabel?: boolean;
-}) {
-  const displayScale = field.unit === '%' ? 100 : 1;
-  const isOpacityField = field.value === 'a';
-  const leadingElement = showLeadingLabel ? field.label : null;
-  const handleScrubbingChange = useCallback(
-    (isScrubbing: boolean) => {
-      onScrubbingChange(field.value, isScrubbing);
-    },
-    [field.value, onScrubbingChange],
-  );
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <label className="block h-6 min-w-0 w-full">
-          <PrimitiveValueInput
-            value={value * displayScale}
-            onValueChange={(nextValue) =>
-              onValueChange(nextValue / displayScale)
-            }
-            ariaLabel={field.tooltip}
-            leadingElement={leadingElement}
-            trailingElement={isOpacityField ? field.unit : null}
-            handleSide={isOpacityField ? 'trailing' : 'leading'}
-            handleContentWidth={showLeadingLabel ? 18 : 16}
-            min={config.min * displayScale}
-            max={config.max * displayScale}
-            wrapMode={config.wrapMode}
-            step={config.step * displayScale}
-            fineStep={config.fineStep * displayScale}
-            coarseStep={config.coarseStep * displayScale}
-            pageStep={config.pageStep * displayScale}
-            precision={config.precision}
-            autoTrim={config.autoTrim}
-            allowExpressions
-            selectAllOnFocus
-            commitOnBlur
-            scrubEnabled
-            scrubPixelsPerStep={1}
-            scrubThreshold={1}
-            pointerLockEnabled={false}
-            disabled={config.disabled}
-            readOnly={false}
-            visualState="auto"
-            visualTreatment="embedded"
-            onScrubbingChange={handleScrubbingChange}
-            size="full"
-            density="compact"
-          />
-        </label>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">{field.tooltip}</TooltipContent>
-    </Tooltip>
-  );
-}
-
-function MultiInputControl({
-  values,
-  config,
-  onFieldChange,
-  fields = MULTI_INPUT_FIELDS,
-  showLeadingLabels = false,
-}: {
-  values: Record<MultiInputFieldId, number>;
-  config: MultiInputConfig;
-  onFieldChange: (field: MultiInputFieldId, value: number) => void;
-  fields?: Array<(typeof MULTI_INPUT_FIELDS)[number]>;
-  showLeadingLabels?: boolean;
-}) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [scrubbingField, setScrubbingField] =
-    useState<MultiInputFieldId | null>(null);
-
-  const handleSegmentScrubbingChange = useCallback(
-    (field: MultiInputFieldId, isScrubbing: boolean) => {
-      setScrubbingField((currentField) => {
-        if (isScrubbing) {
-          return field;
-        }
-        return currentField === field ? null : currentField;
-      });
-    },
-    [],
-  );
-  const borderColor = scrubbingField
-    ? '#97c1ef'
-    : isFocused
-      ? '#5288db'
-      : isHovered
-        ? '#4C4C4C'
-        : 'transparent';
-
-  return (
-    <TooltipProvider delayDuration={1000} skipDelayDuration={300}>
-      <div
-        className="relative h-6 min-h-6 w-full min-w-0 max-w-full overflow-hidden rounded-[4px]"
-        data-scrubbing={Boolean(scrubbingField) || undefined}
-        onPointerEnter={() => setIsHovered(true)}
-        onPointerLeave={() => setIsHovered(false)}
-        onFocusCapture={() => setIsFocused(true)}
-        onBlurCapture={(event) => {
-          const nextTarget = event.relatedTarget;
-          if (
-            nextTarget instanceof Node &&
-            event.currentTarget.contains(nextTarget)
-          ) {
-            return;
-          }
-          setIsFocused(false);
-        }}
-      >
-        <div className="flex h-full w-full min-w-0 max-w-full gap-px bg-transparent">
-          {fields.map((field) => (
-            <div
-              key={field.value}
-              data-multi-input-segment=""
-              className={`min-w-0 max-w-full ${
-                fields.length === MULTI_INPUT_FIELDS.length
-                  ? field.value === 'a'
-                    ? 'flex-[1_1_65px]'
-                    : 'flex-[0_1_44px]'
-                  : 'flex-1'
-              }`}
-            >
-              <MultiInputSegment
-                field={field}
-                config={config[field.value]}
-                value={values[field.value]}
-                onValueChange={(nextValue) =>
-                  onFieldChange(field.value, nextValue)
-                }
-                onScrubbingChange={handleSegmentScrubbingChange}
-                showLeadingLabel={showLeadingLabels}
-              />
-            </div>
-          ))}
-        </div>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 rounded-[4px] border"
-          style={{ borderColor }}
-        />
-      </div>
-    </TooltipProvider>
-  );
-}
-
 function MultiInputPlaygroundStage({
   values,
   config,
@@ -3420,6 +2612,8 @@ function MultiInputPlaygroundStage({
         values={values}
         config={config}
         onFieldChange={onFieldChange}
+        fields={MULTI_INPUT_FIELDS}
+        parseExpression={parsePrimitiveExpression}
       />
     </div>
   );
@@ -3911,6 +3105,7 @@ export function LabPage() {
                 precision={primitivePrecision}
                 autoTrim={primitiveAutoTrim}
                 allowExpressions={primitiveAllowExpressions}
+                parseExpression={parsePrimitiveExpression}
                 selectAllOnFocus={primitiveSelectAllOnFocus}
                 commitOnBlur={primitiveCommitOnBlur}
                 scrubEnabled={primitiveScrubEnabled}
@@ -4063,6 +3258,7 @@ export function LabPage() {
                               config={DEFAULT_MULTI_INPUT_CONFIG}
                               fields={COLOR_PLANE_MULTI_INPUT_FIELDS}
                               onFieldChange={setColorPlaneMultiInputFieldValue}
+                              parseExpression={parsePrimitiveExpression}
                               showLeadingLabels
                             />
                           </div>
@@ -4192,6 +3388,7 @@ export function LabPage() {
                                     precision={primitivePrecision}
                                     autoTrim={primitiveAutoTrim}
                                     allowExpressions={primitiveAllowExpressions}
+                                    parseExpression={parsePrimitiveExpression}
                                     selectAllOnFocus={primitiveSelectAllOnFocus}
                                     commitOnBlur={primitiveCommitOnBlur}
                                     scrubEnabled={primitiveScrubEnabled}
