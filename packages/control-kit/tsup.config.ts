@@ -10,5 +10,5 @@ export default defineConfig((options) => ({
   sourcemap: true,
   treeshake: true,
   minify: false,
-  external: ['react', 'react-dom'],
+  external: ['@base-ui/react', 'radix-ui', 'react', 'react-dom'],
 }));

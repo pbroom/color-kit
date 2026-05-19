@@ -49,7 +49,7 @@ export type ToggleGroupSingleProps = Omit<
   value?: string;
   defaultValue?: string;
   onValueChange?: (
-    value: string,
+    value: string | undefined,
     eventDetails: ToggleGroupChangeEventDetails,
   ) => void;
 };
@@ -124,7 +124,7 @@ export function ToggleGroup({
 
         (
           onValueChange as ToggleGroupSingleProps['onValueChange'] | undefined
-        )?.(nextValue[0] ?? '', eventDetails);
+        )?.(nextValue[0] ?? undefined, eventDetails);
       }}
       {...props}
     >

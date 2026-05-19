@@ -201,6 +201,7 @@ export function PrimitiveValueInput({
 }: PrimitiveValueInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrubHandleRef = useRef<HTMLDivElement>(null);
+  const onScrubbingChangeRef = useRef(onScrubbingChange);
   const preservedSelectionRef = useRef<PrimitiveInputSelectionSnapshot | null>(
     null,
   );
@@ -601,8 +602,11 @@ export function PrimitiveValueInput({
 
   useEffect(() => clearPreservedSelection, [clearPreservedSelection]);
   useEffect(() => {
-    onScrubbingChange?.(isScrubbing);
-  }, [isScrubbing, onScrubbingChange]);
+    onScrubbingChangeRef.current = onScrubbingChange;
+  }, [onScrubbingChange]);
+  useEffect(() => {
+    onScrubbingChangeRef.current?.(isScrubbing);
+  }, [isScrubbing]);
 
   const isEmbeddedVisual = visualTreatment === 'embedded';
   const isInvalid = showInvalidState || (isEditing && !isDraftValid);
