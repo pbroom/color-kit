@@ -27,4 +27,5 @@ run([
   '@color-kit/core-wasm',
   skipWasmGenerated ? 'build' : 'build:all',
 ]);
+run(['--filter', '@color-kit/control-kit', 'build']);
 run(['--filter', '@color-kit/react', 'build']);

@@ -37,6 +37,16 @@
         "default": "./dist/react/index.cjs"
       }
     },
+    "./control-kit": {
+      "import": {
+        "types": "./dist/control-kit/index.d.ts",
+        "default": "./dist/control-kit/index.js"
+      },
+      "require": {
+        "types": "./dist/control-kit/index.d.cts",
+        "default": "./dist/control-kit/index.cjs"
+      }
+    },
     "./wasm": {
       "import": {
         "types": "./dist/wasm/index.d.ts",
@@ -81,7 +91,13 @@
     "tag": "next"
   },
   "dependencies": {
-    "@legendapp/state": "^2.1.15"
+    "@base-ui/react": "^1.4.1",
+    "@legendapp/state": "^2.1.15",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.575.0",
+    "radix-ui": "^1.4.3",
+    "tailwind-merge": "^3.5.0"
   },
   "peerDependencies": {
     "react": ">=19.0.0",
