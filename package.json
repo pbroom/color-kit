@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev:prepare": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/core-wasm build:all && pnpm --filter @color-kit/react build && pnpm --filter color-kit build",
-    "dev": "pnpm dev:prepare && pnpm --parallel --filter @color-kit/core --filter @color-kit/react --filter color-kit --filter @color-kit/docs dev",
+    "dev:prepare": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/core-wasm build:all && pnpm --filter @color-kit/control-kit build && pnpm --filter @color-kit/react build && pnpm --filter color-kit build",
+    "dev": "pnpm dev:prepare && pnpm --parallel --filter @color-kit/core --filter @color-kit/control-kit --filter @color-kit/react --filter color-kit --filter @color-kit/docs dev",
     "test": "pnpm -r test",
     "ci:wasm": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/core-wasm check:wasm",
     "ci:wasm-parity": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/core-wasm build && pnpm --filter @color-kit/core-wasm build:wasm && pnpm --filter @color-kit/react test:wasm-parity:strict",
