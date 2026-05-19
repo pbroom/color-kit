@@ -151,7 +151,6 @@ type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
 type PrimitiveVisualTreatment = 'default' | 'embedded';
 type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
 type PrimitiveHandleSide = 'leading' | 'trailing';
-type PrimitiveAccessoryKind = 'none' | 'icon' | 'label';
 type MultiInputFieldId = 'l' | 'c' | 'h' | 'a';
 type MultiInputConfig = Record<
   MultiInputFieldId,
@@ -710,8 +709,11 @@ const PRIMITIVE_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
 const SEGMENTED_FIELD_GROUP_CLASS =
   'box-border h-6 min-h-6 w-full min-w-0 max-w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none';
 
+const SEGMENTED_FIELD_ITEM_ACTIVE_BG_CLASS =
+  'bg-[var(--ck-lab-segmented-active-bg,#171717)] data-[pressed]:!bg-[var(--ck-lab-segmented-active-bg,#171717)]';
+
 const SEGMENTED_FIELD_ITEM_CLASS =
-  'h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[state=on]:bg-[#1f1f1f] data-[state=on]:shadow-none';
+  `h-full min-h-0 w-full min-w-0 flex-1 rounded-[5px] border px-2 py-0 text-[11px] font-medium leading-4 tracking-[0.005em] transition-[background-color,color] hover:text-white/70 focus-visible:ring-2 focus-visible:ring-[#0d99ff]/80 focus-visible:ring-offset-0 data-[pressed]:!text-white/90 data-[pressed]:!shadow-none ${SEGMENTED_FIELD_ITEM_ACTIVE_BG_CLASS}`;
 
 const TOGGLE_BUTTON_DENSITY_CLASS: Record<PrimitiveDensity, string> = {
   compact: 'h-6 min-h-6 min-w-6 text-[11px]',
@@ -811,7 +813,7 @@ const LAB_PANEL_SCROLL_AREA_CLASS =
 
 function getSegmentedFieldItemStateClass(isSelected: boolean): string {
   return isSelected
-    ? 'border-[#4C4C4C] bg-[#1f1f1f] text-white/90 shadow-none'
+    ? `border-[#4C4C4C] ${SEGMENTED_FIELD_ITEM_ACTIVE_BG_CLASS} text-white/90 shadow-none`
     : 'border-transparent bg-transparent text-white/50 shadow-none';
 }
 
@@ -1331,8 +1333,6 @@ function NumberConfigField({
   min = 0,
   max = 5000,
   precision = 0,
-  leadingAccessory,
-  trailingAccessory,
 }: {
   label: string;
   value: number;
@@ -1341,8 +1341,6 @@ function NumberConfigField({
   min?: number;
   max?: number;
   precision?: number;
-  leadingAccessory?: ReactNode;
-  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label={label}>
@@ -1356,8 +1354,6 @@ function NumberConfigField({
             onChange(Math.min(max, Math.max(min, nextValue)))
           }
           ariaLabel={label}
-          leadingAccessory={leadingAccessory}
-          trailingAccessory={trailingAccessory}
           leadingElement={null}
           min={min}
           max={max}
@@ -1430,13 +1426,9 @@ function TextConfigField({
 function PrecisionConfigInput({
   value,
   onChange,
-  leadingAccessory,
-  trailingAccessory,
 }: {
   value: PrimitivePrecision;
   onChange: (value: PrimitivePrecision) => void;
-  leadingAccessory?: ReactNode;
-  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label="Precision">
@@ -1450,8 +1442,6 @@ function PrecisionConfigInput({
             onChange(normalizePrimitivePrecision(nextValue))
           }
           ariaLabel="Precision"
-          leadingAccessory={leadingAccessory}
-          trailingAccessory={trailingAccessory}
           leadingElement={
             <DecimalsArrowRight
               aria-hidden="true"
@@ -1491,16 +1481,12 @@ function StepConfigInput({
   onValueChange,
   leadingElement,
   step,
-  leadingAccessory,
-  trailingAccessory,
 }: {
   label: string;
   value: number;
   onValueChange: (value: number) => void;
   leadingElement: ReactNode;
   step: number;
-  leadingAccessory?: ReactNode;
-  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label={label}>
@@ -1509,8 +1495,6 @@ function StepConfigInput({
           value={value}
           onValueChange={onValueChange}
           ariaLabel={label}
-          leadingAccessory={leadingAccessory}
-          trailingAccessory={trailingAccessory}
           leadingElement={leadingElement}
           min={0}
           max={1000}
@@ -1541,13 +1525,9 @@ function StepConfigInput({
 function DragStepConfigInput({
   value,
   onValueChange,
-  leadingAccessory,
-  trailingAccessory,
 }: {
   value: number;
   onValueChange: (value: number) => void;
-  leadingAccessory?: ReactNode;
-  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label="Drag step">
@@ -1558,8 +1538,6 @@ function DragStepConfigInput({
             onValueChange(normalizePrimitiveScrubMultiplier(nextValue))
           }
           ariaLabel="Drag step"
-          leadingAccessory={leadingAccessory}
-          trailingAccessory={trailingAccessory}
           leadingElement={
             <MousePointer2
               aria-hidden="true"
@@ -1603,8 +1581,6 @@ function BoundsConfigInput({
   coarseStep = 10,
   pageStep = 10,
   precision = 6,
-  leadingAccessory,
-  trailingAccessory,
 }: {
   label: string;
   value: number;
@@ -1615,8 +1591,6 @@ function BoundsConfigInput({
   coarseStep?: number;
   pageStep?: number;
   precision?: PrimitivePrecision;
-  leadingAccessory?: ReactNode;
-  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label={label}>
@@ -1625,8 +1599,6 @@ function BoundsConfigInput({
           value={value}
           onValueChange={onValueChange}
           ariaLabel={label}
-          leadingAccessory={leadingAccessory}
-          trailingAccessory={trailingAccessory}
           leadingElement={leadingElement}
           min={-1000}
           max={1000}
@@ -1657,13 +1629,9 @@ function BoundsConfigInput({
 function DragThresholdConfigInput({
   value,
   onValueChange,
-  leadingAccessory,
-  trailingAccessory,
 }: {
   value: number;
   onValueChange: (value: number) => void;
-  leadingAccessory?: ReactNode;
-  trailingAccessory?: ReactNode;
 }) {
   return (
     <PropertyFieldTooltip label="Drag threshold">
@@ -1672,8 +1640,6 @@ function DragThresholdConfigInput({
           value={value}
           onValueChange={onValueChange}
           ariaLabel="Drag threshold"
-          leadingAccessory={leadingAccessory}
-          trailingAccessory={trailingAccessory}
           leadingElement={
             <Radius aria-hidden="true" className="size-3" strokeWidth={1.75} />
           }
@@ -1708,10 +1674,6 @@ interface PrimitiveValueInputProps {
   onValueChange: (value: number) => void;
   ariaLabel?: string;
   placeholder?: string;
-  /** Optional icon or label before the scrub handle and input (UI3 accessory column). */
-  leadingAccessory?: ReactNode;
-  /** Optional icon or label after the value area and before a trailing scrub handle. */
-  trailingAccessory?: ReactNode;
   leadingElement?: ReactNode;
   trailingElement?: ReactNode;
   handleSide?: PrimitiveHandleSide;
@@ -1754,8 +1716,6 @@ function PrimitiveValueInput({
   onValueChange,
   ariaLabel,
   placeholder,
-  leadingAccessory,
-  trailingAccessory,
   leadingElement = 'V',
   trailingElement,
   handleSide = 'leading',
@@ -2199,14 +2159,6 @@ function PrimitiveValueInput({
     trailingElement !== null &&
     trailingElement !== undefined &&
     trailingElement !== false;
-  const hasLeadingAccessory =
-    leadingAccessory !== null &&
-    leadingAccessory !== undefined &&
-    leadingAccessory !== false;
-  const hasTrailingAccessory =
-    trailingAccessory !== null &&
-    trailingAccessory !== undefined &&
-    trailingAccessory !== false;
   const handleElement =
     handleSide === 'trailing' ? trailingElement : leadingElement;
   const hasHandleElement =
@@ -2250,14 +2202,6 @@ function PrimitiveValueInput({
       onPointerEnter={() => setIsHovered(true)}
       onPointerLeave={() => setIsHovered(false)}
     >
-      {hasLeadingAccessory ? (
-        <span
-          aria-hidden="true"
-          className="flex h-full w-6 shrink-0 select-none items-center justify-center text-white/55"
-        >
-          {leadingAccessory}
-        </span>
-      ) : null}
       {handleSide === 'leading' ? scrubHandle : null}
       <input
         ref={inputRef}
@@ -2280,14 +2224,6 @@ function PrimitiveValueInput({
       {hasTrailingElement && handleSide !== 'trailing' ? (
         <span className="flex h-full w-5 shrink-0 select-none items-center justify-center text-[11px] font-medium leading-4 text-white/50">
           {trailingElement}
-        </span>
-      ) : null}
-      {hasTrailingAccessory ? (
-        <span
-          aria-hidden="true"
-          className="flex h-full min-w-6 shrink-0 select-none items-center justify-center px-1 text-[11px] font-medium leading-4 tabular-nums text-white/50"
-        >
-          {trailingAccessory}
         </span>
       ) : null}
       {handleSide === 'trailing' ? scrubHandle : null}
@@ -3640,22 +3576,6 @@ export function LabPage() {
   const [primitiveHandleLetter, setPrimitiveHandleLetter] = useState('V');
   const [primitiveHandleLucideSlug, setPrimitiveHandleLucideSlug] =
     useState('mouse-pointer-2');
-  const [primitiveLeadingAccessoryKind, setPrimitiveLeadingAccessoryKind] =
-    useState<PrimitiveAccessoryKind>('none');
-  const [primitiveLeadingAccessoryLabel, setPrimitiveLeadingAccessoryLabel] =
-    useState('W');
-  const [
-    primitiveLeadingAccessoryIconSlug,
-    setPrimitiveLeadingAccessoryIconSlug,
-  ] = useState('arrow-left-right');
-  const [primitiveTrailingAccessoryKind, setPrimitiveTrailingAccessoryKind] =
-    useState<PrimitiveAccessoryKind>('none');
-  const [primitiveTrailingAccessoryLabel, setPrimitiveTrailingAccessoryLabel] =
-    useState('px');
-  const [
-    primitiveTrailingAccessoryIconSlug,
-    setPrimitiveTrailingAccessoryIconSlug,
-  ] = useState('percent');
   const [primitiveDisabled, setPrimitiveDisabled] = useState(false);
   const [primitiveReadOnly, setPrimitiveReadOnly] = useState(false);
   const [primitiveVisualState, setPrimitiveVisualState] =
@@ -3917,53 +3837,11 @@ export function LabPage() {
     primitiveHandleLetter,
   ]);
 
-  const primitiveLeadingAccessory = useMemo<ReactNode>(() => {
-    switch (primitiveLeadingAccessoryKind) {
-      case 'none':
-        return null;
-      case 'label':
-        return primitiveLeadingAccessoryLabel.trim().slice(0, 4) || '—';
-      case 'icon':
-        return (
-          <DynamicLucideIcon
-            slug={primitiveLeadingAccessoryIconSlug}
-            className="size-3.5"
-            strokeWidth={1.75}
-          />
-        );
-    }
-  }, [
-    primitiveLeadingAccessoryIconSlug,
-    primitiveLeadingAccessoryKind,
-    primitiveLeadingAccessoryLabel,
-  ]);
-
-  const primitiveTrailingAccessory = useMemo<ReactNode>(() => {
-    switch (primitiveTrailingAccessoryKind) {
-      case 'none':
-        return null;
-      case 'label':
-        return primitiveTrailingAccessoryLabel.trim().slice(0, 6) || '—';
-      case 'icon':
-        return (
-          <DynamicLucideIcon
-            slug={primitiveTrailingAccessoryIconSlug}
-            className="size-3.5"
-            strokeWidth={1.75}
-          />
-        );
-    }
-  }, [
-    primitiveTrailingAccessoryIconSlug,
-    primitiveTrailingAccessoryKind,
-    primitiveTrailingAccessoryLabel,
-  ]);
-
   return (
     <div className="min-h-screen overflow-hidden bg-[#171717]">
       <LabHeaderExit />
 
-      <main className="h-screen min-h-screen min-w-0 bg-[#171717] text-white lg:overflow-hidden">
+      <main className="h-screen min-h-screen min-w-0 bg-[#171717] [--ck-lab-segmented-active-bg:#171717] text-white lg:overflow-hidden">
         <div className="grid min-h-screen min-w-0 grid-cols-1 lg:h-full lg:grid-cols-[minmax(0,1fr)_300px]">
           <section className="relative flex min-h-[420px] min-w-0 items-center justify-center overflow-hidden px-6 py-10 lg:min-h-0 lg:py-14">
             <PagesPanel activePage={activePage} onPageChange={setActivePage} />
@@ -4021,8 +3899,6 @@ export function LabPage() {
                 value={primitiveValue}
                 onValueChange={setPrimitiveValue}
                 placeholder={primitivePlaceholder}
-                leadingAccessory={primitiveLeadingAccessory}
-                trailingAccessory={primitiveTrailingAccessory}
                 leadingElement={primitiveHandleElement}
                 handleSide={primitiveHandleSide}
                 min={primitiveMin}
@@ -4137,7 +4013,7 @@ export function LabPage() {
           </section>
 
           <aside className="min-w-0 max-w-full overflow-hidden border-t border-white/8 p-3 lg:min-h-0 lg:border-t-0 lg:p-4">
-            <div className="h-full w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur lg:min-h-0">
+            <div className="h-full w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.03] [--ck-lab-segmented-active-bg:color-mix(in_srgb,#171717_97%,white_3%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur lg:min-h-0">
               <ScrollArea className={LAB_PANEL_SCROLL_AREA_CLASS}>
                 <TooltipProvider
                   delayDuration={tooltipDelayDuration}
@@ -4304,10 +4180,6 @@ export function LabPage() {
                                     onValueChange={setPrimitiveValue}
                                     ariaLabel="Value"
                                     placeholder={primitivePlaceholder}
-                                    leadingAccessory={primitiveLeadingAccessory}
-                                    trailingAccessory={
-                                      primitiveTrailingAccessory
-                                    }
                                     leadingElement={primitiveHandleElement}
                                     handleSide={primitiveHandleSide}
                                     min={primitiveMin}
@@ -4352,8 +4224,6 @@ export function LabPage() {
                                 label="Min"
                                 value={primitiveMin}
                                 onValueChange={setPrimitiveMin}
-                                leadingAccessory={primitiveLeadingAccessory}
-                                trailingAccessory={primitiveTrailingAccessory}
                                 leadingElement={
                                   <ArrowLeftToLine
                                     aria-hidden="true"
@@ -4366,8 +4236,6 @@ export function LabPage() {
                                 label="Max"
                                 value={primitiveMax}
                                 onValueChange={setPrimitiveMax}
-                                leadingAccessory={primitiveLeadingAccessory}
-                                trailingAccessory={primitiveTrailingAccessory}
                                 leadingElement={
                                   <ArrowRightToLine
                                     aria-hidden="true"
@@ -4381,8 +4249,6 @@ export function LabPage() {
                               <PrecisionConfigInput
                                 value={primitivePrecision}
                                 onChange={setPrimitivePrecision}
-                                leadingAccessory={primitiveLeadingAccessory}
-                                trailingAccessory={primitiveTrailingAccessory}
                               />
                               <SegmentedField
                                 label="Bounds"
@@ -4431,80 +4297,6 @@ export function LabPage() {
                             </div>
                           </div>
                         </PanelSection>
-
-                        <Separator className="bg-white/8" />
-
-                        <PanelSection
-                          title="Accessories"
-                          description="Optional leading and trailing slots outside the scrub handle (UI3-style)."
-                        >
-                          <div className="space-y-3">
-                            <SegmentedField
-                              label="Leading"
-                              value={primitiveLeadingAccessoryKind}
-                              onChange={setPrimitiveLeadingAccessoryKind}
-                              options={[
-                                { value: 'none', label: 'None' },
-                                { value: 'icon', label: 'Icon' },
-                                { value: 'label', label: 'Label' },
-                              ]}
-                            />
-                            {primitiveLeadingAccessoryKind === 'label' ? (
-                              <TextConfigField
-                                label="Leading label"
-                                value={primitiveLeadingAccessoryLabel}
-                                onChange={setPrimitiveLeadingAccessoryLabel}
-                                maxLength={4}
-                              />
-                            ) : null}
-                            {primitiveLeadingAccessoryKind === 'icon' ? (
-                              <div className="space-y-1.5">
-                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                                  Leading icon
-                                </p>
-                                <LucideIconPicker
-                                  value={primitiveLeadingAccessoryIconSlug}
-                                  onChange={
-                                    setPrimitiveLeadingAccessoryIconSlug
-                                  }
-                                />
-                              </div>
-                            ) : null}
-                            <SegmentedField
-                              label="Trailing"
-                              value={primitiveTrailingAccessoryKind}
-                              onChange={setPrimitiveTrailingAccessoryKind}
-                              options={[
-                                { value: 'none', label: 'None' },
-                                { value: 'icon', label: 'Icon' },
-                                { value: 'label', label: 'Label' },
-                              ]}
-                            />
-                            {primitiveTrailingAccessoryKind === 'label' ? (
-                              <TextConfigField
-                                label="Trailing label"
-                                value={primitiveTrailingAccessoryLabel}
-                                onChange={setPrimitiveTrailingAccessoryLabel}
-                                maxLength={6}
-                              />
-                            ) : null}
-                            {primitiveTrailingAccessoryKind === 'icon' ? (
-                              <div className="space-y-1.5">
-                                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
-                                  Trailing icon
-                                </p>
-                                <LucideIconPicker
-                                  value={primitiveTrailingAccessoryIconSlug}
-                                  onChange={
-                                    setPrimitiveTrailingAccessoryIconSlug
-                                  }
-                                />
-                              </div>
-                            ) : null}
-                          </div>
-                        </PanelSection>
-
-                        <Separator className="bg-white/8" />
 
                         <PanelSection
                           title="Drag Handle"
@@ -4561,8 +4353,6 @@ export function LabPage() {
                               label="Step"
                               value={primitiveStep}
                               onValueChange={setPrimitiveStep}
-                              leadingAccessory={primitiveLeadingAccessory}
-                              trailingAccessory={primitiveTrailingAccessory}
                               leadingElement={
                                 <Diff
                                   aria-hidden="true"
@@ -4575,15 +4365,11 @@ export function LabPage() {
                             <DragStepConfigInput
                               value={primitiveScrubMultiplier}
                               onValueChange={setPrimitiveScrubMultiplier}
-                              leadingAccessory={primitiveLeadingAccessory}
-                              trailingAccessory={primitiveTrailingAccessory}
                             />
                             <StepConfigInput
                               label="Fine"
                               value={primitiveFineStep}
                               onValueChange={setPrimitiveFineStep}
-                              leadingAccessory={primitiveLeadingAccessory}
-                              trailingAccessory={primitiveTrailingAccessory}
                               leadingElement={
                                 <Option
                                   aria-hidden="true"
@@ -4597,8 +4383,6 @@ export function LabPage() {
                               label="Coarse"
                               value={primitiveCoarseStep}
                               onValueChange={setPrimitiveCoarseStep}
-                              leadingAccessory={primitiveLeadingAccessory}
-                              trailingAccessory={primitiveTrailingAccessory}
                               leadingElement={
                                 <ArrowBigUp
                                   aria-hidden="true"
@@ -4668,8 +4452,6 @@ export function LabPage() {
                             <DragThresholdConfigInput
                               value={primitiveScrubThreshold}
                               onValueChange={setPrimitiveScrubThreshold}
-                              leadingAccessory={primitiveLeadingAccessory}
-                              trailingAccessory={primitiveTrailingAccessory}
                             />
                           </div>
                         </PanelSection>
