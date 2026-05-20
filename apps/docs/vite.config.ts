@@ -34,9 +34,60 @@ export default defineConfig({
     tailwindcss(),
   ],
   resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-    },
+    alias: [
+      { find: '@', replacement: resolve(__dirname, './src') },
+      {
+        find: /^color-kit$/,
+        replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
+      },
+      {
+        find: /^color-kit\/core$/,
+        replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
+      },
+      {
+        find: /^color-kit\/react$/,
+        replacement: resolve(__dirname, '../../packages/react/src/index.ts'),
+      },
+      {
+        find: /^color-kit\/control-kit$/,
+        replacement: resolve(
+          __dirname,
+          '../../packages/control-kit/src/index.ts',
+        ),
+      },
+      {
+        find: /^color-kit\/wasm$/,
+        replacement: resolve(
+          __dirname,
+          '../../packages/core-wasm/src/index.ts',
+        ),
+      },
+      {
+        find: /^@color-kit\/core$/,
+        replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
+      },
+      {
+        find: /^@color-kit\/control-kit$/,
+        replacement: resolve(
+          __dirname,
+          '../../packages/control-kit/src/index.ts',
+        ),
+      },
+      {
+        find: /^@color-kit\/react$/,
+        replacement: resolve(__dirname, '../../packages/react/src/index.ts'),
+      },
+    ],
+    dedupe: [
+      '@base-ui/react',
+      'class-variance-authority',
+      'clsx',
+      'lucide-react',
+      'radix-ui',
+      'react',
+      'react-dom',
+      'tailwind-merge',
+    ],
   },
   worker: {
     format: 'es',
