@@ -3093,6 +3093,7 @@ export function LabPage() {
                 value={primitiveValue}
                 onValueChange={setPrimitiveValue}
                 placeholder={primitivePlaceholder}
+                handleElement={primitiveHandleElement}
                 leadingElement={primitiveHandleElement}
                 handleSide={primitiveHandleSide}
                 min={primitiveMin}
@@ -3376,6 +3377,7 @@ export function LabPage() {
                                     onValueChange={setPrimitiveValue}
                                     ariaLabel="Value"
                                     placeholder={primitivePlaceholder}
+                                    handleElement={primitiveHandleElement}
                                     leadingElement={primitiveHandleElement}
                                     handleSide={primitiveHandleSide}
                                     min={primitiveMin}
