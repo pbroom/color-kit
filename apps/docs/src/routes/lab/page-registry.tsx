@@ -49,6 +49,10 @@ type LabPageSlots = {
   properties: ReactNode;
 };
 
+function assertNeverLabPageKey(value: never): never {
+  throw new Error(`Unhandled Lab page: ${value}`);
+}
+
 export function useLabPageControllers(): LabPageControllers {
   return {
     plane: colorPlaneLabPage.useController(),
@@ -130,6 +134,8 @@ export function renderLabPageSlots(
         preview: toggleGroupLabPage.renderPreview(controllers.toggle),
         properties: toggleGroupLabPage.renderProperties(controllers.toggle),
       };
+    default:
+      return assertNeverLabPageKey(activePage);
   }
 }
 

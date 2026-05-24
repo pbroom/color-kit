@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import type { LabPageKey, LabPanelTooltipProviderProps } from './shared.js';
+import type { LabPageKey } from './shared.js';
+
+export type { LabPageNavigationItem } from './shared.js';
 
 export type LabPageDescriptor<TKey extends LabPageKey, TController> = {
   key: TKey;
@@ -8,17 +10,3 @@ export type LabPageDescriptor<TKey extends LabPageKey, TController> = {
   renderPreview: (controller: TController) => ReactNode;
   renderProperties: (controller: TController) => ReactNode;
 };
-
-export type RegisteredLabPageDescriptor = LabPageDescriptor<
-  LabPageKey,
-  unknown
->;
-
-export type LabPageNavigationItem = {
-  value: LabPageKey;
-  label: string;
-};
-
-export type LabPagePanelTooltipResolver<TControllers> = (
-  controllers: TControllers,
-) => LabPanelTooltipProviderProps;
