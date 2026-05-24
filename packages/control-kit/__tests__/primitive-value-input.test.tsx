@@ -257,6 +257,55 @@ describe('PrimitiveValueInput', () => {
     expect(onValueChange).toHaveBeenLastCalledWith(42.2);
   });
 
+  it('does not skip steps for fractional stepDragDistance values', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      step: 0.1,
+      fineStep: 0.01,
+      coarseStep: 1,
+      precision: 2,
+      stepDragDistance: 1.5,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 5,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 5,
+        clientX: 2.4,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.1);
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 5,
+        clientX: 2.6,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 5,
+        clientX: 3,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.2);
+  });
+
   it('falls back to document dragging when pointer lock throws', () => {
     const onValueChange = vi.fn();
     const container = mountPrimitive({

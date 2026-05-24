@@ -351,12 +351,12 @@ export function PrimitiveValueInput({
 
   const getScrubValueFromDelta = useCallback(
     (deltaPixels: number, activeStep: number) => {
-      const wholeDeltaPixels = Math.round(deltaPixels);
       if (Number.isFinite(stepDragDistance) && stepDragDistance > 0) {
-        const wholeDeltaSteps = Math.trunc(wholeDeltaPixels / stepDragDistance);
+        const wholeDeltaSteps = Math.trunc(deltaPixels / stepDragDistance);
         return scrubStartValueRef.current + wholeDeltaSteps * activeStep;
       }
 
+      const wholeDeltaPixels = Math.round(deltaPixels);
       const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
       return (
         scrubStartValueRef.current +
@@ -464,7 +464,9 @@ export function PrimitiveValueInput({
       const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
       const previousValue = scrubCurrentValueRef.current;
       scrubCurrentValueRef.current = normalized;
-      commitValue(normalized);
+      if (!Object.is(normalized, previousValue)) {
+        commitValue(normalized);
+      }
 
       if (wrapMode === 'clamp' && normalized !== nextValue) {
         scrubStartXRef.current = clientX;
