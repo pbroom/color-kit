@@ -1002,13 +1002,30 @@ const DropdownMenuContent = React.forwardRef<
         return;
       }
 
+      const shouldAlignSelected =
+        getSelectedListItemForOpenAlignment(node) !== null;
+      if (!shouldAlignSelected) {
+        node.style.visibility = '';
+        return;
+      }
+
+      // Hide the first paint so selected-item alignment does not visibly jump
+      // from the default anchored position into its final translated position.
+      node.style.visibility = 'hidden';
+
       alignFrameRef.current = requestAnimationFrame(() => {
         alignFrameRef.current = null;
-        if (!node.isConnected || hasAlignedOpenRef.current) {
+        if (!node.isConnected) {
+          return;
+        }
+
+        if (hasAlignedOpenRef.current) {
+          node.style.visibility = '';
           return;
         }
 
         hasAlignedOpenRef.current = alignSelectedListItemToTrigger(node);
+        node.style.visibility = '';
       });
     },
     [cancelAlignFrame],
@@ -1020,6 +1037,7 @@ const DropdownMenuContent = React.forwardRef<
         hasAlignedOpenRef.current = false;
         keyboardController.clearKeyboardState(contentRef.current);
         contentRef.current.style.translate = '';
+        contentRef.current.style.visibility = '';
         onCloseAutoFocus?.(
           createDropdownMenuAutoFocusEvent(contentRef.current),
         );
