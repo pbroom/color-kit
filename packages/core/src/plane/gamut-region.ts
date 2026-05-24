@@ -3,6 +3,13 @@ import {
   oklabToLinearRgb,
   oklchToOklab,
 } from '../conversion/index.js';
+import {
+  buildContourPaths,
+  extractAdaptiveContourSegments as extractAdaptiveContourSegmentsGeneric,
+  extractGridContourSegments,
+  type AdaptiveContourCell,
+  type ContourSegment,
+} from '../contour/index.js';
 import { gamutBoundaryPath, maxChromaAt } from '../gamut/index.js';
 import { maxHctChromaAtTone } from '../hct/index.js';
 import type { Color } from '../types.js';
@@ -86,7 +93,7 @@ interface ScalarGridClassification {
 interface AdaptiveContourResult {
   minValue: number;
   maxValue: number;
-  segments: Array<[PlanePoint, PlanePoint]>;
+  segments: Array<ContourSegment<PlanePoint>>;
 }
 
 function readModelChannel(
@@ -128,22 +135,6 @@ function clampToViewport(point: PlanePoint): PlanePoint {
   return {
     x: Math.min(1, Math.max(0, point.x)),
     y: Math.min(1, Math.max(0, point.y)),
-  };
-}
-
-function edgeKey(a: string, b: string): string {
-  return a < b ? `${a}|${b}` : `${b}|${a}`;
-}
-
-function pointKey(point: PlanePoint): string {
-  return `${point.x.toFixed(6)}:${point.y.toFixed(6)}`;
-}
-
-function canonicalize(point: PlanePoint, tolerance: number = 1e-6): PlanePoint {
-  const round = (value: number) => Math.round(value / tolerance) * tolerance;
-  return {
-    x: round(point.x),
-    y: round(point.y),
   };
 }
 
@@ -311,181 +302,15 @@ function clipPathsToViewport(paths: PlanePoint[][]): PlanePoint[][] {
   return paths.flatMap((path) => clipPolylineToViewport(path));
 }
 
-function segmentEdgesForCell(
-  mask: number,
-): Array<[0 | 1 | 2 | 3, 0 | 1 | 2 | 3]> {
-  switch (mask) {
-    case 0:
-    case 15:
-      return [];
-    case 1:
-      return [[3, 0]];
-    case 2:
-      return [[0, 1]];
-    case 3:
-      return [[3, 1]];
-    case 4:
-      return [[1, 2]];
-    case 5:
-      return [
-        [3, 2],
-        [0, 1],
-      ];
-    case 6:
-      return [[0, 2]];
-    case 7:
-      return [[3, 2]];
-    case 8:
-      return [[2, 3]];
-    case 9:
-      return [[0, 2]];
-    case 10:
-      return [
-        [0, 3],
-        [1, 2],
-      ];
-    case 11:
-      return [[1, 2]];
-    case 12:
-      return [[3, 1]];
-    case 13:
-      return [[0, 1]];
-    case 14:
-      return [[3, 0]];
-    default:
-      return [];
-  }
-}
-
-function interpolateZero(a: number, b: number): number {
-  const denominator = a - b;
-  if (Math.abs(denominator) <= 1e-12) {
-    return 0.5;
-  }
-  return Math.min(1, Math.max(0, a / denominator));
-}
-
-function edgePoint(
-  edge: 0 | 1 | 2 | 3,
-  x0: number,
-  x1: number,
-  y0: number,
-  y1: number,
-  v0: number,
-  v1: number,
-  v2: number,
-  v3: number,
-): PlanePoint {
-  switch (edge) {
-    case 0: {
-      const t = interpolateZero(v0, v1);
-      return { x: lerp(x0, x1, t), y: y0 };
-    }
-    case 1: {
-      const t = interpolateZero(v1, v2);
-      return { x: x1, y: lerp(y0, y1, t) };
-    }
-    case 2: {
-      const t = interpolateZero(v3, v2);
-      return { x: lerp(x0, x1, t), y: y1 };
-    }
-    case 3: {
-      const t = interpolateZero(v0, v3);
-      return { x: x0, y: lerp(y0, y1, t) };
-    }
-    default:
-      return { x: x0, y: y0 };
-  }
-}
-
 function buildSegmentPaths(
-  segments: Array<[PlanePoint, PlanePoint]>,
+  segments: Array<ContourSegment<PlanePoint>>,
   options: { closedOnly?: boolean } = {},
 ): PlanePoint[][] {
-  if (segments.length === 0) return [];
-
-  const pointByKey = new Map<string, PlanePoint>();
-  const adjacency = new Map<string, Set<string>>();
-  const visited = new Set<string>();
-  // Scale the traversal guard with the number of input segments so dense
-  // implicit contours can walk nearly every edge before the safety hatch trips.
-  const traversalGuardLimit = Math.max(2048, segments.length * 4);
-
-  for (const [a, b] of segments) {
-    const aCanonical = canonicalize(a, 1e-5);
-    const bCanonical = canonicalize(b, 1e-5);
-    const aKey = pointKey(aCanonical);
-    const bKey = pointKey(bCanonical);
-
-    pointByKey.set(aKey, aCanonical);
-    pointByKey.set(bKey, bCanonical);
-
-    if (!adjacency.has(aKey)) adjacency.set(aKey, new Set());
-    if (!adjacency.has(bKey)) adjacency.set(bKey, new Set());
-    adjacency.get(aKey)?.add(bKey);
-    adjacency.get(bKey)?.add(aKey);
-  }
-
-  const trace = (start: string): string[] => {
-    const path = [start];
-    let current = start;
-    let guard = 0;
-    while (guard < traversalGuardLimit) {
-      guard += 1;
-      const neighbors = adjacency.get(current);
-      if (!neighbors || neighbors.size === 0) break;
-      let next: string | null = null;
-      for (const candidate of neighbors) {
-        const key = edgeKey(current, candidate);
-        if (!visited.has(key)) {
-          next = candidate;
-          break;
-        }
-      }
-      if (!next) break;
-      visited.add(edgeKey(current, next));
-      current = next;
-      path.push(current);
-      if (current === start) break;
-    }
-    return path;
-  };
-
-  const result: PlanePoint[][] = [];
-
-  const acceptPath = (pathKeys: string[]) => {
-    if (pathKeys.length < 2) return;
-    const points = pathKeys
-      .map((key) => pointByKey.get(key))
-      .filter((point): point is PlanePoint => point != null);
-    if (points.length < 2) return;
-    const isClosed = pointsEqual(points[0], points[points.length - 1], 1e-5);
-    if (options.closedOnly && !isClosed) return;
-    result.push(points);
-  };
-
-  for (const [node, neighbors] of adjacency) {
-    if (neighbors.size !== 1) continue;
-    acceptPath(trace(node));
-  }
-
-  for (const [node, neighbors] of adjacency) {
-    for (const neighbor of neighbors) {
-      if (visited.has(edgeKey(node, neighbor))) continue;
-      acceptPath(trace(node));
-    }
-  }
-
-  return result;
-}
-
-function cellMask(v0: number, v1: number, v2: number, v3: number): number {
-  return (
-    (v0 >= 0 ? 1 : 0) |
-    (v1 >= 0 ? 2 : 0) |
-    (v2 >= 0 ? 4 : 0) |
-    (v3 >= 0 ? 8 : 0)
-  );
+  return buildContourPaths(segments, {
+    canonicalTolerance: 1e-5,
+    closedOnly: options.closedOnly,
+    traversalGuardLimit: (segmentCount) => Math.max(2048, segmentCount * 4),
+  });
 }
 
 function scalarSampleKey(x: number, y: number): string {
@@ -572,127 +397,8 @@ function extractAdaptiveContourSegments(
   const stepX = (maxX - minX) / baseResolution;
   const stepY = (maxY - minY) / baseResolution;
   const effectiveResolution = baseResolution * 2 ** maxDepth;
-  const segments: Array<[PlanePoint, PlanePoint]> = [];
-  const cellEvents: Array<{
-    xIndex: number;
-    yIndex: number;
-    mask: number;
-    points: PlanePoint[];
-  }> = [];
-  let segmentCount = 0;
-  let cellCount = 0;
-  let minValue = Number.POSITIVE_INFINITY;
-  let maxValue = Number.NEGATIVE_INFINITY;
-
-  const sample = (x: number, y: number): number => {
-    const value = sampler.sample(x, y);
-    minValue = Math.min(minValue, value);
-    maxValue = Math.max(maxValue, value);
-    return value;
-  };
-
-  const emitSegments = (
-    x0: number,
-    x1: number,
-    y0: number,
-    y1: number,
-    v0: number,
-    v1: number,
-    v2: number,
-    v3: number,
-  ): void => {
-    const mask = cellMask(v0, v1, v2, v3);
-    const edgePairs = segmentEdgesForCell(mask);
-    if (edgePairs.length === 0) {
-      return;
-    }
-    const tracePoints: PlanePoint[] = [];
-    for (const [fromEdge, toEdge] of edgePairs) {
-      const from = edgePoint(fromEdge, x0, x1, y0, y1, v0, v1, v2, v3);
-      const to = edgePoint(toEdge, x0, x1, y0, y1, v0, v1, v2, v3);
-      segments.push([from, to]);
-      segmentCount += 1;
-      if (shouldTraceFull(trace)) {
-        tracePoints.push(from, to);
-      }
-    }
-    if (shouldTraceFull(trace)) {
-      const spanX = Math.max(maxX - minX, 1e-9);
-      const spanY = Math.max(maxY - minY, 1e-9);
-      cellEvents.push({
-        xIndex: Math.round(((x0 - minX) / spanX) * effectiveResolution),
-        yIndex: Math.round(((y0 - minY) / spanY) * effectiveResolution),
-        mask,
-        points: tracePoints,
-      });
-    }
-  };
-
-  const processCell = (
-    x0: number,
-    x1: number,
-    y0: number,
-    y1: number,
-    v0: number,
-    v1: number,
-    v2: number,
-    v3: number,
-    depth: number,
-  ): void => {
-    cellCount += 1;
-    incrementTraceSummary(trace, 'cellCount', 1);
-    const mask = cellMask(v0, v1, v2, v3);
-    const uniform = mask === 0 || mask === 15;
-    if (depth >= maxDepth) {
-      if (!uniform) {
-        emitSegments(x0, x1, y0, y1, v0, v1, v2, v3);
-      }
-      return;
-    }
-
-    const xMid = (x0 + x1) / 2;
-    const yMid = (y0 + y1) / 2;
-    const vMidBottom = sample(xMid, y0);
-    const vMidRight = sample(x1, yMid);
-    const vMidTop = sample(xMid, y1);
-    const vMidLeft = sample(x0, yMid);
-    const vCenter = sample(xMid, yMid);
-
-    if (
-      uniform &&
-      !shouldRefineUniformAdaptiveCell(
-        [v0, v1, v2, v3],
-        [vMidBottom, vMidRight, vMidTop, vMidLeft, vCenter],
-      )
-    ) {
-      return;
-    }
-
-    processCell(
-      x0,
-      xMid,
-      y0,
-      yMid,
-      v0,
-      vMidBottom,
-      vCenter,
-      vMidLeft,
-      depth + 1,
-    );
-    processCell(
-      xMid,
-      x1,
-      y0,
-      yMid,
-      vMidBottom,
-      v1,
-      vMidRight,
-      vCenter,
-      depth + 1,
-    );
-    processCell(xMid, x1, yMid, y1, vCenter, vMidRight, v2, vMidTop, depth + 1);
-    processCell(x0, xMid, yMid, y1, vMidLeft, vCenter, vMidTop, v3, depth + 1);
-  };
+  const cells: AdaptiveContourCell[] = [];
+  const sample = (x: number, y: number): number => sampler.sample(x, y);
 
   for (let y = 0; y < baseResolution; y += 1) {
     const y0 = minY + y * stepY;
@@ -700,39 +406,50 @@ function extractAdaptiveContourSegments(
     for (let x = 0; x < baseResolution; x += 1) {
       const x0 = minX + x * stepX;
       const x1 = minX + (x + 1) * stepX;
-      processCell(
+      cells.push({
         x0,
         x1,
         y0,
         y1,
-        sample(x0, y0),
-        sample(x1, y0),
-        sample(x1, y1),
-        sample(x0, y1),
-        0,
-      );
+        v0: sample(x0, y0),
+        v1: sample(x1, y0),
+        v2: sample(x1, y1),
+        v3: sample(x0, y1),
+      });
     }
   }
 
-  if (!Number.isFinite(minValue)) {
-    minValue = 0;
-    maxValue = 0;
-  }
+  const spanX = Math.max(maxX - minX, 1e-9);
+  const spanY = Math.max(maxY - minY, 1e-9);
+  const result = extractAdaptiveContourSegmentsGeneric(cells, sample, {
+    maxDepth,
+    collectCellEvents: shouldTraceFull(trace),
+    getCellIndex: (cell) => ({
+      xIndex: Math.round(((cell.x0 - minX) / spanX) * effectiveResolution),
+      yIndex: Math.round(((cell.y0 - minY) / spanY) * effectiveResolution),
+    }),
+    shouldRefineUniformCell: ({ cornerValues, midpointValues }) =>
+      shouldRefineUniformAdaptiveCell(
+        [...cornerValues] as [number, number, number, number],
+        [...midpointValues] as [number, number, number, number, number],
+      ),
+  });
 
-  incrementTraceSummary(trace, 'segmentCount', segmentCount);
+  incrementTraceSummary(trace, 'cellCount', result.cellCount);
+  incrementTraceSummary(trace, 'segmentCount', result.segmentCount);
   recordTraceStage(trace, {
     kind: 'marchingSquares',
     label,
     resolution: effectiveResolution,
-    cellCount,
-    segmentCount,
-    cells: limitTraceEntries(trace, cellEvents),
+    cellCount: result.cellCount,
+    segmentCount: result.segmentCount,
+    cells: limitTraceEntries(trace, result.cellEvents),
   });
 
   return {
-    minValue,
-    maxValue,
-    segments,
+    minValue: result.minValue,
+    maxValue: result.maxValue,
+    segments: result.segments,
   };
 }
 
@@ -740,64 +457,23 @@ function extractContourSegments(
   grid: ScalarGrid,
   trace?: InternalPlaneTraceContext | null,
   label: string = 'marching-squares',
-): Array<[PlanePoint, PlanePoint]> {
-  const segments: Array<[PlanePoint, PlanePoint]> = [];
-  const stepX = (grid.maxX - grid.minX) / grid.resolution;
-  const stepY = (grid.maxY - grid.minY) / grid.resolution;
-  const cellEvents: Array<{
-    xIndex: number;
-    yIndex: number;
-    mask: number;
-    points: PlanePoint[];
-  }> = [];
-  let segmentCount = 0;
-  let cellCount = 0;
+): Array<ContourSegment<PlanePoint>> {
+  const extraction = extractGridContourSegments<PlanePoint>(grid, {
+    collectCellEvents: shouldTraceFull(trace),
+    cellEventMode: 'segment',
+  });
 
-  for (let y = 0; y < grid.resolution; y += 1) {
-    const y0 = grid.minY + y * stepY;
-    const y1 = grid.minY + (y + 1) * stepY;
-    for (let x = 0; x < grid.resolution; x += 1) {
-      const x0 = grid.minX + x * stepX;
-      const x1 = grid.minX + (x + 1) * stepX;
-      const v0 = grid.values[y][x];
-      const v1 = grid.values[y][x + 1];
-      const v2 = grid.values[y + 1][x + 1];
-      const v3 = grid.values[y + 1][x];
-      const mask =
-        (v0 >= 0 ? 1 : 0) |
-        (v1 >= 0 ? 2 : 0) |
-        (v2 >= 0 ? 4 : 0) |
-        (v3 >= 0 ? 8 : 0);
-      const edgePairs = segmentEdgesForCell(mask);
-      cellCount += 1;
-      for (const [fromEdge, toEdge] of edgePairs) {
-        const from = edgePoint(fromEdge, x0, x1, y0, y1, v0, v1, v2, v3);
-        const to = edgePoint(toEdge, x0, x1, y0, y1, v0, v1, v2, v3);
-        segments.push([from, to]);
-        segmentCount += 1;
-        if (shouldTraceFull(trace)) {
-          cellEvents.push({
-            xIndex: x,
-            yIndex: y,
-            mask,
-            points: [from, to],
-          });
-        }
-      }
-    }
-  }
-
-  incrementTraceSummary(trace, 'cellCount', cellCount);
-  incrementTraceSummary(trace, 'segmentCount', segmentCount);
+  incrementTraceSummary(trace, 'cellCount', extraction.cellCount);
+  incrementTraceSummary(trace, 'segmentCount', extraction.segmentCount);
   recordTraceStage(trace, {
     kind: 'marchingSquares',
     label,
     resolution: grid.resolution,
-    cellCount,
-    segmentCount,
-    cells: limitTraceEntries(trace, cellEvents),
+    cellCount: extraction.cellCount,
+    segmentCount: extraction.segmentCount,
+    cells: limitTraceEntries(trace, extraction.cellEvents),
   });
-  return segments;
+  return extraction.segments;
 }
 
 function extendViewportGrid(grid: ScalarGrid): ScalarGrid {
