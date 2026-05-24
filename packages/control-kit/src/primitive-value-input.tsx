@@ -351,8 +351,14 @@ export function PrimitiveValueInput({
 
   const getScrubValueFromDelta = useCallback(
     (deltaPixels: number, activeStep: number) => {
-      if (Number.isFinite(stepDragDistance) && stepDragDistance > 0) {
-        const wholeDeltaSteps = Math.trunc(deltaPixels / stepDragDistance);
+      const resolvedStepDragDistance = stepDragDistance ?? 0;
+      if (
+        Number.isFinite(resolvedStepDragDistance) &&
+        resolvedStepDragDistance > 0
+      ) {
+        const wholeDeltaSteps = Math.trunc(
+          deltaPixels / resolvedStepDragDistance,
+        );
         return scrubStartValueRef.current + wholeDeltaSteps * activeStep;
       }
 
