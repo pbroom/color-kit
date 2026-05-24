@@ -127,6 +127,7 @@ export interface PrimitiveValueInputProps {
   placeholder?: string;
   leadingElement?: ReactNode;
   trailingElement?: ReactNode;
+  handleElement?: ReactNode;
   handleSide?: PrimitiveHandleSide;
   handleContentWidth?: number;
   min: number;
@@ -170,6 +171,7 @@ export function PrimitiveValueInput({
   placeholder,
   leadingElement = 'V',
   trailingElement,
+  handleElement,
   handleSide = 'leading',
   handleContentWidth = 24,
   min,
@@ -438,6 +440,20 @@ export function PrimitiveValueInput({
     return document.pointerLockElement === scrubHandleRef.current;
   }, []);
 
+  const commitScrubValue = useCallback(
+    (nextValue: number, clientX: number) => {
+      const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
+      scrubCurrentValueRef.current = normalized;
+      commitValue(normalized);
+
+      if (wrapMode === 'clamp' && normalized !== nextValue) {
+        scrubStartXRef.current = clientX;
+        scrubStartValueRef.current = normalized;
+      }
+    },
+    [commitValue, max, min, wrapMode],
+  );
+
   const endScrub = useCallback(
     (clientX = lastScrubXRef.current, shiftKey?: boolean, altKey?: boolean) => {
       if (activePointerIdRef.current !== null && hasDragStartedRef.current) {
@@ -455,8 +471,7 @@ export function PrimitiveValueInput({
           const nextValue =
             scrubStartValueRef.current +
             (wholeDeltaPixels / pixelsPerStep) * activeStep;
-          scrubCurrentValueRef.current = nextValue;
-          commitValue(nextValue);
+          commitScrubValue(nextValue, clientX);
         }
       }
       activePointerIdRef.current = null;
@@ -468,7 +483,7 @@ export function PrimitiveValueInput({
       }
     },
     [
-      commitValue,
+      commitScrubValue,
       getModifiedStep,
       hasPointerLock,
       scheduleClearPreservedSelection,
@@ -502,10 +517,9 @@ export function PrimitiveValueInput({
         scrubStartValueRef.current +
         (wholeDeltaPixels / pixelsPerStep) * activeStep;
       lastScrubXRef.current = clientX;
-      scrubCurrentValueRef.current = nextValue;
-      commitValue(nextValue);
+      commitScrubValue(nextValue, clientX);
     },
-    [commitValue, getModifiedStep, scrubPixelsPerStep, scrubThreshold],
+    [commitScrubValue, getModifiedStep, scrubPixelsPerStep, scrubThreshold],
   );
 
   const handlePointerDown = useCallback(
@@ -528,10 +542,15 @@ export function PrimitiveValueInput({
       hasDragStartedRef.current = false;
       event.currentTarget.setPointerCapture?.(event.pointerId);
       if (pointerLockEnabled) {
-        const lockRequest =
-          event.currentTarget.requestPointerLock?.() as Promise<void> | void;
-        if (lockRequest) {
-          void lockRequest.catch(() => {});
+        try {
+          const lockRequest =
+            event.currentTarget.requestPointerLock?.() as Promise<void> | void;
+          if (lockRequest) {
+            void lockRequest.catch(() => {});
+          }
+        } catch {
+          // Embedded previews may reject pointer lock synchronously; document
+          // pointer listeners keep scrub dragging available without it.
         }
       }
     },
@@ -547,18 +566,15 @@ export function PrimitiveValueInput({
     ],
   );
 
-  const handlePointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
+  useEffect(() => {
+    const handleDocumentPointerMove = (event: PointerEvent) => {
       if (event.pointerId !== activePointerIdRef.current || hasPointerLock()) {
         return;
       }
       queueScrubValue(event.clientX, event.shiftKey, event.altKey);
-    },
-    [hasPointerLock, queueScrubValue],
-  );
+    };
 
-  const handlePointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
+    const handleDocumentPointerUp = (event: PointerEvent) => {
       if (event.pointerId !== activePointerIdRef.current) {
         return;
       }
@@ -567,11 +583,14 @@ export function PrimitiveValueInput({
         event.shiftKey,
         event.altKey,
       );
-    },
-    [endScrub, hasPointerLock],
-  );
+    };
 
-  useEffect(() => {
+    const handleDocumentPointerCancel = (event: PointerEvent) => {
+      if (event.pointerId === activePointerIdRef.current) {
+        endScrub();
+      }
+    };
+
     const handleLockedMouseMove = (event: MouseEvent) => {
       if (activePointerIdRef.current === null || !hasPointerLock()) {
         return;
@@ -589,9 +608,18 @@ export function PrimitiveValueInput({
       }
     };
 
+    document.addEventListener('pointermove', handleDocumentPointerMove);
+    document.addEventListener('pointerup', handleDocumentPointerUp);
+    document.addEventListener('pointercancel', handleDocumentPointerCancel);
     document.addEventListener('mousemove', handleLockedMouseMove);
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     return () => {
+      document.removeEventListener('pointermove', handleDocumentPointerMove);
+      document.removeEventListener('pointerup', handleDocumentPointerUp);
+      document.removeEventListener(
+        'pointercancel',
+        handleDocumentPointerCancel,
+      );
       document.removeEventListener('mousemove', handleLockedMouseMove);
       document.removeEventListener(
         'pointerlockchange',
@@ -631,33 +659,40 @@ export function PrimitiveValueInput({
     trailingElement !== null &&
     trailingElement !== undefined &&
     trailingElement !== false;
-  const handleElement =
-    handleSide === 'trailing' ? trailingElement : leadingElement;
+  const resolvedHandleElement =
+    handleElement !== undefined
+      ? handleElement
+      : handleSide === 'trailing'
+        ? trailingElement
+        : leadingElement;
   const hasHandleElement =
-    handleElement !== null &&
-    handleElement !== undefined &&
-    handleElement !== false;
+    resolvedHandleElement !== null &&
+    resolvedHandleElement !== undefined &&
+    resolvedHandleElement !== false;
+  const trailingElementFeedsHandle =
+    handleSide === 'trailing' && handleElement === undefined;
+  const scrubHandleStyle = {
+    ...(hasHandleElement ? { width: handleContentWidth } : {}),
+    cursor: 'ew-resize',
+    touchAction: 'none',
+    userSelect: 'none',
+  } as const;
   const scrubHandle = scrubEnabled ? (
     <div
       ref={scrubHandleRef}
+      data-control-kit-scrub-handle=""
       aria-hidden="true"
       className={
         hasHandleElement
-          ? 'flex h-full shrink-0 cursor-ew-resize select-none items-center justify-center font-medium tabular-nums text-white/55'
+          ? 'flex h-full shrink-0 cursor-ew-resize touch-none select-none items-center justify-center font-medium tabular-nums text-white/55'
           : `absolute ${
               handleSide === 'leading' ? '-left-0.5' : '-right-0.5'
-            } top-0 z-10 h-full w-[5px] cursor-ew-resize select-none`
+            } top-0 z-10 h-full w-[5px] cursor-ew-resize touch-none select-none`
       }
-      style={hasHandleElement ? { width: handleContentWidth } : undefined}
+      style={scrubHandleStyle}
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={() => endScrub()}
-      onLostPointerCapture={() => {
-        if (!hasPointerLock()) endScrub();
-      }}
     >
-      {handleElement}
+      {resolvedHandleElement}
     </div>
   ) : null;
 
@@ -693,7 +728,7 @@ export function PrimitiveValueInput({
         onKeyDown={handleKeyDown}
         className="h-full min-w-0 flex-1 cursor-default bg-transparent py-0 pl-1 pr-0 font-sans tabular-nums text-white outline-none focus:cursor-text disabled:cursor-not-allowed"
       />
-      {hasTrailingElement && handleSide !== 'trailing' ? (
+      {hasTrailingElement && !trailingElementFeedsHandle ? (
         <span className="flex h-full w-5 shrink-0 select-none items-center justify-center text-[11px] font-medium leading-4 text-white/50">
           {trailingElement}
         </span>

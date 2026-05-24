@@ -64,6 +64,7 @@ export function MultiInputSegment<TFieldId extends MultiInputFieldId>({
   const displayScale = field.displayScale ?? (field.unit === '%' ? 100 : 1);
   const hasTrailingUnit = Boolean(field.unit);
   const leadingElement = showLeadingLabel ? field.label : null;
+  const handleElement = hasTrailingUnit ? field.unit : leadingElement;
   const handleScrubbingChange = useCallback(
     (isScrubbing: boolean) => {
       onScrubbingChange(field.value, isScrubbing);
@@ -82,7 +83,7 @@ export function MultiInputSegment<TFieldId extends MultiInputFieldId>({
             }
             ariaLabel={field.tooltip}
             leadingElement={leadingElement}
-            trailingElement={hasTrailingUnit ? field.unit : null}
+            handleElement={handleElement}
             handleSide={hasTrailingUnit ? 'trailing' : 'leading'}
             handleContentWidth={showLeadingLabel ? 18 : 16}
             min={config.min * displayScale}
