@@ -32,7 +32,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
   normalizePrimitivePrecision,
-  normalizePrimitiveScrubMultiplier,
   type MultiInputConfig as ControlMultiInputConfig,
   type MultiInputField,
   type PrimitiveDensity,
@@ -159,6 +158,8 @@ type LabPageKey =
 type PrimitiveHandleContent = 'none' | 'letter' | 'icon' | 'swatch';
 type MultiInputFieldId = 'l' | 'c' | 'h' | 'a';
 type MultiInputConfig = ControlMultiInputConfig<MultiInputFieldId>;
+type PrimitiveScrubFieldId = 'dragStep' | 'stepDragDistance';
+type PrimitiveScrubConfig = ControlMultiInputConfig<PrimitiveScrubFieldId>;
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left';
 type PlacementSide = TooltipSide;
 type PlacementAlign = 'start' | 'center' | 'end';
@@ -687,6 +688,47 @@ const MULTI_INPUT_FIELD_BY_ID = MULTI_INPUT_FIELDS.reduce(
   }),
   {} as Record<MultiInputFieldId, (typeof MULTI_INPUT_FIELDS)[number]>,
 );
+
+const PRIMITIVE_SCRUB_FIELDS: Array<MultiInputField<PrimitiveScrubFieldId>> = [
+  {
+    value: 'dragStep',
+    label: 'D',
+    tooltip: 'Drag step',
+  },
+  {
+    value: 'stepDragDistance',
+    label: '',
+    tooltip: 'Step drag distance',
+    unit: 'px',
+  },
+];
+
+const PRIMITIVE_SCRUB_CONFIG: PrimitiveScrubConfig = {
+  dragStep: {
+    min: 0,
+    max: 1000,
+    step: 0.1,
+    fineStep: 0.01,
+    coarseStep: 1,
+    pageStep: 1,
+    precision: 6,
+    autoTrim: true,
+    wrapMode: 'free',
+    disabled: false,
+  },
+  stepDragDistance: {
+    min: 0.01,
+    max: 1000,
+    step: 0.5,
+    fineStep: 0.1,
+    coarseStep: 2,
+    pageStep: 4,
+    precision: 2,
+    autoTrim: true,
+    wrapMode: 'clamp',
+    disabled: false,
+  },
+};
 
 const SEGMENTED_FIELD_GROUP_CLASS =
   'box-border h-6 min-h-6 w-full min-w-0 max-w-full justify-start gap-0 overflow-hidden rounded-[5px] border-0 bg-[#383838] p-0 shadow-none';
@@ -1436,52 +1478,49 @@ function StepConfigInput({
 }
 
 function DragStepConfigInput({
-  value,
-  onValueChange,
+  dragStep,
+  stepDragDistance,
+  onDragStepChange,
+  onStepDragDistanceChange,
 }: {
-  value: number;
-  onValueChange: (value: number) => void;
+  dragStep: number;
+  stepDragDistance: number;
+  onDragStepChange: (value: number) => void;
+  onStepDragDistanceChange: (value: number) => void;
 }) {
+  const values = useMemo<Record<PrimitiveScrubFieldId, number>>(
+    () => ({
+      dragStep,
+      stepDragDistance,
+    }),
+    [dragStep, stepDragDistance],
+  );
+  const handleFieldChange = useCallback(
+    (field: PrimitiveScrubFieldId, nextValue: number) => {
+      if (field === 'dragStep') {
+        onDragStepChange(nextValue);
+        return;
+      }
+
+      const normalized = Number.isFinite(nextValue)
+        ? Math.min(1000, Math.max(0.01, Number(nextValue.toFixed(4))))
+        : 1;
+      onStepDragDistanceChange(normalized);
+    },
+    [onDragStepChange, onStepDragDistanceChange],
+  );
+
   return (
-    <PropertyFieldTooltip label="Drag step">
-      <label className="block w-full min-w-0 max-w-full">
-        <PrimitiveValueInput
-          value={value}
-          onValueChange={(nextValue) =>
-            onValueChange(normalizePrimitiveScrubMultiplier(nextValue))
-          }
-          ariaLabel="Drag step"
-          leadingElement={
-            <MousePointer2
-              aria-hidden="true"
-              className="size-3"
-              strokeWidth={1.75}
-            />
-          }
-          min={0.01}
-          max={1000}
-          wrapMode="clamp"
-          step={0.01}
-          fineStep={0.001}
-          coarseStep={0.1}
-          pageStep={1}
-          precision={4}
-          autoTrim
-          allowExpressions
-          parseExpression={parsePrimitiveExpression}
-          selectAllOnFocus
-          commitOnBlur
-          scrubEnabled
-          scrubPixelsPerStep={1}
-          scrubThreshold={1}
-          pointerLockEnabled={false}
-          disabled={false}
-          readOnly={false}
-          visualState="auto"
-          size="full"
-        />
-      </label>
-    </PropertyFieldTooltip>
+    <div className="w-full min-w-0 max-w-full">
+      <MultiInputControl
+        values={values}
+        config={PRIMITIVE_SCRUB_CONFIG}
+        fields={PRIMITIVE_SCRUB_FIELDS}
+        onFieldChange={handleFieldChange}
+        parseExpression={parsePrimitiveExpression}
+        showLeadingLabels
+      />
+    </div>
   );
 }
 
@@ -2762,7 +2801,7 @@ export function LabPage() {
   const [primitivePointerLockEnabled, setPrimitivePointerLockEnabled] =
     useState(true);
   const [primitiveScrubThreshold, setPrimitiveScrubThreshold] = useState(2);
-  const [primitiveScrubMultiplier, setPrimitiveScrubMultiplier] = useState(1);
+  const [primitiveStepDragDistance, setPrimitiveStepDragDistance] = useState(1);
   const [primitiveHandleContent, setPrimitiveHandleContent] =
     useState<PrimitiveHandleContent>('letter');
   const [primitiveHandleSide, setPrimitiveHandleSide] =
@@ -2942,9 +2981,6 @@ export function LabPage() {
     });
   };
 
-  const primitiveScrubPixelsPerStep =
-    1 / normalizePrimitiveScrubMultiplier(primitiveScrubMultiplier);
-
   const setMultiInputFieldValue = useCallback(
     (field: MultiInputFieldId, value: number) => {
       setMultiInputValues((current) => ({
@@ -3109,7 +3145,7 @@ export function LabPage() {
                 selectAllOnFocus={primitiveSelectAllOnFocus}
                 commitOnBlur={primitiveCommitOnBlur}
                 scrubEnabled={primitiveScrubEnabled}
-                scrubPixelsPerStep={primitiveScrubPixelsPerStep}
+                stepDragDistance={primitiveStepDragDistance}
                 scrubThreshold={primitiveScrubThreshold}
                 pointerLockEnabled={primitivePointerLockEnabled}
                 horizontalArrowKeysMoveCaret={
@@ -3392,9 +3428,7 @@ export function LabPage() {
                                     selectAllOnFocus={primitiveSelectAllOnFocus}
                                     commitOnBlur={primitiveCommitOnBlur}
                                     scrubEnabled={primitiveScrubEnabled}
-                                    scrubPixelsPerStep={
-                                      primitiveScrubPixelsPerStep
-                                    }
+                                    stepDragDistance={primitiveStepDragDistance}
                                     scrubThreshold={primitiveScrubThreshold}
                                     pointerLockEnabled={
                                       primitivePointerLockEnabled
@@ -3560,8 +3594,12 @@ export function LabPage() {
                               step={0.1}
                             />
                             <DragStepConfigInput
-                              value={primitiveScrubMultiplier}
-                              onValueChange={setPrimitiveScrubMultiplier}
+                              dragStep={primitiveStep}
+                              stepDragDistance={primitiveStepDragDistance}
+                              onDragStepChange={setPrimitiveStep}
+                              onStepDragDistanceChange={
+                                setPrimitiveStepDragDistance
+                              }
                             />
                             <StepConfigInput
                               label="Fine"

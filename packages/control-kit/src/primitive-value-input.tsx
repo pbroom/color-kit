@@ -145,6 +145,7 @@ export interface PrimitiveValueInputProps {
   commitOnBlur: boolean;
   scrubEnabled: boolean;
   scrubPixelsPerStep?: number;
+  stepDragDistance?: number;
   scrubThreshold: number;
   pointerLockEnabled: boolean;
   horizontalArrowKeysMoveCaret?: boolean;
@@ -189,6 +190,7 @@ export function PrimitiveValueInput({
   commitOnBlur,
   scrubEnabled,
   scrubPixelsPerStep = 1,
+  stepDragDistance,
   scrubThreshold,
   pointerLockEnabled,
   horizontalArrowKeysMoveCaret = true,
@@ -347,6 +349,29 @@ export function PrimitiveValueInput({
     [coarseStep, fineStep, step],
   );
 
+  const getScrubValueFromDelta = useCallback(
+    (deltaPixels: number, activeStep: number) => {
+      const resolvedStepDragDistance = stepDragDistance ?? 0;
+      if (
+        Number.isFinite(resolvedStepDragDistance) &&
+        resolvedStepDragDistance > 0
+      ) {
+        const wholeDeltaSteps = Math.trunc(
+          deltaPixels / resolvedStepDragDistance,
+        );
+        return scrubStartValueRef.current + wholeDeltaSteps * activeStep;
+      }
+
+      const wholeDeltaPixels = Math.round(deltaPixels);
+      const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
+      return (
+        scrubStartValueRef.current +
+        (wholeDeltaPixels / pixelsPerStep) * activeStep
+      );
+    },
+    [scrubPixelsPerStep, stepDragDistance],
+  );
+
   const handleFocus = useCallback(() => {
     setIsEditing(true);
     setDraft(displayValue);
@@ -443,8 +468,11 @@ export function PrimitiveValueInput({
   const commitScrubValue = useCallback(
     (nextValue: number, clientX: number) => {
       const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
+      const previousValue = scrubCurrentValueRef.current;
       scrubCurrentValueRef.current = normalized;
-      commitValue(normalized);
+      if (!Object.is(normalized, previousValue)) {
+        commitValue(normalized);
+      }
 
       if (wrapMode === 'clamp' && normalized !== nextValue) {
         scrubStartXRef.current = clientX;
@@ -466,11 +494,7 @@ export function PrimitiveValueInput({
           }
           activeScrubStepRef.current = activeStep;
           const deltaPixels = clientX - scrubStartXRef.current;
-          const wholeDeltaPixels = Math.round(deltaPixels);
-          const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-          const nextValue =
-            scrubStartValueRef.current +
-            (wholeDeltaPixels / pixelsPerStep) * activeStep;
+          const nextValue = getScrubValueFromDelta(deltaPixels, activeStep);
           commitScrubValue(nextValue, clientX);
         }
       }
@@ -484,10 +508,10 @@ export function PrimitiveValueInput({
     },
     [
       commitScrubValue,
+      getScrubValueFromDelta,
       getModifiedStep,
       hasPointerLock,
       scheduleClearPreservedSelection,
-      scrubPixelsPerStep,
     ],
   );
 
@@ -511,15 +535,11 @@ export function PrimitiveValueInput({
       setIsScrubbing(true);
       activeScrubStepRef.current = activeStep;
       const rebasedDeltaPixels = clientX - scrubStartXRef.current;
-      const wholeDeltaPixels = Math.round(rebasedDeltaPixels);
-      const pixelsPerStep = scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-      const nextValue =
-        scrubStartValueRef.current +
-        (wholeDeltaPixels / pixelsPerStep) * activeStep;
+      const nextValue = getScrubValueFromDelta(rebasedDeltaPixels, activeStep);
       lastScrubXRef.current = clientX;
       commitScrubValue(nextValue, clientX);
     },
-    [commitScrubValue, getModifiedStep, scrubPixelsPerStep, scrubThreshold],
+    [commitScrubValue, getModifiedStep, getScrubValueFromDelta, scrubThreshold],
   );
 
   const handlePointerDown = useCallback(
@@ -671,12 +691,9 @@ export function PrimitiveValueInput({
     resolvedHandleElement !== false;
   const trailingElementFeedsHandle =
     handleSide === 'trailing' && handleElement === undefined;
-  const scrubHandleStyle = {
-    ...(hasHandleElement ? { width: handleContentWidth } : {}),
-    cursor: 'ew-resize',
-    touchAction: 'none',
-    userSelect: 'none',
-  } as const;
+  const scrubHandleStyle = hasHandleElement
+    ? { width: handleContentWidth }
+    : undefined;
   const scrubHandle = scrubEnabled ? (
     <div
       ref={scrubHandleRef}

@@ -153,10 +153,26 @@ describe('PrimitiveValueInput', () => {
     expect(html.indexOf('>px<')).toBeLessThan(html.indexOf('>D<'));
   });
 
-  it('applies the resize cursor directly on the scrub handle', () => {
+  it('applies the resize cursor class on the scrub handle', () => {
     const html = renderPrimitive();
 
-    expect(html).toContain('cursor:ew-resize');
+    expect(html).toContain('cursor-ew-resize');
+  });
+
+  it('uses a narrow leading scrub target when handle content is empty', () => {
+    const html = renderPrimitive({
+      leadingElement: null,
+      handleElement: null,
+      handleSide: 'leading',
+    });
+
+    expect(html).toContain('w-[5px]');
+  });
+
+  it('applies inset padding on the editable field', () => {
+    const html = renderPrimitive();
+
+    expect(html).toContain('pl-1');
   });
 
   it('tracks scrub dragging through document pointer events', () => {
@@ -182,6 +198,112 @@ describe('PrimitiveValueInput', () => {
     });
 
     expect(onValueChange).toHaveBeenLastCalledWith(62);
+  });
+
+  it('supports discrete scrub stepping with stepDragDistance', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      step: 0.1,
+      fineStep: 0.01,
+      coarseStep: 1,
+      precision: 2,
+      stepDragDistance: 2,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 4,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 4,
+        clientX: 1,
+      });
+    });
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 4,
+        clientX: 2,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.1);
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 4,
+        clientX: 3,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 4,
+        clientX: 4,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.2);
+  });
+
+  it('does not skip steps for fractional stepDragDistance values', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      step: 0.1,
+      fineStep: 0.01,
+      coarseStep: 1,
+      precision: 2,
+      stepDragDistance: 1.5,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 5,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 5,
+        clientX: 2.4,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.1);
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 5,
+        clientX: 2.6,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 5,
+        clientX: 3,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.2);
   });
 
   it('falls back to document dragging when pointer lock throws', () => {
