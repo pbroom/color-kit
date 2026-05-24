@@ -171,6 +171,42 @@ export type {
   PlaneComputeTelemetrySnapshot,
 } from './compute/index.js';
 
+// Contour utilities
+export {
+  buildContourPaths,
+  canonicalizeContourPoint,
+  cellMaskFromBooleans,
+  cellMaskFromValues,
+  contourEdgeKey,
+  contourPointKey,
+  contourPointsEqual,
+  extractAdaptiveContourSegments,
+  extractGridContourSegments,
+  interpolateCellEdge,
+  interpolateZero,
+  pointOnCellEdge,
+  segmentEdgesForCell,
+} from './contour/index.js';
+export type {
+  AdaptiveContourCell,
+  AdaptiveContourExtraction,
+  AdaptiveContourOptions,
+  AdaptiveContourRefineContext,
+  BuildContourPathOptions,
+  ContourCell,
+  ContourCellBounds,
+  ContourCellEvent,
+  ContourCellValues,
+  ContourEdge,
+  ContourEdgePair,
+  ContourInterpolation,
+  ContourPoint,
+  ContourSegment,
+  ContourSegmentExtraction,
+  GridContourOptions,
+  ScalarContourGrid,
+} from './contour/index.js';
+
 // Plane geometry
 export {
   colorAtPlanePoint,
