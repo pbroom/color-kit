@@ -409,8 +409,6 @@ export function usePrimitiveValueInput({
     (nextValue: number, interaction: PrimitiveValueInteraction) => {
       const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
       const previousValue = lastCommittedValueRef.current;
-      lastCommittedValueRef.current = normalized;
-      setDraft(formatPrimitiveValue(normalized, precision, autoTrim));
 
       if (
         Object.is(normalized, previousValue) ||
@@ -419,6 +417,8 @@ export function usePrimitiveValueInput({
         return normalized;
       }
 
+      lastCommittedValueRef.current = normalized;
+      setDraft(formatPrimitiveValue(normalized, precision, autoTrim));
       onValueChange(normalized, { interaction });
       return normalized;
     },
@@ -710,6 +710,8 @@ export function usePrimitiveValueInput({
           applyScrubSnapshot(snapshot, true);
         } else if (pendingScrubRef.current) {
           applyScrubSnapshot(pendingScrubRef.current, true);
+        } else {
+          applyScrubSnapshot({ clientX, shiftKey: false, altKey: false }, true);
         }
       }
       activePointerIdRef.current = null;
@@ -774,6 +776,15 @@ export function usePrimitiveValueInput({
       scrubEnabled,
       value,
     ],
+  );
+
+  const handleLostPointerCapture = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerId === activePointerIdRef.current) {
+        endScrub();
+      }
+    },
+    [endScrub],
   );
 
   useEffect(() => {
@@ -872,6 +883,7 @@ export function usePrimitiveValueInput({
     },
     scrubHandleProps: {
       onPointerDown: handlePointerDown,
+      onLostPointerCapture: handleLostPointerCapture,
     },
   };
 }

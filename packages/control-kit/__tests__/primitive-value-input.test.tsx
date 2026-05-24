@@ -104,7 +104,12 @@ function mountPrimitive(
 
 function firePointerEvent(
   target: EventTarget,
-  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  type:
+    | 'pointerdown'
+    | 'pointermove'
+    | 'pointerup'
+    | 'pointercancel'
+    | 'lostpointercapture',
   init: {
     pointerId: number;
     clientX: number;
@@ -140,6 +145,7 @@ afterEach(() => {
     act(() => root.unmount());
   }
   document.body.replaceChildren();
+  vi.restoreAllMocks();
 });
 
 describe('PrimitiveValueInput', () => {
@@ -548,6 +554,75 @@ describe('PrimitiveValueInput', () => {
     });
   });
 
+  it('defers scrub commits until the max commit rate frame budget elapses', () => {
+    const frameCallbacks = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 1;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      const frameId = nextFrameId;
+      nextFrameId += 1;
+      frameCallbacks.set(frameId, callback);
+      return frameId;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((frameId) => {
+      frameCallbacks.delete(frameId);
+    });
+    const flushFrame = (frameTime: number) => {
+      const nextFrame = frameCallbacks.entries().next().value;
+      expect(nextFrame).toBeDefined();
+      const [frameId, callback] = nextFrame as [number, FrameRequestCallback];
+      frameCallbacks.delete(frameId);
+      act(() => {
+        callback(frameTime);
+      });
+    };
+
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      scrubMaxCommitRate: 10,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 8,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 8,
+        clientX: 5,
+      });
+    });
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    flushFrame(16);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(47, {
+      interaction: 'pointer',
+    });
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 8,
+        clientX: 8,
+      });
+    });
+    flushFrame(40);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    flushFrame(116);
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(50, {
+      interaction: 'pointer',
+    });
+  });
+
   it('forwards scrub commit thresholds through the component wrapper', () => {
     const onValueChange = vi.fn();
     const container = mountPrimitive({
@@ -584,6 +659,112 @@ describe('PrimitiveValueInput', () => {
     expect(onValueChange).toHaveBeenLastCalledWith(47, {
       interaction: 'pointer',
     });
+  });
+
+  it('commits the final scrub position when a thresholded scrub is canceled', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      scrubCommitThreshold: 5,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 7,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 7,
+        clientX: 5,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(47, {
+      interaction: 'pointer',
+    });
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 7,
+        clientX: 7,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      firePointerEvent(document, 'pointercancel', {
+        pointerId: 7,
+        clientX: 7,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(49, {
+      interaction: 'pointer',
+    });
+  });
+
+  it('ends scrubbing when the handle loses pointer capture', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      scrubCommitThreshold: 5,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 9,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 9,
+        clientX: 5,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(47, {
+      interaction: 'pointer',
+    });
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 9,
+        clientX: 7,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      firePointerEvent(handle, 'lostpointercapture', {
+        pointerId: 9,
+        clientX: 7,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(49, {
+      interaction: 'pointer',
+    });
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 9,
+        clientX: 12,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
   });
 
   it('falls back to document dragging when pointer lock throws', () => {
