@@ -319,6 +319,24 @@ describe('Color API helpers', () => {
     expect(hueEnd?.value).toBeCloseTo(360, 6);
   });
 
+  it('normalizes negative color input key steps', () => {
+    const base = parse('oklch(0.6 0.2 100)');
+    const arrowUp = colorFromColorInputKey(base, 'oklch', 'h', 'ArrowUp', {
+      step: -5,
+      range: [0, 360],
+      wrap: true,
+    });
+    const pageDown = colorFromColorInputKey(base, 'oklch', 'h', 'PageDown', {
+      step: 1,
+      pageStep: -30,
+      range: [0, 360],
+      wrap: true,
+    });
+
+    expect(arrowUp?.value).toBeCloseTo(105, 6);
+    expect(pageDown?.value).toBeCloseTo(70, 6);
+  });
+
   it('formats endpoint OKLCH colors as gamut-mapped hex values', () => {
     expect(
       formatColorStringInputValue({ l: 0, c: 0.211, h: 28, alpha: 1 }, 'hex'),

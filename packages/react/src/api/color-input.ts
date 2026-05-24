@@ -1,5 +1,11 @@
 import type { Color, Hsl, Rgb } from '@color-kit/core';
-import { clamp, fromHsl, fromRgb, toHsl, toRgb } from '@color-kit/core';
+import { fromHsl, fromRgb, toHsl, toRgb } from '@color-kit/core';
+import {
+  formatPrimitiveValue,
+  getPrimitiveSteppedValue,
+  normalizePrimitiveValue,
+  parsePrimitiveDraft,
+} from '@color-kit/control-kit';
 
 export type ColorInputModel = 'oklch' | 'rgb' | 'hsl';
 export type OklchColorInputChannel = 'l' | 'c' | 'h' | 'alpha';
@@ -166,14 +172,6 @@ function resolveStepValue(value: number | undefined, fallback: number): number {
   return value;
 }
 
-function wrapInRange(value: number, range: [number, number]): number {
-  const span = range[1] - range[0];
-  if (span <= 0) {
-    return range[0];
-  }
-  return ((((value - range[0]) % span) + span) % span) + range[0];
-}
-
 export function resolveColorInputRange(
   model: ColorInputModel,
   channel: ColorInputChannel,
@@ -271,11 +269,12 @@ export function normalizeColorInputValue(
   range: [number, number],
   wrap: boolean,
 ): number {
-  const safeValue = Number.isFinite(value) ? value : range[0];
-  if (wrap) {
-    return wrapInRange(safeValue, range);
-  }
-  return clamp(safeValue, range[0], range[1]);
+  return normalizePrimitiveValue(
+    value,
+    range[0],
+    range[1],
+    wrap ? 'wrap' : 'clamp',
+  );
 }
 
 export function getColorInputChannelValue(
@@ -346,21 +345,7 @@ export function formatColorInputChannelValue(
   precision: number,
 ): string {
   const safePrecision = Math.max(0, Math.min(6, Math.round(precision)));
-  const rounded =
-    safePrecision === 0
-      ? Math.round(value)
-      : Number(value.toFixed(safePrecision));
-
-  if (!Number.isFinite(rounded) || Math.abs(rounded) === 0) {
-    return '0';
-  }
-
-  const fixed = rounded.toFixed(safePrecision);
-  if (safePrecision === 0) {
-    return fixed;
-  }
-
-  return fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+  return formatPrimitiveValue(value, safePrecision, true);
 }
 
 interface NumberToken {
@@ -642,7 +627,19 @@ export function resolveColorInputDraftValue(
   input: string,
   options: ResolveColorInputDraftValueOptions,
 ): number | null {
-  const parsed = parseColorInputExpression(input, options);
+  const parsed = parsePrimitiveDraft(
+    input,
+    options.currentValue,
+    options.range[0],
+    options.range[1],
+    options.allowExpressions ?? false,
+    (draft, primitiveOptions) =>
+      parseColorInputExpression(draft, {
+        currentValue: primitiveOptions.currentValue,
+        range: primitiveOptions.range,
+        allowExpressions: primitiveOptions.allowExpressions,
+      }),
+  );
   if (parsed === null) {
     return null;
   }
@@ -663,43 +660,23 @@ export function colorFromColorInputKey(
   },
 ): { color: Color; value: number } | null {
   const current = getColorInputChannelValue(color, model, channel);
+  const wrap = options.wrap ?? false;
   const step = Math.abs(options.step);
   const pageStep =
     options.pageStep !== undefined ? Math.abs(options.pageStep) : step;
-  const wrap = options.wrap ?? false;
-  let nextValue: number | null = null;
-
-  switch (key as ColorInputKey) {
-    case 'ArrowRight':
-    case 'ArrowUp':
-      nextValue = current + step;
-      break;
-    case 'ArrowLeft':
-    case 'ArrowDown':
-      nextValue = current - step;
-      break;
-    case 'PageUp':
-      nextValue = current + pageStep;
-      break;
-    case 'PageDown':
-      nextValue = current - pageStep;
-      break;
-    case 'Home':
-      nextValue = options.range[0];
-      break;
-    case 'End':
-      nextValue = options.range[1];
-      break;
-    default:
-      return null;
+  const normalized = getPrimitiveSteppedValue({
+    value: current,
+    key,
+    min: options.range[0],
+    max: options.range[1],
+    wrapMode: wrap ? 'wrap' : 'clamp',
+    step,
+    pageStep,
+  });
+  if (normalized === null) {
+    return null;
   }
 
-  const shouldWrap = wrap && key !== 'Home' && key !== 'End';
-  const normalized = normalizeColorInputValue(
-    nextValue,
-    options.range,
-    shouldWrap,
-  );
   return {
     value: normalized,
     color: colorFromColorInputChannelValue(color, model, channel, normalized),

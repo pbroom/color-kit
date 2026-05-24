@@ -406,8 +406,15 @@ export function usePrimitiveValueInput({
   }, [currentValue, restorePreservedSelection]);
 
   const emitValue = useCallback(
-    (nextValue: number, interaction: PrimitiveValueInteraction) => {
-      const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
+    (
+      nextValue: number,
+      interaction: PrimitiveValueInteraction,
+      options: { normalize?: boolean } = {},
+    ) => {
+      const normalized =
+        options.normalize === false
+          ? nextValue
+          : normalizePrimitiveValue(nextValue, min, max, wrapMode);
       const previousValue = lastCommittedValueRef.current;
 
       if (
@@ -541,7 +548,9 @@ export function usePrimitiveValueInput({
         }
 
         event.preventDefault();
-        emitValue(nextValue, 'keyboard');
+        emitValue(nextValue, 'keyboard', {
+          normalize: event.key !== 'Home' && event.key !== 'End',
+        });
         setIsEditing(true);
         return;
       }

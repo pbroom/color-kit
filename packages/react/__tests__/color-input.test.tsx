@@ -84,6 +84,7 @@ describe('ColorInput', () => {
     const [next, options] = onChangeRequested.mock.calls[0];
     expect(next.c).toBeCloseTo(0.25, 6);
     expect(options).toEqual({ changedChannel: 'c', interaction: 'text-input' });
+    expect(document.activeElement).not.toBe(input);
   });
 
   it('does not commit when focus/blur occurs without draft changes', () => {
@@ -165,11 +166,12 @@ describe('ColorInput', () => {
     );
 
     const input = screen.getByRole('spinbutton');
-    fireEvent.focus(input);
+    input.focus();
     fireEvent.change(input, { target: { value: '0.3' } });
     fireEvent.keyDown(input, { key: 'Escape' });
 
     expect(onChangeRequested).not.toHaveBeenCalled();
+    expect(document.activeElement).not.toBe(input);
   });
 
   it('supports keyboard stepping and omits changedChannel metadata for hsl model', () => {
@@ -190,6 +192,27 @@ describe('ColorInput', () => {
     expect(onChangeRequested).toHaveBeenCalledTimes(1);
     const [, options] = onChangeRequested.mock.calls[0];
     expect(options).toEqual({ interaction: 'keyboard' });
+  });
+
+  it('commits End as the maximum value for wrapped hue channels', () => {
+    const onChangeRequested = vi.fn();
+    render(
+      <ColorInput
+        model="oklch"
+        channel="h"
+        requested={parse('oklch(0.6 0.2 100)')}
+        onChangeRequested={onChangeRequested}
+      />,
+    );
+
+    const input = screen.getByRole('spinbutton');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'End' });
+
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+    const [next, options] = onChangeRequested.mock.calls[0];
+    expect(next.h).toBeCloseTo(360, 6);
+    expect(options).toEqual({ changedChannel: 'h', interaction: 'keyboard' });
   });
 
   it('parses relative math expressions against the focus-start value', () => {
