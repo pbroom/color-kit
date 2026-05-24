@@ -444,7 +444,7 @@ export function PrimitiveValueInput({
     (nextValue: number, clientX: number) => {
       const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
       scrubCurrentValueRef.current = normalized;
-      commitValue(nextValue);
+      commitValue(normalized);
 
       if (wrapMode === 'clamp' && normalized !== nextValue) {
         scrubStartXRef.current = clientX;

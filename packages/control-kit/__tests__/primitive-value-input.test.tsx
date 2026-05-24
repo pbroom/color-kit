@@ -10,8 +10,25 @@ import { PrimitiveValueInput } from '../src/primitive-value-input.js';
 const noop = () => {};
 const mountedRoots: Root[] = [];
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true;
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+if (typeof globalThis.PointerEvent === 'undefined') {
+  class TestPointerEvent extends MouseEvent {
+    pointerId: number;
+
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+    }
+  }
+
+  Object.defineProperty(globalThis, 'PointerEvent', {
+    value: TestPointerEvent,
+    configurable: true,
+  });
+}
 
 function renderPrimitive(
   props: Partial<Parameters<typeof PrimitiveValueInput>[0]> = {},
@@ -96,13 +113,14 @@ function firePointerEvent(
     altKey?: boolean;
   },
 ): void {
-  const event = new Event(type, { bubbles: true, cancelable: true });
-  Object.defineProperties(event, {
-    pointerId: { value: init.pointerId },
-    clientX: { value: init.clientX },
-    button: { value: init.button ?? 0 },
-    shiftKey: { value: init.shiftKey ?? false },
-    altKey: { value: init.altKey ?? false },
+  const event = new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    pointerId: init.pointerId,
+    clientX: init.clientX,
+    button: init.button ?? 0,
+    shiftKey: init.shiftKey ?? false,
+    altKey: init.altKey ?? false,
   });
   target.dispatchEvent(event);
 }
