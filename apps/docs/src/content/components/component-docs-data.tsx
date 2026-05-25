@@ -41,12 +41,14 @@ const ColorAreaPropertiesPanel = lazy(() =>
   })),
 );
 const ColorSliderPropertiesPanel = lazy(() =>
-  import('@/components/docs-right-rail-panels').then((module) => ({
-    default: module.ColorSliderPropertiesPanel,
-  })),
+  import('@/components/panels/color-slider-properties-panel').then(
+    (module) => ({
+      default: module.ColorSliderPropertiesPanel,
+    }),
+  ),
 );
 const ColorInputPropertiesPanel = lazy(() =>
-  import('@/components/docs-right-rail-panels').then((module) => ({
+  import('@/components/panels/color-input-properties-panel').then((module) => ({
     default: module.ColorInputPropertiesPanel,
   })),
 );
