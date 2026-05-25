@@ -36,12 +36,17 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-002 - Make numeric input behavior canonical
 
 - Priority: P1
-- Status: Open
+- Status: Complete
 - Evidence:
   - `packages/control-kit/src/primitive-value-input.tsx:44` owns primitive normalize/format/parse helpers.
   - `packages/control-kit/src/primitive-value-input.tsx:168` owns focus, keyboard, selection, pointer-lock, and scrub behavior.
   - `packages/react/src/color-input.tsx:102` keeps a parallel color input engine.
   - `packages/react/src/api/color-input.ts:269` duplicates normalization/format/parsing helper logic.
+- Resolution:
+  - Added a canonical `usePrimitiveValueInput` engine in `@color-kit/control-kit` and routed the styled primitive through it.
+  - Routed React `ColorInput` through the primitive engine while preserving its public data attributes, spinbutton aria, interaction metadata, and color-channel adapter behavior.
+  - Replaced duplicated React normalization, formatting, draft parsing, and keyboard stepping helper logic with calls into the primitive helpers.
+  - Expanded primitive contract tests for keyboard, blur, parse/revert, clamp/wrap, disabled/readOnly, and scrub interactions.
 - Problem: Numeric input behavior is implemented in multiple places. Keyboard stepping, parsing, clamping/wrapping, scrubbing, and tests can drift.
 - Target shape: Make `ColorInput` a color-domain adapter over `PrimitiveValueInput`, or extract one canonical `usePrimitiveValueInput` state machine into `control-kit`.
 - Suggested slices:
