@@ -16,10 +16,11 @@ This backlog tracks structural maintainability work that is too large to treat a
 - Priority: P1
 - Status: Completed (2026-05-24)
 - Evidence:
-  - `apps/docs/src/routes/lab.tsx` is 4,604 lines.
-  - `LabPage` owns every page state cluster starting around `apps/docs/src/routes/lab.tsx:2764`.
-  - Preview routing is a long `activePage` chain around `apps/docs/src/routes/lab.tsx:3077`.
-  - Properties-panel routing repeats the same page dispatch around `apps/docs/src/routes/lab.tsx:3254`.
+  - `apps/docs/src/routes/lab.tsx` is now a 27-line route shell.
+  - `apps/docs/src/routes/lab/page-registry.tsx` owns the typed descriptor registry, stable controller hook order, and the single active page slot dispatch.
+  - `apps/docs/src/routes/lab/pages/*.tsx` gives each Lab page its own controller hook, preview renderer, and properties renderer.
+  - `apps/docs/src/routes/lab/shared.tsx` keeps route-neutral Lab frame, controls, data, and reusable preview helpers out of the route shell.
+  - Validation passed with `pnpm lint`, `pnpm --filter @color-kit/docs test`, `pnpm --filter @color-kit/docs build`, and an in-browser `/lab` page-switch smoke.
 - Problem: The Lab route has become the entire Lab architecture. Every new Lab feature edits one giant file and touches shared state, previews, and panels in one place.
 - Target shape: Introduce page descriptors. Each Lab page should own its state/controller hook, preview stage, and properties panel. The route shell should render the selected descriptor.
 - Suggested slices:
