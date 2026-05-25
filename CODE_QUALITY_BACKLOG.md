@@ -102,7 +102,7 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-005 - Move Lab-only UI3 helpers out of the shared dropdown primitive
 
 - Priority: P2
-- Status: Open
+- Status: Completed in `codex/cq010-contrast-tiers`
 - Evidence:
   - `apps/docs/src/components/ui/dropdown-menu.tsx:692` contains custom keyboard/typeahead controller logic.
   - `apps/docs/src/components/ui/dropdown-menu.tsx:1457` exports `DropdownMenuPanel`.
@@ -213,6 +213,10 @@ This backlog tracks structural maintainability work that is too large to treat a
   - Overlay tiers are declared once.
   - Control labels and render behavior cannot drift independently.
   - Existing contrast overlay demos remain visually unchanged.
+- Completion evidence:
+  - `apps/docs/src/components/color-area-contrast-tiers.ts` declares the WCAG/APCA thresholds, labels, stroke colors, fill colors, and fill opacity for every tier.
+  - `apps/docs/src/components/component-demos.tsx` renders contrast lines and regions from those descriptors while preserving metric keys, colors, fill opacity, and render order.
+  - `apps/docs/src/components/docs-right-rail.tsx` renders line and region controls from the same descriptors with typed tier update helpers.
 
 ## Suggested Execution Order
 

@@ -44,6 +44,11 @@ import {
   type ColorAreaInspectorState,
 } from './docs-inspector-context.js';
 import { COLOR_AREA_DOT_PATTERN } from './color-area-dot-pattern.js';
+import {
+  COLOR_AREA_CONTRAST_TIERS,
+  getColorAreaContrastTierLabel,
+  resolveColorAreaContrastThreshold,
+} from './color-area-contrast-tiers.js';
 
 function normalizeChannels(
   x: ColorAreaChannel,
@@ -200,17 +205,6 @@ function pathPointProps(fill: string) {
 
 const COLOR_AREA_LINE_STEPS = 128;
 const COLOR_AREA_CONTRAST_STEPS = 72;
-const WCAG_THRESHOLDS = {
-  aa3: 3,
-  aa45: 4.5,
-  aaa7: 7,
-} as const;
-const APCA_THRESHOLDS = {
-  aa3: 0.3,
-  aa45: 0.45,
-  aaa7: 0.6,
-} as const;
-type ContrastTierKey = keyof typeof WCAG_THRESHOLDS;
 
 function percentile(values: number[], ratio: number): number {
   if (values.length === 0) {
@@ -444,32 +438,15 @@ function summarizePerfFrames(
   };
 }
 
-function resolveContrastThreshold(
-  metric: ContrastMetric,
-  tier: ContrastTierKey,
-): number {
-  return metric === 'apca' ? APCA_THRESHOLDS[tier] : WCAG_THRESHOLDS[tier];
-}
-
 function contrastMetricLabel(key: string, metric: ContrastMetric): string {
-  const thresholds = metric === 'apca' ? APCA_THRESHOLDS : WCAG_THRESHOLDS;
-  const suffix = metric === 'apca' ? 'Lc' : ':1';
-  switch (key) {
-    case 'line-aa3':
-      return `Line ${thresholds.aa3}${suffix}`;
-    case 'line-aa45':
-      return `Line ${thresholds.aa45}${suffix}`;
-    case 'line-aaa7':
-      return `Line ${thresholds.aaa7}${suffix}`;
-    case 'region-aa3':
-      return `Region ${thresholds.aa3}${suffix}`;
-    case 'region-aa45':
-      return `Region ${thresholds.aa45}${suffix}`;
-    case 'region-aaa7':
-      return `Region ${thresholds.aaa7}${suffix}`;
-    default:
-      return key;
+  const [kind, tierKey] = key.split('-');
+  const tier = COLOR_AREA_CONTRAST_TIERS.find(
+    (candidate) => candidate.key === tierKey,
+  );
+  if (!tier || (kind !== 'line' && kind !== 'region')) {
+    return key;
   }
+  return `${kind === 'line' ? 'Line' : 'Region'} ${getColorAreaContrastTierLabel(metric, tier)}`;
 }
 
 function ColorAreaDemoScene({
@@ -654,169 +631,78 @@ function ColorAreaDemoScene({
           />
         )}
 
-        {scene.contrast.lines.aa3.enabled && (
-          <ContrastRegionLayer
-            gamut={scene.gamut}
-            metric={contrastMetric}
-            threshold={resolveContrastThreshold(contrastMetric, 'aa3')}
-            apcaPolarity={contrastApcaPolarity}
-            apcaRole={contrastApcaRole}
-            includeSchedulerTelemetry={includeSchedulerTelemetry}
-            wasmParityMode={wasmParityMode}
-            lightnessSteps={contrastSteps}
-            chromaSteps={contrastSteps}
-            quality={layerQuality}
-            simplifyTolerance={simplifyTolerance}
-            cornerRadius={cornerRadius}
-            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
-              onContrastMetrics?.('line-aa3', metrics)
-            }
-            pathProps={gamutBoundaryPathProps(
-              scene.contrast.lines.aa3,
-              '#bcd6ff',
-            )}
-            showPathPoints={showPathPoints}
-            pointProps={pathPointProps('#bcd6ff')}
-          />
-        )}
-        {scene.contrast.lines.aa45.enabled && (
-          <ContrastRegionLayer
-            gamut={scene.gamut}
-            metric={contrastMetric}
-            threshold={resolveContrastThreshold(contrastMetric, 'aa45')}
-            apcaPolarity={contrastApcaPolarity}
-            apcaRole={contrastApcaRole}
-            includeSchedulerTelemetry={includeSchedulerTelemetry}
-            wasmParityMode={wasmParityMode}
-            lightnessSteps={contrastSteps}
-            chromaSteps={contrastSteps}
-            quality={layerQuality}
-            simplifyTolerance={simplifyTolerance}
-            cornerRadius={cornerRadius}
-            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
-              onContrastMetrics?.('line-aa45', metrics)
-            }
-            pathProps={gamutBoundaryPathProps(
-              scene.contrast.lines.aa45,
-              '#c0e1ff',
-            )}
-            showPathPoints={showPathPoints}
-            pointProps={pathPointProps('#c0e1ff')}
-          />
-        )}
-        {scene.contrast.lines.aaa7.enabled && (
-          <ContrastRegionLayer
-            gamut={scene.gamut}
-            metric={contrastMetric}
-            threshold={resolveContrastThreshold(contrastMetric, 'aaa7')}
-            apcaPolarity={contrastApcaPolarity}
-            apcaRole={contrastApcaRole}
-            includeSchedulerTelemetry={includeSchedulerTelemetry}
-            wasmParityMode={wasmParityMode}
-            lightnessSteps={contrastSteps}
-            chromaSteps={contrastSteps}
-            quality={layerQuality}
-            simplifyTolerance={simplifyTolerance}
-            cornerRadius={cornerRadius}
-            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
-              onContrastMetrics?.('line-aaa7', metrics)
-            }
-            pathProps={gamutBoundaryPathProps(
-              scene.contrast.lines.aaa7,
-              '#d5e7ff',
-            )}
-            showPathPoints={showPathPoints}
-            pointProps={pathPointProps('#d5e7ff')}
-          />
-        )}
+        {COLOR_AREA_CONTRAST_TIERS.map((tier) => {
+          const line = scene.contrast.lines[tier.key];
+          if (!line.enabled) {
+            return null;
+          }
+          return (
+            <ContrastRegionLayer
+              key={`line-${tier.key}`}
+              gamut={scene.gamut}
+              metric={contrastMetric}
+              threshold={resolveColorAreaContrastThreshold(
+                contrastMetric,
+                tier,
+              )}
+              apcaPolarity={contrastApcaPolarity}
+              apcaRole={contrastApcaRole}
+              includeSchedulerTelemetry={includeSchedulerTelemetry}
+              wasmParityMode={wasmParityMode}
+              lightnessSteps={contrastSteps}
+              chromaSteps={contrastSteps}
+              quality={layerQuality}
+              simplifyTolerance={simplifyTolerance}
+              cornerRadius={cornerRadius}
+              onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+                onContrastMetrics?.(`line-${tier.key}`, metrics)
+              }
+              pathProps={gamutBoundaryPathProps(line, tier.lineStroke)}
+              showPathPoints={showPathPoints}
+              pointProps={pathPointProps(tier.lineStroke)}
+            />
+          );
+        })}
 
-        {scene.contrast.regions.aa3.enabled && (
-          <ContrastRegionLayer
-            gamut={scene.gamut}
-            metric={contrastMetric}
-            threshold={resolveContrastThreshold(contrastMetric, 'aa3')}
-            apcaPolarity={contrastApcaPolarity}
-            apcaRole={contrastApcaRole}
-            includeSchedulerTelemetry={includeSchedulerTelemetry}
-            wasmParityMode={wasmParityMode}
-            lightnessSteps={contrastSteps}
-            chromaSteps={contrastSteps}
-            quality={layerQuality}
-            simplifyTolerance={simplifyTolerance}
-            cornerRadius={cornerRadius}
-            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
-              onContrastMetrics?.('region-aa3', metrics)
-            }
-            showPathPoints={showPathPoints}
-            pointProps={pathPointProps('#7ca4ff')}
-          >
-            <ContrastRegionFill
-              fillColor="#7ca4ff"
-              fillOpacity={0.12}
-              dotOpacity={scene.contrast.regions.aa3.opacityPercent / 100}
-              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
-            />
-          </ContrastRegionLayer>
-        )}
-        {scene.contrast.regions.aa45.enabled && (
-          <ContrastRegionLayer
-            gamut={scene.gamut}
-            metric={contrastMetric}
-            threshold={resolveContrastThreshold(contrastMetric, 'aa45')}
-            apcaPolarity={contrastApcaPolarity}
-            apcaRole={contrastApcaRole}
-            includeSchedulerTelemetry={includeSchedulerTelemetry}
-            wasmParityMode={wasmParityMode}
-            lightnessSteps={contrastSteps}
-            chromaSteps={contrastSteps}
-            quality={layerQuality}
-            simplifyTolerance={simplifyTolerance}
-            cornerRadius={cornerRadius}
-            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
-              onContrastMetrics?.('region-aa45', metrics)
-            }
-            showPathPoints={showPathPoints}
-            pointProps={pathPointProps('#c0e1ff')}
-          >
-            <ContrastRegionFill
-              fillColor="#c0e1ff"
-              fillOpacity={0.14}
-              dotOpacity={scene.contrast.regions.aa45.opacityPercent / 100}
-              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
-            />
-          </ContrastRegionLayer>
-        )}
-        {scene.contrast.regions.aaa7.enabled && (
-          <ContrastRegionLayer
-            gamut={scene.gamut}
-            metric={contrastMetric}
-            threshold={resolveContrastThreshold(contrastMetric, 'aaa7')}
-            apcaPolarity={contrastApcaPolarity}
-            apcaRole={contrastApcaRole}
-            includeSchedulerTelemetry={includeSchedulerTelemetry}
-            wasmParityMode={wasmParityMode}
-            lightnessSteps={contrastSteps}
-            chromaSteps={contrastSteps}
-            quality={layerQuality}
-            simplifyTolerance={simplifyTolerance}
-            cornerRadius={cornerRadius}
-            onMetrics={(metrics: ContrastRegionLayerMetrics) =>
-              onContrastMetrics?.('region-aaa7', metrics)
-            }
-            showPathPoints={showPathPoints}
-            pointProps={pathPointProps('#dceaff')}
-          >
-            <ContrastRegionFill
-              fillColor="#dceaff"
-              fillOpacity={0.16}
-              dotOpacity={scene.contrast.regions.aaa7.opacityPercent / 100}
-              dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
-              dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
-            />
-          </ContrastRegionLayer>
-        )}
+        {COLOR_AREA_CONTRAST_TIERS.map((tier) => {
+          const region = scene.contrast.regions[tier.key];
+          if (!region.enabled) {
+            return null;
+          }
+          return (
+            <ContrastRegionLayer
+              key={`region-${tier.key}`}
+              gamut={scene.gamut}
+              metric={contrastMetric}
+              threshold={resolveColorAreaContrastThreshold(
+                contrastMetric,
+                tier,
+              )}
+              apcaPolarity={contrastApcaPolarity}
+              apcaRole={contrastApcaRole}
+              includeSchedulerTelemetry={includeSchedulerTelemetry}
+              wasmParityMode={wasmParityMode}
+              lightnessSteps={contrastSteps}
+              chromaSteps={contrastSteps}
+              quality={layerQuality}
+              simplifyTolerance={simplifyTolerance}
+              cornerRadius={cornerRadius}
+              onMetrics={(metrics: ContrastRegionLayerMetrics) =>
+                onContrastMetrics?.(`region-${tier.key}`, metrics)
+              }
+              showPathPoints={showPathPoints}
+              pointProps={pathPointProps(tier.regionFill)}
+            >
+              <ContrastRegionFill
+                fillColor={tier.regionFill}
+                fillOpacity={tier.regionFillOpacity}
+                dotOpacity={region.opacityPercent / 100}
+                dotSize={COLOR_AREA_DOT_PATTERN.dotSize}
+                dotGap={COLOR_AREA_DOT_PATTERN.dotGap}
+              />
+            </ContrastRegionLayer>
+          );
+        })}
         <FallbackPointsLayer
           showP3={scene.visualize.p3Fallback}
           showSrgb={scene.visualize.srgbFallback}

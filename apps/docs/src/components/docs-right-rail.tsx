@@ -24,6 +24,11 @@ import {
   type ColorInputDemoChannel,
   type EditableColorAreaFormatRow,
 } from './docs-inspector-context.js';
+import {
+  COLOR_AREA_CONTRAST_TIERS,
+  getColorAreaContrastTierLabel,
+  type ColorAreaContrastTierKey,
+} from './color-area-contrast-tiers.js';
 
 export interface DocsHeading {
   id: string;
@@ -513,10 +518,7 @@ function ColorAreaPropertiesPanel() {
       | 'visualize.p3Boundary'
       | 'visualize.srgbBoundary'
       | 'chromaBand.p3'
-      | 'chromaBand.srgb'
-      | 'contrast.lines.aa3'
-      | 'contrast.lines.aa45'
-      | 'contrast.lines.aaa7',
+      | 'chromaBand.srgb',
   ) => {
     if (path === 'visualize.p3Boundary') {
       setColorAreaState({
@@ -557,55 +559,40 @@ function ColorAreaPropertiesPanel() {
       });
       return;
     }
+  };
 
-    if (path === 'contrast.lines.aa3') {
-      setColorAreaState({
-        contrast: {
-          ...colorAreaState.contrast,
-          lines: {
-            ...colorAreaState.contrast.lines,
-            aa3: updater(colorAreaState.contrast.lines.aa3),
-          },
-        },
-      });
-      return;
-    }
-
-    if (path === 'contrast.lines.aa45') {
-      setColorAreaState({
-        contrast: {
-          ...colorAreaState.contrast,
-          lines: {
-            ...colorAreaState.contrast.lines,
-            aa45: updater(colorAreaState.contrast.lines.aa45),
-          },
-        },
-      });
-      return;
-    }
-
+  const setContrastLine = (
+    tier: ColorAreaContrastTierKey,
+    updater: (current: ColorAreaStrokeControl) => ColorAreaStrokeControl,
+  ) => {
     setColorAreaState({
       contrast: {
         ...colorAreaState.contrast,
         lines: {
           ...colorAreaState.contrast.lines,
-          aaa7: updater(colorAreaState.contrast.lines.aaa7),
+          [tier]: updater(colorAreaState.contrast.lines[tier]),
         },
       },
     });
   };
-  const contrastLabels =
-    colorAreaState.tuning.contrastMetric === 'apca'
-      ? {
-          aa3: '0.30 Lc (UI)',
-          aa45: '0.45 Lc (Large)',
-          aaa7: '0.60 Lc (Body)',
-        }
-      : {
-          aa3: '3:1 (AA)',
-          aa45: '4.5:1 (AA)',
-          aaa7: '7:1 (AAA)',
-        };
+
+  const setContrastRegion = (
+    tier: ColorAreaContrastTierKey,
+    patch: { enabled?: boolean; opacityPercent?: number },
+  ) => {
+    setColorAreaState({
+      contrast: {
+        ...colorAreaState.contrast,
+        regions: {
+          ...colorAreaState.contrast.regions,
+          [tier]: {
+            ...colorAreaState.contrast.regions[tier],
+            ...patch,
+          },
+        },
+      },
+    });
+  };
 
   return (
     <div className="docs-properties-panel docs-properties-panel-color-area">
@@ -1147,190 +1134,60 @@ function ColorAreaPropertiesPanel() {
 
         <p className="docs-subgroup-label">Lines</p>
 
-        <div className="docs-control-row">
-          <label className="docs-toggle-row">
-            <input
-              type="checkbox"
-              checked={colorAreaState.contrast.lines.aa3.enabled}
-              onChange={(event) =>
-                setStroke(
-                  (current) => ({ ...current, enabled: event.target.checked }),
-                  'contrast.lines.aa3',
-                )
-              }
+        {COLOR_AREA_CONTRAST_TIERS.map((tier) => (
+          <div key={`line-${tier.key}`} className="docs-control-row">
+            <label className="docs-toggle-row">
+              <input
+                type="checkbox"
+                checked={colorAreaState.contrast.lines[tier.key].enabled}
+                onChange={(event) =>
+                  setContrastLine(tier.key, (current) => ({
+                    ...current,
+                    enabled: event.target.checked,
+                  }))
+                }
+              />
+              {getColorAreaContrastTierLabel(
+                colorAreaState.tuning.contrastMetric,
+                tier,
+              )}
+            </label>
+            <StrokeStylePills
+              value={colorAreaState.contrast.lines[tier.key]}
+              onChange={(next) => setContrastLine(tier.key, () => next)}
             />
-            {contrastLabels.aa3}
-          </label>
-          <StrokeStylePills
-            value={colorAreaState.contrast.lines.aa3}
-            onChange={(next) => setStroke(() => next, 'contrast.lines.aa3')}
-          />
-        </div>
-
-        <div className="docs-control-row">
-          <label className="docs-toggle-row">
-            <input
-              type="checkbox"
-              checked={colorAreaState.contrast.lines.aa45.enabled}
-              onChange={(event) =>
-                setStroke(
-                  (current) => ({ ...current, enabled: event.target.checked }),
-                  'contrast.lines.aa45',
-                )
-              }
-            />
-            {contrastLabels.aa45}
-          </label>
-          <StrokeStylePills
-            value={colorAreaState.contrast.lines.aa45}
-            onChange={(next) => setStroke(() => next, 'contrast.lines.aa45')}
-          />
-        </div>
-
-        <div className="docs-control-row">
-          <label className="docs-toggle-row">
-            <input
-              type="checkbox"
-              checked={colorAreaState.contrast.lines.aaa7.enabled}
-              onChange={(event) =>
-                setStroke(
-                  (current) => ({ ...current, enabled: event.target.checked }),
-                  'contrast.lines.aaa7',
-                )
-              }
-            />
-            {contrastLabels.aaa7}
-          </label>
-          <StrokeStylePills
-            value={colorAreaState.contrast.lines.aaa7}
-            onChange={(next) => setStroke(() => next, 'contrast.lines.aaa7')}
-          />
-        </div>
+          </div>
+        ))}
 
         <p className="docs-subgroup-label">Regions</p>
 
-        <div className="docs-control-row">
-          <label className="docs-toggle-row">
-            <input
-              type="checkbox"
-              checked={colorAreaState.contrast.regions.aa3.enabled}
-              onChange={(event) =>
-                setColorAreaState({
-                  contrast: {
-                    ...colorAreaState.contrast,
-                    regions: {
-                      ...colorAreaState.contrast.regions,
-                      aa3: {
-                        ...colorAreaState.contrast.regions.aa3,
-                        enabled: event.target.checked,
-                      },
-                    },
-                  },
-                })
+        {COLOR_AREA_CONTRAST_TIERS.map((tier) => (
+          <div key={`region-${tier.key}`} className="docs-control-row">
+            <label className="docs-toggle-row">
+              <input
+                type="checkbox"
+                checked={colorAreaState.contrast.regions[tier.key].enabled}
+                onChange={(event) =>
+                  setContrastRegion(tier.key, {
+                    enabled: event.target.checked,
+                  })
+                }
+              />
+              {getColorAreaContrastTierLabel(
+                colorAreaState.tuning.contrastMetric,
+                tier,
+              )}
+            </label>
+            <DotOpacityPills
+              opacityPercent={
+                colorAreaState.contrast.regions[tier.key].opacityPercent
+              }
+              onChange={(opacityPercent) =>
+                setContrastRegion(tier.key, { opacityPercent })
               }
             />
-            {contrastLabels.aa3}
-          </label>
-          <DotOpacityPills
-            opacityPercent={colorAreaState.contrast.regions.aa3.opacityPercent}
-            onChange={(opacityPercent) =>
-              setColorAreaState({
-                contrast: {
-                  ...colorAreaState.contrast,
-                  regions: {
-                    ...colorAreaState.contrast.regions,
-                    aa3: {
-                      ...colorAreaState.contrast.regions.aa3,
-                      opacityPercent,
-                    },
-                  },
-                },
-              })
-            }
-          />
-        </div>
-
-        <div className="docs-control-row">
-          <label className="docs-toggle-row">
-            <input
-              type="checkbox"
-              checked={colorAreaState.contrast.regions.aa45.enabled}
-              onChange={(event) =>
-                setColorAreaState({
-                  contrast: {
-                    ...colorAreaState.contrast,
-                    regions: {
-                      ...colorAreaState.contrast.regions,
-                      aa45: {
-                        ...colorAreaState.contrast.regions.aa45,
-                        enabled: event.target.checked,
-                      },
-                    },
-                  },
-                })
-              }
-            />
-            {contrastLabels.aa45}
-          </label>
-          <DotOpacityPills
-            opacityPercent={colorAreaState.contrast.regions.aa45.opacityPercent}
-            onChange={(opacityPercent) =>
-              setColorAreaState({
-                contrast: {
-                  ...colorAreaState.contrast,
-                  regions: {
-                    ...colorAreaState.contrast.regions,
-                    aa45: {
-                      ...colorAreaState.contrast.regions.aa45,
-                      opacityPercent,
-                    },
-                  },
-                },
-              })
-            }
-          />
-        </div>
-
-        <div className="docs-control-row">
-          <label className="docs-toggle-row">
-            <input
-              type="checkbox"
-              checked={colorAreaState.contrast.regions.aaa7.enabled}
-              onChange={(event) =>
-                setColorAreaState({
-                  contrast: {
-                    ...colorAreaState.contrast,
-                    regions: {
-                      ...colorAreaState.contrast.regions,
-                      aaa7: {
-                        ...colorAreaState.contrast.regions.aaa7,
-                        enabled: event.target.checked,
-                      },
-                    },
-                  },
-                })
-              }
-            />
-            {contrastLabels.aaa7}
-          </label>
-          <DotOpacityPills
-            opacityPercent={colorAreaState.contrast.regions.aaa7.opacityPercent}
-            onChange={(opacityPercent) =>
-              setColorAreaState({
-                contrast: {
-                  ...colorAreaState.contrast,
-                  regions: {
-                    ...colorAreaState.contrast.regions,
-                    aaa7: {
-                      ...colorAreaState.contrast.regions.aaa7,
-                      opacityPercent,
-                    },
-                  },
-                },
-              })
-            }
-          />
-        </div>
+          </div>
+        ))}
       </section>
 
       <section className="docs-properties-group">
