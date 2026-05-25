@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent as ReactChangeEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -17,6 +18,16 @@ export type PrimitiveDensity = 'compact' | 'comfortable';
 export type PrimitiveVisualState = 'auto' | 'valid' | 'invalid';
 export type PrimitiveVisualTreatment = 'default' | 'embedded';
 export type PrimitiveHandleSide = 'leading' | 'trailing';
+export type PrimitiveValueInteraction = 'text-input' | 'keyboard' | 'pointer';
+export type PrimitiveStepKey =
+  | 'ArrowRight'
+  | 'ArrowLeft'
+  | 'ArrowUp'
+  | 'ArrowDown'
+  | 'PageUp'
+  | 'PageDown'
+  | 'Home'
+  | 'End';
 
 export type PrimitiveExpressionParser = (
   draft: string,
@@ -26,6 +37,27 @@ export type PrimitiveExpressionParser = (
     range: [number, number];
   },
 ) => number | null;
+
+export interface PrimitiveValueChangeDetails {
+  interaction: PrimitiveValueInteraction;
+}
+
+export interface PrimitiveStepConfig {
+  step: number;
+  fineStep: number;
+  coarseStep: number;
+  pageStep: number;
+}
+
+export interface PrimitiveSteppedValueOptions {
+  value: number;
+  key: PrimitiveStepKey | string;
+  min: number;
+  max: number;
+  wrapMode: PrimitiveWrapMode;
+  step: number;
+  pageStep: number;
+}
 
 const PRIMITIVE_SIZE_CLASS: Record<PrimitiveSize, string> = {
   sm: 'w-32',
@@ -120,16 +152,58 @@ export function parsePrimitiveDraft(
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export interface PrimitiveValueInputProps {
+export function getPrimitiveModifiedStep(
+  shiftKey: boolean,
+  altKey: boolean,
+  steps: PrimitiveStepConfig,
+): number {
+  if (altKey) return steps.fineStep;
+  if (shiftKey) return steps.coarseStep;
+  return steps.step;
+}
+
+export function getPrimitiveSteppedValue({
+  value,
+  key,
+  min,
+  max,
+  wrapMode,
+  step,
+  pageStep,
+}: PrimitiveSteppedValueOptions): number | null {
+  const safeStep = Math.abs(step);
+  const safePageStep = Math.abs(pageStep);
+  let nextValue: number | null = null;
+
+  switch (key as PrimitiveStepKey) {
+    case 'ArrowRight':
+    case 'ArrowUp':
+      nextValue = value + safeStep;
+      break;
+    case 'ArrowLeft':
+    case 'ArrowDown':
+      nextValue = value - safeStep;
+      break;
+    case 'PageUp':
+      nextValue = value + safePageStep;
+      break;
+    case 'PageDown':
+      nextValue = value - safePageStep;
+      break;
+    case 'Home':
+      return min;
+    case 'End':
+      return max;
+    default:
+      return null;
+  }
+
+  return normalizePrimitiveValue(nextValue, min, max, wrapMode);
+}
+
+export interface UsePrimitiveValueInputOptions {
   value: number;
-  onValueChange: (value: number) => void;
-  ariaLabel?: string;
-  placeholder?: string;
-  leadingElement?: ReactNode;
-  trailingElement?: ReactNode;
-  handleElement?: ReactNode;
-  handleSide?: PrimitiveHandleSide;
-  handleContentWidth?: number;
+  onValueChange: (value: number, details: PrimitiveValueChangeDetails) => void;
   min: number;
   max: number;
   wrapMode: PrimitiveWrapMode;
@@ -147,34 +221,32 @@ export interface PrimitiveValueInputProps {
   scrubPixelsPerStep?: number;
   stepDragDistance?: number;
   scrubThreshold: number;
+  scrubCommitThreshold?: number;
+  scrubMaxCommitRate?: number;
   pointerLockEnabled: boolean;
   horizontalArrowKeysMoveCaret?: boolean;
   disabled: boolean;
   readOnly: boolean;
-  visualState: PrimitiveVisualState;
-  visualTreatment?: PrimitiveVisualTreatment;
-  showInvalidBorder?: boolean;
+  onInvalidCommit?: (draft: string) => void;
   onScrubbingChange?: (isScrubbing: boolean) => void;
-  size: PrimitiveSize;
-  density?: PrimitiveDensity;
 }
 
 interface PrimitiveInputSelectionSnapshot {
   start: number;
   end: number;
   direction: HTMLInputElement['selectionDirection'];
+  selectAll: boolean;
 }
 
-export function PrimitiveValueInput({
+interface PrimitiveScrubSnapshot {
+  clientX: number;
+  shiftKey: boolean;
+  altKey: boolean;
+}
+
+export function usePrimitiveValueInput({
   value,
   onValueChange,
-  ariaLabel,
-  placeholder,
-  leadingElement = 'V',
-  trailingElement,
-  handleElement,
-  handleSide = 'leading',
-  handleContentWidth = 24,
   min,
   max,
   wrapMode,
@@ -192,17 +264,15 @@ export function PrimitiveValueInput({
   scrubPixelsPerStep = 1,
   stepDragDistance,
   scrubThreshold,
+  scrubCommitThreshold = 0,
+  scrubMaxCommitRate,
   pointerLockEnabled,
   horizontalArrowKeysMoveCaret = true,
   disabled,
   readOnly,
-  visualState,
-  visualTreatment = 'default',
-  showInvalidBorder = false,
+  onInvalidCommit,
   onScrubbingChange,
-  size,
-  density = 'compact',
-}: PrimitiveValueInputProps) {
+}: UsePrimitiveValueInputOptions) {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrubHandleRef = useRef<HTMLDivElement>(null);
   const onScrubbingChangeRef = useRef(onScrubbingChange);
@@ -217,11 +287,17 @@ export function PrimitiveValueInput({
   const lastScrubXRef = useRef(0);
   const activeScrubStepRef = useRef(step);
   const hasDragStartedRef = useRef(false);
+  const pendingScrubRef = useRef<PrimitiveScrubSnapshot | null>(null);
+  const scrubFrameRef = useRef<number | null>(null);
+  const lastScrubCommitTsRef = useRef(0);
+  const processPendingScrubRef = useRef<(frameTime: number) => void>(() => {});
+  const lastCommittedValueRef = useRef(value);
+  const skipBlurCommitRef = useRef(false);
   const [draft, setDraft] = useState(() =>
     formatPrimitiveValue(value, precision, autoTrim),
   );
   const [isEditing, setIsEditing] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const [focusStartValue, setFocusStartValue] = useState<number | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
 
   const displayValue = useMemo(
@@ -235,6 +311,12 @@ export function PrimitiveValueInput({
     }
   }, [displayValue, isEditing]);
 
+  useEffect(() => {
+    if (!isEditing && !isScrubbing) {
+      lastCommittedValueRef.current = value;
+    }
+  }, [isEditing, isScrubbing, value]);
+
   const parsedDraft = useMemo(() => {
     if (!isEditing) {
       return value;
@@ -242,7 +324,7 @@ export function PrimitiveValueInput({
 
     const parsed = parsePrimitiveDraft(
       draft,
-      value,
+      focusStartValue ?? value,
       min,
       max,
       allowExpressions,
@@ -254,6 +336,7 @@ export function PrimitiveValueInput({
   }, [
     allowExpressions,
     draft,
+    focusStartValue,
     isEditing,
     max,
     min,
@@ -263,9 +346,6 @@ export function PrimitiveValueInput({
   ]);
 
   const isDraftValid = parsedDraft !== null;
-  const showInvalidState = visualState === 'invalid';
-  const isVisuallyValid =
-    visualState === 'valid' || (visualState === 'auto' && isDraftValid);
   const currentValue = isEditing ? draft : displayValue;
 
   const restorePreservedSelection = useCallback(() => {
@@ -276,11 +356,13 @@ export function PrimitiveValueInput({
     }
 
     const valueLength = input.value.length;
-    input.setSelectionRange(
-      Math.min(snapshot.start, valueLength),
-      Math.min(snapshot.end, valueLength),
-      snapshot.direction ?? undefined,
-    );
+    const start = snapshot.selectAll
+      ? 0
+      : Math.min(snapshot.start, valueLength);
+    const end = snapshot.selectAll
+      ? valueLength
+      : Math.min(snapshot.end, valueLength);
+    input.setSelectionRange(start, end, snapshot.direction ?? undefined);
   }, []);
 
   const clearPreservedSelection = useCallback(() => {
@@ -315,6 +397,7 @@ export function PrimitiveValueInput({
       start,
       end,
       direction: input.selectionDirection,
+      selectAll: start === 0 && end === input.value.length,
     };
   }, []);
 
@@ -322,31 +405,46 @@ export function PrimitiveValueInput({
     restorePreservedSelection();
   }, [currentValue, restorePreservedSelection]);
 
-  const commitValue = useCallback(
-    (nextValue: number) => {
+  const emitValue = useCallback(
+    (nextValue: number, interaction: PrimitiveValueInteraction) => {
       const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
-      onValueChange(normalized);
+      const previousValue = lastCommittedValueRef.current;
+
+      if (
+        Object.is(normalized, previousValue) ||
+        Math.abs(normalized - previousValue) <= 1e-12
+      ) {
+        return normalized;
+      }
+
+      lastCommittedValueRef.current = normalized;
       setDraft(formatPrimitiveValue(normalized, precision, autoTrim));
+      onValueChange(normalized, { interaction });
+      return normalized;
     },
     [autoTrim, max, min, onValueChange, precision, wrapMode],
   );
 
   const commitDraft = useCallback(() => {
     if (parsedDraft !== null) {
-      commitValue(parsedDraft);
+      emitValue(parsedDraft, 'text-input');
     } else {
+      onInvalidCommit?.(draft);
       setDraft(displayValue);
     }
     setIsEditing(false);
-  }, [commitValue, displayValue, parsedDraft]);
+    setFocusStartValue(null);
+  }, [displayValue, draft, emitValue, onInvalidCommit, parsedDraft]);
 
   const getModifiedStep = useCallback(
-    (shiftKey: boolean, altKey: boolean) => {
-      if (altKey) return fineStep;
-      if (shiftKey) return coarseStep;
-      return step;
-    },
-    [coarseStep, fineStep, step],
+    (shiftKey: boolean, altKey: boolean) =>
+      getPrimitiveModifiedStep(shiftKey, altKey, {
+        step,
+        fineStep,
+        coarseStep,
+        pageStep,
+      }),
+    [coarseStep, fineStep, pageStep, step],
   );
 
   const getScrubValueFromDelta = useCallback(
@@ -374,20 +472,36 @@ export function PrimitiveValueInput({
 
   const handleFocus = useCallback(() => {
     setIsEditing(true);
+    setFocusStartValue(value);
+    lastCommittedValueRef.current = value;
     setDraft(displayValue);
     if (selectAllOnFocus) {
       requestAnimationFrame(() => inputRef.current?.select());
     }
-  }, [displayValue, selectAllOnFocus]);
+  }, [displayValue, selectAllOnFocus, value]);
 
   const handleBlur = useCallback(() => {
+    if (skipBlurCommitRef.current) {
+      skipBlurCommitRef.current = false;
+      return;
+    }
+
     if (commitOnBlur) {
       commitDraft();
       return;
     }
     setDraft(displayValue);
     setIsEditing(false);
+    setFocusStartValue(null);
   }, [commitDraft, commitOnBlur, displayValue]);
+
+  const handleChange = useCallback(
+    (event: ReactChangeEvent<HTMLInputElement>) => {
+      setDraft(event.target.value);
+      setIsEditing(true);
+    },
+    [],
+  );
 
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -412,26 +526,22 @@ export function PrimitiveValueInput({
         event.key === 'Home' ||
         event.key === 'End'
       ) {
-        event.preventDefault();
         const activeStep = getModifiedStep(event.shiftKey, event.altKey);
-        const direction =
-          event.key === 'ArrowRight' || event.key === 'ArrowUp'
-            ? 1
-            : event.key === 'ArrowLeft' || event.key === 'ArrowDown'
-              ? -1
-              : 0;
-
-        if (direction !== 0) {
-          commitValue(value + direction * activeStep);
-        } else if (event.key === 'PageUp') {
-          commitValue(value + pageStep);
-        } else if (event.key === 'PageDown') {
-          commitValue(value - pageStep);
-        } else if (event.key === 'Home') {
-          commitValue(min);
-        } else if (event.key === 'End') {
-          commitValue(max);
+        const nextValue = getPrimitiveSteppedValue({
+          value,
+          key: event.key,
+          min,
+          max,
+          wrapMode,
+          step: activeStep,
+          pageStep,
+        });
+        if (nextValue === null) {
+          return;
         }
+
+        event.preventDefault();
+        emitValue(nextValue, 'keyboard');
         setIsEditing(true);
         return;
       }
@@ -439,18 +549,22 @@ export function PrimitiveValueInput({
       if (event.key === 'Enter') {
         event.preventDefault();
         commitDraft();
+        skipBlurCommitRef.current = true;
+        event.currentTarget.blur();
       } else if (event.key === 'Escape') {
         event.preventDefault();
         setDraft(displayValue);
         setIsEditing(false);
+        setFocusStartValue(null);
+        skipBlurCommitRef.current = true;
         event.currentTarget.blur();
       }
     },
     [
       commitDraft,
-      commitValue,
       disabled,
       displayValue,
+      emitValue,
       getModifiedStep,
       horizontalArrowKeysMoveCaret,
       max,
@@ -458,6 +572,7 @@ export function PrimitiveValueInput({
       pageStep,
       readOnly,
       value,
+      wrapMode,
     ],
   );
 
@@ -466,12 +581,17 @@ export function PrimitiveValueInput({
   }, []);
 
   const commitScrubValue = useCallback(
-    (nextValue: number, clientX: number) => {
+    (nextValue: number, clientX: number, force = false) => {
       const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
-      const previousValue = scrubCurrentValueRef.current;
+      const previousCommittedValue = lastCommittedValueRef.current;
       scrubCurrentValueRef.current = normalized;
-      if (!Object.is(normalized, previousValue)) {
-        commitValue(normalized);
+      if (
+        force ||
+        (!Object.is(normalized, previousCommittedValue) &&
+          Math.abs(normalized - previousCommittedValue) >=
+            Math.max(0, scrubCommitThreshold))
+      ) {
+        emitValue(normalized, 'pointer');
       }
 
       if (wrapMode === 'clamp' && normalized !== nextValue) {
@@ -479,53 +599,20 @@ export function PrimitiveValueInput({
         scrubStartValueRef.current = normalized;
       }
     },
-    [commitValue, max, min, wrapMode],
+    [emitValue, max, min, scrubCommitThreshold, wrapMode],
   );
 
-  const endScrub = useCallback(
-    (clientX = lastScrubXRef.current, shiftKey?: boolean, altKey?: boolean) => {
-      if (activePointerIdRef.current !== null && hasDragStartedRef.current) {
-        if (shiftKey !== undefined && altKey !== undefined) {
-          const activeStep = getModifiedStep(shiftKey, altKey);
-          const previousStep = activeScrubStepRef.current;
-          if (activeStep !== previousStep) {
-            scrubStartXRef.current = lastScrubXRef.current;
-            scrubStartValueRef.current = scrubCurrentValueRef.current;
-          }
-          activeScrubStepRef.current = activeStep;
-          const deltaPixels = clientX - scrubStartXRef.current;
-          const nextValue = getScrubValueFromDelta(deltaPixels, activeStep);
-          commitScrubValue(nextValue, clientX);
-        }
-      }
-      activePointerIdRef.current = null;
-      hasDragStartedRef.current = false;
-      setIsScrubbing(false);
-      scheduleClearPreservedSelection();
-      if (hasPointerLock()) {
-        document.exitPointerLock?.();
-      }
-    },
-    [
-      commitScrubValue,
-      getScrubValueFromDelta,
-      getModifiedStep,
-      hasPointerLock,
-      scheduleClearPreservedSelection,
-    ],
-  );
-
-  const queueScrubValue = useCallback(
-    (clientX: number, shiftKey: boolean, altKey: boolean) => {
-      const deltaPixels = clientX - scrubStartXRef.current;
+  const applyScrubSnapshot = useCallback(
+    (snapshot: PrimitiveScrubSnapshot, force = false) => {
+      const deltaPixels = snapshot.clientX - scrubStartXRef.current;
       if (
         !hasDragStartedRef.current &&
         Math.abs(deltaPixels) < scrubThreshold
       ) {
-        lastScrubXRef.current = clientX;
+        lastScrubXRef.current = snapshot.clientX;
         return;
       }
-      const activeStep = getModifiedStep(shiftKey, altKey);
+      const activeStep = getModifiedStep(snapshot.shiftKey, snapshot.altKey);
       const previousStep = activeScrubStepRef.current;
       if (hasDragStartedRef.current && activeStep !== previousStep) {
         scrubStartXRef.current = lastScrubXRef.current;
@@ -534,12 +621,115 @@ export function PrimitiveValueInput({
       hasDragStartedRef.current = true;
       setIsScrubbing(true);
       activeScrubStepRef.current = activeStep;
-      const rebasedDeltaPixels = clientX - scrubStartXRef.current;
+      const rebasedDeltaPixels = snapshot.clientX - scrubStartXRef.current;
       const nextValue = getScrubValueFromDelta(rebasedDeltaPixels, activeStep);
-      lastScrubXRef.current = clientX;
-      commitScrubValue(nextValue, clientX);
+      lastScrubXRef.current = snapshot.clientX;
+      commitScrubValue(nextValue, snapshot.clientX, force);
     },
     [commitScrubValue, getModifiedStep, getScrubValueFromDelta, scrubThreshold],
+  );
+
+  const schedulePendingScrubFrame = useCallback(() => {
+    scrubFrameRef.current = requestAnimationFrame((frameTime: number) => {
+      processPendingScrubRef.current(frameTime);
+    });
+  }, []);
+
+  const shouldRateLimitScrub = useCallback(() => {
+    return (
+      scrubMaxCommitRate !== undefined &&
+      Number.isFinite(scrubMaxCommitRate) &&
+      scrubMaxCommitRate > 0
+    );
+  }, [scrubMaxCommitRate]);
+
+  const processPendingScrub = useCallback(
+    (frameTime: number) => {
+      scrubFrameRef.current = null;
+      const pending = pendingScrubRef.current;
+      if (!pending || activePointerIdRef.current === null) {
+        pendingScrubRef.current = null;
+        return;
+      }
+
+      const safeRate = scrubMaxCommitRate ?? 120;
+      const minFrameDelta = 1000 / safeRate;
+      if (
+        lastScrubCommitTsRef.current > 0 &&
+        frameTime >= lastScrubCommitTsRef.current &&
+        frameTime - lastScrubCommitTsRef.current < minFrameDelta
+      ) {
+        schedulePendingScrubFrame();
+        return;
+      }
+
+      pendingScrubRef.current = null;
+      applyScrubSnapshot(pending);
+      lastScrubCommitTsRef.current = frameTime;
+
+      if (pendingScrubRef.current) {
+        schedulePendingScrubFrame();
+      }
+    },
+    [applyScrubSnapshot, schedulePendingScrubFrame, scrubMaxCommitRate],
+  );
+
+  useEffect(() => {
+    processPendingScrubRef.current = processPendingScrub;
+  }, [processPendingScrub]);
+
+  const queueScrubValue = useCallback(
+    (clientX: number, shiftKey: boolean, altKey: boolean) => {
+      const snapshot = { clientX, shiftKey, altKey };
+      if (!shouldRateLimitScrub()) {
+        applyScrubSnapshot(snapshot);
+        return;
+      }
+
+      pendingScrubRef.current = snapshot;
+      if (scrubFrameRef.current === null) {
+        schedulePendingScrubFrame();
+      }
+    },
+    [applyScrubSnapshot, schedulePendingScrubFrame, shouldRateLimitScrub],
+  );
+
+  const stopScrubFrame = useCallback(() => {
+    if (scrubFrameRef.current !== null) {
+      cancelAnimationFrame(scrubFrameRef.current);
+      scrubFrameRef.current = null;
+    }
+    pendingScrubRef.current = null;
+  }, []);
+
+  const endScrub = useCallback(
+    (clientX = lastScrubXRef.current, shiftKey?: boolean, altKey?: boolean) => {
+      if (activePointerIdRef.current !== null) {
+        if (shiftKey !== undefined && altKey !== undefined) {
+          const snapshot = { clientX, shiftKey, altKey };
+          applyScrubSnapshot(snapshot, true);
+        } else if (pendingScrubRef.current) {
+          applyScrubSnapshot(pendingScrubRef.current, true);
+        } else {
+          applyScrubSnapshot({ clientX, shiftKey: false, altKey: false }, true);
+        }
+      }
+      activePointerIdRef.current = null;
+      hasDragStartedRef.current = false;
+      lastScrubCommitTsRef.current = 0;
+      setIsScrubbing(false);
+      stopScrubFrame();
+      scheduleClearPreservedSelection();
+      if (hasPointerLock()) {
+        document.exitPointerLock?.();
+      }
+    },
+    [
+      applyScrubSnapshot,
+      hasPointerLock,
+      scheduleClearPreservedSelection,
+      stopScrubFrame,
+    ],
   );
 
   const handlePointerDown = useCallback(
@@ -560,6 +750,8 @@ export function PrimitiveValueInput({
         event.altKey,
       );
       hasDragStartedRef.current = false;
+      lastScrubCommitTsRef.current = 0;
+      pendingScrubRef.current = null;
       event.currentTarget.setPointerCapture?.(event.pointerId);
       if (pointerLockEnabled) {
         try {
@@ -584,6 +776,15 @@ export function PrimitiveValueInput({
       scrubEnabled,
       value,
     ],
+  );
+
+  const handleLostPointerCapture = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerId === activePointerIdRef.current) {
+        endScrub();
+      }
+    },
+    [endScrub],
   );
 
   useEffect(() => {
@@ -649,6 +850,7 @@ export function PrimitiveValueInput({
   }, [endScrub, hasPointerLock, queueScrubValue]);
 
   useEffect(() => clearPreservedSelection, [clearPreservedSelection]);
+  useEffect(() => stopScrubFrame, [stopScrubFrame]);
   useEffect(() => {
     onScrubbingChangeRef.current = onScrubbingChange;
   }, [onScrubbingChange]);
@@ -661,6 +863,156 @@ export function PrimitiveValueInput({
     onScrubbingChangeRef.current?.(isScrubbing);
   }, [isScrubbing]);
 
+  return {
+    inputRef,
+    scrubHandleRef,
+    currentValue,
+    displayValue,
+    draft,
+    isDraftValid,
+    isEditing,
+    isScrubbing,
+    inputProps: {
+      value: currentValue,
+      disabled,
+      readOnly,
+      onFocus: handleFocus,
+      onBlur: handleBlur,
+      onChange: handleChange,
+      onKeyDown: handleKeyDown,
+    },
+    scrubHandleProps: {
+      onPointerDown: handlePointerDown,
+      onLostPointerCapture: handleLostPointerCapture,
+    },
+  };
+}
+
+export interface PrimitiveValueInputProps {
+  value: number;
+  onValueChange: (value: number, details: PrimitiveValueChangeDetails) => void;
+  ariaLabel?: string;
+  placeholder?: string;
+  leadingElement?: ReactNode;
+  trailingElement?: ReactNode;
+  handleElement?: ReactNode;
+  handleSide?: PrimitiveHandleSide;
+  handleContentWidth?: number;
+  min: number;
+  max: number;
+  wrapMode: PrimitiveWrapMode;
+  step: number;
+  fineStep: number;
+  coarseStep: number;
+  pageStep: number;
+  precision: PrimitivePrecision;
+  autoTrim: boolean;
+  allowExpressions: boolean;
+  parseExpression?: PrimitiveExpressionParser;
+  selectAllOnFocus: boolean;
+  commitOnBlur: boolean;
+  scrubEnabled: boolean;
+  scrubPixelsPerStep?: number;
+  stepDragDistance?: number;
+  scrubThreshold: number;
+  scrubCommitThreshold?: number;
+  scrubMaxCommitRate?: number;
+  pointerLockEnabled: boolean;
+  horizontalArrowKeysMoveCaret?: boolean;
+  disabled: boolean;
+  readOnly: boolean;
+  onInvalidCommit?: (draft: string) => void;
+  visualState: PrimitiveVisualState;
+  visualTreatment?: PrimitiveVisualTreatment;
+  showInvalidBorder?: boolean;
+  onScrubbingChange?: (isScrubbing: boolean) => void;
+  size: PrimitiveSize;
+  density?: PrimitiveDensity;
+}
+
+export function PrimitiveValueInput({
+  value,
+  onValueChange,
+  ariaLabel,
+  placeholder,
+  leadingElement = 'V',
+  trailingElement,
+  handleElement,
+  handleSide = 'leading',
+  handleContentWidth = 24,
+  min,
+  max,
+  wrapMode,
+  step,
+  fineStep,
+  coarseStep,
+  pageStep,
+  precision,
+  autoTrim,
+  allowExpressions,
+  parseExpression,
+  selectAllOnFocus,
+  commitOnBlur,
+  scrubEnabled,
+  scrubPixelsPerStep = 1,
+  stepDragDistance,
+  scrubThreshold,
+  scrubCommitThreshold,
+  scrubMaxCommitRate,
+  pointerLockEnabled,
+  horizontalArrowKeysMoveCaret = true,
+  disabled,
+  readOnly,
+  onInvalidCommit,
+  visualState,
+  visualTreatment = 'default',
+  showInvalidBorder = false,
+  onScrubbingChange,
+  size,
+  density = 'compact',
+}: PrimitiveValueInputProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const {
+    inputRef,
+    inputProps,
+    scrubHandleRef,
+    scrubHandleProps,
+    isDraftValid,
+    isEditing,
+    isScrubbing,
+  } = usePrimitiveValueInput({
+    value,
+    onValueChange,
+    min,
+    max,
+    wrapMode,
+    step,
+    fineStep,
+    coarseStep,
+    pageStep,
+    precision,
+    autoTrim,
+    allowExpressions,
+    parseExpression,
+    selectAllOnFocus,
+    commitOnBlur,
+    scrubEnabled,
+    scrubPixelsPerStep,
+    stepDragDistance,
+    scrubThreshold,
+    scrubCommitThreshold,
+    scrubMaxCommitRate,
+    pointerLockEnabled,
+    horizontalArrowKeysMoveCaret,
+    disabled,
+    readOnly,
+    onInvalidCommit,
+    onScrubbingChange,
+  });
+
+  const showInvalidState = visualState === 'invalid';
+  const isVisuallyValid =
+    visualState === 'valid' || (visualState === 'auto' && isDraftValid);
   const isEmbeddedVisual = visualTreatment === 'embedded';
   const isInvalid = showInvalidState || (isEditing && !isDraftValid);
   const borderColor =
@@ -707,7 +1059,7 @@ export function PrimitiveValueInput({
             } top-0 z-10 h-full w-[5px] cursor-ew-resize touch-none select-none`
       }
       style={scrubHandleStyle}
-      onPointerDown={handlePointerDown}
+      {...scrubHandleProps}
     >
       {resolvedHandleElement}
     </div>
@@ -730,20 +1082,11 @@ export function PrimitiveValueInput({
       <input
         ref={inputRef}
         type="text"
-        value={currentValue}
-        disabled={disabled}
-        readOnly={readOnly}
         aria-label={ariaLabel}
         aria-invalid={isInvalid}
         placeholder={placeholder}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onChange={(event) => {
-          setDraft(event.target.value);
-          setIsEditing(true);
-        }}
-        onKeyDown={handleKeyDown}
         className="h-full min-w-0 flex-1 cursor-default bg-transparent py-0 pl-1 pr-0 font-sans tabular-nums text-white outline-none focus:cursor-text disabled:cursor-not-allowed"
+        {...inputProps}
       />
       {hasTrailingElement && !trailingElementFeedsHandle ? (
         <span className="flex h-full w-5 shrink-0 select-none items-center justify-center text-[11px] font-medium leading-4 text-white/50">

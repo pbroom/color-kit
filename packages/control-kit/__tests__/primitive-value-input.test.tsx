@@ -104,7 +104,12 @@ function mountPrimitive(
 
 function firePointerEvent(
   target: EventTarget,
-  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  type:
+    | 'pointerdown'
+    | 'pointermove'
+    | 'pointerup'
+    | 'pointercancel'
+    | 'lostpointercapture',
   init: {
     pointerId: number;
     clientX: number;
@@ -125,11 +130,22 @@ function firePointerEvent(
   target.dispatchEvent(event);
 }
 
+function changeInputValue(input: HTMLInputElement, value: string): void {
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    'value',
+  )?.set;
+
+  valueSetter?.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 afterEach(() => {
   for (const root of mountedRoots.splice(0)) {
     act(() => root.unmount());
   }
   document.body.replaceChildren();
+  vi.restoreAllMocks();
 });
 
 describe('PrimitiveValueInput', () => {
@@ -175,6 +191,228 @@ describe('PrimitiveValueInput', () => {
     expect(html).toContain('pl-1');
   });
 
+  it('commits valid text drafts on blur with text-input metadata', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({ onValueChange });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    act(() => {
+      input.focus();
+      changeInputValue(input, '25');
+    });
+    act(() => {
+      input.blur();
+    });
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(25, {
+      interaction: 'text-input',
+    });
+  });
+
+  it('commits valid text drafts once on Enter and blurs', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({ onValueChange });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    act(() => {
+      input.focus();
+      changeInputValue(input, '25');
+    });
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(25, {
+      interaction: 'text-input',
+    });
+    expect(document.activeElement).not.toBe(input);
+  });
+
+  it('discards edited drafts on Escape without committing during blur', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({ onValueChange });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    act(() => {
+      input.focus();
+      changeInputValue(input, '25');
+    });
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(document.activeElement).not.toBe(input);
+  });
+
+  it('reverts invalid drafts and reports invalid commits', () => {
+    const onValueChange = vi.fn();
+    const onInvalidCommit = vi.fn();
+    const container = mountPrimitive({ onValueChange, onInvalidCommit });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    act(() => {
+      input.focus();
+      changeInputValue(input, 'not a number');
+    });
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(onInvalidCommit).toHaveBeenCalledWith('not a number');
+    expect(input.value).toBe('42');
+  });
+
+  it('steps keyboard values with modifier-aware metadata', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({ onValueChange });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'ArrowUp',
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(onValueChange).toHaveBeenLastCalledWith(52, {
+      interaction: 'keyboard',
+    });
+  });
+
+  it('lets horizontal arrows move the caret unless stepping is requested', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({ onValueChange });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'ArrowRight',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    const nextContainer = mountPrimitive({
+      onValueChange,
+      horizontalArrowKeysMoveCaret: false,
+    });
+    const nextInput = nextContainer.querySelector('input') as HTMLInputElement;
+    act(() => {
+      nextInput.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'ArrowRight',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(onValueChange).toHaveBeenLastCalledWith(43, {
+      interaction: 'keyboard',
+    });
+  });
+
+  it('wraps keyboard stepping across range boundaries', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      value: 95,
+      onValueChange,
+      max: 100,
+      step: 10,
+      wrapMode: 'wrap',
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'ArrowUp',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(onValueChange).toHaveBeenLastCalledWith(5, {
+      interaction: 'keyboard',
+    });
+  });
+
+  it('blocks keyboard and scrub commits when disabled or read-only', () => {
+    const onValueChange = vi.fn();
+    const disabledContainer = mountPrimitive({ onValueChange, disabled: true });
+    const disabledInput = disabledContainer.querySelector(
+      'input',
+    ) as HTMLInputElement;
+    const disabledHandle = disabledContainer.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+
+    act(() => {
+      disabledInput.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'ArrowUp',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      firePointerEvent(disabledHandle, 'pointerdown', {
+        pointerId: 8,
+        button: 0,
+        clientX: 0,
+      });
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 8,
+        clientX: 20,
+      });
+    });
+
+    const readOnlyContainer = mountPrimitive({ onValueChange, readOnly: true });
+    const readOnlyInput = readOnlyContainer.querySelector(
+      'input',
+    ) as HTMLInputElement;
+
+    act(() => {
+      readOnlyInput.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'ArrowUp',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
   it('tracks scrub dragging through document pointer events', () => {
     const onValueChange = vi.fn();
     const container = mountPrimitive({ onValueChange });
@@ -197,7 +435,9 @@ describe('PrimitiveValueInput', () => {
       });
     });
 
-    expect(onValueChange).toHaveBeenLastCalledWith(62);
+    expect(onValueChange).toHaveBeenLastCalledWith(62, {
+      interaction: 'pointer',
+    });
   });
 
   it('supports discrete scrub stepping with stepDragDistance', () => {
@@ -237,7 +477,9 @@ describe('PrimitiveValueInput', () => {
       });
     });
     expect(onValueChange).toHaveBeenCalledTimes(1);
-    expect(onValueChange).toHaveBeenLastCalledWith(42.1);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.1, {
+      interaction: 'pointer',
+    });
 
     act(() => {
       firePointerEvent(document, 'pointermove', {
@@ -254,7 +496,9 @@ describe('PrimitiveValueInput', () => {
       });
     });
     expect(onValueChange).toHaveBeenCalledTimes(2);
-    expect(onValueChange).toHaveBeenLastCalledWith(42.2);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.2, {
+      interaction: 'pointer',
+    });
   });
 
   it('does not skip steps for fractional stepDragDistance values', () => {
@@ -286,7 +530,9 @@ describe('PrimitiveValueInput', () => {
       });
     });
     expect(onValueChange).toHaveBeenCalledTimes(1);
-    expect(onValueChange).toHaveBeenLastCalledWith(42.1);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.1, {
+      interaction: 'pointer',
+    });
 
     act(() => {
       firePointerEvent(document, 'pointermove', {
@@ -303,7 +549,222 @@ describe('PrimitiveValueInput', () => {
       });
     });
     expect(onValueChange).toHaveBeenCalledTimes(2);
-    expect(onValueChange).toHaveBeenLastCalledWith(42.2);
+    expect(onValueChange).toHaveBeenLastCalledWith(42.2, {
+      interaction: 'pointer',
+    });
+  });
+
+  it('defers scrub commits until the max commit rate frame budget elapses', () => {
+    const frameCallbacks = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 1;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      const frameId = nextFrameId;
+      nextFrameId += 1;
+      frameCallbacks.set(frameId, callback);
+      return frameId;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((frameId) => {
+      frameCallbacks.delete(frameId);
+    });
+    const flushFrame = (frameTime: number) => {
+      const nextFrame = frameCallbacks.entries().next().value;
+      expect(nextFrame).toBeDefined();
+      const [frameId, callback] = nextFrame as [number, FrameRequestCallback];
+      frameCallbacks.delete(frameId);
+      act(() => {
+        callback(frameTime);
+      });
+    };
+
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      scrubMaxCommitRate: 10,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 8,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 8,
+        clientX: 5,
+      });
+    });
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    flushFrame(16);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(47, {
+      interaction: 'pointer',
+    });
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 8,
+        clientX: 8,
+      });
+    });
+    flushFrame(40);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    flushFrame(116);
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(50, {
+      interaction: 'pointer',
+    });
+  });
+
+  it('forwards scrub commit thresholds through the component wrapper', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      scrubCommitThreshold: 5,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 6,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 6,
+        clientX: 4,
+      });
+    });
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 6,
+        clientX: 5,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(47, {
+      interaction: 'pointer',
+    });
+  });
+
+  it('commits the final scrub position when a thresholded scrub is canceled', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      scrubCommitThreshold: 5,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 7,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 7,
+        clientX: 5,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(47, {
+      interaction: 'pointer',
+    });
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 7,
+        clientX: 7,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      firePointerEvent(document, 'pointercancel', {
+        pointerId: 7,
+        clientX: 7,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(49, {
+      interaction: 'pointer',
+    });
+  });
+
+  it('ends scrubbing when the handle loses pointer capture', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      onValueChange,
+      scrubCommitThreshold: 5,
+    });
+    const handle = container.querySelector(
+      '[data-control-kit-scrub-handle]',
+    ) as HTMLDivElement;
+    handle.setPointerCapture = vi.fn();
+
+    act(() => {
+      firePointerEvent(handle, 'pointerdown', {
+        pointerId: 9,
+        button: 0,
+        clientX: 0,
+      });
+    });
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 9,
+        clientX: 5,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(47, {
+      interaction: 'pointer',
+    });
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 9,
+        clientX: 7,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      firePointerEvent(handle, 'lostpointercapture', {
+        pointerId: 9,
+        clientX: 7,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(49, {
+      interaction: 'pointer',
+    });
+
+    act(() => {
+      firePointerEvent(document, 'pointermove', {
+        pointerId: 9,
+        clientX: 12,
+      });
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(2);
   });
 
   it('falls back to document dragging when pointer lock throws', () => {
@@ -334,7 +795,9 @@ describe('PrimitiveValueInput', () => {
       });
     });
 
-    expect(onValueChange).toHaveBeenLastCalledWith(54);
+    expect(onValueChange).toHaveBeenLastCalledWith(54, {
+      interaction: 'pointer',
+    });
   });
 
   it('rebases scrub movement at clamp boundaries', () => {
@@ -365,7 +828,9 @@ describe('PrimitiveValueInput', () => {
         clientX: 10,
       });
     });
-    expect(onValueChange).toHaveBeenLastCalledWith(100);
+    expect(onValueChange).toHaveBeenLastCalledWith(100, {
+      interaction: 'pointer',
+    });
 
     act(() => {
       firePointerEvent(document, 'pointermove', {
@@ -374,7 +839,9 @@ describe('PrimitiveValueInput', () => {
       });
     });
 
-    expect(onValueChange).toHaveBeenLastCalledWith(99);
+    expect(onValueChange).toHaveBeenLastCalledWith(99, {
+      interaction: 'pointer',
+    });
   });
 });
 

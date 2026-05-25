@@ -17,21 +17,30 @@ export type { TooltipContentProps } from './tooltip.js';
 export {
   PrimitiveValueInput,
   formatPrimitiveValue,
+  getPrimitiveModifiedStep,
+  getPrimitiveSteppedValue,
   normalizePrimitivePrecision,
   normalizePrimitiveScrubMultiplier,
   normalizePrimitiveValue,
   parsePrimitiveDraft,
+  usePrimitiveValueInput,
 } from './primitive-value-input.js';
 export type {
+  PrimitiveStepConfig,
+  PrimitiveStepKey,
+  PrimitiveSteppedValueOptions,
   PrimitiveDensity,
   PrimitiveExpressionParser,
   PrimitivePrecision,
+  PrimitiveValueChangeDetails,
+  PrimitiveValueInteraction,
   PrimitiveValueInputProps,
   PrimitiveVisualState,
   PrimitiveVisualTreatment,
   PrimitiveWrapMode,
   PrimitiveHandleSide,
   PrimitiveSize,
+  UsePrimitiveValueInputOptions,
 } from './primitive-value-input.js';
 export { MultiInputControl, MultiInputSegment } from './multi-input-control.js';
 export type {
