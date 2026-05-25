@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { act, cleanup, render } from '@testing-library/react';
 import {
   useMultiColor,
+  type MultiColorUpdateEvent,
   type UseMultiColorReturn,
 } from '../src/use-multi-color.js';
 
@@ -13,6 +14,7 @@ afterEach(() => {
 
 function MultiColorProbe(props: {
   onReady: (value: UseMultiColorReturn) => void;
+  onChange?: (event: MultiColorUpdateEvent) => void;
 }) {
   const multi = useMultiColor({
     defaultColors: {
@@ -20,6 +22,7 @@ function MultiColorProbe(props: {
       accent: 'oklch(0.8 0.4 145)',
     },
     defaultSelectedId: 'base',
+    onChange: props.onChange,
   });
 
   props.onReady(multi);
@@ -58,11 +61,15 @@ describe('useMultiColor', () => {
 
   it('supports per-entry updates and collection operations', () => {
     let probe: UseMultiColorReturn | null = null;
+    const events: MultiColorUpdateEvent[] = [];
 
     render(
       <MultiColorProbe
         onReady={(value) => {
           probe = value;
+        }}
+        onChange={(event) => {
+          events.push(event);
         }}
       />,
     );
@@ -90,5 +97,44 @@ describe('useMultiColor', () => {
     expect(probe.selectedId).toBe('accent');
     expect(probe.state.colors.base).toBeUndefined();
     expect(probe.state.colors['neutral-1']).toBeDefined();
+    expect(probe.state.colors['neutral-1'].activeGamut).toBe(
+      probe.state.activeGamut,
+    );
+    expect(probe.state.colors['neutral-1'].activeView).toBe(
+      probe.state.activeView,
+    );
+    expect(events.at(-1)?.next.order).toEqual(['accent', 'neutral-1']);
+    expect(events.at(-1)?.next.selectedId).toBe('accent');
+  });
+
+  it('applies batched display-context changes to the latest collection snapshot', () => {
+    let probe: UseMultiColorReturn | null = null;
+
+    render(
+      <MultiColorProbe
+        onReady={(value) => {
+          probe = value;
+        }}
+      />,
+    );
+
+    if (!probe) throw new Error('Probe was not initialized');
+
+    act(() => {
+      probe?.addColor('neutral', '#6b7280');
+      probe?.setActiveGamut('srgb');
+      probe?.setActiveView('hex');
+      probe?.renameColor('neutral', 'neutral-1');
+      probe?.removeColor('base');
+    });
+
+    if (!probe) throw new Error('Probe was not initialized');
+    expect(probe.ids).toEqual(['accent', 'neutral-1']);
+    expect(probe.state.activeGamut).toBe('srgb');
+    expect(probe.state.activeView).toBe('hex');
+    expect(probe.state.colors.accent.activeGamut).toBe('srgb');
+    expect(probe.state.colors.accent.activeView).toBe('hex');
+    expect(probe.state.colors['neutral-1'].activeGamut).toBe('srgb');
+    expect(probe.state.colors['neutral-1'].activeView).toBe('hex');
   });
 });
