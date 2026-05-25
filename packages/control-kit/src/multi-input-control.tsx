@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   PrimitiveValueInput,
   type PrimitiveExpressionParser,
@@ -188,26 +188,39 @@ export type MultiInputControlProps<TFieldId extends MultiInputFieldId> =
       | MultiInputControlSegmentProps<TFieldId>
     );
 
-function resolveMultiInputSegments<TFieldId extends MultiInputFieldId>(
-  source:
-    | MultiInputControlMappedProps<TFieldId>
-    | MultiInputControlSegmentProps<TFieldId>,
-): Array<MultiInputSegmentModel<TFieldId>> {
-  return 'fields' in source
-    ? createMultiInputSegments(source)
-    : source.segments;
-}
-
-export function MultiInputControl<TFieldId extends MultiInputFieldId>({
-  onFieldChange,
-  parseExpression,
-  showLeadingLabels = false,
-  ...segmentSource
-}: MultiInputControlProps<TFieldId>) {
+export function MultiInputControl<TFieldId extends MultiInputFieldId>(
+  props: MultiInputControlProps<TFieldId>,
+) {
+  const { onFieldChange, parseExpression, showLeadingLabels = false } = props;
   const [isHovered, setIsHovered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [scrubbingField, setScrubbingField] = useState<TFieldId | null>(null);
-  const segments = resolveMultiInputSegments(segmentSource);
+  const fields = 'fields' in props ? props.fields : undefined;
+  const values = 'fields' in props ? props.values : undefined;
+  const config = 'fields' in props ? props.config : undefined;
+  const segmentModels = 'segments' in props ? props.segments : undefined;
+  const segments = useMemo(
+    () =>
+      fields && values && config
+        ? createMultiInputSegments({ fields, values, config })
+        : (segmentModels ?? []),
+    [config, fields, segmentModels, values],
+  );
+  const renderedSegments = useMemo(
+    () =>
+      segments.map((segment) => ({
+        segment,
+        field: {
+          value: segment.id,
+          label: segment.label,
+          tooltip: segment.tooltip,
+          unit: segment.unit,
+          weight: segment.weight,
+          displayScale: segment.displayScale,
+        },
+      })),
+    [segments],
+  );
 
   const handleSegmentScrubbingChange = useCallback(
     (field: TFieldId, isScrubbing: boolean) => {
@@ -248,16 +261,7 @@ export function MultiInputControl<TFieldId extends MultiInputFieldId>({
         }}
       >
         <div className="flex h-full w-full min-w-0 max-w-full gap-px bg-transparent">
-          {segments.map((segment) => {
-            const field = {
-              value: segment.id,
-              label: segment.label,
-              tooltip: segment.tooltip,
-              unit: segment.unit,
-              weight: segment.weight,
-              displayScale: segment.displayScale,
-            };
-
+          {renderedSegments.map(({ segment, field }) => {
             return (
               <div
                 key={segment.id}
