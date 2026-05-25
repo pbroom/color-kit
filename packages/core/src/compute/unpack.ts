@@ -11,7 +11,117 @@ import type {
   PlaneQueryResult,
   PlaneRegionPoint,
 } from '../plane/types.js';
-import type { PackedPlaneQueryResult } from './types.js';
+import type {
+  PackedPlaneQueryDescriptor,
+  PackedPlaneQueryResult,
+} from './types.js';
+
+function invalidPackedResult(reason: string): never {
+  throw new Error(`Invalid packed plane query result: ${reason}`);
+}
+
+function assertNonNegativeInteger(value: number, label: string): void {
+  if (!Number.isInteger(value) || value < 0) {
+    invalidPackedResult(`${label} must be a non-negative integer.`);
+  }
+}
+
+function getPathRangeCount(packed: PackedPlaneQueryResult): number {
+  if (packed.pathRanges.length % 2 !== 0) {
+    invalidPackedResult(
+      'pathRanges must contain [startPoint, pointCount] pairs.',
+    );
+  }
+  return packed.pathRanges.length / 2;
+}
+
+function getPointCount(packed: PackedPlaneQueryResult): number {
+  if (packed.pointXY.length % 2 !== 0) {
+    invalidPackedResult('pointXY must contain [x, y] pairs.');
+  }
+
+  const pointCount = packed.pointXY.length / 2;
+  if (packed.pointLC.length !== pointCount * 2) {
+    invalidPackedResult('pointLC length must match pointXY point count.');
+  }
+  if (packed.pointColorLcha.length !== pointCount * 4) {
+    invalidPackedResult(
+      'pointColorLcha length must match pointXY point count.',
+    );
+  }
+  return pointCount;
+}
+
+function validatePathRange(
+  packed: PackedPlaneQueryResult,
+  pathIndex: number,
+  pathRangeCount: number,
+  pointCount: number,
+): void {
+  assertNonNegativeInteger(pathIndex, 'path index');
+  if (pathIndex >= pathRangeCount) {
+    invalidPackedResult(`path index ${pathIndex} is outside pathRanges.`);
+  }
+
+  const offset = pathIndex * 2;
+  const startPoint = packed.pathRanges[offset];
+  const rangePointCount = packed.pathRanges[offset + 1];
+  assertNonNegativeInteger(startPoint, `path ${pathIndex} startPoint`);
+  assertNonNegativeInteger(rangePointCount, `path ${pathIndex} pointCount`);
+  if (startPoint + rangePointCount > pointCount) {
+    invalidPackedResult(`path ${pathIndex} points are outside point buffers.`);
+  }
+}
+
+function validateDescriptorPathRange(
+  descriptor: PackedPlaneQueryDescriptor,
+  pathRangeCount: number,
+  label: string,
+): void {
+  assertNonNegativeInteger(descriptor.pathStart, `${label} pathStart`);
+  assertNonNegativeInteger(descriptor.pathCount, `${label} pathCount`);
+  if (descriptor.pathStart + descriptor.pathCount > pathRangeCount) {
+    invalidPackedResult(`${label} path range is outside pathRanges.`);
+  }
+}
+
+function validateOptionalRegionPathRange(
+  descriptor: PackedPlaneQueryDescriptor,
+  pathRangeCount: number,
+  label: string,
+): void {
+  const regionPathCount = descriptor.regionPathCount ?? 0;
+  assertNonNegativeInteger(regionPathCount, `${label} regionPathCount`);
+  if (descriptor.regionPathStart !== undefined) {
+    assertNonNegativeInteger(
+      descriptor.regionPathStart,
+      `${label} regionPathStart`,
+    );
+  }
+
+  const regionPathStart =
+    descriptor.regionPathStart ?? descriptor.pathStart + descriptor.pathCount;
+  if (regionPathStart + regionPathCount > pathRangeCount) {
+    invalidPackedResult(`${label} region path range is outside pathRanges.`);
+  }
+}
+
+function validatePackedPlaneQueryResult(packed: PackedPlaneQueryResult): void {
+  const pathRangeCount = getPathRangeCount(packed);
+  const pointCount = getPointCount(packed);
+
+  for (let index = 0; index < pathRangeCount; index += 1) {
+    validatePathRange(packed, index, pathRangeCount, pointCount);
+  }
+
+  packed.queryDescriptors.forEach((descriptor, index) => {
+    const label = `descriptor ${index} (${descriptor.kind})`;
+    validateDescriptorPathRange(descriptor, pathRangeCount, label);
+    if (descriptor.kind === 'gamutRegion') {
+      validateOptionalRegionPathRange(descriptor, pathRangeCount, label);
+    }
+  });
+}
 
 function readPathRange(
   pathRanges: Uint32Array,
@@ -19,8 +129,8 @@ function readPathRange(
 ): { startPoint: number; pointCount: number } {
   const offset = pathIndex * 2;
   return {
-    startPoint: pathRanges[offset] ?? 0,
-    pointCount: pathRanges[offset + 1] ?? 0,
+    startPoint: pathRanges[offset],
+    pointCount: pathRanges[offset + 1],
   };
 }
 
@@ -30,8 +140,8 @@ function readPointXY(
 ): { x: number; y: number } {
   const offset = pointIndex * 2;
   return {
-    x: packed.pointXY[offset] ?? 0,
-    y: packed.pointXY[offset + 1] ?? 0,
+    x: packed.pointXY[offset],
+    y: packed.pointXY[offset + 1],
   };
 }
 
@@ -148,6 +258,8 @@ function readColorPath(
 export function unpackPlaneQueryResults(
   packed: PackedPlaneQueryResult,
 ): PlaneQueryResult[] {
+  validatePackedPlaneQueryResult(packed);
+
   return packed.queryDescriptors.map((descriptor) => {
     switch (descriptor.kind) {
       case 'gamutBoundary': {
