@@ -1387,6 +1387,9 @@ export function hasDocsPropertiesPanel(pathname: string): boolean {
   return pathname in PROPERTIES_PANELS;
 }
 
+// Keep this switch aligned with PROPERTIES_PANELS. The registry drives the
+// presence check, while the explicit cases avoid React Compiler issues with
+// rendering a component selected from a dynamic object lookup.
 export function DocsPropertiesPanel({ pathname }: { pathname: string }) {
   switch (pathname) {
     case '/docs/components/color-area':
