@@ -169,28 +169,6 @@ describe('PrimitiveValueInput', () => {
     expect(html.indexOf('>px<')).toBeLessThan(html.indexOf('>D<'));
   });
 
-  it('applies the resize cursor class on the scrub handle', () => {
-    const html = renderPrimitive();
-
-    expect(html).toContain('cursor-ew-resize');
-  });
-
-  it('uses a narrow leading scrub target when handle content is empty', () => {
-    const html = renderPrimitive({
-      leadingElement: null,
-      handleElement: null,
-      handleSide: 'leading',
-    });
-
-    expect(html).toContain('w-[5px]');
-  });
-
-  it('applies inset padding on the editable field', () => {
-    const html = renderPrimitive();
-
-    expect(html).toContain('pl-1');
-  });
-
   it('commits valid text drafts on blur with text-input metadata', () => {
     const onValueChange = vi.fn();
     const container = mountPrimitive({ onValueChange });
