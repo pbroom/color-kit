@@ -5,7 +5,6 @@ export default defineConfig((options) => ({
   // The current library pipeline relies on tsup/esbuild, while docs precompile via Vite+Babel.
   entry: {
     index: 'src/index.ts',
-    'workers/contrast-region.worker': 'src/workers/contrast-region.worker.ts',
     'workers/plane-query.worker': 'src/workers/plane-query.worker.ts',
   },
   format: ['esm', 'cjs'],
