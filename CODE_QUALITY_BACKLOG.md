@@ -103,7 +103,7 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-005 - Move Lab-only UI3 helpers out of the shared dropdown primitive
 
 - Priority: P2
-- Status: Completed in `codex/cq010-contrast-tiers`
+- Status: Completed in `codex/cq005-lab-menu-boundary`
 - Evidence:
   - `apps/docs/src/components/ui/dropdown-menu.tsx:692` contains custom keyboard/typeahead controller logic.
   - `apps/docs/src/components/ui/dropdown-menu.tsx:1457` exports `DropdownMenuPanel`.
@@ -120,6 +120,10 @@ This backlog tracks structural maintainability work that is too large to treat a
   - Shared dropdown primitives no longer export Lab-only inline panel/select-list helpers.
   - Lab imports come from a Lab-specific menu module.
   - Existing menu/select behavior is unchanged.
+- Completion evidence:
+  - `apps/docs/src/routes/lab/lab-menu.tsx` owns the Lab-only UI3 panel, item-button, item-content, select-list, and select-list item helpers.
+  - `apps/docs/src/routes/lab/shared.tsx` imports Lab menu composition from the Lab module while continuing to use the generic Base UI dropdown wrappers from `apps/docs/src/components/ui/dropdown-menu.tsx`.
+  - `apps/docs/src/components/ui/dropdown-menu.tsx` no longer exports the Lab-only inline panel/select-list helpers.
 
 ### CQ-006 - Correlate color input model and channel types
 
