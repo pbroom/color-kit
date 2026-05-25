@@ -366,6 +366,50 @@ describe('PrimitiveValueInput', () => {
     });
   });
 
+  it('commits Home and End boundaries without wrapping', () => {
+    const onValueChange = vi.fn();
+    const container = mountPrimitive({
+      value: 95,
+      onValueChange,
+      max: 100,
+      step: 10,
+      wrapMode: 'wrap',
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'End',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(onValueChange).toHaveBeenLastCalledWith(100, {
+      interaction: 'keyboard',
+    });
+    act(() => {
+      input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Home',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(onValueChange).toHaveBeenLastCalledWith(0, {
+      interaction: 'keyboard',
+    });
+  });
+
   it('blocks keyboard and scrub commits when disabled or read-only', () => {
     const onValueChange = vi.fn();
     const disabledContainer = mountPrimitive({ onValueChange, disabled: true });

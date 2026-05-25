@@ -406,8 +406,15 @@ export function usePrimitiveValueInput({
   }, [currentValue, restorePreservedSelection]);
 
   const emitValue = useCallback(
-    (nextValue: number, interaction: PrimitiveValueInteraction) => {
-      const normalized = normalizePrimitiveValue(nextValue, min, max, wrapMode);
+    (
+      nextValue: number,
+      interaction: PrimitiveValueInteraction,
+      options: { normalize?: boolean } = {},
+    ) => {
+      const normalized =
+        options.normalize === false
+          ? nextValue
+          : normalizePrimitiveValue(nextValue, min, max, wrapMode);
       const previousValue = lastCommittedValueRef.current;
 
       if (
@@ -427,14 +434,29 @@ export function usePrimitiveValueInput({
 
   const commitDraft = useCallback(() => {
     if (parsedDraft !== null) {
-      emitValue(parsedDraft, 'text-input');
+      const committedDraft = formatPrimitiveValue(
+        lastCommittedValueRef.current,
+        precision,
+        autoTrim,
+      );
+      if (draft !== committedDraft) {
+        emitValue(parsedDraft, 'text-input');
+      }
     } else {
       onInvalidCommit?.(draft);
       setDraft(displayValue);
     }
     setIsEditing(false);
     setFocusStartValue(null);
-  }, [displayValue, draft, emitValue, onInvalidCommit, parsedDraft]);
+  }, [
+    autoTrim,
+    displayValue,
+    draft,
+    emitValue,
+    onInvalidCommit,
+    parsedDraft,
+    precision,
+  ]);
 
   const getModifiedStep = useCallback(
     (shiftKey: boolean, altKey: boolean) =>
@@ -541,7 +563,9 @@ export function usePrimitiveValueInput({
         }
 
         event.preventDefault();
-        emitValue(nextValue, 'keyboard');
+        emitValue(nextValue, 'keyboard', {
+          normalize: event.key !== 'Home' && event.key !== 'End',
+        });
         setIsEditing(true);
         return;
       }
