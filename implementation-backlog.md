@@ -86,7 +86,7 @@ Do not green-light large features on these surfaces without a decomposition plan
   - Four subsystems in one file: fill/dot-pattern UI (~270), quality helpers (~85), LC geometry + contrast scoring (~480), worker orchestration + metrics + SVG shell (~900).
   - Geometry block (lines ~355–835) has zero React dependency but lives in a React module, untested in isolation.
   - Sync path uses `api/color-area.ts`; post-processing and worker paths bypass it.
-- **Problem:** File crosses 1k lines without structural justification. Geometry changes require editing a React god file. Hardest state machine in the package (`lastStablePaths`, `rawPathsAreFresh`, `hasLegacyWorkerPaths`).
+- **Problem:** File crosses 1k lines without structural justification. Geometry changes require editing a React god file. Hardest state machine in the package (`lastStablePaths`, `rawPathsAreFresh`, worker fallback metrics).
 - **Target shape:**
   - `contrast-region-geometry.ts` — pure LC polygon ops, boundary snap, validity scoring.
   - `useContrastRegionPaths()` — all state/effects.
@@ -190,7 +190,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-007 — Delete legacy contrast-region worker path
 
 - **Priority:** P1
-- **Status:** Open
+- **Status:** Completed 2026-05-25
 - **Evidence:**
   - `packages/react/src/workers/contrast-region.worker.ts` (46 lines) wraps `getColorAreaContrastRegionPaths`.
   - `packages/react/tsup.config.ts` still builds `workers/contrast-region.worker`.
@@ -203,6 +203,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Acceptance criteria:**
   - Single worker path for contrast region compute.
   - No legacy payload handling in contrast layer.
+- **Completed:** Removed the legacy worker entry/files and the rollout payload branch; tests now mock the current packed `plane-query.worker` response shape.
 
 ---
 
@@ -256,7 +257,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-010 — Split `api/color-input.ts` expression parser
 
 - **Priority:** P2
-- **Status:** Open
+- **Status:** Completed 2026-05-25
 - **Evidence:**
   - `packages/react/src/api/color-input.ts` — 709 lines; hand-rolled expression tokenizer/parser (~250 lines) dominates file size.
   - File is otherwise cohesive pure API with zero React imports.
@@ -268,6 +269,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Acceptance criteria:**
   - `color-input.ts` under ~500 lines.
   - Public import paths unchanged.
+- **Completed:** Moved the tokenizer/parser into `api/color-input-parser.ts`, kept `parseColorInputExpression` exported through `api/color-input.ts`, and added focused parser coverage.
 
 ---
 
