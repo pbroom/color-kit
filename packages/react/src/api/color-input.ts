@@ -15,6 +15,18 @@ export type ColorInputChannel =
   | OklchColorInputChannel
   | RgbColorInputChannel
   | HslColorInputChannel;
+export type ColorInputChannelFor<Model extends ColorInputModel> =
+  Model extends 'oklch'
+    ? OklchColorInputChannel
+    : Model extends 'rgb'
+      ? RgbColorInputChannel
+      : HslColorInputChannel;
+export type ColorInputSpec<Model extends ColorInputModel = ColorInputModel> = {
+  [Key in Model]: {
+    model: Key;
+    channel: ColorInputChannelFor<Key>;
+  };
+}[Model];
 
 export type ColorInputKey =
   | 'ArrowRight'
@@ -50,117 +62,131 @@ export interface ResolveColorInputDraftValueOptions extends ParseColorInputExpre
   wrap?: boolean;
 }
 
-const COLOR_INPUT_LABELS: Record<
-  ColorInputModel,
-  Record<ColorInputChannel, string>
-> = {
+type ColorInputChannelTable<Value> = {
+  oklch: Record<OklchColorInputChannel, Value>;
+  rgb: Record<RgbColorInputChannel, Value>;
+  hsl: Record<HslColorInputChannel, Value>;
+};
+
+const COLOR_INPUT_LABELS: ColorInputChannelTable<string> = {
   oklch: {
     l: 'OKLCH lightness',
     c: 'OKLCH chroma',
     h: 'OKLCH hue',
     alpha: 'Opacity',
-    r: 'Red',
-    g: 'Green',
-    b: 'Blue',
-    s: 'Saturation',
   },
   rgb: {
     r: 'Red',
     g: 'Green',
     b: 'Blue',
     alpha: 'Opacity',
-    l: 'Lightness',
-    c: 'Chroma',
-    h: 'Hue',
-    s: 'Saturation',
   },
   hsl: {
     h: 'Hue',
     s: 'Saturation',
     l: 'Lightness',
     alpha: 'Opacity',
-    c: 'Chroma',
-    r: 'Red',
-    g: 'Green',
-    b: 'Blue',
   },
 };
 
-export const COLOR_INPUT_DEFAULT_RANGES: Record<
-  ColorInputModel,
-  Record<ColorInputChannel, [number, number]>
+export const COLOR_INPUT_DEFAULT_RANGES: ColorInputChannelTable<
+  [number, number]
 > = {
   oklch: {
     l: [0, 1],
     c: [0, 0.4],
     h: [0, 360],
     alpha: [0, 1],
-    r: [0, 255],
-    g: [0, 255],
-    b: [0, 255],
-    s: [0, 100],
   },
   rgb: {
     r: [0, 255],
     g: [0, 255],
     b: [0, 255],
     alpha: [0, 1],
-    l: [0, 1],
-    c: [0, 0.4],
-    h: [0, 360],
-    s: [0, 100],
   },
   hsl: {
     h: [0, 360],
     s: [0, 100],
     l: [0, 100],
     alpha: [0, 1],
-    c: [0, 0.4],
-    r: [0, 255],
-    g: [0, 255],
-    b: [0, 255],
   },
 };
 
-const COLOR_INPUT_DEFAULT_STEPS: Record<
-  ColorInputModel,
-  Record<ColorInputChannel, ColorInputStepConfig>
-> = {
-  oklch: {
-    l: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    c: { step: 0.005, fineStep: 0.001, coarseStep: 0.05, pageStep: 0.05 },
-    h: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 },
-    alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    r: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    g: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    b: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    s: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
-  },
-  rgb: {
-    r: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    g: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    b: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    l: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    c: { step: 0.005, fineStep: 0.001, coarseStep: 0.05, pageStep: 0.05 },
-    h: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 },
-    s: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
-  },
-  hsl: {
-    h: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 },
-    s: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
-    l: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
-    alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    c: { step: 0.005, fineStep: 0.001, coarseStep: 0.05, pageStep: 0.05 },
-    r: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    g: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    b: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-  },
-};
+const COLOR_INPUT_DEFAULT_STEPS: ColorInputChannelTable<ColorInputStepConfig> =
+  {
+    oklch: {
+      l: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
+      c: { step: 0.005, fineStep: 0.001, coarseStep: 0.05, pageStep: 0.05 },
+      h: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 },
+      alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
+    },
+    rgb: {
+      r: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
+      g: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
+      b: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
+      alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
+    },
+    hsl: {
+      h: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 },
+      s: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
+      l: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
+      alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
+    },
+  };
 
-function isHueChannel(
+function isOklchColorInputChannel(
+  channel: ColorInputChannel,
+): channel is OklchColorInputChannel {
+  return (
+    channel === 'l' || channel === 'c' || channel === 'h' || channel === 'alpha'
+  );
+}
+
+function isRgbColorInputChannel(
+  channel: ColorInputChannel,
+): channel is RgbColorInputChannel {
+  return (
+    channel === 'r' || channel === 'g' || channel === 'b' || channel === 'alpha'
+  );
+}
+
+function isHslColorInputChannel(
+  channel: ColorInputChannel,
+): channel is HslColorInputChannel {
+  return (
+    channel === 'h' || channel === 's' || channel === 'l' || channel === 'alpha'
+  );
+}
+
+function assertInvalidColorInputPair(
   model: ColorInputModel,
   channel: ColorInputChannel,
+): never {
+  throw new Error(
+    `Invalid color input channel "${channel}" for "${model}" model.`,
+  );
+}
+
+function getColorInputChannelTableValue<Value, Model extends ColorInputModel>(
+  table: ColorInputChannelTable<Value>,
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
+): Value {
+  if (model === 'oklch' && isOklchColorInputChannel(channel)) {
+    return table.oklch[channel];
+  }
+  if (model === 'rgb' && isRgbColorInputChannel(channel)) {
+    return table.rgb[channel];
+  }
+  if (model === 'hsl' && isHslColorInputChannel(channel)) {
+    return table.hsl[channel];
+  }
+  return assertInvalidColorInputPair(model, channel);
+}
+
+function isHueChannel<Model extends ColorInputModel>(
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
 ): boolean {
   return channel === 'h' && (model === 'oklch' || model === 'hsl');
 }
@@ -172,28 +198,35 @@ function resolveStepValue(value: number | undefined, fallback: number): number {
   return value;
 }
 
-export function resolveColorInputRange(
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+export function resolveColorInputRange<Model extends ColorInputModel>(
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
   range?: [number, number],
 ): [number, number] {
-  return range ?? COLOR_INPUT_DEFAULT_RANGES[model][channel];
+  return (
+    range ??
+    getColorInputChannelTableValue(COLOR_INPUT_DEFAULT_RANGES, model, channel)
+  );
 }
 
-export function resolveColorInputWrap(
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+export function resolveColorInputWrap<Model extends ColorInputModel>(
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
   wrap?: boolean,
 ): boolean {
   return wrap ?? isHueChannel(model, channel);
 }
 
-export function resolveColorInputSteps(
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+export function resolveColorInputSteps<Model extends ColorInputModel>(
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
   options: ResolveColorInputStepsOptions = {},
 ): ColorInputStepConfig {
-  const defaults = COLOR_INPUT_DEFAULT_STEPS[model][channel];
+  const defaults = getColorInputChannelTableValue(
+    COLOR_INPUT_DEFAULT_STEPS,
+    model,
+    channel,
+  );
 
   return {
     step: resolveStepValue(options.step, defaults.step),
@@ -203,65 +236,49 @@ export function resolveColorInputSteps(
   };
 }
 
-export function getColorInputLabel(
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+export function getColorInputLabel<Model extends ColorInputModel>(
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
 ): string {
-  return COLOR_INPUT_LABELS[model][channel];
+  return getColorInputChannelTableValue(COLOR_INPUT_LABELS, model, channel);
 }
 
 /** Single character (or "α" for alpha) for the leading scrub handle in channel inputs. */
-const COLOR_INPUT_GLYPHS: Record<
-  ColorInputModel,
-  Record<ColorInputChannel, string>
-> = {
+const COLOR_INPUT_GLYPHS: ColorInputChannelTable<string> = {
   oklch: {
     l: 'L',
     c: 'C',
     h: 'H',
     alpha: 'α',
-    r: 'R',
-    g: 'G',
-    b: 'B',
-    s: 'S',
   },
   rgb: {
     r: 'R',
     g: 'G',
     b: 'B',
     alpha: 'α',
-    l: 'L',
-    c: 'C',
-    h: 'H',
-    s: 'S',
   },
   hsl: {
     h: 'H',
     s: 'S',
     l: 'L',
     alpha: 'α',
-    c: 'C',
-    r: 'R',
-    g: 'G',
-    b: 'B',
   },
 };
 
-export function getColorInputChannelGlyph(
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+export function getColorInputChannelGlyph<Model extends ColorInputModel>(
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
 ): string {
-  return COLOR_INPUT_GLYPHS[model][channel];
+  return getColorInputChannelTableValue(COLOR_INPUT_GLYPHS, model, channel);
 }
 
-export function getColorInputChangedChannel(
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+export function getColorInputChangedChannel<Model extends ColorInputModel>(
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
 ): 'l' | 'c' | 'h' | 'alpha' | undefined {
-  if (model !== 'oklch') {
-    return undefined;
-  }
-  return channel as OklchColorInputChannel;
+  return model === 'oklch' && isOklchColorInputChannel(channel)
+    ? channel
+    : undefined;
 }
 
 export function normalizeColorInputValue(
@@ -277,52 +294,60 @@ export function normalizeColorInputValue(
   );
 }
 
-export function getColorInputChannelValue(
+export function getColorInputChannelValue<Model extends ColorInputModel>(
   color: Color,
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
 ): number {
-  if (model === 'oklch') {
-    return color[channel as OklchColorInputChannel];
+  if (model === 'oklch' && isOklchColorInputChannel(channel)) {
+    return color[channel];
   }
 
-  if (model === 'rgb') {
+  if (model === 'rgb' && isRgbColorInputChannel(channel)) {
     const rgb = toRgb(color);
-    return rgb[channel as RgbColorInputChannel];
+    return rgb[channel];
   }
 
-  const hsl = toHsl(color);
-  return hsl[channel as HslColorInputChannel];
+  if (model === 'hsl' && isHslColorInputChannel(channel)) {
+    const hsl = toHsl(color);
+    return hsl[channel];
+  }
+
+  return assertInvalidColorInputPair(model, channel);
 }
 
-export function colorFromColorInputChannelValue(
+export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
   color: Color,
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
   value: number,
 ): Color {
-  if (model === 'oklch') {
+  if (model === 'oklch' && isOklchColorInputChannel(channel)) {
     return {
       ...color,
       [channel]: value,
     };
   }
 
-  if (model === 'rgb') {
+  if (model === 'rgb' && isRgbColorInputChannel(channel)) {
     const rgb = toRgb(color);
-    const next = {
+    const next: Rgb = {
       ...rgb,
       [channel]: value,
-    } as Rgb;
+    };
     return fromRgb(next);
   }
 
-  const hsl = toHsl(color);
-  const next = {
-    ...hsl,
-    [channel]: value,
-  } as Hsl;
-  return fromHsl(next);
+  if (model === 'hsl' && isHslColorInputChannel(channel)) {
+    const hsl = toHsl(color);
+    const next: Hsl = {
+      ...hsl,
+      [channel]: value,
+    };
+    return fromHsl(next);
+  }
+
+  return assertInvalidColorInputPair(model, channel);
 }
 
 export function getColorInputPrecisionFromStep(step: number): number {
@@ -647,10 +672,10 @@ export function resolveColorInputDraftValue(
   return normalizeColorInputValue(parsed, options.range, options.wrap ?? false);
 }
 
-export function colorFromColorInputKey(
+export function colorFromColorInputKey<Model extends ColorInputModel>(
   color: Color,
-  model: ColorInputModel,
-  channel: ColorInputChannel,
+  model: Model,
+  channel: ColorInputChannelFor<Model>,
   key: string,
   options: {
     step: number;

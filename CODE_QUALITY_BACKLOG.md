@@ -137,7 +137,7 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-006 - Correlate color input model and channel types
 
 - Priority: P2
-- Status: Open
+- Status: Completed in `codex/cq006-color-input-types`
 - Evidence:
   - `packages/react/src/api/color-input.ts:4` defines `ColorInputModel` and `ColorInputChannel` as uncorrelated unions.
   - Tables around `packages/react/src/api/color-input.ts:47` and `packages/react/src/api/color-input.ts:83` must tolerate impossible pairs.
@@ -152,6 +152,11 @@ This backlog tracks structural maintainability work that is too large to treat a
   - Invalid model/channel pairs fail at compile time.
   - Runtime helper tables no longer need broad impossible-key coverage.
   - Public docs and examples still type-check.
+- Completion evidence:
+  - `packages/react/src/api/color-input.ts` exports `ColorInputChannelFor<Model>` and `ColorInputSpec<Model>` so model/channel pairs are correlated at the API boundary.
+  - Color input labels, ranges, steps, and glyphs are stored as per-model channel tables without impossible fallback keys.
+  - Color channel read/write helpers use typed model/channel guards instead of broad channel casts.
+  - `packages/react/src/api/color-input.typecheck.ts` proves invalid `rgb/l`, `hsl/b`, and `oklch/r` pairs fail at compile time.
 
 ### CQ-007 - Make multi-input segments atomic
 
