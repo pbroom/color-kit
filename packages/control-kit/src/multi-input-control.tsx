@@ -42,6 +42,53 @@ export type MultiInputConfig<TFieldId extends MultiInputFieldId = string> =
 export type MultiInputValues<TFieldId extends MultiInputFieldId = string> =
   Record<TFieldId, number>;
 
+export interface MultiInputSegmentModel<
+  TFieldId extends MultiInputFieldId = string,
+> extends Omit<MultiInputField<TFieldId>, 'value'> {
+  id: TFieldId;
+  value: number;
+  config: MultiInputSegmentConfig;
+}
+
+export interface CreateMultiInputSegmentsOptions<
+  TFieldId extends MultiInputFieldId,
+> {
+  fields: Array<MultiInputField<TFieldId>>;
+  values: MultiInputValues<TFieldId>;
+  config: MultiInputConfig<TFieldId>;
+}
+
+export function createMultiInputSegments<TFieldId extends MultiInputFieldId>({
+  fields,
+  values,
+  config,
+}: CreateMultiInputSegmentsOptions<TFieldId>): Array<
+  MultiInputSegmentModel<TFieldId>
+> {
+  return fields.map((field) => {
+    const segmentValue = values[field.value];
+    const segmentConfig = config[field.value];
+
+    if (segmentValue === undefined) {
+      throw new Error(`Missing multi-input value for field "${field.value}".`);
+    }
+    if (segmentConfig === undefined) {
+      throw new Error(`Missing multi-input config for field "${field.value}".`);
+    }
+
+    return {
+      id: field.value,
+      label: field.label,
+      tooltip: field.tooltip,
+      unit: field.unit,
+      weight: field.weight,
+      displayScale: field.displayScale,
+      value: segmentValue,
+      config: segmentConfig,
+    };
+  });
+}
+
 interface MultiInputSegmentProps<TFieldId extends MultiInputFieldId> {
   field: MultiInputField<TFieldId>;
   config: MultiInputSegmentConfig;
@@ -118,26 +165,49 @@ export function MultiInputSegment<TFieldId extends MultiInputFieldId>({
   );
 }
 
-export interface MultiInputControlProps<TFieldId extends MultiInputFieldId> {
-  values: MultiInputValues<TFieldId>;
-  config: MultiInputConfig<TFieldId>;
+interface MultiInputControlSharedProps<TFieldId extends MultiInputFieldId> {
   onFieldChange: (field: TFieldId, value: number) => void;
-  fields: Array<MultiInputField<TFieldId>>;
   parseExpression?: PrimitiveExpressionParser;
   showLeadingLabels?: boolean;
 }
 
+type MultiInputControlMappedProps<TFieldId extends MultiInputFieldId> = {
+  values: MultiInputValues<TFieldId>;
+  config: MultiInputConfig<TFieldId>;
+  fields: Array<MultiInputField<TFieldId>>;
+};
+
+type MultiInputControlSegmentProps<TFieldId extends MultiInputFieldId> = {
+  segments: Array<MultiInputSegmentModel<TFieldId>>;
+};
+
+export type MultiInputControlProps<TFieldId extends MultiInputFieldId> =
+  MultiInputControlSharedProps<TFieldId> &
+    (
+      | MultiInputControlMappedProps<TFieldId>
+      | MultiInputControlSegmentProps<TFieldId>
+    );
+
+function resolveMultiInputSegments<TFieldId extends MultiInputFieldId>(
+  source:
+    | MultiInputControlMappedProps<TFieldId>
+    | MultiInputControlSegmentProps<TFieldId>,
+): Array<MultiInputSegmentModel<TFieldId>> {
+  return 'fields' in source
+    ? createMultiInputSegments(source)
+    : source.segments;
+}
+
 export function MultiInputControl<TFieldId extends MultiInputFieldId>({
-  values,
-  config,
   onFieldChange,
-  fields,
   parseExpression,
   showLeadingLabels = false,
+  ...segmentSource
 }: MultiInputControlProps<TFieldId>) {
   const [isHovered, setIsHovered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [scrubbingField, setScrubbingField] = useState<TFieldId | null>(null);
+  const segments = resolveMultiInputSegments(segmentSource);
 
   const handleSegmentScrubbingChange = useCallback(
     (field: TFieldId, isScrubbing: boolean) => {
@@ -178,25 +248,36 @@ export function MultiInputControl<TFieldId extends MultiInputFieldId>({
         }}
       >
         <div className="flex h-full w-full min-w-0 max-w-full gap-px bg-transparent">
-          {fields.map((field) => (
-            <div
-              key={field.value}
-              data-multi-input-segment=""
-              className={`min-w-0 max-w-full ${field.weight ?? 'flex-1'}`}
-            >
-              <MultiInputSegment
-                field={field}
-                config={config[field.value]}
-                value={values[field.value]}
-                onValueChange={(nextValue) =>
-                  onFieldChange(field.value, nextValue)
-                }
-                onScrubbingChange={handleSegmentScrubbingChange}
-                parseExpression={parseExpression}
-                showLeadingLabel={showLeadingLabels}
-              />
-            </div>
-          ))}
+          {segments.map((segment) => {
+            const field = {
+              value: segment.id,
+              label: segment.label,
+              tooltip: segment.tooltip,
+              unit: segment.unit,
+              weight: segment.weight,
+              displayScale: segment.displayScale,
+            };
+
+            return (
+              <div
+                key={segment.id}
+                data-multi-input-segment=""
+                className={`min-w-0 max-w-full ${segment.weight ?? 'flex-1'}`}
+              >
+                <MultiInputSegment
+                  field={field}
+                  config={segment.config}
+                  value={segment.value}
+                  onValueChange={(nextValue) =>
+                    onFieldChange(segment.id, nextValue)
+                  }
+                  onScrubbingChange={handleSegmentScrubbingChange}
+                  parseExpression={parseExpression}
+                  showLeadingLabel={showLeadingLabels}
+                />
+              </div>
+            );
+          })}
         </div>
         <div
           aria-hidden="true"

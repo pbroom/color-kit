@@ -42,11 +42,17 @@ export type {
   PrimitiveSize,
   UsePrimitiveValueInputOptions,
 } from './primitive-value-input.js';
-export { MultiInputControl, MultiInputSegment } from './multi-input-control.js';
+export {
+  MultiInputControl,
+  MultiInputSegment,
+  createMultiInputSegments,
+} from './multi-input-control.js';
 export type {
+  CreateMultiInputSegmentsOptions,
   MultiInputConfig,
   MultiInputField,
   MultiInputFieldId,
   MultiInputSegmentConfig,
+  MultiInputSegmentModel,
   MultiInputValues,
 } from './multi-input-control.js';

@@ -1,6 +1,7 @@
 export {
   Checkbox,
   cn,
+  createMultiInputSegments,
   formatPrimitiveValue,
   MultiInputControl,
   MultiInputSegment,
@@ -21,10 +22,12 @@ export {
 } from '@color-kit/control-kit';
 export type {
   CheckboxProps,
+  CreateMultiInputSegmentsOptions,
   MultiInputConfig,
   MultiInputField,
   MultiInputFieldId,
   MultiInputSegmentConfig,
+  MultiInputSegmentModel,
   MultiInputValues,
   PrimitiveStepConfig,
   PrimitiveStepKey,

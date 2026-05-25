@@ -161,7 +161,7 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-007 - Make multi-input segments atomic
 
 - Priority: P2
-- Status: Open
+- Status: Completed in `codex/cq007-multi-input-segments`
 - Evidence:
   - `packages/control-kit/src/multi-input-control.tsx:17` defines field metadata separately from config/value maps.
   - `packages/control-kit/src/multi-input-control.tsx:121` accepts independent `values`, `config`, and `fields`.
@@ -176,6 +176,10 @@ This backlog tracks structural maintainability work that is too large to treat a
   - Render code no longer blindly indexes potentially missing config/value maps.
   - Existing multi-input Lab and ColorPlane integrations still behave the same.
   - TypeScript helps prevent incomplete segment definitions.
+- Completion evidence:
+  - `packages/control-kit/src/multi-input-control.tsx` adds `MultiInputSegmentModel` and `createMultiInputSegments()` so legacy maps normalize into one atomic segment array before rendering.
+  - `MultiInputControl` now accepts prebuilt `segments` or legacy maps, but its render path consumes normalized segment objects instead of indexing `config[field.value]` and `values[field.value]`.
+  - `packages/control-kit/__tests__/primitive-value-input.test.tsx` covers direct segment rendering plus missing value/config guard failures.
 
 ### CQ-008 - Replace brittle primitive markup assertions with contract tests
 

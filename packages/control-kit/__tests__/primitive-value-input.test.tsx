@@ -4,7 +4,13 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MultiInputControl } from '../src/multi-input-control.js';
+import {
+  MultiInputControl,
+  createMultiInputSegments,
+  type MultiInputConfig,
+  type MultiInputField,
+  type MultiInputValues,
+} from '../src/multi-input-control.js';
 import { PrimitiveValueInput } from '../src/primitive-value-input.js';
 
 const noop = () => {};
@@ -868,36 +874,71 @@ describe('PrimitiveValueInput', () => {
 });
 
 describe('MultiInputControl', () => {
+  const alphaField: MultiInputField<'a'> = {
+    value: 'a',
+    label: 'O',
+    tooltip: 'Opacity',
+    unit: '%',
+  };
+  const alphaConfig: MultiInputConfig<'a'> = {
+    a: {
+      min: 0,
+      max: 1,
+      step: 0.01,
+      fineStep: 0.001,
+      coarseStep: 0.1,
+      pageStep: 0.1,
+      precision: 1,
+      autoTrim: true,
+      wrapMode: 'clamp',
+      disabled: false,
+    },
+  };
+  const alphaValues: MultiInputValues<'a'> = { a: 0.5 };
+
   it('uses unit text as trailing scrub handle content', () => {
     const html = renderToStaticMarkup(
       <MultiInputControl
-        values={{ a: 0.5 }}
-        config={{
-          a: {
-            min: 0,
-            max: 1,
-            step: 0.01,
-            fineStep: 0.001,
-            coarseStep: 0.1,
-            pageStep: 0.1,
-            precision: 1,
-            autoTrim: true,
-            wrapMode: 'clamp',
-            disabled: false,
-          },
-        }}
-        fields={[
-          {
-            value: 'a',
-            label: 'O',
-            tooltip: 'Opacity',
-            unit: '%',
-          },
-        ]}
+        values={alphaValues}
+        config={alphaConfig}
+        fields={[alphaField]}
         onFieldChange={noop}
       />,
     );
 
     expect(html).toContain('>%<');
+  });
+
+  it('renders from normalized atomic segments', () => {
+    const html = renderToStaticMarkup(
+      <MultiInputControl
+        segments={createMultiInputSegments({
+          fields: [alphaField],
+          values: alphaValues,
+          config: alphaConfig,
+        })}
+        onFieldChange={noop}
+      />,
+    );
+
+    expect(html).toContain('>%<');
+  });
+
+  it('rejects incomplete field maps before rendering segments', () => {
+    expect(() =>
+      createMultiInputSegments({
+        fields: [alphaField],
+        values: {} as MultiInputValues<'a'>,
+        config: alphaConfig,
+      }),
+    ).toThrow('Missing multi-input value for field "a".');
+
+    expect(() =>
+      createMultiInputSegments({
+        fields: [alphaField],
+        values: alphaValues,
+        config: {} as MultiInputConfig<'a'>,
+      }),
+    ).toThrow('Missing multi-input config for field "a".');
   });
 });
