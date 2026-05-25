@@ -1,6 +1,6 @@
 # Implementation Backlog
 
-Source: thermo-nuclear code quality review on 2026-05-25 against `main` at `b7b6c21`.
+Source: thermo-nuclear code quality review on 2026-05-25 against `main` at `b7b6c21`, with follow-up findings merged after `implementation-backlog.md` landed on `main` at `5a48582`.
 
 This backlog tracks structural maintainability work that is too large to treat as incidental cleanup. Prefer small reviewable branches, but keep each branch pointed at one durable item so cleanup does not dissolve into local nits.
 
@@ -22,6 +22,9 @@ Do not green-light large features on these surfaces without a decomposition plan
 - No feature logic in shared paths without a dedicated abstraction
 - No manual registry forks diverging from `@color-kit/react` + `@color-kit/control-kit`
 - No inverted package layering (e.g. contrast ↔ plane type cycles)
+- No compute backend should report a backend it did not truly execute
+- No worker/WASM ABI should silently manufacture geometry from missing payload fields
+- No dual docs source of truth for the same routed page
 
 ---
 
@@ -162,9 +165,11 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Evidence:**
   - `packages/core/src/contrast/index.ts` (1,526 lines) — legacy marching squares, adaptive LC, hybrid root-tracing, and public router in one file.
   - `packages/core/src/plane/gamut-region.ts` (1,397 lines) — viewport geometry, `resolveGamutSolver` policy matrix, implicit contour, and orchestration tangled together.
+  - `contrastRegionPaths()` silently falls back from hybrid to legacy adaptive through `null` control flow instead of returning an explicit fallback reason.
+  - `getPlaneGamutRegion()` owns solver selection, trace summary fields, domain-edge handling, analytic solvers, implicit solvers, and result assembly in one orchestration path.
   - Adaptive 1D sampling duplicated in contrast (×2) and `gamut/index.ts` (~667–745).
   - Gamut epsilon `0.000075` defined in both `gamut/index.ts` and `gamut-region.ts`.
-- **Problem:** Multi-solver routers are the highest maintenance surface. Bug fixes to adaptive sampling must land in three places. Combinatorial branching (`resolveGamutSolver`, `contrastRegionPaths` router) spread across modules.
+- **Problem:** Multi-solver routers are the highest maintenance surface. Bug fixes to adaptive sampling must land in three places. Combinatorial branching (`resolveGamutSolver`, `contrastRegionPaths` router) spread across modules, and fallback behavior is implicit instead of observable.
 - **Target shape:**
   - `contrast/metrics.ts`, `contrast/region-legacy.ts`, `contrast/region-hybrid.ts`, `contrast/region.ts` (thin router).
   - `gamut-region/viewport-geometry.ts`, `gamut-region/gamut-solvers.ts`, `gamut-region/getPlaneGamutRegion.ts`.
@@ -173,7 +178,8 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Suggested slices:**
   1. Extract shared adaptive 1D sampler + centralize epsilon.
   2. Split contrast along solver boundaries; keep router thin.
-  3. Split gamut-region geometry from solver dispatch.
+  3. Return explicit `SolverOutcome` values with fallback reasons instead of `null`.
+  4. Split gamut-region geometry from solver dispatch.
 - **Acceptance criteria:**
   - No core production file exceeds 1k lines without documented justification.
   - Adaptive sampling logic defined once.
@@ -272,44 +278,157 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Evidence:**
   - CQ-009 moved panels from `docs-right-rail.tsx` (now 106-line shell) to `docs-right-rail-panels.tsx` (1,404 lines).
   - CQ-010 added `color-area-contrast-tiers.ts` descriptor table shared by demos and panels.
-- **Problem:** Panel registry extraction started but stopped at one large panels file. Adding a component panel still grows a 1.4k-line module.
-- **Target shape:** One panel module per component demo; `docs-right-rail-panels.tsx` becomes a thin registry re-exporting panel entrypoints.
+  - `component-docs-data.tsx` has `supportsPropertiesPanel`, `component-doc-page.tsx` injects `inspectorDriven`, demos read optional global inspector state, and `docs-right-rail-panels.tsx` keeps a separate pathname switch.
+- **Problem:** Panel registry extraction started but stopped at one large panels file, and a single "component has properties" concept is spread across the doc descriptor, route page, demo implementation, global context, and rail switch.
+- **Target shape:** One panel module per component demo, owned by the component descriptor. `docs-right-rail-panels.tsx` becomes a thin registry re-exporting panel entrypoints. Demos receive explicit state/adapters instead of reading optional global inspector state.
 - **Suggested slices:**
-  1. Extract ColorArea panel (largest) beside `component-demos.tsx` or color-area demo module.
-  2. Repeat for remaining panels.
-  3. Shell resolves panels through typed registry only.
+  1. Add `PropertiesPanel`/demo adapter fields to the component descriptor.
+  2. Extract ColorArea panel (largest) beside `component-demos.tsx` or the color-area demo module.
+  3. Remove `supportsPropertiesPanel`, `inspectorDriven`, and the pathname switch once descriptors own panel lookup.
+  4. Repeat for remaining panels.
 - **Acceptance criteria:**
   - No docs component file exceeds 1k lines for panel work.
   - Adding a panel requires one new module + registry entry.
+  - Component demos do not read optional global inspector state as a hidden mode.
 
 ---
 
-### IB-012 — Extract `useColorAreaPointerInteraction` hook
+### IB-012 — Extract `useColorAreaPointerInteraction` and explicit thumb slot
 
 - **Priority:** P2
 - **Status:** Open
 - **Evidence:**
   - `packages/react/src/color-area.tsx` — 813 lines; ~300 lines of pointer/RAF/coalesced-events logic in one narrative.
   - Adaptive quality from measured frame times; window-level drag continuation — cohesive but dense.
-- **Problem:** Many refs/effects in one component reduce testability. Pointer pipeline is a distinct subsystem from context provisioning.
-- **Target shape:** `useColorAreaPointerInteraction()` hook; `ColorArea` becomes shell + context (~400 lines).
+  - `ColorArea` recursively counts, finds, and prunes `<Thumb />` children by `child.type === Thumb`, then reinjects the first thumb; wrappers, memoized thumbs, or duplicate module instances can break this implicit slot contract.
+- **Problem:** Many refs/effects in one component reduce testability. Pointer pipeline is a distinct subsystem from context provisioning, and child surgery makes thumb composition magical instead of explicit.
+- **Target shape:** `useColorAreaPointerInteraction()` hook; `ColorArea` becomes shell + context (~400 lines). Replace recursive thumb introspection with an explicit slot contract (`thumb`, `showDefaultThumb`, or a tiny registration component).
 - **Suggested slices:**
   1. Extract hook with existing behavior tests as guard.
-  2. Slim `ColorArea` to composition only.
+  2. Add explicit thumb slot API while preserving the existing child API temporarily if needed.
+  3. Slim `ColorArea` to composition only.
 - **Acceptance criteria:**
   - Pointer interaction testable without full ColorArea render tree.
+  - Thumb composition works through wrappers/memoized components without type identity checks.
   - Public ColorArea API unchanged.
+
+---
+
+### IB-013 — Make plane compute backends capability-aware and honest
+
+- **Priority:** P0
+- **Status:** Open
+- **Evidence:**
+  - `packages/core-wasm/src/index.ts` calls `runPlaneQuery()` for every request before invoking the WASM kernel.
+  - The WASM kernel receives already-computed contrast paths and normalizes/sorts payloads, but the response reports `backend: 'wasm'`.
+  - `packages/react/src/workers/plane-query.worker.ts` owns WASM bootstrap, global backend state, compute selection, parity checks, telemetry, and protocol response emission in one file.
+- **Problem:** Scheduler telemetry can benchmark "JS compute + WASM normalization" as if it were a real WASM compute backend. Backend capability, normalization, parity, and worker lifecycle are tangled enough that future backend choices will be hard to trust.
+- **Target shape:** Backends advertise capabilities per query kind. If WASM only post-processes contrast paths, model it as a `contrastPathNormalizer` stage or report JS as the compute backend with normalization metadata. The worker orchestrates protocol only; backend loading, compute running, and parity checking live in separate modules.
+- **Suggested slices:**
+  1. Split WASM contrast normalization from `PlaneComputeBackend.run()` or make the backend refuse unsupported query kinds.
+  2. Add backend capability checks to scheduler selection and telemetry.
+  3. Extract `wasmBackendLoader`, `computeRunner`, and `parityChecker` from `plane-query.worker.ts`.
+  4. Replace global backend side-channel reads with explicit worker init/factory wiring.
+- **Acceptance criteria:**
+  - Backend telemetry names the backend that actually performed the compute.
+  - Scheduler never picks WASM for unsupported query kinds by accident.
+  - Worker protocol code no longer owns backend lifecycle policy.
+
+---
+
+### IB-014 — Introduce `PlaneQuerySpec` and strict packed ABI
+
+- **Priority:** P0
+- **Status:** Open
+- **Evidence:**
+  - Query execution dispatch lives in `packages/core/src/plane/query.ts`.
+  - Packing lives in `packages/core/src/compute/pack.ts`, unpacking in `packages/core/src/compute/unpack.ts`, trace geometry in `packages/core/src/plane/trace.ts`, scheduler budget/keying in `packages/core/src/compute/scheduler.ts`, and WASM filtering in `packages/core-wasm/src/index.ts`.
+  - `PackedPlaneQueryDescriptor` is one optional-field interface for every query kind.
+  - The unpacker defaults missing path ranges, coordinates, LC payloads, colors, gamut, scope, solver, viewport relation, and hue to plausible values.
+- **Problem:** Adding or changing a query kind requires remembering every switch across execution, packing, unpacking, tracing, scheduling, and backend filtering. The transfer ABI is loose enough to turn corrupt or mismatched payloads into fake geometry instead of failing at the boundary.
+- **Target shape:** A `PlaneQuerySpec` registry keyed by query kind owns `run`, `pack`, `unpack`, `traceGeometry`, `budget`, `telemetrySignature`, and `backendCapabilities`. Packed descriptors become a discriminated, versioned union with a decoder that validates array lengths/ranges before reconstructing results.
+- **Suggested slices:**
+  1. Introduce the spec registry beside existing switches and migrate one low-risk query kind.
+  2. Replace `PackedPlaneQueryDescriptor` with a discriminated descriptor union.
+  3. Add strict decoder validation and tests for missing/truncated payloads.
+  4. Move scheduler bucket/keying and backend capability data into specs.
+- **Acceptance criteria:**
+  - New query kinds are registered once instead of patched through several switches.
+  - Worker/WASM boundaries fail closed on malformed packed payloads.
+  - Existing worker parity tests pass with no public result-shape changes.
+
+---
+
+### IB-015 — Choose one component-doc source of truth
+
+- **Priority:** P0
+- **Status:** Open
+- **Evidence:**
+  - `apps/docs/src/content/docs-registry.ts` explicitly excludes `src/content/components/*.mdx` from routed docs.
+  - `/docs/components/:slug` uses `component-docs-data.tsx` through `routes/component-doc.tsx`.
+  - The old component MDX files remain tracked and still import demo symbols from the monolithic `component-demos` module while the new registry imports split demo modules.
+- **Problem:** Component docs now have two canonical-looking systems. One is routed and one is not, but both are editable and can drift in examples, API tables, and demo imports.
+- **Target shape:** Delete/archive the stale MDX files, or make MDX the authoring source and generate `component-docs-data.tsx` from it. Do not keep two hand-edited sources for the same page.
+- **Suggested slices:**
+  1. Confirm every routed component page has migrated content coverage.
+  2. Delete or archive the stale `src/content/components/*.mdx` files.
+  3. Add a docs check that fails if excluded component MDX files reappear without generation wiring.
+- **Acceptance criteria:**
+  - Exactly one source owns each component docs page.
+  - Component demo imports cannot drift between MDX and descriptor pages.
+
+---
+
+### IB-016 — Split Sandpack file generation from playground UI
+
+- **Priority:** P2
+- **Status:** Open
+- **Evidence:**
+  - `apps/docs/src/components/plane-api-playground.sandpack.tsx` raw-globs selected `packages/core/src` files, rewrites imports with regexes, builds hidden support files, and renders the Sandpack UI.
+  - `apps/docs/scripts/check-plane-quick-start-sync.mjs` validates broad text patterns rather than structured sandbox file resolution.
+- **Problem:** A React UI component is also acting as a hand-rolled package bundler. Import rewrite mistakes are hard to test, and playground layout work risks touching sandbox generation.
+- **Target shape:** Move sandbox file generation into a dedicated build-time/generated manifest or `lib/plane-sandbox-files.ts`; validate import resolution structurally. The React component receives `{ files, visibleFiles, entry }` and only renders UI.
+- **Suggested slices:**
+  1. Extract file collection/rewrite/build-support logic into a non-React module.
+  2. Add structural tests for generated file paths, entrypoints, and rewritten imports.
+  3. Slim `plane-api-playground.sandpack.tsx` to presentation.
+- **Acceptance criteria:**
+  - Sandpack generation can be tested without rendering React.
+  - UI changes do not touch file rewrite logic.
+
+---
+
+### IB-017 — Simplify multi-color collection state
+
+- **Priority:** P2
+- **Status:** Open
+- **Evidence:**
+  - `packages/react/src/use-multi-color.ts` stores shared `activeGamut`/`activeView` on `MultiColorState`.
+  - Each nested `ColorState` also stores `activeGamut`/`activeView`, forcing the hook to rebuild all entries when shared display context changes.
+  - Collection operations such as remove/rename rebuild `ColorState` maps to keep the duplicated invariant aligned.
+- **Problem:** The collection stores the same display invariant in two places. That makes updates more stateful and less atomic than the conceptual model: many requested colors plus one shared display context.
+- **Target shape:** Store requested colors plus one shared display context. Derive per-entry `ColorState`s through selectors/helpers at the boundary where consumers need full color state.
+- **Suggested slices:**
+  1. Add tests around batched gamut/view changes, remove, rename, and selection.
+  2. Introduce a normalized internal state model with requested colors + shared context.
+  3. Preserve the public `MultiColorState` shape if needed via a compatibility selector, then evaluate a typed public model cleanup.
+- **Acceptance criteria:**
+  - Shared gamut/view updates do not rebuild duplicated state by hand.
+  - Batched multi-entry edits remain deterministic.
+  - Public hook behavior remains unchanged.
 
 ---
 
 ## Suggested execution order
 
 1. **IB-001** — Stop registry drift (blocks consumer bug-fix flow).
-2. **IB-002 + IB-007** — Shared plane query layer + delete legacy worker (biggest react LOC + perf win).
-3. **IB-003** — Decompose contrast-region god module.
-4. **IB-004 + IB-009** — Split lab shared + lab numeric field wrappers.
-5. **IB-005 + IB-006** — Core type cycle + solver decomposition.
-6. **IB-008, IB-010, IB-011, IB-012** — Control-kit scrub split, parser split, right-rail panels, color-area hook.
+2. **IB-013 + IB-014** — Make compute backend telemetry honest and harden the packed query ABI.
+3. **IB-002 + IB-007** — Shared plane query layer + delete legacy worker (biggest react LOC + perf win).
+4. **IB-003** — Decompose contrast-region god module.
+5. **IB-004 + IB-009** — Split lab shared + lab numeric field wrappers.
+6. **IB-015 + IB-011** — Collapse component-doc and properties-panel ownership to descriptors.
+7. **IB-005 + IB-006** — Core type cycle + solver decomposition.
+8. **IB-008, IB-010, IB-012, IB-016, IB-017** — Control-kit scrub split, parser split, color-area slot/interaction, Sandpack generation, multi-color state.
 
 ---
 
