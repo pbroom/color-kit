@@ -1,0 +1,1401 @@
+import { useEffect, useMemo, useState } from 'react';
+import {
+  fromHsl,
+  fromHsv,
+  fromRgb,
+  parse,
+  toHex,
+  toHct,
+  toHsl,
+  toHsv,
+  toRgb,
+  type Color,
+} from 'color-kit';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  useDocsInspector,
+  type ColorAreaFormatRow,
+  type ColorAreaLineWidth,
+  type ColorAreaStrokeControl,
+  type ColorInputDemoChannel,
+  type EditableColorAreaFormatRow,
+} from './docs-inspector-context.js';
+import {
+  COLOR_AREA_CONTRAST_TIERS,
+  getColorAreaContrastTierLabel,
+  type ColorAreaContrastTierKey,
+} from './color-area-contrast-tiers.js';
+
+function SegmentedOptions<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: Array<{ value: T; label: string }>;
+  label: string;
+}) {
+  return (
+    <ToggleGroup
+      type="single"
+      value={value}
+      className="docs-segmented w-full justify-start"
+      aria-label={label}
+      onValueChange={(next) => {
+        if (next) {
+          onChange(next as T);
+        }
+      }}
+    >
+      {options.map((option) => (
+        <ToggleGroupItem
+          key={option.value}
+          value={option.value}
+          aria-label={`${label}: ${option.label}`}
+        >
+          {option.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
+const FORMAT_ROWS: Array<{
+  id: ColorAreaFormatRow;
+  label: string;
+  editable: boolean;
+}> = [
+  { id: 'oklch', label: 'OKLCH', editable: true },
+  { id: 'hct', label: 'HCT', editable: false },
+  { id: 'hsl', label: 'HSL', editable: true },
+  { id: 'hsb', label: 'HSB', editable: true },
+  { id: 'rgb', label: 'RGB', editable: true },
+  { id: 'hex', label: 'Hex', editable: true },
+];
+
+const STYLE_OPTIONS: Array<{
+  value: ColorAreaStrokeControl['style'];
+  label: string;
+}> = [
+  { value: 'solid', label: 'Solid' },
+  { value: 'dashed', label: 'Dashed' },
+  { value: 'dots', label: 'Dots' },
+];
+
+const WIDTH_OPTIONS: Array<{ value: ColorAreaLineWidth; label: string }> = [
+  { value: 0.25, label: '0.25pt' },
+  { value: 0.5, label: '0.5pt' },
+  { value: 1, label: '1pt' },
+];
+
+const PERFORMANCE_PROFILE_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'quality', label: 'Quality' },
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'performance', label: 'Perf' },
+] as const;
+
+const OVERLAY_QUALITY_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+] as const;
+
+const CONTRAST_METRIC_OPTIONS = [
+  { value: 'wcag', label: 'WCAG' },
+  { value: 'apca', label: 'APCA' },
+] as const;
+
+const APCA_POLARITY_OPTIONS = [
+  { value: 'absolute', label: 'Abs' },
+  { value: 'positive', label: '+Lc' },
+  { value: 'negative', label: '-Lc' },
+] as const;
+
+const APCA_ROLE_OPTIONS = [
+  { value: 'sample-text', label: 'Text' },
+  { value: 'sample-background', label: 'Background' },
+] as const;
+
+const WASM_PARITY_MODE_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: 'shape', label: 'Shape' },
+  { value: 'numeric', label: 'Numeric' },
+] as const;
+
+const SAMPLING_MODE_OPTIONS = [
+  { value: 'uniform', label: 'Uniform' },
+  { value: 'adaptive', label: 'Adaptive' },
+] as const;
+
+const SIMPLIFY_TOLERANCE_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: '0.001', label: '0.001' },
+  { value: '0.0015', label: '0.0015' },
+  { value: '0.002', label: '0.002' },
+] as const;
+
+const CORNER_RADIUS_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: '0.005', label: '0.005' },
+  { value: '0.008', label: '0.008' },
+  { value: '0.012', label: '0.012' },
+] as const;
+
+function clamp(value: number, min: number, max: number): number {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
+function asNumber(value: string): number | null {
+  const parsed = Number(value.trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatValues(row: ColorAreaFormatRow, color: Color): string[] {
+  if (row === 'oklch') {
+    return [
+      String(Math.round(color.l * 100)),
+      color.c.toFixed(2),
+      String(Math.round(color.h)),
+      String(Math.round(color.alpha * 100)),
+    ];
+  }
+
+  if (row === 'hct') {
+    const hct = toHct(color);
+    return [
+      String(Math.round(hct.h)),
+      String(Math.round(hct.c)),
+      String(Math.round(hct.t)),
+      String(Math.round(hct.alpha * 100)),
+    ];
+  }
+
+  if (row === 'hsl') {
+    const hsl = toHsl(color);
+    return [
+      String(Math.round(hsl.h)),
+      String(Math.round(hsl.s)),
+      String(Math.round(hsl.l)),
+      String(Math.round(hsl.alpha * 100)),
+    ];
+  }
+
+  if (row === 'hsb') {
+    const hsv = toHsv(color);
+    return [
+      String(Math.round(hsv.h)),
+      String(Math.round(hsv.s)),
+      String(Math.round(hsv.v)),
+      String(Math.round(hsv.alpha * 100)),
+    ];
+  }
+
+  if (row === 'rgb') {
+    const rgb = toRgb(color);
+    return [
+      String(Math.round(rgb.r)),
+      String(Math.round(rgb.g)),
+      String(Math.round(rgb.b)),
+      String(Math.round(rgb.alpha * 100)),
+    ];
+  }
+
+  return [toHex(color).toUpperCase(), String(Math.round(color.alpha * 100))];
+}
+
+function parseEditableRow(
+  row: EditableColorAreaFormatRow,
+  values: string[],
+  current: Color,
+): Color | null {
+  if (row === 'oklch') {
+    if (values.length !== 4) return null;
+    const l = asNumber(values[0]);
+    const c = asNumber(values[1]);
+    const h = asNumber(values[2]);
+    const alpha = asNumber(values[3]);
+    if (l === null || c === null || h === null || alpha === null) return null;
+
+    return {
+      l: clamp(l / 100, 0, 1),
+      c: Math.max(0, c),
+      h: ((h % 360) + 360) % 360,
+      alpha: clamp(alpha / 100, 0, 1),
+    };
+  }
+
+  if (row === 'hsl') {
+    if (values.length !== 4) return null;
+    const h = asNumber(values[0]);
+    const s = asNumber(values[1]);
+    const l = asNumber(values[2]);
+    const alpha = asNumber(values[3]);
+    if (h === null || s === null || l === null || alpha === null) return null;
+
+    return fromHsl({
+      h,
+      s: clamp(s, 0, 100),
+      l: clamp(l, 0, 100),
+      alpha: clamp(alpha / 100, 0, 1),
+    });
+  }
+
+  if (row === 'hsb') {
+    if (values.length !== 4) return null;
+    const h = asNumber(values[0]);
+    const s = asNumber(values[1]);
+    const v = asNumber(values[2]);
+    const alpha = asNumber(values[3]);
+    if (h === null || s === null || v === null || alpha === null) return null;
+
+    return fromHsv({
+      h,
+      s: clamp(s, 0, 100),
+      v: clamp(v, 0, 100),
+      alpha: clamp(alpha / 100, 0, 1),
+    });
+  }
+
+  if (row === 'rgb') {
+    if (values.length !== 4) return null;
+    const r = asNumber(values[0]);
+    const g = asNumber(values[1]);
+    const b = asNumber(values[2]);
+    const alpha = asNumber(values[3]);
+    if (r === null || g === null || b === null || alpha === null) return null;
+
+    return fromRgb({
+      r: clamp(r, 0, 255),
+      g: clamp(g, 0, 255),
+      b: clamp(b, 0, 255),
+      alpha: clamp(alpha / 100, 0, 1),
+    });
+  }
+
+  if (row === 'hex') {
+    if (values.length !== 2) return null;
+    const alpha = asNumber(values[1]);
+    if (alpha === null) return null;
+
+    try {
+      const parsed = parse(values[0].trim());
+      return {
+        ...parsed,
+        alpha: clamp(alpha / 100, 0, 1),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  return current;
+}
+
+function StrokeStylePills({
+  value,
+  onChange,
+}: {
+  value: ColorAreaStrokeControl;
+  onChange: (next: ColorAreaStrokeControl) => void;
+}) {
+  return (
+    <div className="docs-select-pair" role="group" aria-label="Style controls">
+      <label
+        className={`docs-select-field docs-select-field-style docs-style-${value.style}`}
+      >
+        <span className="docs-select-field-icon" aria-hidden="true" />
+        <select
+          value={value.style}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              style: event.target.value as ColorAreaStrokeControl['style'],
+            })
+          }
+          aria-label="Stroke style"
+        >
+          {STYLE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="docs-select-field docs-select-field-width">
+        <select
+          value={String(value.width)}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              width: Number(event.target.value) as ColorAreaLineWidth,
+            })
+          }
+          aria-label="Stroke width"
+        >
+          {WIDTH_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function DotOpacityPills({
+  opacityPercent,
+  onChange,
+}: {
+  opacityPercent: number;
+  onChange: (opacityPercent: number) => void;
+}) {
+  return (
+    <div className="docs-select-pair" role="group" aria-label="Dot controls">
+      <label className="docs-select-field docs-select-field-style docs-style-dots is-readonly">
+        <span className="docs-select-field-icon" aria-hidden="true" />
+        <span className="docs-select-field-static">Dots</span>
+      </label>
+      <label
+        className="docs-percent-field"
+        aria-label="Pattern opacity percent"
+      >
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={opacityPercent}
+          onChange={(event) =>
+            onChange(clamp(Number(event.target.value) || 0, 0, 100))
+          }
+        />
+        <span aria-hidden="true">%</span>
+      </label>
+    </div>
+  );
+}
+
+function StepRangeControl({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (next: number) => void;
+}) {
+  const clampedValue = clamp(Math.round(value), min, max);
+
+  return (
+    <div className="docs-inline-control-row">
+      <span>{label}</span>
+      <div className="docs-inline-control-value docs-inline-control-range">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={clampedValue}
+          onChange={(event) =>
+            onChange(clamp(Number(event.target.value) || min, min, max))
+          }
+        />
+        <label className="docs-percent-field docs-value-field">
+          <input
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={clampedValue}
+            onChange={(event) =>
+              onChange(clamp(Number(event.target.value) || min, min, max))
+            }
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function ColorAreaPropertiesPanel() {
+  const {
+    colorAreaState,
+    colorAreaDemos,
+    setColorAreaState,
+    setColorAreaRequested,
+    cycleColorAreaDemo,
+  } = useDocsInspector();
+
+  const selectedDemoIndex = useMemo(
+    () =>
+      colorAreaDemos.findIndex(
+        (entry) => entry.id === colorAreaState.selectedDemo,
+      ),
+    [colorAreaDemos, colorAreaState.selectedDemo],
+  );
+
+  const requestedColor = colorAreaState.colorState.requested;
+  const activeRow = colorAreaState.activeFormatRow;
+  const activeFormattedValues = useMemo(
+    () => formatValues(activeRow, requestedColor),
+    [activeRow, requestedColor],
+  );
+  const [activeDraftValues, setActiveDraftValues] = useState(
+    activeFormattedValues,
+  );
+
+  useEffect(() => {
+    setActiveDraftValues(activeFormattedValues);
+  }, [activeFormattedValues]);
+
+  const commitActiveFormatDraft = () => {
+    const parsed = parseEditableRow(
+      activeRow,
+      activeDraftValues,
+      requestedColor,
+    );
+    if (!parsed) {
+      setActiveDraftValues(activeFormattedValues);
+      return;
+    }
+
+    setColorAreaRequested(parsed);
+  };
+
+  const setStroke = (
+    updater: (current: ColorAreaStrokeControl) => ColorAreaStrokeControl,
+    path:
+      | 'visualize.p3Boundary'
+      | 'visualize.srgbBoundary'
+      | 'chromaBand.p3'
+      | 'chromaBand.srgb',
+  ) => {
+    if (path === 'visualize.p3Boundary') {
+      setColorAreaState({
+        visualize: {
+          ...colorAreaState.visualize,
+          p3Boundary: updater(colorAreaState.visualize.p3Boundary),
+        },
+      });
+      return;
+    }
+
+    if (path === 'visualize.srgbBoundary') {
+      setColorAreaState({
+        visualize: {
+          ...colorAreaState.visualize,
+          srgbBoundary: updater(colorAreaState.visualize.srgbBoundary),
+        },
+      });
+      return;
+    }
+
+    if (path === 'chromaBand.p3') {
+      setColorAreaState({
+        chromaBand: {
+          ...colorAreaState.chromaBand,
+          p3: updater(colorAreaState.chromaBand.p3),
+        },
+      });
+      return;
+    }
+
+    if (path === 'chromaBand.srgb') {
+      setColorAreaState({
+        chromaBand: {
+          ...colorAreaState.chromaBand,
+          srgb: updater(colorAreaState.chromaBand.srgb),
+        },
+      });
+      return;
+    }
+  };
+
+  const setContrastLine = (
+    tier: ColorAreaContrastTierKey,
+    updater: (current: ColorAreaStrokeControl) => ColorAreaStrokeControl,
+  ) => {
+    setColorAreaState({
+      contrast: {
+        ...colorAreaState.contrast,
+        lines: {
+          ...colorAreaState.contrast.lines,
+          [tier]: updater(colorAreaState.contrast.lines[tier]),
+        },
+      },
+    });
+  };
+
+  const setContrastRegion = (
+    tier: ColorAreaContrastTierKey,
+    patch: { enabled?: boolean; opacityPercent?: number },
+  ) => {
+    setColorAreaState({
+      contrast: {
+        ...colorAreaState.contrast,
+        regions: {
+          ...colorAreaState.contrast.regions,
+          [tier]: {
+            ...colorAreaState.contrast.regions[tier],
+            ...patch,
+          },
+        },
+      },
+    });
+  };
+
+  return (
+    <div className="docs-properties-panel docs-properties-panel-color-area">
+      <div className="docs-properties-demo-row">
+        <button
+          type="button"
+          className="docs-demo-title-button"
+          onClick={() => cycleColorAreaDemo(1)}
+          aria-label="Cycle color area demo scenario"
+        >
+          <span>Color Area Configuration</span>
+          <span aria-hidden="true">⌄</span>
+        </button>
+        <div className="docs-demo-pagination">
+          <button
+            type="button"
+            onClick={() => cycleColorAreaDemo(-1)}
+            aria-label="Previous color area scenario"
+          >
+            &lt;
+          </button>
+          <span>
+            {selectedDemoIndex + 1}/{colorAreaDemos.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => cycleColorAreaDemo(1)}
+            aria-label="Next color area scenario"
+          >
+            &gt;
+          </button>
+        </div>
+      </div>
+
+      <section className="docs-properties-group">
+        <h4>Gamut</h4>
+
+        <div
+          className="docs-format-matrix"
+          role="group"
+          aria-label="Color format matrix"
+        >
+          {FORMAT_ROWS.map((row) => {
+            const rowValues =
+              row.id === activeRow
+                ? activeDraftValues
+                : formatValues(row.id, requestedColor);
+            const isActiveEditable = row.id === activeRow && row.editable;
+
+            return (
+              <div className="docs-format-row" key={row.id}>
+                <button
+                  type="button"
+                  className={
+                    row.editable && row.id === activeRow
+                      ? 'docs-format-label is-active'
+                      : 'docs-format-label'
+                  }
+                  onClick={() => {
+                    if (!row.editable) return;
+                    setColorAreaState({
+                      activeFormatRow: row.id as EditableColorAreaFormatRow,
+                    });
+                  }}
+                  aria-label={`Set editable format row to ${row.label}`}
+                >
+                  {row.label}
+                </button>
+                <div
+                  className="docs-format-swatch"
+                  style={{ backgroundColor: toHex(requestedColor) }}
+                  aria-hidden="true"
+                />
+                <div
+                  className={
+                    rowValues.length === 2
+                      ? 'docs-format-input-grid two-col'
+                      : 'docs-format-input-grid'
+                  }
+                >
+                  {rowValues.map((value, valueIndex) => {
+                    const isLast = valueIndex === rowValues.length - 1;
+                    const showPercent =
+                      (row.id !== 'hex' && isLast) ||
+                      (row.id === 'hex' && valueIndex === 1);
+
+                    return isActiveEditable ? (
+                      <label
+                        key={`${row.id}-${valueIndex}`}
+                        className="docs-format-cell docs-format-cell-editable"
+                      >
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(event) => {
+                            setActiveDraftValues((current) => {
+                              const next = [...current];
+                              next[valueIndex] = event.target.value;
+                              return next;
+                            });
+                          }}
+                          onBlur={commitActiveFormatDraft}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              commitActiveFormatDraft();
+                            }
+                            if (event.key === 'Escape') {
+                              setActiveDraftValues(activeFormattedValues);
+                            }
+                          }}
+                        />
+                        {showPercent ? <span>%</span> : null}
+                      </label>
+                    ) : (
+                      <div
+                        key={`${row.id}-${valueIndex}`}
+                        className="docs-format-cell"
+                      >
+                        <span>{value}</span>
+                        {showPercent ? <span>%</span> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <label className="docs-toggle-row">
+          <input
+            type="checkbox"
+            checked={colorAreaState.repeatEdgePixels}
+            onChange={(event) =>
+              setColorAreaState({ repeatEdgePixels: event.target.checked })
+            }
+          />
+          Repeat gamut edge pixels
+        </label>
+
+        <label className="docs-properties-label">x axis</label>
+        <SegmentedOptions
+          value={colorAreaState.xAxis}
+          onChange={(xAxis) => setColorAreaState({ xAxis })}
+          options={[
+            { value: 'l', label: 'L' },
+            { value: 'c', label: 'C' },
+            { value: 'h', label: 'H' },
+          ]}
+          label="Color area x axis"
+        />
+
+        <label className="docs-properties-label">y axis</label>
+        <SegmentedOptions
+          value={colorAreaState.yAxis}
+          onChange={(yAxis) => setColorAreaState({ yAxis })}
+          options={[
+            { value: 'l', label: 'L' },
+            { value: 'c', label: 'C' },
+            { value: 'h', label: 'H' },
+          ]}
+          label="Color area y axis"
+        />
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Background</h4>
+
+        <div className="docs-inline-control-row">
+          <span>Out of OKLCH</span>
+          <div className="docs-inline-control-value">
+            <label className="docs-color-field">
+              <span
+                className="docs-color-field-chip"
+                style={{
+                  backgroundColor: colorAreaState.background.outOfP3.color,
+                }}
+                aria-hidden="true"
+              />
+              <input
+                type="text"
+                value={colorAreaState.background.outOfP3.color}
+                onChange={(event) =>
+                  setColorAreaState({
+                    background: {
+                      ...colorAreaState.background,
+                      outOfP3: {
+                        ...colorAreaState.background.outOfP3,
+                        color: event.target.value,
+                      },
+                    },
+                  })
+                }
+                aria-label="Out of OKLCH background color"
+              />
+            </label>
+            <label className="docs-percent-field">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={colorAreaState.background.outOfP3.opacityPercent}
+                onChange={(event) =>
+                  setColorAreaState({
+                    background: {
+                      ...colorAreaState.background,
+                      outOfP3: {
+                        ...colorAreaState.background.outOfP3,
+                        opacityPercent: clamp(
+                          Number(event.target.value) || 0,
+                          0,
+                          100,
+                        ),
+                      },
+                    },
+                  })
+                }
+                aria-label="Out of OKLCH opacity"
+              />
+              <span aria-hidden="true">%</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="docs-inline-control-row">
+          <span>Out of sRGB</span>
+          <div className="docs-inline-control-value">
+            <label className="docs-color-field">
+              <span
+                className="docs-color-field-chip"
+                style={{
+                  backgroundColor: colorAreaState.background.outOfSrgb.color,
+                }}
+                aria-hidden="true"
+              />
+              <input
+                type="text"
+                value={colorAreaState.background.outOfSrgb.color}
+                onChange={(event) =>
+                  setColorAreaState({
+                    background: {
+                      ...colorAreaState.background,
+                      outOfSrgb: {
+                        ...colorAreaState.background.outOfSrgb,
+                        color: event.target.value,
+                      },
+                    },
+                  })
+                }
+                aria-label="Out of sRGB background color"
+              />
+            </label>
+            <label className="docs-percent-field">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={colorAreaState.background.outOfSrgb.opacityPercent}
+                onChange={(event) =>
+                  setColorAreaState({
+                    background: {
+                      ...colorAreaState.background,
+                      outOfSrgb: {
+                        ...colorAreaState.background.outOfSrgb,
+                        opacityPercent: clamp(
+                          Number(event.target.value) || 0,
+                          0,
+                          100,
+                        ),
+                      },
+                    },
+                  })
+                }
+                aria-label="Out of sRGB opacity"
+              />
+              <span aria-hidden="true">%</span>
+            </label>
+          </div>
+        </div>
+
+        <label className="docs-toggle-row">
+          <input
+            type="checkbox"
+            checked={colorAreaState.background.checkerboard}
+            onChange={(event) =>
+              setColorAreaState({
+                background: {
+                  ...colorAreaState.background,
+                  checkerboard: event.target.checked,
+                },
+              })
+            }
+          />
+          Checkerboard
+        </label>
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Visualize</h4>
+
+        <label className="docs-toggle-row">
+          <input
+            type="checkbox"
+            checked={colorAreaState.visualize.p3Fallback}
+            onChange={(event) =>
+              setColorAreaState({
+                visualize: {
+                  ...colorAreaState.visualize,
+                  p3Fallback: event.target.checked,
+                },
+              })
+            }
+          />
+          P3 fallback
+        </label>
+
+        <label className="docs-toggle-row">
+          <input
+            type="checkbox"
+            checked={colorAreaState.visualize.srgbFallback}
+            onChange={(event) =>
+              setColorAreaState({
+                visualize: {
+                  ...colorAreaState.visualize,
+                  srgbFallback: event.target.checked,
+                },
+              })
+            }
+          />
+          sRGB fallback
+        </label>
+
+        <label className="docs-toggle-row">
+          <input
+            type="checkbox"
+            checked={colorAreaState.visualize.vectorPoints}
+            onChange={(event) =>
+              setColorAreaState({
+                visualize: {
+                  ...colorAreaState.visualize,
+                  vectorPoints: event.target.checked,
+                },
+              })
+            }
+          />
+          Vector path points
+        </label>
+
+        <div className="docs-control-row">
+          <label className="docs-toggle-row">
+            <input
+              type="checkbox"
+              checked={colorAreaState.visualize.p3Boundary.enabled}
+              onChange={(event) =>
+                setStroke(
+                  (current) => ({ ...current, enabled: event.target.checked }),
+                  'visualize.p3Boundary',
+                )
+              }
+            />
+            P3 boundary
+          </label>
+          <StrokeStylePills
+            value={colorAreaState.visualize.p3Boundary}
+            onChange={(next) => setStroke(() => next, 'visualize.p3Boundary')}
+          />
+        </div>
+
+        <div className="docs-control-row">
+          <label className="docs-toggle-row">
+            <input
+              type="checkbox"
+              checked={colorAreaState.visualize.srgbBoundary.enabled}
+              onChange={(event) =>
+                setStroke(
+                  (current) => ({ ...current, enabled: event.target.checked }),
+                  'visualize.srgbBoundary',
+                )
+              }
+            />
+            sRGB boundary
+          </label>
+          <StrokeStylePills
+            value={colorAreaState.visualize.srgbBoundary}
+            onChange={(next) => setStroke(() => next, 'visualize.srgbBoundary')}
+          />
+        </div>
+
+        <div className="docs-control-row">
+          <label className="docs-toggle-row">
+            <input
+              type="checkbox"
+              checked={colorAreaState.visualize.patternOverlay.enabled}
+              onChange={(event) =>
+                setColorAreaState({
+                  visualize: {
+                    ...colorAreaState.visualize,
+                    patternOverlay: {
+                      ...colorAreaState.visualize.patternOverlay,
+                      enabled: event.target.checked,
+                    },
+                  },
+                })
+              }
+            />
+            Pattern overlay
+          </label>
+          <DotOpacityPills
+            opacityPercent={
+              colorAreaState.visualize.patternOverlay.opacityPercent
+            }
+            onChange={(opacityPercent) =>
+              setColorAreaState({
+                visualize: {
+                  ...colorAreaState.visualize,
+                  patternOverlay: {
+                    ...colorAreaState.visualize.patternOverlay,
+                    opacityPercent,
+                  },
+                },
+              })
+            }
+          />
+        </div>
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Chroma band</h4>
+
+        <label className="docs-properties-label">Chroma band</label>
+        <SegmentedOptions
+          value={colorAreaState.chromaBand.mode}
+          onChange={(mode) =>
+            setColorAreaState({
+              chromaBand: {
+                ...colorAreaState.chromaBand,
+                mode,
+              },
+            })
+          }
+          options={[
+            { value: 'closest', label: 'Closest' },
+            { value: 'percentage', label: 'Percentage' },
+          ]}
+          label="Chroma band mode"
+        />
+
+        <div className="docs-control-row">
+          <label className="docs-toggle-row">
+            <input
+              type="checkbox"
+              checked={colorAreaState.chromaBand.p3.enabled}
+              onChange={(event) =>
+                setStroke(
+                  (current) => ({ ...current, enabled: event.target.checked }),
+                  'chromaBand.p3',
+                )
+              }
+            />
+            P3 chroma band
+          </label>
+          <StrokeStylePills
+            value={colorAreaState.chromaBand.p3}
+            onChange={(next) => setStroke(() => next, 'chromaBand.p3')}
+          />
+        </div>
+
+        <div className="docs-control-row">
+          <label className="docs-toggle-row">
+            <input
+              type="checkbox"
+              checked={colorAreaState.chromaBand.srgb.enabled}
+              onChange={(event) =>
+                setStroke(
+                  (current) => ({ ...current, enabled: event.target.checked }),
+                  'chromaBand.srgb',
+                )
+              }
+            />
+            sRGB chroma band
+          </label>
+          <StrokeStylePills
+            value={colorAreaState.chromaBand.srgb}
+            onChange={(next) => setStroke(() => next, 'chromaBand.srgb')}
+          />
+        </div>
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Contrast</h4>
+
+        <label className="docs-properties-label">Metric</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.contrastMetric}
+          onChange={(contrastMetric) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                contrastMetric,
+              },
+            })
+          }
+          options={[...CONTRAST_METRIC_OPTIONS]}
+          label="Contrast metric"
+        />
+
+        {colorAreaState.tuning.contrastMetric === 'apca' ? (
+          <>
+            <label className="docs-properties-label">APCA polarity</label>
+            <SegmentedOptions
+              value={colorAreaState.tuning.contrastApcaPolarity}
+              onChange={(contrastApcaPolarity) =>
+                setColorAreaState({
+                  tuning: {
+                    ...colorAreaState.tuning,
+                    contrastApcaPolarity,
+                  },
+                })
+              }
+              options={[...APCA_POLARITY_OPTIONS]}
+              label="APCA polarity"
+            />
+            <label className="docs-properties-label">APCA role</label>
+            <SegmentedOptions
+              value={colorAreaState.tuning.contrastApcaRole}
+              onChange={(contrastApcaRole) =>
+                setColorAreaState({
+                  tuning: {
+                    ...colorAreaState.tuning,
+                    contrastApcaRole,
+                  },
+                })
+              }
+              options={[...APCA_ROLE_OPTIONS]}
+              label="APCA score role"
+            />
+          </>
+        ) : null}
+
+        <p className="docs-subgroup-label">Lines</p>
+
+        {COLOR_AREA_CONTRAST_TIERS.map((tier) => (
+          <div key={`line-${tier.key}`} className="docs-control-row">
+            <label className="docs-toggle-row">
+              <input
+                type="checkbox"
+                checked={colorAreaState.contrast.lines[tier.key].enabled}
+                onChange={(event) =>
+                  setContrastLine(tier.key, (current) => ({
+                    ...current,
+                    enabled: event.target.checked,
+                  }))
+                }
+              />
+              {getColorAreaContrastTierLabel(
+                colorAreaState.tuning.contrastMetric,
+                tier,
+              )}
+            </label>
+            <StrokeStylePills
+              value={colorAreaState.contrast.lines[tier.key]}
+              onChange={(next) => setContrastLine(tier.key, () => next)}
+            />
+          </div>
+        ))}
+
+        <p className="docs-subgroup-label">Regions</p>
+
+        {COLOR_AREA_CONTRAST_TIERS.map((tier) => (
+          <div key={`region-${tier.key}`} className="docs-control-row">
+            <label className="docs-toggle-row">
+              <input
+                type="checkbox"
+                checked={colorAreaState.contrast.regions[tier.key].enabled}
+                onChange={(event) =>
+                  setContrastRegion(tier.key, {
+                    enabled: event.target.checked,
+                  })
+                }
+              />
+              {getColorAreaContrastTierLabel(
+                colorAreaState.tuning.contrastMetric,
+                tier,
+              )}
+            </label>
+            <DotOpacityPills
+              opacityPercent={
+                colorAreaState.contrast.regions[tier.key].opacityPercent
+              }
+              onChange={(opacityPercent) =>
+                setContrastRegion(tier.key, { opacityPercent })
+              }
+            />
+          </div>
+        ))}
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Rendering</h4>
+
+        <label className="docs-properties-label">Perf profile</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.performanceProfile}
+          onChange={(performanceProfile) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                performanceProfile,
+              },
+            })
+          }
+          options={[...PERFORMANCE_PROFILE_OPTIONS]}
+          label="Color area performance profile"
+        />
+
+        <label className="docs-properties-label">Overlay quality</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.layerQuality}
+          onChange={(layerQuality) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                layerQuality,
+              },
+            })
+          }
+          options={[...OVERLAY_QUALITY_OPTIONS]}
+          label="Overlay quality level"
+        />
+
+        <StepRangeControl
+          label="Line steps"
+          value={colorAreaState.tuning.lineSteps}
+          min={16}
+          max={256}
+          step={4}
+          onChange={(lineSteps) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                lineSteps,
+              },
+            })
+          }
+        />
+
+        <label className="docs-properties-label">Simplify tolerance</label>
+        <SegmentedOptions
+          value={
+            colorAreaState.tuning.simplifyTolerance == null ||
+            colorAreaState.tuning.simplifyTolerance === 0
+              ? 'off'
+              : String(colorAreaState.tuning.simplifyTolerance)
+          }
+          onChange={(value) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                simplifyTolerance: value === 'off' ? undefined : Number(value),
+              },
+            })
+          }
+          options={[...SIMPLIFY_TOLERANCE_OPTIONS]}
+          label="RDP simplification (l,c) tolerance"
+        />
+
+        <label className="docs-properties-label">Line sampling</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.lineSamplingMode ?? 'adaptive'}
+          onChange={(lineSamplingMode) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                lineSamplingMode,
+              },
+            })
+          }
+          options={[...SAMPLING_MODE_OPTIONS]}
+          label="Boundary/chroma sampling"
+        />
+
+        <label className="docs-properties-label">WASM parity probe</label>
+        <SegmentedOptions
+          value={colorAreaState.tuning.wasmParityMode}
+          onChange={(wasmParityMode) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                wasmParityMode,
+              },
+            })
+          }
+          options={[...WASM_PARITY_MODE_OPTIONS]}
+          label="Contrast JS/WASM parity planning probe"
+        />
+
+        <label className="docs-properties-label">Corner radius</label>
+        <SegmentedOptions
+          value={
+            colorAreaState.tuning.cornerRadius == null ||
+            colorAreaState.tuning.cornerRadius === 0
+              ? 'off'
+              : String(colorAreaState.tuning.cornerRadius)
+          }
+          onChange={(value) =>
+            setColorAreaState({
+              tuning: {
+                ...colorAreaState.tuning,
+                cornerRadius: value === 'off' ? undefined : Number(value),
+              },
+            })
+          }
+          options={[...CORNER_RADIUS_OPTIONS]}
+          label="Path corner rounding (0–1)"
+        />
+      </section>
+    </div>
+  );
+}
+
+function ColorSliderPropertiesPanel() {
+  const { colorSliderState, setColorSliderState } = useDocsInspector();
+
+  return (
+    <div className="docs-properties-panel">
+      <section className="docs-properties-group">
+        <h4>Channel</h4>
+        <SegmentedOptions
+          value={colorSliderState.channel}
+          onChange={(channel) => setColorSliderState({ channel })}
+          options={[
+            { value: 'l', label: 'L' },
+            { value: 'c', label: 'C' },
+            { value: 'h', label: 'H' },
+            { value: 'alpha', label: 'A' },
+          ]}
+          label="Color slider channel"
+        />
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Output gamut</h4>
+        <SegmentedOptions
+          value={colorSliderState.gamut}
+          onChange={(gamut) => setColorSliderState({ gamut })}
+          options={[
+            { value: 'display-p3', label: 'P3' },
+            { value: 'srgb', label: 'sRGB' },
+          ]}
+          label="Color slider gamut"
+        />
+      </section>
+    </div>
+  );
+}
+
+function ColorInputPropertiesPanel() {
+  const { colorInputState, setColorInputState } = useDocsInspector();
+  const channelOptions: Array<{ value: ColorInputDemoChannel; label: string }> =
+    colorInputState.model === 'rgb'
+      ? [
+          { value: 'r', label: 'R' },
+          { value: 'g', label: 'G' },
+          { value: 'b', label: 'B' },
+          { value: 'alpha', label: 'A' },
+        ]
+      : colorInputState.model === 'hsl'
+        ? [
+            { value: 'h', label: 'H' },
+            { value: 's', label: 'S' },
+            { value: 'l', label: 'L' },
+            { value: 'alpha', label: 'A' },
+          ]
+        : [
+            { value: 'l', label: 'L' },
+            { value: 'c', label: 'C' },
+            { value: 'h', label: 'H' },
+            { value: 'alpha', label: 'A' },
+          ];
+
+  return (
+    <div className="docs-properties-panel">
+      <section className="docs-properties-group">
+        <h4>Input model</h4>
+        <SegmentedOptions
+          value={colorInputState.model}
+          onChange={(model) => setColorInputState({ model })}
+          options={[
+            { value: 'oklch', label: 'oklch' },
+            { value: 'rgb', label: 'rgb' },
+            { value: 'hsl', label: 'hsl' },
+          ]}
+          label="Color input model"
+        />
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Input channel</h4>
+        <SegmentedOptions
+          value={colorInputState.channel}
+          onChange={(channel) => setColorInputState({ channel })}
+          options={channelOptions}
+          label="Color input channel"
+        />
+      </section>
+
+      <section className="docs-properties-group">
+        <h4>Output gamut</h4>
+        <SegmentedOptions
+          value={colorInputState.gamut}
+          onChange={(gamut) => setColorInputState({ gamut })}
+          options={[
+            { value: 'display-p3', label: 'P3' },
+            { value: 'srgb', label: 'sRGB' },
+          ]}
+          label="Color input gamut"
+        />
+      </section>
+    </div>
+  );
+}
+
+const PROPERTIES_PANELS = {
+  '/docs/components/color-area': ColorAreaPropertiesPanel,
+  '/docs/components/color-slider': ColorSliderPropertiesPanel,
+  '/docs/components/color-input': ColorInputPropertiesPanel,
+} as const;
+
+export function hasDocsPropertiesPanel(pathname: string): boolean {
+  return pathname in PROPERTIES_PANELS;
+}
+
+export function DocsPropertiesPanel({ pathname }: { pathname: string }) {
+  switch (pathname) {
+    case '/docs/components/color-area':
+      return <ColorAreaPropertiesPanel />;
+    case '/docs/components/color-slider':
+      return <ColorSliderPropertiesPanel />;
+    case '/docs/components/color-input':
+      return <ColorInputPropertiesPanel />;
+    default:
+      return null;
+  }
+}

@@ -180,7 +180,7 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-009 - Decompose docs right rail feature panels
 
 - Priority: P2
-- Status: Open
+- Status: Completed in `codex/cq009-right-rail-panels`
 - Evidence:
   - `apps/docs/src/components/docs-right-rail.tsx` is 1,632 lines.
   - `ColorAreaPropertiesPanel` begins around `apps/docs/src/components/docs-right-rail.tsx:465`.
@@ -195,6 +195,10 @@ This backlog tracks structural maintainability work that is too large to treat a
   - `docs-right-rail.tsx` is a shell, not a feature-panel container.
   - Component-specific controls live with the component demo/docs they configure.
   - Adding a new panel does not require growing the shared rail file.
+- Completion evidence:
+  - `apps/docs/src/components/docs-right-rail.tsx` is now a 106-line shell that owns the outline/properties tabs, scroll area, and fallback empty state.
+  - Component properties panels and their helpers moved into `apps/docs/src/components/docs-right-rail-panels.tsx`.
+  - The shell resolves properties content through `hasDocsPropertiesPanel(pathname)` and `<DocsPropertiesPanel pathname={pathname} />`, so route-to-panel registration is isolated from the shared rail layout.
 
 ### CQ-010 - Model contrast overlay tiers once
 
