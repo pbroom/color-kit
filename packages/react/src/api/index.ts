@@ -81,6 +81,8 @@ export {
 export type {
   ColorInputModel,
   ColorInputChannel,
+  ColorInputChannelFor,
+  ColorInputSpec,
   OklchColorInputChannel,
   RgbColorInputChannel,
   HslColorInputChannel,
