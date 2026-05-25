@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/check-plane-quick-start-sync.mjs",
+    "test": "node scripts/check-plane-quick-start-sync.mjs && node scripts/check-component-doc-sources.mjs",
     "profile:color-area": "node scripts/profile-color-area.mjs",
     "test:color-area-drag": "node scripts/test-color-area-drag.mjs"
   },

@@ -364,7 +364,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-015 — Choose one component-doc source of truth
 
 - **Priority:** P0
-- **Status:** Open
+- **Status:** Completed 2026-05-25
 - **Evidence:**
   - `apps/docs/src/content/docs-registry.ts` explicitly excludes `src/content/components/*.mdx` from routed docs.
   - `/docs/components/:slug` uses `component-docs-data.tsx` through `routes/component-doc.tsx`.
@@ -378,6 +378,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Acceptance criteria:**
   - Exactly one source owns each component docs page.
   - Component demo imports cannot drift between MDX and descriptor pages.
+- **Completed:** Deleted the stale component MDX files and added a docs check that rejects new hand-authored component MDX files while keeping component navigation slugs aligned with `component-docs-data.tsx`.
 
 ---
 
