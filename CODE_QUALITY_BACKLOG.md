@@ -175,7 +175,7 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-008 - Replace brittle primitive markup assertions with contract tests
 
 - Priority: P2
-- Status: Open
+- Status: Completed in `codex/cq008-primitive-contract-tests`
 - Evidence:
   - `packages/control-kit/__tests__/primitive-value-input.test.tsx:156` asserts private Tailwind class details such as `cursor-ew-resize`.
   - `packages/control-kit/__tests__/primitive-value-input.test.tsx:162` asserts `w-[5px]`.
@@ -190,6 +190,9 @@ This backlog tracks structural maintainability work that is too large to treat a
   - Tests protect user-facing behavior rather than private class names.
   - Styling expectations that matter are covered by targeted visual or variant tests.
   - Refactoring the primitive DOM shape is possible without rewriting behavior tests.
+- Completion evidence:
+  - `packages/control-kit/__tests__/primitive-value-input.test.tsx` no longer asserts private Tailwind classes such as `cursor-ew-resize`, `w-[5px]`, or `pl-1`.
+  - The same suite retains contract coverage for blur/Enter/Escape drafts, invalid parses, keyboard stepping, clamp/wrap behavior, disabled/readOnly no-ops, scrub stepping, cancellation, pointer capture loss, pointer-lock fallback, and clamp-boundary scrub rebasing.
 
 ### CQ-009 - Decompose docs right rail feature panels
 
