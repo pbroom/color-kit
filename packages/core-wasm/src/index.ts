@@ -134,6 +134,18 @@ function getDefaultWasmAwareScheduler(): PlaneComputeScheduler {
   return defaultWasmAwareScheduler;
 }
 
+function supportsWasmContrastKernelRequest(
+  request: PlaneComputeRequest,
+): boolean {
+  return (
+    request.queries.length > 0 &&
+    request.queries.every(
+      (query) =>
+        query.kind === 'contrastBoundary' || query.kind === 'contrastRegion',
+    )
+  );
+}
+
 function toKernelPointTuple(
   points: Array<{ l: number; c: number }>,
 ): WasmContrastKernelPoint[] {
@@ -252,6 +264,7 @@ export function createWasmPlaneComputeBackendFromKernel(
   }
   return {
     kind: 'wasm',
+    supportsRequest: supportsWasmContrastKernelRequest,
     run(request) {
       const resolvedPlane = resolvePlaneDefinition(request.plane);
       const computeStart = nowMs();

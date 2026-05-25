@@ -249,6 +249,7 @@ export interface PlaneQueryTraceSummary {
     | 'warmup'
     | 'telemetry-win'
     | 'circuit-open'
+    | 'unsupported-backend'
     | 'telemetry-regression'
     | 'backend-error';
   fidelity?: {

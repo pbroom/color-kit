@@ -66,6 +66,7 @@ export interface PlaneComputeScheduleTrace {
     | 'warmup'
     | 'telemetry-win'
     | 'circuit-open'
+    | 'unsupported-backend'
     | 'telemetry-regression'
     | 'backend-error';
 }
@@ -81,6 +82,7 @@ export interface PlaneComputeResponse {
 
 export interface PlaneComputeBackend {
   kind: PlaneComputeBackendKind;
+  supportsRequest?: (request: PlaneComputeRequest) => boolean;
   run: (request: PlaneComputeRequest) => PlaneComputeResponse;
 }
 
