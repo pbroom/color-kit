@@ -128,19 +128,21 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuItemButton,
-  DropdownMenuItemContent,
-  DropdownMenuPanel,
-  DropdownMenuPanelSeparator,
   DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenuItemButton,
+  DropdownMenuItemContent,
+  DropdownMenuPanel,
+  DropdownMenuPanelSeparator,
   SelectList,
   SelectListItem,
-} from '@/components/ui/dropdown-menu';
+} from './lab-menu.js';
 import { ThemeSwitcher } from '../../components/theme-switcher.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
