@@ -83,7 +83,7 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-004 - Unify Lab menu/select rendering
 
 - Priority: P1
-- Status: Open
+- Status: Completed in `codex/cq004-lab-menu-renderer`
 - Evidence:
   - `apps/docs/src/routes/lab.tsx:1838` defines `LabMenuContent`.
   - `apps/docs/src/routes/lab.tsx:2034` defines `InlineConfigurableMenuContent`.
@@ -99,6 +99,10 @@ This backlog tracks structural maintainability work that is too large to treat a
   - Menu and Select demos share one rendering path for item rows.
   - Submenu open/hover/key behavior has one implementation.
   - Lab menu alignment preferences remain covered by tests or runtime checks.
+- Completion evidence:
+  - `apps/docs/src/routes/lab/shared.tsx` adds `LabMenuOptionRows`, a single typed select/menu row renderer that targets either dropdown portal content or the inline panel surface.
+  - Select and Menu demos now share submenu hover timers, open-key handling, heading/separator rendering, leading/trailing slot rendering, and disabled filtering through that renderer.
+  - The configurable-menu custom item panel keeps its specialized editor model, while the reusable Select/Menu demo list no longer has parallel popup/inline item-row implementations.
 
 ### CQ-005 - Move Lab-only UI3 helpers out of the shared dropdown primitive
 

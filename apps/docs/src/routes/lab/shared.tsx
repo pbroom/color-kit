@@ -784,6 +784,244 @@ function useSubmenuHoverTimer<TSubmenuId extends string>({
   };
 }
 
+type LabMenuSurface = 'dropdown' | 'inline';
+
+const LAB_MENU_HEADING_CLASS =
+  'block w-full px-2 py-1 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white/40 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20';
+
+function isSubmenuOpenKey(event: ReactKeyboardEvent<HTMLElement>): boolean {
+  return (
+    event.key === 'ArrowRight' ||
+    event.key === 'Enter' ||
+    event.key === ' ' ||
+    event.key === 'Spacebar'
+  );
+}
+
+function getHeadingForSelectOption(option: SelectOption): string | null {
+  switch (option.value) {
+    case 'copy':
+      return 'Clipboard';
+    case 'selectLayer':
+      return 'Layer';
+    case 'groupSelection':
+      return 'Selection';
+    case 'pasteAs':
+    case 'bringToFront':
+      return null;
+    default:
+      return null;
+  }
+}
+
+function LabMenuOptionRows({
+  surface,
+  onValueChange,
+  showShortcuts,
+  showSubmenus,
+  showDividers,
+  showDisabledOptions,
+  showHeadings = false,
+  showLeadingIcons,
+  showTrailingHints,
+  activeOpenSubmenu,
+  clearSubmenuHoverTimer,
+  closeSubmenu,
+  openSubmenuImmediately,
+  scheduleSubmenuHoverOpen,
+}: {
+  surface: LabMenuSurface;
+  onValueChange: (value: SelectOptionId) => void;
+  showShortcuts: boolean;
+  showSubmenus: boolean;
+  showDividers: boolean;
+  showDisabledOptions: boolean;
+  showHeadings?: boolean;
+  showLeadingIcons: boolean;
+  showTrailingHints: boolean;
+  activeOpenSubmenu: SelectOptionId | null;
+  clearSubmenuHoverTimer: () => void;
+  closeSubmenu: (optionValue?: SelectOptionId) => void;
+  openSubmenuImmediately: (optionValue: SelectOptionId) => void;
+  scheduleSubmenuHoverOpen: (optionValue: SelectOptionId) => void;
+}) {
+  const renderContent = (
+    option: SelectOption | SelectSubmenuItem,
+    submenuCaret = false,
+  ) => (
+    <DropdownMenuItemContent
+      label={option.label}
+      disabled={option.disabled}
+      leadingIcon={option.icon}
+      showLeadingIcon={showLeadingIcons}
+      showTrailingHints={showTrailingHints}
+      showShortcuts={showShortcuts}
+      shortcut={'shortcut' in option ? option.shortcut : undefined}
+      trailingHint={option.trailingHint}
+      submenuCaret={submenuCaret}
+    />
+  );
+  const renderSeparator = () =>
+    surface === 'dropdown' ? (
+      <DropdownMenuSeparator variant="ui3" />
+    ) : (
+      <DropdownMenuPanelSeparator />
+    );
+  const renderSubmenuItems = (option: SelectOption) => {
+    if (!('submenuItems' in option) || !option.submenuItems) {
+      return null;
+    }
+
+    const children = option.submenuItems
+      .filter((submenuItem) => showDisabledOptions || !submenuItem.disabled)
+      .map((submenuItem) =>
+        surface === 'dropdown' ? (
+          <DropdownMenuItem
+            key={submenuItem.label}
+            variant="ui3"
+            typeaheadLabel={submenuItem.label}
+            disabled={submenuItem.disabled}
+            onSelect={() => onValueChange(option.value)}
+          >
+            {renderContent(submenuItem)}
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItemButton
+            key={submenuItem.label}
+            type="button"
+            disabled={submenuItem.disabled}
+            onClick={() => onValueChange(option.value)}
+          >
+            {renderContent(submenuItem)}
+          </DropdownMenuItemButton>
+        ),
+      );
+
+    if (surface === 'dropdown') {
+      return (
+        <DropdownMenuPortal>
+          <DropdownMenuSubContent sideOffset={8} alignOffset={-8} variant="ui3">
+            {children}
+          </DropdownMenuSubContent>
+        </DropdownMenuPortal>
+      );
+    }
+
+    return (
+      <DropdownMenuPanel
+        data-state="open"
+        variant="ui3"
+        panel="subcontent"
+        className="absolute left-[calc(100%+8px)] top-[-8px] z-50"
+      >
+        {children}
+      </DropdownMenuPanel>
+    );
+  };
+
+  return (
+    <>
+      {SELECT_OPTIONS.filter(
+        (option) => showDisabledOptions || !option.disabled,
+      ).map((option) => {
+        const isSubmenu = showSubmenus && 'submenuItems' in option;
+        const isSubmenuOpen = activeOpenSubmenu === option.value;
+        const heading = showHeadings ? getHeadingForSelectOption(option) : null;
+
+        return (
+          <Fragment key={option.value}>
+            {heading ? (
+              <div
+                aria-label={`${heading} heading`}
+                className={LAB_MENU_HEADING_CLASS}
+                role="heading"
+              >
+                {heading}
+              </div>
+            ) : null}
+            {showDividers && option.dividerBefore ? renderSeparator() : null}
+            {isSubmenu ? (
+              surface === 'dropdown' ? (
+                <DropdownMenuSub
+                  open={isSubmenuOpen}
+                  onOpenChange={(nextOpen) => {
+                    if (!nextOpen) {
+                      closeSubmenu(option.value);
+                    }
+                  }}
+                >
+                  <DropdownMenuSubTrigger
+                    variant="ui3"
+                    typeaheadLabel={option.label}
+                    onClick={() => openSubmenuImmediately(option.value)}
+                    onKeyDown={(event) => {
+                      if (isSubmenuOpenKey(event)) {
+                        openSubmenuImmediately(option.value);
+                      }
+                    }}
+                    onPointerEnter={() =>
+                      scheduleSubmenuHoverOpen(option.value)
+                    }
+                    onPointerLeave={clearSubmenuHoverTimer}
+                    className="pr-0"
+                  >
+                    {renderContent(option, true)}
+                  </DropdownMenuSubTrigger>
+                  {renderSubmenuItems(option)}
+                </DropdownMenuSub>
+              ) : (
+                <div className="relative">
+                  <DropdownMenuItemButton
+                    type="button"
+                    aria-expanded={isSubmenuOpen}
+                    onClick={() => openSubmenuImmediately(option.value)}
+                    onKeyDown={(event) => {
+                      if (isSubmenuOpenKey(event)) {
+                        openSubmenuImmediately(option.value);
+                      }
+                    }}
+                    onPointerEnter={() =>
+                      scheduleSubmenuHoverOpen(option.value)
+                    }
+                    onPointerLeave={clearSubmenuHoverTimer}
+                    className={
+                      !option.disabled && isSubmenuOpen
+                        ? 'pr-0 bg-[#303030]'
+                        : 'pr-0'
+                    }
+                  >
+                    {renderContent(option, true)}
+                  </DropdownMenuItemButton>
+                  {isSubmenuOpen ? renderSubmenuItems(option) : null}
+                </div>
+              )
+            ) : surface === 'dropdown' ? (
+              <DropdownMenuItem
+                variant="ui3"
+                typeaheadLabel={option.label}
+                disabled={option.disabled}
+                onSelect={() => onValueChange(option.value)}
+              >
+                {renderContent(option)}
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItemButton
+                type="button"
+                disabled={option.disabled}
+                onFocus={() => closeSubmenu()}
+                onClick={() => onValueChange(option.value)}
+                onPointerEnter={() => closeSubmenu()}
+              >
+                {renderContent(option)}
+              </DropdownMenuItemButton>
+            )}
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 const PANEL_TWO_COLUMN_GRID_CLASS =
   'grid w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3';
 
@@ -1828,113 +2066,21 @@ function LabMenuContent({
   });
   return (
     <DropdownMenuContent align={align} side={side} sideOffset={4} variant="ui3">
-      {SELECT_OPTIONS.filter(
-        (option) => showDisabledOptions || !option.disabled,
-      ).map((option) => {
-        const shortcut = option.shortcut;
-
-        return (
-          <Fragment key={option.value}>
-            {showDividers && option.dividerBefore ? (
-              <DropdownMenuSeparator variant="ui3" />
-            ) : null}
-            {showSubmenus && option.submenuItems ? (
-              <DropdownMenuSub
-                open={activeOpenSubmenu === option.value}
-                onOpenChange={(nextOpen) => {
-                  if (nextOpen) {
-                    return;
-                  }
-
-                  closeSubmenu(option.value);
-                }}
-              >
-                <DropdownMenuSubTrigger
-                  variant="ui3"
-                  typeaheadLabel={option.label}
-                  onClick={() => openSubmenuImmediately(option.value)}
-                  onKeyDown={(event) => {
-                    if (
-                      event.key === 'ArrowRight' ||
-                      event.key === 'Enter' ||
-                      event.key === ' ' ||
-                      event.key === 'Spacebar'
-                    ) {
-                      openSubmenuImmediately(option.value);
-                    }
-                  }}
-                  onPointerEnter={() => scheduleSubmenuHoverOpen(option.value)}
-                  onPointerLeave={clearSubmenuHoverTimer}
-                  className="pr-0"
-                >
-                  <DropdownMenuItemContent
-                    label={option.label}
-                    disabled={option.disabled}
-                    leadingIcon={option.icon}
-                    showLeadingIcon={showLeadingIcons}
-                    showTrailingHints={showTrailingHints}
-                    showShortcuts={showShortcuts}
-                    shortcut={shortcut}
-                    trailingHint={option.trailingHint}
-                    submenuCaret
-                  />
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent
-                    sideOffset={8}
-                    alignOffset={-8}
-                    variant="ui3"
-                  >
-                    {option.submenuItems
-                      .filter(
-                        (submenuItem) =>
-                          showDisabledOptions || !submenuItem.disabled,
-                      )
-                      .map((submenuItem) => (
-                        <DropdownMenuItem
-                          key={submenuItem.label}
-                          variant="ui3"
-                          typeaheadLabel={submenuItem.label}
-                          disabled={submenuItem.disabled}
-                          onSelect={() => onValueChange(option.value)}
-                        >
-                          <DropdownMenuItemContent
-                            label={submenuItem.label}
-                            disabled={submenuItem.disabled}
-                            leadingIcon={submenuItem.icon}
-                            showLeadingIcon={showLeadingIcons}
-                            showTrailingHints={showTrailingHints}
-                            showShortcuts={showShortcuts}
-                            shortcut={submenuItem.shortcut}
-                            trailingHint={submenuItem.trailingHint}
-                          />
-                        </DropdownMenuItem>
-                      ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-            ) : (
-              <DropdownMenuItem
-                variant="ui3"
-                typeaheadLabel={option.label}
-                disabled={option.disabled}
-                onSelect={() => onValueChange(option.value)}
-              >
-                <DropdownMenuItemContent
-                  label={option.label}
-                  disabled={option.disabled}
-                  leadingIcon={option.icon}
-                  showLeadingIcon={showLeadingIcons}
-                  showTrailingHints={showTrailingHints}
-                  showShortcuts={showShortcuts}
-                  shortcut={shortcut}
-                  trailingHint={option.trailingHint}
-                />
-              </DropdownMenuItem>
-            )}
-          </Fragment>
-        );
-      })}
+      <LabMenuOptionRows
+        surface="dropdown"
+        onValueChange={onValueChange}
+        showShortcuts={showShortcuts}
+        showSubmenus={showSubmenus}
+        showDividers={showDividers}
+        showDisabledOptions={showDisabledOptions}
+        showLeadingIcons={showLeadingIcons}
+        showTrailingHints={showTrailingHints}
+        activeOpenSubmenu={activeOpenSubmenu}
+        clearSubmenuHoverTimer={clearSubmenuHoverTimer}
+        closeSubmenu={closeSubmenu}
+        openSubmenuImmediately={openSubmenuImmediately}
+        scheduleSubmenuHoverOpen={scheduleSubmenuHoverOpen}
+      />
     </DropdownMenuContent>
   );
 }
@@ -2193,23 +2339,7 @@ function InlineLabMenuContent({
       showSubmenus,
     ],
   );
-  const menuHeadingClass =
-    'block w-full px-2 py-1 text-left text-[11px] font-[450] leading-4 tracking-[0.005em] text-white/40 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20';
-  const getHeadingForOption = useCallback((option: SelectOption) => {
-    switch (option.value) {
-      case 'copy':
-        return 'Clipboard';
-      case 'selectLayer':
-        return 'Layer';
-      case 'groupSelection':
-        return 'Selection';
-      case 'pasteAs':
-      case 'bringToFront':
-        return null;
-      default:
-        return null;
-    }
-  }, []);
+
   return (
     <div className="relative">
       <DropdownMenuPanel
@@ -2218,129 +2348,29 @@ function InlineLabMenuContent({
         reserveCheckColumn={showOnOffItems}
         reserveLeadingColumn={showOnOffItems && showLeadingIcons}
       >
-        {SELECT_OPTIONS.filter(
-          (option) => showDisabledOptions || !option.disabled,
-        ).map((option) => {
-          const shortcut = option.shortcut;
-          const isSubmenuOpen = activeOpenSubmenu === option.value;
-          const heading = showHeadings ? getHeadingForOption(option) : null;
-
-          return (
-            <Fragment key={option.value}>
-              {heading ? (
-                <div
-                  aria-label={`${heading} heading`}
-                  className={menuHeadingClass}
-                  role="heading"
-                >
-                  {heading}
-                </div>
-              ) : null}
-              {showDividers && option.dividerBefore ? (
-                <DropdownMenuPanelSeparator />
-              ) : null}
-              {showSubmenus && option.submenuItems ? (
-                <div className="relative">
-                  <DropdownMenuItemButton
-                    type="button"
-                    aria-expanded={isSubmenuOpen}
-                    onClick={() => openSubmenuImmediately(option.value)}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === 'ArrowRight' ||
-                        event.key === 'Enter' ||
-                        event.key === ' ' ||
-                        event.key === 'Spacebar'
-                      ) {
-                        openSubmenuImmediately(option.value);
-                      }
-                    }}
-                    onPointerEnter={() =>
-                      scheduleSubmenuHoverOpen(option.value)
-                    }
-                    onPointerLeave={clearSubmenuHoverTimer}
-                    className={
-                      !option.disabled && isSubmenuOpen
-                        ? 'pr-0 bg-[#303030]'
-                        : 'pr-0'
-                    }
-                  >
-                    <DropdownMenuItemContent
-                      label={option.label}
-                      disabled={option.disabled}
-                      leadingIcon={option.icon}
-                      showLeadingIcon={showLeadingIcons}
-                      showTrailingHints={showTrailingHints}
-                      showShortcuts={showShortcuts}
-                      shortcut={shortcut}
-                      trailingHint={option.trailingHint}
-                      submenuCaret
-                    />
-                  </DropdownMenuItemButton>
-                  {isSubmenuOpen ? (
-                    <DropdownMenuPanel
-                      data-state="open"
-                      variant="ui3"
-                      panel="subcontent"
-                      className="absolute left-[calc(100%+8px)] top-[-8px] z-50"
-                    >
-                      {option.submenuItems
-                        .filter(
-                          (submenuItem) =>
-                            showDisabledOptions || !submenuItem.disabled,
-                        )
-                        .map((submenuItem) => (
-                          <DropdownMenuItemButton
-                            key={submenuItem.label}
-                            type="button"
-                            disabled={submenuItem.disabled}
-                            onClick={() => onValueChange(option.value)}
-                          >
-                            <DropdownMenuItemContent
-                              label={submenuItem.label}
-                              disabled={submenuItem.disabled}
-                              leadingIcon={submenuItem.icon}
-                              showLeadingIcon={showLeadingIcons}
-                              showTrailingHints={showTrailingHints}
-                              showShortcuts={showShortcuts}
-                              shortcut={submenuItem.shortcut}
-                              trailingHint={submenuItem.trailingHint}
-                            />
-                          </DropdownMenuItemButton>
-                        ))}
-                    </DropdownMenuPanel>
-                  ) : null}
-                </div>
-              ) : (
-                <DropdownMenuItemButton
-                  type="button"
-                  disabled={option.disabled}
-                  onFocus={closeSubmenuFromActionRow}
-                  onClick={() => onValueChange(option.value)}
-                  onPointerEnter={closeSubmenuFromActionRow}
-                >
-                  <DropdownMenuItemContent
-                    label={option.label}
-                    disabled={option.disabled}
-                    leadingIcon={option.icon}
-                    showLeadingIcon={showLeadingIcons}
-                    showTrailingHints={showTrailingHints}
-                    showShortcuts={showShortcuts}
-                    shortcut={shortcut}
-                    trailingHint={option.trailingHint}
-                  />
-                </DropdownMenuItemButton>
-              )}
-            </Fragment>
-          );
-        })}
+        <LabMenuOptionRows
+          surface="inline"
+          onValueChange={onValueChange}
+          showShortcuts={showShortcuts}
+          showSubmenus={showSubmenus}
+          showDividers={showDividers}
+          showDisabledOptions={showDisabledOptions}
+          showHeadings={showHeadings}
+          showLeadingIcons={showLeadingIcons}
+          showTrailingHints={showTrailingHints}
+          activeOpenSubmenu={activeOpenSubmenu}
+          clearSubmenuHoverTimer={clearSubmenuHoverTimer}
+          closeSubmenu={closeSubmenu}
+          openSubmenuImmediately={openSubmenuImmediately}
+          scheduleSubmenuHoverOpen={scheduleSubmenuHoverOpen}
+        />
         {showOnOffItems ? (
           <>
             {showDividers ? <DropdownMenuPanelSeparator /> : null}
             {showHeadings ? (
               <div
                 aria-label="Options heading"
-                className={menuHeadingClass}
+                className={LAB_MENU_HEADING_CLASS}
                 role="heading"
               >
                 Options
