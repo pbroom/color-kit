@@ -14,7 +14,7 @@ This backlog tracks structural maintainability work that is too large to treat a
 ### CQ-001 - Split the Lab route into page modules
 
 - Priority: P1
-- Status: Open
+- Status: Completed (2026-05-24)
 - Evidence:
   - `apps/docs/src/routes/lab.tsx` is 4,604 lines.
   - `LabPage` owns every page state cluster starting around `apps/docs/src/routes/lab.tsx:2764`.
@@ -73,6 +73,11 @@ This backlog tracks structural maintainability work that is too large to treat a
   - Marching-squares edge masks are defined once.
   - Path stitching/canonicalization is defined once.
   - Existing plane, gamut, and contrast tests pass without snapshot churn.
+- Completion evidence:
+  - `packages/core/src/contour/index.ts` owns the shared marching-squares edge table, scalar-grid/adaptive contour extraction, and segment stitching/canonicalization.
+  - `packages/core/src/plane/gamut-region.ts`, `packages/core/src/contrast/index.ts`, and `packages/core/src/plane/operations.ts` now adapt their domain fields into the shared contour utilities.
+  - `packages/core/__tests__/contour.test.ts` covers all 16 masks, ambiguous cases, interpolation modes, stitching, and adaptive refinement.
+  - Focused validation passed with `pnpm --filter @color-kit/core build` and `pnpm --filter @color-kit/core test`.
 
 ### CQ-004 - Unify Lab menu/select rendering
 

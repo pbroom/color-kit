@@ -7,6 +7,13 @@ import {
   type GamutTarget,
 } from '../gamut/index.js';
 import { toRgb } from '../conversion/index.js';
+import {
+  buildContourPaths as stitchContourSegments,
+  extractAdaptiveContourSegments as extractAdaptiveContourSegmentsGeneric,
+  extractGridContourSegments,
+  type AdaptiveContourCell,
+  type ContourSegment,
+} from '../contour/index.js';
 import { oklabToLinearRgb } from '../conversion/oklab.js';
 import { oklchToOklab } from '../conversion/oklch.js';
 import {
@@ -375,10 +382,6 @@ function validateSteps(name: string, value: number): number {
   return value;
 }
 
-function pointKey(point: ContrastRegionPoint): string {
-  return `${point.l.toFixed(6)}:${point.c.toFixed(6)}`;
-}
-
 function toTracePoint(point: ContrastRegionPoint): PlanePoint {
   return { x: point.l, y: point.c };
 }
@@ -387,201 +390,31 @@ function toTracePaths(paths: ContrastRegionPoint[][]): PlanePoint[][] {
   return paths.map((path) => path.map(toTracePoint));
 }
 
-/** Canonicalize point so segments from adjacent adaptive cells share the same vertex. */
-function canonicalizePoint(
-  p: ContrastRegionPoint,
-  tolerance: number = 1e-6,
-): ContrastRegionPoint {
-  const round = (x: number) => Math.round(x / tolerance) * tolerance;
-  return { l: round(p.l), c: round(p.c) };
+interface ContrastContourPoint {
+  x: number;
+  y: number;
+  l: number;
+  c: number;
 }
 
-function edgeKey(a: string, b: string): string {
-  return a < b ? `${a}|${b}` : `${b}|${a}`;
-}
-
-function edgePoint(
-  edge: 0 | 1 | 2 | 3,
-  l0: number,
-  l1: number,
-  c0: number,
-  c1: number,
-  values: {
-    v0: number;
-    v1: number;
-    v2: number;
-    v3: number;
-  },
-  interpolation: 'linear' | 'midpoint',
-): ContrastRegionPoint {
-  const interpolate = (a: number, b: number): number => {
-    if (interpolation === 'midpoint') {
-      return 0.5;
-    }
-    const denom = a - b;
-    if (!Number.isFinite(denom) || Math.abs(denom) <= 1e-12) {
-      return 0.5;
-    }
-    const t = a / denom;
-    if (!Number.isFinite(t)) return 0.5;
-    if (t < 0) return 0;
-    if (t > 1) return 1;
-    return t;
+function toContrastContourPoint(point: PlanePoint): ContrastContourPoint {
+  return {
+    x: point.x,
+    y: point.y,
+    l: point.x,
+    c: point.y,
   };
-
-  switch (edge) {
-    case 0: {
-      const t = interpolate(values.v0, values.v1);
-      return { l: l0 + (l1 - l0) * t, c: c0 };
-    }
-    case 1: {
-      const t = interpolate(values.v1, values.v2);
-      return { l: l1, c: c0 + (c1 - c0) * t };
-    }
-    case 2: {
-      const t = interpolate(values.v3, values.v2);
-      return { l: l0 + (l1 - l0) * t, c: c1 };
-    }
-    case 3: {
-      const t = interpolate(values.v0, values.v3);
-      return { l: l0, c: c0 + (c1 - c0) * t };
-    }
-    default:
-      return { l: l0, c: c0 };
-  }
 }
 
-function buildContourPaths(
-  segments: Array<[ContrastRegionPoint, ContrastRegionPoint]>,
+function buildContrastContourPaths(
+  segments: Array<ContourSegment<ContrastContourPoint>>,
   canonicalTolerance: number = 1e-6,
 ): ContrastRegionPoint[][] {
-  if (segments.length === 0) return [];
-
-  const pointByKey = new Map<string, ContrastRegionPoint>();
-  const adjacency = new Map<string, Set<string>>();
-  const visitedEdges = new Set<string>();
-
-  for (const [a, b] of segments) {
-    const aCanon = canonicalizePoint(a, canonicalTolerance);
-    const bCanon = canonicalizePoint(b, canonicalTolerance);
-    const aKey = pointKey(aCanon);
-    const bKey = pointKey(bCanon);
-    pointByKey.set(aKey, aCanon);
-    pointByKey.set(bKey, bCanon);
-
-    if (!adjacency.has(aKey)) adjacency.set(aKey, new Set());
-    if (!adjacency.has(bKey)) adjacency.set(bKey, new Set());
-    adjacency.get(aKey)?.add(bKey);
-    adjacency.get(bKey)?.add(aKey);
-  }
-
-  function tracePath(start: string, closeLoop: boolean): string[] {
-    const path = [start];
-    let current = start;
-    let guard = 0;
-
-    while (guard < 20000) {
-      guard += 1;
-      const neighbors = adjacency.get(current);
-      if (!neighbors || neighbors.size === 0) break;
-
-      let next: string | null = null;
-      for (const candidate of neighbors) {
-        if (!visitedEdges.has(edgeKey(current, candidate))) {
-          next = candidate;
-          break;
-        }
-      }
-
-      if (!next) break;
-
-      visitedEdges.add(edgeKey(current, next));
-      current = next;
-      path.push(current);
-
-      if (closeLoop && current === start) {
-        break;
-      }
-    }
-
-    return path;
-  }
-
-  const paths: ContrastRegionPoint[][] = [];
-
-  for (const [node, neighbors] of adjacency) {
-    if (neighbors.size !== 1) continue;
-    const traced = tracePath(node, false);
-    if (traced.length > 1) {
-      paths.push(
-        traced
-          .map((key) => pointByKey.get(key))
-          .filter(Boolean) as ContrastRegionPoint[],
-      );
-    }
-  }
-
-  for (const [node, neighbors] of adjacency) {
-    for (const neighbor of neighbors) {
-      if (visitedEdges.has(edgeKey(node, neighbor))) continue;
-      const traced = tracePath(node, true);
-      if (traced.length > 2) {
-        paths.push(
-          traced
-            .map((key) => pointByKey.get(key))
-            .filter(Boolean) as ContrastRegionPoint[],
-        );
-      }
-    }
-  }
-
-  return paths.sort((a, b) => b.length - a.length);
-}
-
-function segmentEdgesForCell(
-  mask: number,
-): Array<[0 | 1 | 2 | 3, 0 | 1 | 2 | 3]> {
-  switch (mask) {
-    case 0:
-    case 15:
-      return [];
-    case 1:
-      return [[3, 0]];
-    case 2:
-      return [[0, 1]];
-    case 3:
-      return [[3, 1]];
-    case 4:
-      return [[1, 2]];
-    case 5:
-      return [
-        [3, 2],
-        [0, 1],
-      ];
-    case 6:
-      return [[0, 2]];
-    case 7:
-      return [[3, 2]];
-    case 8:
-      return [[2, 3]];
-    case 9:
-      return [[0, 2]];
-    case 10:
-      return [
-        [0, 3],
-        [1, 2],
-      ];
-    case 11:
-      return [[1, 2]];
-    case 12:
-      return [[3, 1]];
-    case 13:
-      return [[0, 1]];
-    case 14:
-      return [[3, 0]];
-    default:
-      return [];
-  }
+  return stitchContourSegments(segments, {
+    canonicalTolerance,
+    stopOpenPathsAtStart: false,
+    sortPaths: (a, b) => b.length - a.length,
+  }).map((path) => path.map((point) => ({ l: point.x, c: point.y })));
 }
 
 /**
@@ -628,7 +461,7 @@ function contrastRegionPathsLegacy(
     solver: legacySolver,
     samplingMode: legacySamplingMode,
   });
-  let segments: Array<[ContrastRegionPoint, ContrastRegionPoint]>;
+  let segments: Array<ContourSegment<ContrastContourPoint>>;
 
   if (mode === 'adaptive' && criterion.metric === 'wcag') {
     segments = contrastRegionPathsAdaptive(
@@ -710,87 +543,43 @@ function contrastRegionPathsLegacy(
       });
     }
 
-    segments = [];
-    const cellEvents: Array<{
-      xIndex: number;
-      yIndex: number;
-      mask: number;
-      points: PlanePoint[];
-    }> = [];
-    let segmentCount = 0;
-    for (
-      let lightnessIndex = 0;
-      lightnessIndex < lightnessSteps;
-      lightnessIndex += 1
-    ) {
-      const l0 = lightnessIndex / lightnessSteps;
-      const l1 = (lightnessIndex + 1) / lightnessSteps;
-
-      for (let chromaIndex = 0; chromaIndex < chromaSteps; chromaIndex += 1) {
-        const c0 = (chromaIndex / chromaSteps) * maxChroma;
-        const c1 = ((chromaIndex + 1) / chromaSteps) * maxChroma;
-
-        const v0 = scoreGrid[lightnessIndex][chromaIndex];
-        const v1 = scoreGrid[lightnessIndex + 1][chromaIndex];
-        const v2 = scoreGrid[lightnessIndex + 1][chromaIndex + 1];
-        const v3 = scoreGrid[lightnessIndex][chromaIndex + 1];
-
-        const b0 = v0 >= 0;
-        const b1 = v1 >= 0;
-        const b2 = v2 >= 0;
-        const b3 = v3 >= 0;
-
-        const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
-        const edgePairs = segmentEdgesForCell(mask);
-        incrementTraceSummary(trace, 'cellCount', 1);
-        if (edgePairs.length === 0) continue;
-
-        const tracePoints: PlanePoint[] = [];
-        for (const [fromEdge, toEdge] of edgePairs) {
-          const from = edgePoint(
-            fromEdge,
-            l0,
-            l1,
-            c0,
-            c1,
-            { v0, v1, v2, v3 },
-            edgeInterpolation,
-          );
-          const to = edgePoint(
-            toEdge,
-            l0,
-            l1,
-            c0,
-            c1,
-            { v0, v1, v2, v3 },
-            edgeInterpolation,
-          );
-          segments.push([from, to]);
-          tracePoints.push(toTracePoint(from), toTracePoint(to));
-          segmentCount += 1;
-        }
-        if (shouldTraceFull(trace)) {
-          cellEvents.push({
-            xIndex: lightnessIndex,
-            yIndex: chromaIndex,
-            mask,
-            points: tracePoints,
-          });
-        }
-      }
-    }
-    incrementTraceSummary(trace, 'segmentCount', segmentCount);
+    const contourGrid = Array.from({ length: chromaSteps + 1 }, (_, cIndex) =>
+      Array.from(
+        { length: lightnessSteps + 1 },
+        (_, lIndex) => scoreGrid[lIndex][cIndex],
+      ),
+    );
+    const extraction = extractGridContourSegments<ContrastContourPoint>(
+      {
+        minX: 0,
+        maxX: 1,
+        minY: 0,
+        maxY: maxChroma,
+        resolution: lightnessSteps,
+        xSteps: lightnessSteps,
+        ySteps: chromaSteps,
+        values: contourGrid,
+      },
+      {
+        interpolation: edgeInterpolation,
+        collectCellEvents: shouldTraceFull(trace),
+        mapPoint: toContrastContourPoint,
+      },
+    );
+    segments = extraction.segments;
+    incrementTraceSummary(trace, 'cellCount', extraction.cellCount);
+    incrementTraceSummary(trace, 'segmentCount', extraction.segmentCount);
     recordTraceStage(trace, {
       kind: 'marchingSquares',
       label: 'legacy-uniform',
       resolution: lightnessSteps,
-      cellCount: lightnessSteps * chromaSteps,
-      segmentCount,
-      cells: limitTraceEntries(trace, cellEvents),
+      cellCount: extraction.cellCount,
+      segmentCount: extraction.segmentCount,
+      cells: limitTraceEntries(trace, extraction.cellEvents),
     });
   }
 
-  const rawPaths = buildContourPaths(segments, 1e-5);
+  const rawPaths = buildContrastContourPaths(segments, 1e-5);
   recordTraceStage(trace, {
     kind: 'paths',
     label: 'contrast-raw-paths',
@@ -961,7 +750,7 @@ function contrastRegionPathsAdaptive(
   edgeInterpolation: 'linear' | 'midpoint',
   options: ContrastRegionPathOptions,
   trace?: InternalPlaneTraceContext | null,
-): Array<[ContrastRegionPoint, ContrastRegionPoint]> {
+): Array<ContourSegment<ContrastContourPoint>> {
   const baseSteps = Math.max(
     2,
     Math.min(
@@ -1002,7 +791,6 @@ function contrastRegionPathsAdaptive(
     return contrastRatioUnclamped(mappedSample, mappedReference) - threshold;
   };
 
-  const segments: Array<[ContrastRegionPoint, ContrastRegionPoint]> = [];
   const cusp = maxChromaForHue(hue, {
     gamut,
     method: 'direct',
@@ -1021,147 +809,7 @@ function contrastRegionPathsAdaptive(
     maxChroma,
     cusp.c,
   );
-  const cellEvents: Array<{
-    xIndex: number;
-    yIndex: number;
-    mask: number;
-    points: PlanePoint[];
-  }> = [];
-  let visitedCells = 0;
-  let segmentCount = 0;
-
-  const processCell = (
-    l0: number,
-    l1: number,
-    c0: number,
-    c1: number,
-    v00: number,
-    v10: number,
-    v11: number,
-    v01: number,
-    depth: number,
-  ): void => {
-    visitedCells += 1;
-    incrementTraceSummary(trace, 'cellCount', 1);
-    const b0 = v00 >= 0;
-    const b1 = v10 >= 0;
-    const b2 = v11 >= 0;
-    const b3 = v01 >= 0;
-    const mask = (b0 ? 1 : 0) | (b1 ? 2 : 0) | (b2 ? 4 : 0) | (b3 ? 8 : 0);
-    if (depth >= maxDepth) {
-      if (mask === 0 || mask === 15) {
-        return;
-      }
-      const edgePairs = segmentEdgesForCell(mask);
-      const tracePoints: PlanePoint[] = [];
-      for (const [fromEdge, toEdge] of edgePairs) {
-        const from = edgePoint(
-          fromEdge,
-          l0,
-          l1,
-          c0,
-          c1,
-          { v0: v00, v1: v10, v2: v11, v3: v01 },
-          edgeInterpolation,
-        );
-        const to = edgePoint(
-          toEdge,
-          l0,
-          l1,
-          c0,
-          c1,
-          { v0: v00, v1: v10, v2: v11, v3: v01 },
-          edgeInterpolation,
-        );
-        segments.push([from, to]);
-        tracePoints.push(toTracePoint(from), toTracePoint(to));
-        segmentCount += 1;
-      }
-      if (shouldTraceFull(trace)) {
-        cellEvents.push({
-          xIndex: Math.round(l0 * baseSteps),
-          yIndex: Math.round((c0 / Math.max(maxChroma, 1e-9)) * baseSteps),
-          mask,
-          points: tracePoints,
-        });
-      }
-      return;
-    }
-
-    const lMid = (l0 + l1) / 2;
-    const cMid = (c0 + c1) / 2;
-    const vMidBottom = getValue(lMid, c0);
-    const vMidRight = getValue(l1, cMid);
-    const vMidTop = getValue(lMid, c1);
-    const vMidLeft = getValue(l0, cMid);
-    const vCenter = getValue(lMid, cMid);
-
-    if (mask === 0 || mask === 15) {
-      const cornerSign = b0;
-      const hasInteriorSignChange =
-        vMidBottom >= 0 !== cornerSign ||
-        vMidRight >= 0 !== cornerSign ||
-        vMidTop >= 0 !== cornerSign ||
-        vMidLeft >= 0 !== cornerSign ||
-        vCenter >= 0 !== cornerSign;
-      let hasBoundarySignChange = false;
-      if (!hasInteriorSignChange) {
-        const boundaryProbes = [
-          { l: l0, c: maxChromaAt(l0, hue, maxChromaAtOpts) },
-          { l: lMid, c: maxChromaAt(lMid, hue, maxChromaAtOpts) },
-          { l: l1, c: maxChromaAt(l1, hue, maxChromaAtOpts) },
-        ];
-        for (const probe of boundaryProbes) {
-          if (probe.c <= c0 + 1e-7 || probe.c >= c1 - 1e-7) {
-            continue;
-          }
-          const boundaryValue = getValue(probe.l, probe.c);
-          if (boundaryValue >= 0 !== cornerSign) {
-            hasBoundarySignChange = true;
-            break;
-          }
-        }
-      }
-      if (!hasInteriorSignChange && !hasBoundarySignChange) {
-        return;
-      }
-    }
-
-    processCell(
-      l0,
-      lMid,
-      c0,
-      cMid,
-      v00,
-      vMidBottom,
-      vCenter,
-      vMidLeft,
-      depth + 1,
-    );
-    processCell(
-      lMid,
-      l1,
-      c0,
-      cMid,
-      vMidBottom,
-      v10,
-      vMidRight,
-      vCenter,
-      depth + 1,
-    );
-    processCell(
-      lMid,
-      l1,
-      cMid,
-      c1,
-      vCenter,
-      vMidRight,
-      v11,
-      vMidTop,
-      depth + 1,
-    );
-    processCell(l0, lMid, cMid, c1, vMidLeft, vCenter, vMidTop, v01, depth + 1);
-  };
+  const cells: AdaptiveContourCell[] = [];
 
   for (let li = 0; li < lightnessAnchors.length - 1; li += 1) {
     const l0 = lightnessAnchors[li];
@@ -1176,20 +824,77 @@ function contrastRegionPathsAdaptive(
       const v10 = getValue(l1, c0);
       const v11 = getValue(l1, c1);
       const v01 = getValue(l0, c1);
-      processCell(l0, l1, c0, c1, v00, v10, v11, v01, 0);
+      cells.push({
+        x0: l0,
+        x1: l1,
+        y0: c0,
+        y1: c1,
+        v0: v00,
+        v1: v10,
+        v2: v11,
+        v3: v01,
+      });
     }
   }
 
-  incrementTraceSummary(trace, 'segmentCount', segmentCount);
+  const extraction =
+    extractAdaptiveContourSegmentsGeneric<ContrastContourPoint>(
+      cells,
+      getValue,
+      {
+        maxDepth,
+        interpolation: edgeInterpolation,
+        collectCellEvents: shouldTraceFull(trace),
+        mapPoint: toContrastContourPoint,
+        getCellIndex: (cell) => ({
+          xIndex: Math.round(cell.x0 * baseSteps),
+          yIndex: Math.round((cell.y0 / Math.max(maxChroma, 1e-9)) * baseSteps),
+        }),
+        shouldRefineUniformCell: ({
+          cell,
+          cornerValues,
+          midpointValues,
+          sample,
+        }) => {
+          const cornerSign = cornerValues[0] >= 0;
+          const hasInteriorSignChange = midpointValues.some(
+            (value) => value >= 0 !== cornerSign,
+          );
+          let hasBoundarySignChange = false;
+          if (!hasInteriorSignChange) {
+            const lMid = (cell.x0 + cell.x1) / 2;
+            const boundaryProbes = [
+              { l: cell.x0, c: maxChromaAt(cell.x0, hue, maxChromaAtOpts) },
+              { l: lMid, c: maxChromaAt(lMid, hue, maxChromaAtOpts) },
+              { l: cell.x1, c: maxChromaAt(cell.x1, hue, maxChromaAtOpts) },
+            ];
+            for (const probe of boundaryProbes) {
+              if (probe.c <= cell.y0 + 1e-7 || probe.c >= cell.y1 - 1e-7) {
+                continue;
+              }
+              const boundaryValue = sample(probe.l, probe.c);
+              if (boundaryValue >= 0 !== cornerSign) {
+                hasBoundarySignChange = true;
+                break;
+              }
+            }
+          }
+          return hasInteriorSignChange || hasBoundarySignChange;
+        },
+      },
+    );
+
+  incrementTraceSummary(trace, 'cellCount', extraction.cellCount);
+  incrementTraceSummary(trace, 'segmentCount', extraction.segmentCount);
   recordTraceStage(trace, {
     kind: 'marchingSquares',
     label: 'legacy-adaptive',
     resolution: baseSteps,
-    cellCount: visitedCells,
-    segmentCount,
-    cells: limitTraceEntries(trace, cellEvents),
+    cellCount: extraction.cellCount,
+    segmentCount: extraction.segmentCount,
+    cells: limitTraceEntries(trace, extraction.cellEvents),
   });
-  return segments;
+  return extraction.segments;
 }
 
 function bisectHybridRoot(
