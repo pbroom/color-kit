@@ -11,6 +11,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 
 ## Entries
 
+- **2026-05-24 — Source package Tailwind classes explicitly**: When docs dogfood Tailwind-authored components from `packages/control-kit`, add an app stylesheet `@source` entry for that package; otherwise package-only utilities like `pl-1` can disappear from generated CSS while shared classes still seem to work.
 - **2026-05-19 — Wire new packages through umbrella scripts**: When adding a workspace package that the umbrella `color-kit` package should expose, update prebuild, copy/rewrite rules, package exports, export smoke tests, and consumer paths together; verify both source package builds and `color-kit/control-kit` ESM/CJS imports.
 - **2026-05-12 — Slider pointer math follows thumb inset**: When slider thumbs are positioned on an inset track span via `--ck-slider-position-inset`, normalize pointer coordinates against that same inset span; otherwise dragging aligns to the rail edge instead of the thumb center.
 - **2026-05-11 — Verify `gt modify` with `git show --stat`**: A normal fix should touch tens of lines, not hundreds; if stats look like a full-file rewrite, the branch tip may not match Graphite’s expected parent—`git reset --hard origin/<branch>` and reapply a minimal patch instead of pushing the accidental squash.
