@@ -390,6 +390,10 @@ describe('PrimitiveValueInput', () => {
     expect(onValueChange).toHaveBeenLastCalledWith(100, {
       interaction: 'keyboard',
     });
+    act(() => {
+      input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
 
     act(() => {
       input.dispatchEvent(

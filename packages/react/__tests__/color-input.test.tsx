@@ -213,6 +213,9 @@ describe('ColorInput', () => {
     const [next, options] = onChangeRequested.mock.calls[0];
     expect(next.h).toBeCloseTo(360, 6);
     expect(options).toEqual({ changedChannel: 'h', interaction: 'keyboard' });
+
+    fireEvent.blur(input);
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
   });
 
   it('parses relative math expressions against the focus-start value', () => {

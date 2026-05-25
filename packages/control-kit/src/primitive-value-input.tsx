@@ -434,14 +434,29 @@ export function usePrimitiveValueInput({
 
   const commitDraft = useCallback(() => {
     if (parsedDraft !== null) {
-      emitValue(parsedDraft, 'text-input');
+      const committedDraft = formatPrimitiveValue(
+        lastCommittedValueRef.current,
+        precision,
+        autoTrim,
+      );
+      if (draft !== committedDraft) {
+        emitValue(parsedDraft, 'text-input');
+      }
     } else {
       onInvalidCommit?.(draft);
       setDraft(displayValue);
     }
     setIsEditing(false);
     setFocusStartValue(null);
-  }, [displayValue, draft, emitValue, onInvalidCommit, parsedDraft]);
+  }, [
+    autoTrim,
+    displayValue,
+    draft,
+    emitValue,
+    onInvalidCommit,
+    parsedDraft,
+    precision,
+  ]);
 
   const getModifiedStep = useCallback(
     (shiftKey: boolean, altKey: boolean) =>
