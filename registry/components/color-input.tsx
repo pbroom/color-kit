@@ -1,37 +1,20 @@
 'use client';
 
+import { forwardRef, useCallback, useMemo, type HTMLAttributes } from 'react';
+import type { Color } from 'color-kit';
 import {
-  clamp,
-  fromHsl,
-  fromRgb,
-  toHsl,
-  toRgb,
-  type Color,
-  type Hsl,
-  type Rgb,
-} from 'color-kit';
+  usePrimitiveValueInput,
+  type PrimitiveExpressionParser,
+  type PrimitiveValueChangeDetails,
+} from 'color-kit/control-kit';
 import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type HTMLAttributes,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from 'react';
+  ColorApi,
+  type HslColorInputChannel,
+  type OklchColorInputChannel,
+  type RgbColorInputChannel,
+} from 'color-kit/react';
 import { useOptionalColorContext } from '@/hooks/color-context';
 import type { SetRequestedOptions } from '@/hooks/use-color';
-
-type ColorInputModel = 'oklch' | 'rgb' | 'hsl';
-type OklchColorInputChannel = 'l' | 'c' | 'h' | 'alpha';
-type RgbColorInputChannel = 'r' | 'g' | 'b' | 'alpha';
-type HslColorInputChannel = 'h' | 's' | 'l' | 'alpha';
-type ColorInputChannel =
-  | OklchColorInputChannel
-  | RgbColorInputChannel
-  | HslColorInputChannel;
 
 interface ColorInputBaseProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -70,562 +53,13 @@ export type ColorInputProps =
       channel: HslColorInputChannel;
     } & ColorInputBaseProps);
 
-interface StepConfig {
-  step: number;
-  fineStep: number;
-  coarseStep: number;
-  pageStep: number;
-}
-
-interface ScrubSnapshot {
-  clientX: number;
-  shiftKey: boolean;
-  altKey: boolean;
-}
-
-interface InputSelectionSnapshot {
-  start: number;
-  end: number;
-  direction: 'forward' | 'backward' | 'none';
-  selectAll: boolean;
-}
-
-const LABELS: Record<ColorInputModel, Record<ColorInputChannel, string>> = {
-  oklch: {
-    l: 'OKLCH lightness',
-    c: 'OKLCH chroma',
-    h: 'OKLCH hue',
-    alpha: 'Opacity',
-    r: 'Red',
-    g: 'Green',
-    b: 'Blue',
-    s: 'Saturation',
-  },
-  rgb: {
-    r: 'Red',
-    g: 'Green',
-    b: 'Blue',
-    alpha: 'Opacity',
-    l: 'Lightness',
-    c: 'Chroma',
-    h: 'Hue',
-    s: 'Saturation',
-  },
-  hsl: {
-    h: 'Hue',
-    s: 'Saturation',
-    l: 'Lightness',
-    alpha: 'Opacity',
-    c: 'Chroma',
-    r: 'Red',
-    g: 'Green',
-    b: 'Blue',
-  },
-};
-
-const DEFAULT_RANGES: Record<
-  ColorInputModel,
-  Record<ColorInputChannel, [number, number]>
-> = {
-  oklch: {
-    l: [0, 1],
-    c: [0, 0.4],
-    h: [0, 360],
-    alpha: [0, 1],
-    r: [0, 255],
-    g: [0, 255],
-    b: [0, 255],
-    s: [0, 100],
-  },
-  rgb: {
-    r: [0, 255],
-    g: [0, 255],
-    b: [0, 255],
-    alpha: [0, 1],
-    l: [0, 1],
-    c: [0, 0.4],
-    h: [0, 360],
-    s: [0, 100],
-  },
-  hsl: {
-    h: [0, 360],
-    s: [0, 100],
-    l: [0, 100],
-    alpha: [0, 1],
-    c: [0, 0.4],
-    r: [0, 255],
-    g: [0, 255],
-    b: [0, 255],
-  },
-};
-
-const CHANNEL_GLYPHS: Record<
-  ColorInputModel,
-  Record<ColorInputChannel, string>
-> = {
-  oklch: {
-    l: 'L',
-    c: 'C',
-    h: 'H',
-    alpha: 'α',
-    r: 'R',
-    g: 'G',
-    b: 'B',
-    s: 'S',
-  },
-  rgb: {
-    r: 'R',
-    g: 'G',
-    b: 'B',
-    alpha: 'α',
-    l: 'L',
-    c: 'C',
-    h: 'H',
-    s: 'S',
-  },
-  hsl: {
-    h: 'H',
-    s: 'S',
-    l: 'L',
-    alpha: 'α',
-    c: 'C',
-    r: 'R',
-    g: 'G',
-    b: 'B',
-  },
-};
-
-const DEFAULT_STEPS: Record<
-  ColorInputModel,
-  Record<ColorInputChannel, StepConfig>
-> = {
-  oklch: {
-    l: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    c: { step: 0.005, fineStep: 0.001, coarseStep: 0.05, pageStep: 0.05 },
-    h: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 },
-    alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    r: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    g: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    b: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    s: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
-  },
-  rgb: {
-    r: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    g: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    b: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    l: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    c: { step: 0.005, fineStep: 0.001, coarseStep: 0.05, pageStep: 0.05 },
-    h: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 },
-    s: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
-  },
-  hsl: {
-    h: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 },
-    s: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
-    l: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 10 },
-    alpha: { step: 0.01, fineStep: 0.001, coarseStep: 0.1, pageStep: 0.1 },
-    c: { step: 0.005, fineStep: 0.001, coarseStep: 0.05, pageStep: 0.05 },
-    r: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    g: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-    b: { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 25 },
-  },
-};
-
-function getValue(
-  color: Color,
-  model: ColorInputModel,
-  channel: ColorInputChannel,
-): number {
-  if (model === 'oklch') {
-    return color[channel as OklchColorInputChannel];
-  }
-  if (model === 'rgb') {
-    const rgb = toRgb(color);
-    return rgb[channel as RgbColorInputChannel];
-  }
-  const hsl = toHsl(color);
-  return hsl[channel as HslColorInputChannel];
-}
-
-function setValue(
-  color: Color,
-  model: ColorInputModel,
-  channel: ColorInputChannel,
-  value: number,
-): Color {
-  if (model === 'oklch') {
-    return {
-      ...color,
-      [channel]: value,
-    };
-  }
-  if (model === 'rgb') {
-    const rgb = toRgb(color);
-    return fromRgb({
-      ...rgb,
-      [channel]: value,
-    } as Rgb);
-  }
-
-  const hsl = toHsl(color);
-  return fromHsl({
-    ...hsl,
-    [channel]: value,
-  } as Hsl);
-}
-
-function isHue(model: ColorInputModel, channel: ColorInputChannel): boolean {
-  return channel === 'h' && (model === 'oklch' || model === 'hsl');
-}
-
-function wrapInRange(value: number, range: [number, number]): number {
-  const span = range[1] - range[0];
-  if (span <= 0) {
-    return range[0];
-  }
-  return ((((value - range[0]) % span) + span) % span) + range[0];
-}
-
-function normalizeValue(
-  value: number,
-  range: [number, number],
-  wrap: boolean,
-): number {
-  if (!Number.isFinite(value)) {
-    return range[0];
-  }
-  return wrap ? wrapInRange(value, range) : clamp(value, range[0], range[1]);
-}
-
-function resolveStepValue(value: number | undefined, fallback: number): number {
-  if (!Number.isFinite(value) || !value || value <= 0) {
-    return fallback;
-  }
-  return value;
-}
-
-function resolvePrecision(step: number): number {
-  const safe = Math.abs(step);
-  if (!Number.isFinite(safe) || safe <= 0) {
-    return 2;
-  }
-
-  let precision = 0;
-  let current = safe;
-  while (precision < 6 && Math.abs(Math.round(current) - current) > 0.0000001) {
-    current *= 10;
-    precision += 1;
-  }
-  return precision;
-}
-
-function formatValue(value: number, precision: number): string {
-  const safePrecision = Math.max(0, Math.min(6, Math.round(precision)));
-  const rounded =
-    safePrecision === 0
-      ? Math.round(value)
-      : Number(value.toFixed(safePrecision));
-
-  if (!Number.isFinite(rounded) || Math.abs(rounded) === 0) {
-    return '0';
-  }
-
-  const fixed = rounded.toFixed(safePrecision);
-  if (safePrecision === 0) {
-    return fixed;
-  }
-  return fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
-}
-
-interface NumberToken {
-  type: 'number';
-  value: number;
-  isPercent: boolean;
-}
-
-interface OperatorToken {
-  type: 'operator';
-  value: '+' | '-' | '*' | '/';
-}
-
-interface ParenToken {
-  type: 'paren';
-  value: '(' | ')';
-}
-
-type ExpressionToken = NumberToken | OperatorToken | ParenToken;
-
-function parseSimpleNumber(
-  input: string,
-  range: [number, number],
-): number | null {
-  const match = input.trim().match(/^([+-]?(?:\d+|\d*\.\d+))(deg|%)?$/i);
-  if (!match) {
-    return null;
-  }
-
-  const number = Number.parseFloat(match[1]);
-  if (!Number.isFinite(number)) {
-    return null;
-  }
-
-  const unit = match[2]?.toLowerCase();
-  if (unit === '%') {
-    return range[0] + ((range[1] - range[0]) * number) / 100;
-  }
-
-  return number;
-}
-
-function tokenizeExpression(
-  input: string,
-): { tokens: ExpressionToken[]; hasPercent: boolean } | null {
-  const tokens: ExpressionToken[] = [];
-  let index = 0;
-  let hasPercent = false;
-
-  while (index < input.length) {
-    const char = input[index];
-    if (/\s/.test(char)) {
-      index += 1;
-      continue;
-    }
-
-    if (char === '(' || char === ')') {
-      tokens.push({ type: 'paren', value: char });
-      index += 1;
-      continue;
-    }
-
-    if (char === '+' || char === '-' || char === '*' || char === '/') {
-      tokens.push({ type: 'operator', value: char });
-      index += 1;
-      continue;
-    }
-
-    if (char === '.' || /\d/.test(char)) {
-      let cursor = index;
-      let seenDot = false;
-      let seenDigit = false;
-
-      while (cursor < input.length) {
-        const tokenChar = input[cursor];
-        if (tokenChar === '.') {
-          if (seenDot) break;
-          seenDot = true;
-          cursor += 1;
-          continue;
-        }
-        if (!/\d/.test(tokenChar)) break;
-        seenDigit = true;
-        cursor += 1;
-      }
-
-      if (!seenDigit) {
-        return null;
-      }
-
-      const numericText = input.slice(index, cursor);
-      const numericValue = Number.parseFloat(numericText);
-      if (!Number.isFinite(numericValue)) {
-        return null;
-      }
-
-      let isPercent = false;
-      const suffix = input.slice(cursor, cursor + 3).toLowerCase();
-      if (suffix === 'deg') {
-        cursor += 3;
-      } else if (input[cursor] === '%') {
-        isPercent = true;
-        hasPercent = true;
-        cursor += 1;
-      }
-
-      tokens.push({
-        type: 'number',
-        value: numericValue,
-        isPercent,
-      });
-
-      index = cursor;
-      continue;
-    }
-
-    return null;
-  }
-
-  return {
-    tokens,
-    hasPercent,
-  };
-}
-
-function parseTokens(
-  tokens: ExpressionToken[],
-  range: [number, number],
-): number | null {
-  let index = 0;
-  const span = range[1] - range[0];
-
-  const parseExpression = (): number | null => {
-    const start = parseTerm();
-    if (start === null) {
-      return null;
-    }
-
-    let value = start;
-    while (
-      index < tokens.length &&
-      tokens[index].type === 'operator' &&
-      (tokens[index] as OperatorToken).value !== '*' &&
-      (tokens[index] as OperatorToken).value !== '/'
-    ) {
-      const operator = (tokens[index] as OperatorToken).value;
-      index += 1;
-      const right = parseTerm();
-      if (right === null) {
-        return null;
-      }
-      value = operator === '+' ? value + right : value - right;
-    }
-
-    return value;
-  };
-
-  const parseTerm = (): number | null => {
-    const start = parseFactor();
-    if (start === null) {
-      return null;
-    }
-
-    let value = start;
-    while (
-      index < tokens.length &&
-      tokens[index].type === 'operator' &&
-      ((tokens[index] as OperatorToken).value === '*' ||
-        (tokens[index] as OperatorToken).value === '/')
-    ) {
-      const operator = (tokens[index] as OperatorToken).value;
-      index += 1;
-      const right = parseFactor();
-      if (right === null) {
-        return null;
-      }
-      value = operator === '*' ? value * right : value / right;
-    }
-
-    return value;
-  };
-
-  const parseFactor = (): number | null => {
-    if (
-      index < tokens.length &&
-      tokens[index].type === 'operator' &&
-      ((tokens[index] as OperatorToken).value === '+' ||
-        (tokens[index] as OperatorToken).value === '-')
-    ) {
-      const operator = (tokens[index] as OperatorToken).value;
-      index += 1;
-      const next = parseFactor();
-      if (next === null) {
-        return null;
-      }
-      return operator === '-' ? -next : next;
-    }
-
-    if (index >= tokens.length) {
-      return null;
-    }
-
-    const token = tokens[index];
-    if (token.type === 'number') {
-      index += 1;
-      return token.isPercent ? (token.value / 100) * span : token.value;
-    }
-
-    if (token.type === 'paren' && token.value === '(') {
-      index += 1;
-      const nested = parseExpression();
-      if (nested === null) {
-        return null;
-      }
-      if (
-        index >= tokens.length ||
-        tokens[index].type !== 'paren' ||
-        (tokens[index] as ParenToken).value !== ')'
-      ) {
-        return null;
-      }
-      index += 1;
-      return nested;
-    }
-
-    return null;
-  };
-
-  const value = parseExpression();
-  if (value === null || index !== tokens.length || !Number.isFinite(value)) {
-    return null;
-  }
-  return value;
-}
-
-function parseExpressionValue(
-  input: string,
-  currentValue: number,
-  range: [number, number],
-  allowExpressions: boolean,
-): number | null {
-  const trimmed = input.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-
-  if (!allowExpressions) {
-    return parseSimpleNumber(trimmed, range);
-  }
-
-  const isRelative = /^[+\-*/]/.test(trimmed);
-  const expression = isRelative ? `${currentValue}${trimmed}` : trimmed;
-  const tokenized = tokenizeExpression(expression);
-  if (!tokenized) {
-    return parseSimpleNumber(expression, range);
-  }
-
-  const value = parseTokens(tokenized.tokens, range);
-  if (value === null) {
-    return parseSimpleNumber(expression, range);
-  }
-  if (!isRelative && tokenized.hasPercent) {
-    return value + range[0];
-  }
-  return value;
-}
-
-function resolveModifiedStep(
-  shiftKey: boolean,
-  altKey: boolean,
-  steps: StepConfig,
-): number {
-  if (altKey) {
-    return steps.fineStep;
-  }
-  if (shiftKey) {
-    return steps.coarseStep;
-  }
-  return steps.step;
-}
-
-const COMMIT_NOOP_EPSILON = 1e-9;
 const SCRUB_DRAG_START_THRESHOLD_PX = 2;
 
-function resolvePointerClientX(
-  event: { clientX: number },
-  fallback: number,
-): number {
-  return Number.isFinite(event.clientX) ? event.clientX : fallback;
-}
-
+/**
+ * A headless value input that edits one channel in oklch/rgb/hsl.
+ *
+ * Supports text entry, expression parsing, keyboard stepping, and left-edge scrub dragging.
+ */
 export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
   function ColorInput(
     {
@@ -662,673 +96,131 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       );
     }
 
-    const resolvedRange = range ?? DEFAULT_RANGES[model][channel];
-    const resolvedWrap = wrap ?? isHue(model, channel);
-    const defaultSteps = DEFAULT_STEPS[model][channel];
-    const resolvedSteps: StepConfig = useMemo(
-      () => ({
-        step: resolveStepValue(step, defaultSteps.step),
-        fineStep: resolveStepValue(fineStep, defaultSteps.fineStep),
-        coarseStep: resolveStepValue(coarseStep, defaultSteps.coarseStep),
-        pageStep: resolveStepValue(pageStep, defaultSteps.pageStep),
-      }),
-      [coarseStep, defaultSteps, fineStep, pageStep, step],
+    const resolvedRange = useMemo(
+      () => ColorApi.resolveColorInputRange(model, channel, range),
+      [channel, model, range],
+    );
+    const resolvedWrap = useMemo(
+      () => ColorApi.resolveColorInputWrap(model, channel, wrap),
+      [channel, model, wrap],
+    );
+    const resolvedSteps = useMemo(
+      () =>
+        ColorApi.resolveColorInputSteps(model, channel, {
+          step,
+          fineStep,
+          coarseStep,
+          pageStep,
+        }),
+      [channel, coarseStep, fineStep, model, pageStep, step],
     );
     const resolvedPrecision = useMemo(
-      () => precision ?? resolvePrecision(resolvedSteps.fineStep),
+      () =>
+        precision ??
+        ColorApi.getColorInputPrecisionFromStep(resolvedSteps.fineStep),
       [precision, resolvedSteps.fineStep],
     );
-
     const channelValue = useMemo(
-      () => getValue(requested, model, channel),
+      () => ColorApi.getColorInputChannelValue(requested, model, channel),
       [channel, model, requested],
     );
-    const channelLabel = LABELS[model][channel];
-    const channelGlyph = CHANNEL_GLYPHS[model][channel];
-    const displayValue = useMemo(
-      () => formatValue(channelValue, resolvedPrecision),
-      [channelValue, resolvedPrecision],
+    const channelLabel = useMemo(
+      () => ColorApi.getColorInputLabel(model, channel),
+      [channel, model],
     );
-    const changedChannel =
-      model === 'oklch' ? (channel as OklchColorInputChannel) : undefined;
-
-    const inputRef = useRef<HTMLInputElement>(null);
-    const scrubHandleRef = useRef<HTMLDivElement>(null);
-    const preservedSelectionRef = useRef<InputSelectionSnapshot | null>(null);
-    const clearPreservedSelectionFrameRef = useRef<number | null>(null);
-    const [isEditing, setIsEditing] = useState(false);
-    const [draftValue, setDraftValue] = useState('');
-    const [isScrubbing, setIsScrubbing] = useState(false);
-    const skipBlurCommitRef = useRef(false);
-    const [focusStartValue, setFocusStartValue] = useState<number | null>(null);
-    const lastCommittedValueRef = useRef<number | null>(null);
-
-    const activePointerIdRef = useRef<number | null>(null);
-    const isScrubbingRef = useRef(false);
-    const hasScrubDragStartedRef = useRef(false);
-    const scrubStartXRef = useRef(0);
-    const lastScrubClientXRef = useRef(0);
-    const scrubStartValueRef = useRef(0);
-    const lastScrubValueRef = useRef<number | null>(null);
-    const lastScrubCommitTsRef = useRef(0);
-    const pendingScrubRef = useRef<ScrubSnapshot | null>(null);
-    const scrubFrameRef = useRef<number | null>(null);
-    const processPendingScrubRef = useRef<(frameTime: number) => void>(
-      () => {},
+    const channelGlyph = useMemo(
+      () => ColorApi.getColorInputChannelGlyph(model, channel),
+      [channel, model],
+    );
+    const changedChannel = useMemo(
+      () => ColorApi.getColorInputChangedChannel(model, channel),
+      [channel, model],
     );
 
-    const currentValue = isEditing ? draftValue : displayValue;
-    const parsedDraftValue = useMemo(() => {
-      if (!isEditing) {
-        return channelValue;
-      }
-
-      const parsed = parseExpressionValue(
-        draftValue,
-        focusStartValue ?? channelValue,
-        resolvedRange,
-        allowExpressions,
-      );
-      if (parsed === null) {
-        return null;
-      }
-      return normalizeValue(parsed, resolvedRange, resolvedWrap);
-    }, [
-      allowExpressions,
-      channelValue,
-      draftValue,
-      focusStartValue,
-      isEditing,
-      resolvedRange,
-      resolvedWrap,
-    ]);
-    const isValid = parsedDraftValue !== null;
-
-    const syncDraftFromValue = useCallback(
-      (value: number) => {
-        setDraftValue(formatValue(value, resolvedPrecision));
-      },
-      [resolvedPrecision],
-    );
-
-    const isInputFocused = useCallback(
-      () => document.activeElement === inputRef.current,
+    const parseExpression = useCallback<PrimitiveExpressionParser>(
+      (draft, options) =>
+        ColorApi.parseColorInputExpression(draft, {
+          currentValue: options.currentValue,
+          range: options.range,
+          allowExpressions: options.allowExpressions,
+        }),
       [],
     );
 
-    const commitChannelValue = useCallback(
-      (
-        nextValue: number,
-        interaction: 'pointer' | 'keyboard' | 'text-input',
-        wrapOverride: boolean = resolvedWrap,
-      ) => {
-        const normalized = normalizeValue(
+    const handlePrimitiveValueChange = useCallback(
+      (nextValue: number, details: PrimitiveValueChangeDetails) => {
+        const nextColor = ColorApi.colorFromColorInputChannelValue(
+          requested,
+          model,
+          channel,
           nextValue,
-          resolvedRange,
-          wrapOverride,
         );
-        const nextColor = setValue(requested, model, channel, normalized);
         setRequested(nextColor, {
-          interaction,
+          interaction: details.interaction,
           ...(changedChannel ? { changedChannel } : {}),
         });
-        lastCommittedValueRef.current = normalized;
-        syncDraftFromValue(normalized);
       },
-      [
-        changedChannel,
-        channel,
-        model,
-        requested,
-        resolvedRange,
-        resolvedWrap,
-        setRequested,
-        syncDraftFromValue,
-      ],
+      [changedChannel, channel, model, requested, setRequested],
     );
 
-    const commitDraft = useCallback((): boolean => {
-      if (parsedDraftValue === null) {
-        onInvalidCommit?.(draftValue);
-        setDraftValue(displayValue);
-        setIsEditing(false);
-        setFocusStartValue(null);
-        return false;
-      }
-
-      if (
-        lastCommittedValueRef.current !== null &&
-        Math.abs(parsedDraftValue - lastCommittedValueRef.current) <=
-          COMMIT_NOOP_EPSILON
-      ) {
-        setIsEditing(false);
-        setFocusStartValue(null);
-        return true;
-      }
-
-      commitChannelValue(parsedDraftValue, 'text-input');
-      setIsEditing(false);
-      setFocusStartValue(null);
-      return true;
-    }, [
-      commitChannelValue,
-      displayValue,
-      draftValue,
+    const {
+      inputRef,
+      inputProps,
+      scrubHandleRef,
+      scrubHandleProps,
+      isDraftValid,
+      isEditing,
+      isScrubbing,
+    } = usePrimitiveValueInput({
+      value: channelValue,
+      onValueChange: handlePrimitiveValueChange,
+      min: resolvedRange[0],
+      max: resolvedRange[1],
+      wrapMode: resolvedWrap ? 'wrap' : 'clamp',
+      step: resolvedSteps.step,
+      fineStep: resolvedSteps.fineStep,
+      coarseStep: resolvedSteps.coarseStep,
+      pageStep: resolvedSteps.pageStep,
+      precision: resolvedPrecision,
+      autoTrim: true,
+      allowExpressions,
+      parseExpression,
+      selectAllOnFocus,
+      commitOnBlur,
+      scrubEnabled: true,
+      scrubPixelsPerStep,
+      scrubThreshold: SCRUB_DRAG_START_THRESHOLD_PX,
+      scrubCommitThreshold: dragEpsilon,
+      scrubMaxCommitRate: maxScrubRate,
+      pointerLockEnabled: true,
+      horizontalArrowKeysMoveCaret: false,
+      disabled: false,
+      readOnly: false,
       onInvalidCommit,
-      parsedDraftValue,
-    ]);
+    });
 
-    const handleFocus = useCallback(() => {
-      setIsEditing(true);
-      setDraftValue(displayValue);
-      setFocusStartValue(channelValue);
-      lastCommittedValueRef.current = channelValue;
-
-      if (!selectAllOnFocus) {
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        inputRef.current?.select();
-      });
-    }, [channelValue, displayValue, selectAllOnFocus]);
-
-    const handleBlur = useCallback(() => {
-      if (skipBlurCommitRef.current) {
-        skipBlurCommitRef.current = false;
-        setFocusStartValue(null);
-        return;
-      }
-
-      if (commitOnBlur) {
-        commitDraft();
-      } else {
-        setIsEditing(false);
-        setDraftValue(displayValue);
-        setFocusStartValue(null);
-      }
-    }, [commitDraft, commitOnBlur, displayValue]);
-
-    const handleChange = useCallback(
-      (event: React.ChangeEvent<HTMLInputElement>) => {
-        setDraftValue(event.target.value);
-      },
-      [],
-    );
-
-    const handleKeyDown = useCallback(
-      (event: ReactKeyboardEvent<HTMLInputElement>) => {
-        if (
-          event.key === 'ArrowRight' ||
-          event.key === 'ArrowLeft' ||
-          event.key === 'ArrowUp' ||
-          event.key === 'ArrowDown' ||
-          event.key === 'PageUp' ||
-          event.key === 'PageDown' ||
-          event.key === 'Home' ||
-          event.key === 'End'
-        ) {
-          const keyStep = resolveModifiedStep(
-            event.shiftKey,
-            event.altKey,
-            resolvedSteps,
-          );
-          const page = resolvedSteps.pageStep;
-          let nextValue: number | null = null;
-
-          switch (event.key) {
-            case 'ArrowRight':
-            case 'ArrowUp':
-              nextValue = channelValue + keyStep;
-              break;
-            case 'ArrowLeft':
-            case 'ArrowDown':
-              nextValue = channelValue - keyStep;
-              break;
-            case 'PageUp':
-              nextValue = channelValue + page;
-              break;
-            case 'PageDown':
-              nextValue = channelValue - page;
-              break;
-            case 'Home':
-              nextValue = resolvedRange[0];
-              break;
-            case 'End':
-              nextValue = resolvedRange[1];
-              break;
-          }
-
-          if (nextValue === null) {
-            return;
-          }
-
-          event.preventDefault();
-          commitChannelValue(
-            nextValue,
-            'keyboard',
-            event.key === 'Home' || event.key === 'End' ? false : resolvedWrap,
-          );
-          setIsEditing(true);
+    const setRootRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        if (typeof ref === 'function') {
+          ref(node);
           return;
         }
 
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          commitDraft();
-          skipBlurCommitRef.current = true;
-          (event.target as HTMLInputElement).blur();
-          return;
-        }
-
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          setIsEditing(false);
-          setDraftValue(displayValue);
-          setFocusStartValue(null);
-          skipBlurCommitRef.current = true;
-          (event.target as HTMLInputElement).blur();
+        if (ref) {
+          ref.current = node;
         }
       },
-      [
-        channelValue,
-        commitChannelValue,
-        commitDraft,
-        displayValue,
-        resolvedRange,
-        resolvedWrap,
-        resolvedSteps,
-      ],
+      [ref],
     );
-
-    const stopScrubFrame = useCallback(() => {
-      if (scrubFrameRef.current !== null) {
-        cancelAnimationFrame(scrubFrameRef.current);
-        scrubFrameRef.current = null;
-      }
-      pendingScrubRef.current = null;
-    }, []);
-
-    const restorePreservedSelection = useCallback(() => {
-      const input = inputRef.current;
-      const snapshot = preservedSelectionRef.current;
-      if (!input || !snapshot || document.activeElement !== input) {
-        return;
-      }
-
-      const length = input.value.length;
-      const start = snapshot.selectAll ? 0 : Math.min(snapshot.start, length);
-      const end = snapshot.selectAll ? length : Math.min(snapshot.end, length);
-      input.setSelectionRange(start, end, snapshot.direction);
-    }, []);
-
-    const clearPreservedSelection = useCallback(() => {
-      if (clearPreservedSelectionFrameRef.current !== null) {
-        cancelAnimationFrame(clearPreservedSelectionFrameRef.current);
-        clearPreservedSelectionFrameRef.current = null;
-      }
-      preservedSelectionRef.current = null;
-    }, []);
-
-    const scheduleClearPreservedSelection = useCallback(() => {
-      if (clearPreservedSelectionFrameRef.current !== null) {
-        cancelAnimationFrame(clearPreservedSelectionFrameRef.current);
-      }
-      clearPreservedSelectionFrameRef.current = requestAnimationFrame(() => {
-        restorePreservedSelection();
-        preservedSelectionRef.current = null;
-        clearPreservedSelectionFrameRef.current = null;
-      });
-    }, [restorePreservedSelection]);
-
-    const preserveCurrentSelection = useCallback(() => {
-      const input = inputRef.current;
-      if (!input || document.activeElement !== input) {
-        preservedSelectionRef.current = null;
-        return;
-      }
-
-      const start = input.selectionStart ?? input.value.length;
-      const end = input.selectionEnd ?? start;
-      preservedSelectionRef.current = {
-        start,
-        end,
-        direction: input.selectionDirection ?? 'none',
-        selectAll: start === 0 && end === input.value.length,
-      };
-    }, []);
-
-    const hasScrubPointerLock = useCallback(() => {
-      return (
-        typeof document !== 'undefined' &&
-        document.pointerLockElement === scrubHandleRef.current
-      );
-    }, []);
-
-    const exitScrubPointerLock = useCallback(() => {
-      if (
-        typeof document !== 'undefined' &&
-        document.pointerLockElement === scrubHandleRef.current
-      ) {
-        document.exitPointerLock?.();
-      }
-    }, []);
-
-    const schedulePendingScrubFrame = useCallback(() => {
-      scrubFrameRef.current = requestAnimationFrame((frameTime: number) => {
-        processPendingScrubRef.current(frameTime);
-      });
-    }, []);
-
-    const commitScrubSnapshot = useCallback(
-      (snapshot: ScrubSnapshot, force: boolean) => {
-        if (!isScrubbingRef.current) {
-          return;
-        }
-
-        const activeStep = resolveModifiedStep(
-          snapshot.shiftKey,
-          snapshot.altKey,
-          resolvedSteps,
-        );
-        const safePixelsPerStep =
-          scrubPixelsPerStep > 0 ? scrubPixelsPerStep : 1;
-        const clientX = Number.isFinite(snapshot.clientX)
-          ? snapshot.clientX
-          : lastScrubClientXRef.current;
-        const deltaPixels = clientX - scrubStartXRef.current;
-        if (
-          !hasScrubDragStartedRef.current &&
-          Math.abs(deltaPixels) < SCRUB_DRAG_START_THRESHOLD_PX
-        ) {
-          return;
-        }
-        if (!hasScrubDragStartedRef.current) {
-          hasScrubDragStartedRef.current = true;
-          setIsScrubbing(true);
-        }
-
-        const deltaSteps = deltaPixels / safePixelsPerStep;
-        const nextRaw = scrubStartValueRef.current + deltaSteps * activeStep;
-        const nextValue = normalizeValue(nextRaw, resolvedRange, resolvedWrap);
-
-        if (
-          !force &&
-          lastScrubValueRef.current !== null &&
-          Math.abs(nextValue - lastScrubValueRef.current) <
-            Math.max(0, dragEpsilon)
-        ) {
-          return;
-        }
-
-        const nextColor = setValue(requested, model, channel, nextValue);
-        setRequested(nextColor, {
-          interaction: 'pointer',
-          ...(changedChannel ? { changedChannel } : {}),
-        });
-        lastScrubValueRef.current = nextValue;
-        lastCommittedValueRef.current = nextValue;
-        syncDraftFromValue(nextValue);
-        setIsEditing(isInputFocused());
-      },
-      [
-        changedChannel,
-        channel,
-        dragEpsilon,
-        isInputFocused,
-        model,
-        requested,
-        resolvedRange,
-        resolvedSteps,
-        resolvedWrap,
-        scrubPixelsPerStep,
-        setRequested,
-        syncDraftFromValue,
-      ],
-    );
-
-    const processPendingScrub = useCallback(
-      (frameTime: number) => {
-        scrubFrameRef.current = null;
-
-        if (!isScrubbingRef.current) {
-          pendingScrubRef.current = null;
-          return;
-        }
-
-        const pending = pendingScrubRef.current;
-        if (!pending) {
-          return;
-        }
-
-        const safeRate =
-          Number.isFinite(maxScrubRate) && maxScrubRate > 0
-            ? maxScrubRate
-            : 120;
-        const minFrameDelta = 1000 / safeRate;
-        if (
-          lastScrubCommitTsRef.current > 0 &&
-          frameTime >= lastScrubCommitTsRef.current &&
-          frameTime - lastScrubCommitTsRef.current < minFrameDelta
-        ) {
-          schedulePendingScrubFrame();
-          return;
-        }
-
-        pendingScrubRef.current = null;
-        commitScrubSnapshot(pending, false);
-        lastScrubCommitTsRef.current = frameTime;
-
-        if (pendingScrubRef.current) {
-          schedulePendingScrubFrame();
-        }
-      },
-      [commitScrubSnapshot, maxScrubRate, schedulePendingScrubFrame],
-    );
-
-    useEffect(() => {
-      processPendingScrubRef.current = processPendingScrub;
-    }, [processPendingScrub]);
-
-    const queueScrubSnapshot = useCallback(
-      (snapshot: ScrubSnapshot) => {
-        pendingScrubRef.current = snapshot;
-        if (scrubFrameRef.current === null) {
-          schedulePendingScrubFrame();
-        }
-      },
-      [schedulePendingScrubFrame],
-    );
-
-    const endScrubbing = useCallback(
-      (snapshot?: ScrubSnapshot) => {
-        const finalSnapshot = snapshot ?? pendingScrubRef.current ?? null;
-        if (finalSnapshot) {
-          commitScrubSnapshot(finalSnapshot, true);
-        }
-
-        isScrubbingRef.current = false;
-        hasScrubDragStartedRef.current = false;
-        activePointerIdRef.current = null;
-        lastScrubCommitTsRef.current = 0;
-        setIsScrubbing(false);
-        exitScrubPointerLock();
-        scheduleClearPreservedSelection();
-        stopScrubFrame();
-      },
-      [
-        commitScrubSnapshot,
-        exitScrubPointerLock,
-        scheduleClearPreservedSelection,
-        stopScrubFrame,
-      ],
-    );
-
-    const handleScrubPointerDown = useCallback(
-      (event: React.PointerEvent<HTMLDivElement>) => {
-        const button = typeof event.button === 'number' ? event.button : 0;
-        if (button !== 0) {
-          return;
-        }
-
-        event.preventDefault();
-        clearPreservedSelection();
-        preserveCurrentSelection();
-        const clientX = resolvePointerClientX(event, 0);
-        activePointerIdRef.current = event.pointerId;
-        isScrubbingRef.current = true;
-        hasScrubDragStartedRef.current = false;
-        scrubStartXRef.current = clientX;
-        lastScrubClientXRef.current = clientX;
-        scrubStartValueRef.current = channelValue;
-        lastScrubValueRef.current = channelValue;
-        lastScrubCommitTsRef.current = 0;
-        setFocusStartValue(channelValue);
-        lastCommittedValueRef.current = channelValue;
-        setIsEditing(isInputFocused());
-        setDraftValue(displayValue);
-        pendingScrubRef.current = null;
-
-        if ('setPointerCapture' in event.currentTarget) {
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }
-
-        const lockRequest =
-          event.currentTarget.requestPointerLock?.() as Promise<void> | void;
-        if (lockRequest) {
-          void lockRequest.catch(() => {});
-        }
-      },
-      [
-        channelValue,
-        clearPreservedSelection,
-        displayValue,
-        isInputFocused,
-        preserveCurrentSelection,
-      ],
-    );
-
-    const handleScrubPointerMove = useCallback(
-      (event: React.PointerEvent<HTMLDivElement>) => {
-        if (
-          !isScrubbingRef.current ||
-          event.pointerId !== activePointerIdRef.current
-        ) {
-          return;
-        }
-        if (hasScrubPointerLock()) {
-          return;
-        }
-        const clientX = resolvePointerClientX(
-          event,
-          lastScrubClientXRef.current,
-        );
-        lastScrubClientXRef.current = clientX;
-        queueScrubSnapshot({
-          clientX,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-        });
-      },
-      [hasScrubPointerLock, queueScrubSnapshot],
-    );
-
-    const handleScrubPointerUp = useCallback(
-      (event: React.PointerEvent<HTMLDivElement>) => {
-        if (event.pointerId !== activePointerIdRef.current) {
-          return;
-        }
-        const clientX = hasScrubPointerLock()
-          ? lastScrubClientXRef.current
-          : resolvePointerClientX(event, lastScrubClientXRef.current);
-        endScrubbing({
-          clientX,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-        });
-      },
-      [endScrubbing, hasScrubPointerLock],
-    );
-
-    const handleScrubPointerCancel = useCallback(
-      (event: React.PointerEvent<HTMLDivElement>) => {
-        if (event.pointerId !== activePointerIdRef.current) {
-          return;
-        }
-        endScrubbing();
-      },
-      [endScrubbing],
-    );
-
-    const handleScrubLostPointerCapture = useCallback(() => {
-      if (hasScrubPointerLock()) {
-        return;
-      }
-      endScrubbing();
-    }, [endScrubbing, hasScrubPointerLock]);
-
-    useEffect(() => {
-      return () => {
-        clearPreservedSelection();
-        stopScrubFrame();
-      };
-    }, [clearPreservedSelection, stopScrubFrame]);
-
-    useLayoutEffect(() => {
-      restorePreservedSelection();
-    }, [currentValue, restorePreservedSelection]);
-
-    useEffect(() => {
-      const handleLockedMouseMove = (event: MouseEvent) => {
-        if (!isScrubbingRef.current || !hasScrubPointerLock()) {
-          return;
-        }
-
-        const movementX = Number.isFinite(event.movementX)
-          ? event.movementX
-          : 0;
-        if (movementX === 0) {
-          return;
-        }
-
-        const clientX = lastScrubClientXRef.current + movementX;
-        lastScrubClientXRef.current = clientX;
-        queueScrubSnapshot({
-          clientX,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-        });
-      };
-
-      const handlePointerLockChange = () => {
-        if (
-          isScrubbingRef.current &&
-          scrubHandleRef.current &&
-          document.pointerLockElement !== scrubHandleRef.current
-        ) {
-          endScrubbing();
-        }
-      };
-
-      document.addEventListener('mousemove', handleLockedMouseMove);
-      document.addEventListener('pointerlockchange', handlePointerLockChange);
-      return () => {
-        document.removeEventListener('mousemove', handleLockedMouseMove);
-        document.removeEventListener(
-          'pointerlockchange',
-          handlePointerLockChange,
-        );
-      };
-    }, [endScrubbing, hasScrubPointerLock, queueScrubSnapshot]);
 
     return (
       <div
         {...props}
-        ref={ref}
+        ref={setRootRef}
         data-color-input=""
         data-model={model}
         data-channel={channel}
-        data-valid={isValid || undefined}
+        data-valid={isDraftValid || undefined}
         data-editing={isEditing || undefined}
         data-scrubbing={isScrubbing || undefined}
         style={{
@@ -1344,11 +236,6 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           ref={scrubHandleRef}
           data-color-input-scrub-handle=""
           aria-hidden="true"
-          onPointerDown={handleScrubPointerDown}
-          onPointerMove={handleScrubPointerMove}
-          onPointerUp={handleScrubPointerUp}
-          onPointerCancel={handleScrubPointerCancel}
-          onLostPointerCapture={handleScrubLostPointerCapture}
           style={{
             width: `${Math.max(0, scrubHandleSize)}px`,
             height: `${Math.max(0, scrubHandleSize)}px`,
@@ -1360,27 +247,27 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
             touchAction: 'none',
             userSelect: 'none',
           }}
+          {...scrubHandleProps}
         >
           {channelGlyph}
         </div>
         <input
           ref={inputRef}
           type="text"
-          value={currentValue}
           role="spinbutton"
           aria-label={props['aria-label'] ?? `${channelLabel} value`}
           aria-valuemin={resolvedRange[0]}
           aria-valuemax={resolvedRange[1]}
           aria-valuenow={channelValue}
-          aria-valuetext={`${formatValue(channelValue, resolvedPrecision)} ${channelLabel}`}
+          aria-valuetext={`${ColorApi.formatColorInputChannelValue(
+            channelValue,
+            resolvedPrecision,
+          )} ${channelLabel}`}
           inputMode="decimal"
           spellCheck={false}
           autoComplete="off"
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
           style={{ flex: 1, minWidth: 0 }}
+          {...inputProps}
         />
       </div>
     );
