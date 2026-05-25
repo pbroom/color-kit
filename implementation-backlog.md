@@ -8,11 +8,11 @@ Replaces `CODE_QUALITY_BACKLOG.md` (CQ-001 through CQ-010 — all completed; see
 
 ## Priority guide
 
-| Priority | Meaning |
-| -------- | ------- |
-| **P0** | Active drift, duplicated logic, or debt that blocks healthy feature work |
-| **P1** | High structural debt with a clear decomposition path |
-| **P2** | Important maintainability debt; tackle after P0/P1 gates |
+| Priority | Meaning                                                                  |
+| -------- | ------------------------------------------------------------------------ |
+| **P0**   | Active drift, duplicated logic, or debt that blocks healthy feature work |
+| **P1**   | High structural debt with a clear decomposition path                     |
+| **P2**   | Important maintainability debt; tackle after P0/P1 gates                 |
 
 ## Approval bar (for large features)
 
@@ -317,18 +317,18 @@ Do not green-light large features on these surfaces without a decomposition plan
 
 All items from `CODE_QUALITY_BACKLOG.md` (reviewed 2026-05-24) are complete:
 
-| ID | Title | Status |
-| -- | ----- | ------ |
-| CQ-001 | Split the Lab route into page modules | Completed 2026-05-24 |
-| CQ-002 | Make numeric input behavior canonical | Completed |
-| CQ-003 | Extract canonical contour/marching-squares utilities | Completed (`packages/core/src/contour/index.ts`) |
-| CQ-004 | Unify Lab menu/select rendering | Completed |
-| CQ-005 | Move Lab-only UI3 helpers out of shared dropdown primitive | Completed |
-| CQ-006 | Correlate color input model and channel types | Completed |
-| CQ-007 | Make multi-input segments atomic | Completed |
-| CQ-008 | Replace brittle primitive markup assertions with contract tests | Completed |
-| CQ-009 | Decompose docs right rail feature panels | Completed (shell extracted; follow-up: IB-011) |
-| CQ-010 | Model contrast overlay tiers once | Completed (`color-area-contrast-tiers.ts`) |
+| ID     | Title                                                           | Status                                           |
+| ------ | --------------------------------------------------------------- | ------------------------------------------------ |
+| CQ-001 | Split the Lab route into page modules                           | Completed 2026-05-24                             |
+| CQ-002 | Make numeric input behavior canonical                           | Completed                                        |
+| CQ-003 | Extract canonical contour/marching-squares utilities            | Completed (`packages/core/src/contour/index.ts`) |
+| CQ-004 | Unify Lab menu/select rendering                                 | Completed                                        |
+| CQ-005 | Move Lab-only UI3 helpers out of shared dropdown primitive      | Completed                                        |
+| CQ-006 | Correlate color input model and channel types                   | Completed                                        |
+| CQ-007 | Make multi-input segments atomic                                | Completed                                        |
+| CQ-008 | Replace brittle primitive markup assertions with contract tests | Completed                                        |
+| CQ-009 | Decompose docs right rail feature panels                        | Completed (shell extracted; follow-up: IB-011)   |
+| CQ-010 | Model contrast overlay tiers once                               | Completed (`color-area-contrast-tiers.ts`)       |
 
 ---
 
