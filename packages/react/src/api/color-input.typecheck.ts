@@ -1,10 +1,4 @@
-import {
-  getColorInputChannelGlyph,
-  getColorInputLabel,
-  resolveColorInputRange,
-  type ColorInputChannelFor,
-  type ColorInputSpec,
-} from './color-input.js';
+import type { ColorInputChannelFor, ColorInputSpec } from './color-input.js';
 
 type IsEqual<Actual, Expected> =
   (<Value>() => Value extends Actual ? 1 : 2) extends <
@@ -13,6 +7,8 @@ type IsEqual<Actual, Expected> =
     ? true
     : false;
 type Assert<Condition extends true> = Condition;
+type AssertFalse<Condition extends false> = Condition;
+type IsAssignable<Actual, Expected> = Actual extends Expected ? true : false;
 
 export type _RgbChannelsAreCorrelated = Assert<
   IsEqual<ColorInputChannelFor<'rgb'>, 'r' | 'g' | 'b' | 'alpha'>
@@ -24,23 +20,25 @@ export type _OklchChannelsAreCorrelated = Assert<
   IsEqual<ColorInputChannelFor<'oklch'>, 'l' | 'c' | 'h' | 'alpha'>
 >;
 
-const rgbSpec: ColorInputSpec<'rgb'> = { model: 'rgb', channel: 'r' };
-const hslSpec: ColorInputSpec<'hsl'> = { model: 'hsl', channel: 's' };
-const oklchSpec: ColorInputSpec<'oklch'> = {
-  model: 'oklch',
-  channel: 'c',
-};
+export type _RgbSpecAcceptsRgbChannel = Assert<
+  IsAssignable<{ model: 'rgb'; channel: 'r' }, ColorInputSpec<'rgb'>>
+>;
+export type _HslSpecAcceptsHslChannel = Assert<
+  IsAssignable<{ model: 'hsl'; channel: 's' }, ColorInputSpec<'hsl'>>
+>;
+export type _OklchSpecAcceptsOklchChannel = Assert<
+  IsAssignable<{ model: 'oklch'; channel: 'c' }, ColorInputSpec<'oklch'>>
+>;
 
-// @ts-expect-error RGB inputs do not expose OKLCH lightness.
-getColorInputLabel('rgb', 'l');
-// @ts-expect-error HSL inputs do not expose RGB blue.
-resolveColorInputRange('hsl', 'b');
-// @ts-expect-error OKLCH inputs do not expose RGB red.
-getColorInputChannelGlyph('oklch', 'r');
-// @ts-expect-error Discriminated specs reject model/channel mismatches.
-const invalidRgbSpec: ColorInputSpec<'rgb'> = { model: 'rgb', channel: 'h' };
-
-void rgbSpec;
-void hslSpec;
-void oklchSpec;
-void invalidRgbSpec;
+export type _RgbRejectsOklchLightness = AssertFalse<
+  IsAssignable<'l', ColorInputChannelFor<'rgb'>>
+>;
+export type _HslRejectsRgbBlue = AssertFalse<
+  IsAssignable<'b', ColorInputChannelFor<'hsl'>>
+>;
+export type _OklchRejectsRgbRed = AssertFalse<
+  IsAssignable<'r', ColorInputChannelFor<'oklch'>>
+>;
+export type _RgbSpecRejectsHueChannel = AssertFalse<
+  IsAssignable<{ model: 'rgb'; channel: 'h' }, ColorInputSpec<'rgb'>>
+>;
