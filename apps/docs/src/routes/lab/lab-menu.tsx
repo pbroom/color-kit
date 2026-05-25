@@ -10,6 +10,8 @@ type LabMenuItemIcon = React.ComponentType<
   React.SVGProps<SVGSVGElement> & { strokeWidth?: number }
 >;
 
+// NOTE: These constants mirror the UI3 style constants in dropdown-menu.tsx.
+// Keep both files aligned when the UI3 visual design changes.
 const labMenuUi3OpenAnimationClass =
   'data-[open]:[animation-delay:-35ms] data-[open]:[animation-duration:90ms] data-[open]:[animation-fill-mode:both] data-[open]:[animation-timing-function:cubic-bezier(0.16,1,0.3,1)] data-[open]:[--tw-enter-opacity:0.28] data-[open]:[--tw-enter-scale:0.985] data-[open]:[--tw-enter-translate-y:-1px] motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none';
 const labMenuUi3ContentClass = `w-[208px] rounded-[13px] border-0 bg-[#1e1e1e] p-2 text-white shadow-[0_0_0.5px_0_rgba(0,0,0,0.12),0_10px_16px_0_rgba(0,0,0,0.12),0_2px_5px_0_rgba(0,0,0,0.15)] ${labMenuUi3OpenAnimationClass}`;
