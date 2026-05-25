@@ -429,7 +429,7 @@ function StepRangeControl({
   );
 }
 
-function ColorAreaPropertiesPanel() {
+export function ColorAreaPropertiesPanel() {
   const {
     colorAreaState,
     colorAreaDemos,
@@ -1275,7 +1275,7 @@ function ColorAreaPropertiesPanel() {
   );
 }
 
-function ColorSliderPropertiesPanel() {
+export function ColorSliderPropertiesPanel() {
   const { colorSliderState, setColorSliderState } = useDocsInspector();
 
   return (
@@ -1311,7 +1311,7 @@ function ColorSliderPropertiesPanel() {
   );
 }
 
-function ColorInputPropertiesPanel() {
+export function ColorInputPropertiesPanel() {
   const { colorInputState, setColorInputState } = useDocsInspector();
   const channelOptions: Array<{ value: ColorInputDemoChannel; label: string }> =
     colorInputState.model === 'rgb'
@@ -1375,30 +1375,4 @@ function ColorInputPropertiesPanel() {
       </section>
     </div>
   );
-}
-
-const PROPERTIES_PANELS = {
-  '/docs/components/color-area': ColorAreaPropertiesPanel,
-  '/docs/components/color-slider': ColorSliderPropertiesPanel,
-  '/docs/components/color-input': ColorInputPropertiesPanel,
-} as const;
-
-export function hasDocsPropertiesPanel(pathname: string): boolean {
-  return pathname in PROPERTIES_PANELS;
-}
-
-// Keep this switch aligned with PROPERTIES_PANELS. The registry drives the
-// presence check, while the explicit cases avoid React Compiler issues with
-// rendering a component selected from a dynamic object lookup.
-export function DocsPropertiesPanel({ pathname }: { pathname: string }) {
-  switch (pathname) {
-    case '/docs/components/color-area':
-      return <ColorAreaPropertiesPanel />;
-    case '/docs/components/color-slider':
-      return <ColorSliderPropertiesPanel />;
-    case '/docs/components/color-input':
-      return <ColorInputPropertiesPanel />;
-    default:
-      return null;
-  }
 }
