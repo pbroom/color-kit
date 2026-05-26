@@ -135,7 +135,7 @@ function normalizeAxesForProdFallback(
 }
 
 function hasRenderableThumbSlot(thumb: ReactNode): boolean {
-  return thumb !== undefined && thumb !== null && thumb !== false;
+  return isValidElement(thumb);
 }
 
 function countThumbs(children: ReactNode): number {

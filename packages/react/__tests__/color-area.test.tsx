@@ -93,6 +93,22 @@ describe('ColorArea', () => {
     expect(container.querySelectorAll('[data-color-area-thumb]')).toHaveLength(
       1,
     );
+    expect(container.querySelector('[data-overlay]')).toBeTruthy();
+  });
+
+  it('ignores non-element thumb slot values', () => {
+    const requested: Color = { l: 0.75, c: 0.4, h: 210, alpha: 1 };
+    const { container } = render(
+      <ColorArea
+        requested={requested}
+        onChangeRequested={() => {}}
+        thumb={true}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-color-area-thumb]')).toHaveLength(
+      1,
+    );
   });
 
   it('can suppress the default thumb without removing child content', () => {
