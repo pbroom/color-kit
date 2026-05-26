@@ -71,6 +71,19 @@ export interface ColorAreaProps extends Omit<
    * Called after each committed pointer interaction frame.
    */
   onInteractionFrame?: (stats: ColorAreaInteractionFrameStats) => void;
+  /**
+   * Explicit thumb slot rendered as the top-most ColorArea child.
+   *
+   * Prefer this over nesting `<Thumb />` when a thumb is wrapped, memoized, or
+   * supplied from another module boundary.
+   */
+  thumb?: ReactNode;
+  /**
+   * Render the default thumb when no explicit `thumb` prop or `<Thumb />` child
+   * is provided.
+   * @default true
+   */
+  showDefaultThumb?: boolean;
 }
 
 function clamp01(value: number): number {
@@ -119,6 +132,10 @@ function normalizeAxesForProdFallback(
       range: axes.y.range,
     },
   };
+}
+
+function hasRenderableThumbSlot(thumb: ReactNode): boolean {
+  return isValidElement(thumb);
 }
 
 function countThumbs(children: ReactNode): number {
@@ -209,6 +226,8 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       maxUpdateHz = 60,
       dragEpsilon = 0.0005,
       onInteractionFrame,
+      thumb,
+      showDefaultThumb = true,
       onPointerDown,
       onPointerMove,
       onPointerUp,
@@ -727,32 +746,41 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       [onPointerCancel, flushPendingPosition],
     );
 
-    const { explicitThumbCount, explicitThumb, resolvedChildren } =
+    const { explicitThumbCount, resolvedThumb, resolvedChildren } =
       useMemo(() => {
-        const thumbCount = countThumbs(children);
-        const firstThumb = findFirstThumb(children);
+        const childThumbCount = countThumbs(children);
+        const thumbSlotCount = hasRenderableThumbSlot(thumb) ? 1 : 0;
+        const thumbCount = childThumbCount + thumbSlotCount;
+        const childThumb = findFirstThumb(children);
         const nextChildren =
-          thumbCount > 0 ? pruneAllThumbs(children) : children;
+          childThumbCount > 0 ? pruneAllThumbs(children) : children;
 
         if (thumbCount > 1 && !isProductionEnvironment()) {
-          throw new Error('ColorArea allows only one <Thumb /> child.');
+          throw new Error(
+            'ColorArea allows only one thumb. Use either the thumb prop or one <Thumb /> child.',
+          );
         }
 
         return {
           explicitThumbCount: thumbCount,
-          explicitThumb: firstThumb,
+          resolvedThumb:
+            thumbSlotCount > 0 ? (
+              thumb
+            ) : childThumbCount > 0 ? (
+              childThumb
+            ) : showDefaultThumb ? (
+              <Thumb />
+            ) : null,
           resolvedChildren: nextChildren,
         };
-      }, [children]);
+      }, [children, showDefaultThumb, thumb]);
 
     useEffect(() => {
       if (explicitThumbCount <= 1 || warnedMultiThumbRef.current) {
         return;
       }
       warnedMultiThumbRef.current = true;
-      console.warn(
-        'ColorArea allows one <Thumb />. Extra thumbs were ignored.',
-      );
+      console.warn('ColorArea allows one thumb. Extra thumbs were ignored.');
     }, [explicitThumbCount]);
 
     const contextValue = useMemo(
@@ -805,7 +833,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           }}
         >
           {resolvedChildren}
-          {explicitThumbCount === 0 ? <Thumb /> : explicitThumb}
+          {resolvedThumb}
         </div>
       </ColorAreaContext.Provider>
     );
