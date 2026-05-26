@@ -282,13 +282,14 @@ Do not green-light large features on these surfaces without a decomposition plan
   - CQ-009 moved panels from `docs-right-rail.tsx` (now 106-line shell) to `docs-right-rail-panels.tsx` (1,404 lines).
   - CQ-010 added `color-area-contrast-tiers.ts` descriptor table shared by demos and panels.
   - `component-docs-data.tsx` has `supportsPropertiesPanel`, `component-doc-page.tsx` injects `inspectorDriven`, demos read optional global inspector state, and `docs-right-rail-panels.tsx` keeps a separate pathname switch.
+  - `component-docs-data.tsx` now owns `PropertiesPanel` entrypoints, and ColorSlider/ColorInput panels live in dedicated `components/panels/*-properties-panel.tsx` modules with shared segmented controls.
 - **Problem:** Panel registry extraction started but stopped at one large panels file, and a single "component has properties" concept is spread across the doc descriptor, route page, demo implementation, global context, and rail switch.
 - **Target shape:** One panel module per component demo, owned by the component descriptor. `docs-right-rail-panels.tsx` becomes a thin registry re-exporting panel entrypoints. Demos receive explicit state/adapters instead of reading optional global inspector state.
 - **Suggested slices:**
-  1. Add `PropertiesPanel`/demo adapter fields to the component descriptor.
+  1. Add `PropertiesPanel`/demo adapter fields to the component descriptor. Completed.
   2. Extract ColorArea panel (largest) beside `component-demos.tsx` or the color-area demo module.
-  3. Remove `supportsPropertiesPanel`, `inspectorDriven`, and the pathname switch once descriptors own panel lookup.
-  4. Repeat for remaining panels.
+  3. Remove `supportsPropertiesPanel`, `inspectorDriven`, and the pathname switch once descriptors own panel lookup. Descriptor lookup and the pathname switch removal are complete; `inspectorDriven` cleanup remains.
+  4. Repeat for remaining panels. ColorSlider and ColorInput extracted; ColorArea remains.
 - **Acceptance criteria:**
   - No docs component file exceeds 1k lines for panel work.
   - Adding a panel requires one new module + registry entry.
