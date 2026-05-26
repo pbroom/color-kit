@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Color } from '@color-kit/core';
 import { parse } from '@color-kit/core';
 import {
@@ -80,6 +80,14 @@ interface MultiColorInternalState {
   selectedId: string | null;
   activeGamut: GamutTarget;
   activeView: ViewModel;
+}
+
+interface PendingMultiColorUpdate {
+  sequence: number;
+  nextInternal: MultiColorInternalState;
+  interaction: ColorInteraction;
+  id?: string;
+  changedChannel?: ColorChannel;
 }
 
 function resolveColor(input: Color | string): Color {
@@ -224,6 +232,41 @@ function resolveSource(
   return interaction === 'programmatic' ? 'programmatic' : 'user';
 }
 
+function createPendingUpdate(
+  sequence: number,
+  nextInternal: MultiColorInternalState,
+  interaction: ColorInteraction,
+  id?: string,
+  changedChannel?: ColorChannel,
+): PendingMultiColorUpdate {
+  const update: PendingMultiColorUpdate = {
+    sequence,
+    nextInternal,
+    interaction,
+  };
+
+  if (id !== undefined) update.id = id;
+  if (changedChannel !== undefined) update.changedChannel = changedChannel;
+
+  return update;
+}
+
+function materializeUpdateEvent(
+  update: PendingMultiColorUpdate,
+): MultiColorUpdateEvent {
+  const event: MultiColorUpdateEvent = {
+    next: materializeState(update.nextInternal),
+    interaction: update.interaction,
+  };
+
+  if (update.id !== undefined) event.id = update.id;
+  if (update.changedChannel !== undefined) {
+    event.changedChannel = update.changedChannel;
+  }
+
+  return event;
+}
+
 export function useMultiColor(
   options: UseMultiColorOptions = {},
 ): UseMultiColorReturn {
@@ -245,12 +288,29 @@ export function useMultiColor(
         defaultView,
       ),
   );
+  const pendingUpdateSequence = useRef(0);
+  const pendingUpdates = useRef<PendingMultiColorUpdate[]>([]);
+  const [pendingUpdateVersion, setPendingUpdateVersion] = useState(0);
 
   const isControlled = controlledState !== undefined;
   const state = useMemo<MultiColorState>(
     () => controlledState ?? materializeState(internalState),
     [controlledState, internalState],
   );
+
+  useEffect(() => {
+    if (pendingUpdates.current.length === 0) return;
+
+    const updates = pendingUpdates.current;
+    pendingUpdates.current = [];
+    const flushedSequences = new Set<number>();
+
+    for (const update of updates) {
+      if (flushedSequences.has(update.sequence)) continue;
+      flushedSequences.add(update.sequence);
+      onChange?.(materializeUpdateEvent(update));
+    }
+  }, [onChange, pendingUpdateVersion]);
 
   const applyUpdate = useCallback(
     (
@@ -263,28 +323,40 @@ export function useMultiColor(
         const current = internalFromState(controlledState);
         const nextInternal = updater(current);
         if (nextInternal === current) return;
-        const next = materializeState(nextInternal);
-        onChange?.({
-          next,
-          interaction,
-          id,
-          changedChannel,
-        });
+        onChange?.(
+          materializeUpdateEvent(
+            createPendingUpdate(
+              0,
+              nextInternal,
+              interaction,
+              id,
+              changedChannel,
+            ),
+          ),
+        );
         return;
       }
 
+      const sequence = pendingUpdateSequence.current + 1;
+      pendingUpdateSequence.current = sequence;
+
       setInternalState((current) => {
         const nextInternal = updater(current);
-        if (nextInternal !== current) {
-          onChange?.({
-            next: materializeState(nextInternal),
+        if (nextInternal === current) return current;
+
+        pendingUpdates.current.push(
+          createPendingUpdate(
+            sequence,
+            nextInternal,
             interaction,
             id,
             changedChannel,
-          });
-        }
+          ),
+        );
+
         return nextInternal;
       });
+      setPendingUpdateVersion(sequence);
     },
     [controlledState, isControlled, onChange],
   );
@@ -430,7 +502,7 @@ export function useMultiColor(
   );
 
   const removeColor = useCallback(
-    (id: string, source: ColorSource = 'programmatic') => {
+    (id: string, _source: ColorSource = 'programmatic') => {
       applyUpdate(
         (current) => {
           if (!current.entries[id]) return current;
@@ -440,7 +512,7 @@ export function useMultiColor(
           for (const entryId of nextOrder) {
             const entry = current.entries[entryId];
             if (!entry) continue;
-            nextEntries[entryId] = { ...entry, source };
+            nextEntries[entryId] = entry;
           }
 
           const nextSelectedId =
