@@ -7,8 +7,35 @@ import {
   runPackedPlaneQueries,
   runPlaneQueries,
   unpackPlaneQueryResults,
+  type PackedPlaneQueryResult,
   type PlaneQueryResult,
 } from '../src/index.js';
+
+function makePackedBoundaryResult(): PackedPlaneQueryResult {
+  return {
+    queryDescriptors: [
+      {
+        kind: 'gamutBoundary',
+        pathStart: 0,
+        pathCount: 1,
+        gamut: 'srgb',
+        hue: 0,
+      },
+    ],
+    pathRanges: Uint32Array.from([0, 2]),
+    pointXY: Float32Array.from([0, 0, 1, 1]),
+    pointLC: Float32Array.from([0, 0, 1, 1]),
+    pointColorLcha: Float32Array.from(
+      Array.from({ length: 8 }, () => Number.NaN),
+    ),
+  };
+}
+
+function expectInvalidPackedResult(packed: PackedPlaneQueryResult): void {
+  expect(() => unpackPlaneQueryResults(packed)).toThrow(
+    /Invalid packed plane query result/,
+  );
+}
 
 function expectBoundaryPointsClose(
   actual: Array<{ x: number; y: number; l: number; c: number }>,
@@ -238,6 +265,87 @@ describe('plane compute packing', () => {
         { x: 0, y: 1 },
       ],
     ]);
+  });
+
+  it('rejects malformed packed path range buffers', () => {
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      pathRanges: Uint32Array.from([0]),
+    });
+  });
+
+  it('rejects malformed point buffers', () => {
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      pointXY: Float32Array.from([0, 0, 1]),
+    });
+
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      pointLC: Float32Array.from([0, 0]),
+    });
+
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      pointColorLcha: Float32Array.from([0, 0, 0, 1]),
+    });
+  });
+
+  it('rejects descriptor ranges outside packed paths', () => {
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      queryDescriptors: [
+        {
+          kind: 'gamutBoundary',
+          pathStart: 1,
+          pathCount: 1,
+          gamut: 'srgb',
+          hue: 0,
+        },
+      ],
+    });
+  });
+
+  it('rejects path ranges outside packed points', () => {
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      pathRanges: Uint32Array.from([1, 2]),
+    });
+  });
+
+  it('rejects gamut-region visible ranges outside packed paths', () => {
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      queryDescriptors: [
+        {
+          kind: 'gamutRegion',
+          pathStart: 0,
+          pathCount: 1,
+          regionPathStart: 1,
+          regionPathCount: 1,
+          gamut: 'srgb',
+          scope: 'viewport',
+          solver: 'implicit-contour',
+          viewportRelation: 'intersects',
+        },
+      ],
+    });
+
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      queryDescriptors: [
+        {
+          kind: 'gamutRegion',
+          pathStart: 0,
+          pathCount: 1,
+          regionPathCount: 1,
+          gamut: 'srgb',
+          scope: 'viewport',
+          solver: 'implicit-contour',
+          viewportRelation: 'intersects',
+        },
+      ],
+    });
   });
 
   it('keeps packed LC/LCHA schema stable for non-OKLCH planes', () => {
