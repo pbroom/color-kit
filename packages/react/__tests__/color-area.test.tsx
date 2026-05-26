@@ -2,9 +2,12 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
+import { memo } from 'react';
 import type { Color } from '@color-kit/core';
 import { ColorArea } from '../src/color-area.js';
 import { Thumb } from '../src/thumb.js';
+
+const MemoThumb = memo(Thumb);
 
 afterEach(() => {
   cleanup();
@@ -68,6 +71,44 @@ describe('ColorArea', () => {
     expect(root?.lastElementChild).toBe(thumb);
     expect(thumb?.style.zIndex).toBe('2147483647');
     expect(root?.style.overflow).toBe('visible');
+  });
+
+  it('renders an explicit thumb slot without child type detection', () => {
+    const requested: Color = { l: 0.75, c: 0.4, h: 210, alpha: 1 };
+    const { container } = render(
+      <ColorArea
+        requested={requested}
+        onChangeRequested={() => {}}
+        thumb={<MemoThumb data-explicit-thumb="" />}
+      >
+        <div data-overlay="" />
+      </ColorArea>,
+    );
+
+    const root = container.querySelector('[data-color-area]');
+    const thumb = root?.querySelector('[data-explicit-thumb]');
+    expect(thumb).toBeTruthy();
+    expect(thumb?.parentElement).toBe(root);
+    expect(root?.lastElementChild).toBe(thumb);
+    expect(container.querySelectorAll('[data-color-area-thumb]')).toHaveLength(
+      1,
+    );
+  });
+
+  it('can suppress the default thumb without removing child content', () => {
+    const requested: Color = { l: 0.75, c: 0.4, h: 210, alpha: 1 };
+    const { container } = render(
+      <ColorArea
+        requested={requested}
+        onChangeRequested={() => {}}
+        showDefaultThumb={false}
+      >
+        <div data-overlay="" />
+      </ColorArea>,
+    );
+
+    expect(container.querySelector('[data-overlay]')).toBeTruthy();
+    expect(container.querySelector('[data-color-area-thumb]')).toBeNull();
   });
 
   it('emits keyboard updates as requested changes', () => {
@@ -340,6 +381,21 @@ describe('ColorArea', () => {
           <Thumb />
         </ColorArea>,
       ),
-    ).toThrowError(/one <Thumb/);
+    ).toThrowError(/one thumb/);
+  });
+
+  it('throws when both thumb APIs are provided', () => {
+    const requested: Color = { l: 0.5, c: 0.2, h: 120, alpha: 1 };
+    expect(() =>
+      render(
+        <ColorArea
+          requested={requested}
+          onChangeRequested={() => {}}
+          thumb={<Thumb />}
+        >
+          <Thumb />
+        </ColorArea>,
+      ),
+    ).toThrowError(/thumb prop or one <Thumb/);
   });
 });

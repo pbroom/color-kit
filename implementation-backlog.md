@@ -305,11 +305,12 @@ Do not green-light large features on these surfaces without a decomposition plan
   - `packages/react/src/color-area.tsx` — 813 lines; ~300 lines of pointer/RAF/coalesced-events logic in one narrative.
   - Adaptive quality from measured frame times; window-level drag continuation — cohesive but dense.
   - `ColorArea` recursively counts, finds, and prunes `<Thumb />` children by `child.type === Thumb`, then reinjects the first thumb; wrappers, memoized thumbs, or duplicate module instances can break this implicit slot contract.
+  - `ColorArea` now accepts an explicit `thumb` slot and `showDefaultThumb` toggle, preserving existing `<Thumb />` child behavior while giving wrapped/memoized thumbs a stable composition path.
 - **Problem:** Many refs/effects in one component reduce testability. Pointer pipeline is a distinct subsystem from context provisioning, and child surgery makes thumb composition magical instead of explicit.
 - **Target shape:** `useColorAreaPointerInteraction()` hook; `ColorArea` becomes shell + context (~400 lines). Replace recursive thumb introspection with an explicit slot contract (`thumb`, `showDefaultThumb`, or a tiny registration component).
 - **Suggested slices:**
   1. Extract hook with existing behavior tests as guard.
-  2. Add explicit thumb slot API while preserving the existing child API temporarily if needed.
+  2. Add explicit thumb slot API while preserving the existing child API temporarily if needed. Completed.
   3. Slim `ColorArea` to composition only.
 - **Acceptance criteria:**
   - Pointer interaction testable without full ColorArea render tree.
