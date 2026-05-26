@@ -41,14 +41,12 @@ const ColorAreaPropertiesPanel = lazy(() =>
   })),
 );
 const ColorSliderPropertiesPanel = lazy(() =>
-  import('@/components/panels/color-slider-properties-panel').then(
-    (module) => ({
-      default: module.ColorSliderPropertiesPanel,
-    }),
-  ),
+  import('@/components/docs-right-rail-panels').then((module) => ({
+    default: module.ColorSliderPropertiesPanel,
+  })),
 );
 const ColorInputPropertiesPanel = lazy(() =>
-  import('@/components/panels/color-input-properties-panel').then((module) => ({
+  import('@/components/docs-right-rail-panels').then((module) => ({
     default: module.ColorInputPropertiesPanel,
   })),
 );
@@ -257,4 +255,9 @@ export function Picker() {
 
 export function getComponentDoc(slug: string): ComponentDocData | undefined {
   return docs[slug];
+}
+
+export function getComponentDocSlug(pathname: string): string | null {
+  const match = /^\/docs\/components\/([^/]+)\/?$/.exec(pathname);
+  return match?.[1] ?? null;
 }
