@@ -1,14 +1,34 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import PlaneApiPlaygroundDemo from './plane-api-playground.demo.js';
 import { DeferredMount } from './deferred-mount.js';
 import {
   loadPlaneApiPlaygroundLabSource,
   loadPlaneApiPlaygroundSource,
 } from './plane-api-playground.source.js';
 
+const PlaneApiPlaygroundDemo = lazy(
+  () => import('./plane-api-playground.demo.js'),
+);
 const PlaneApiPlaygroundSandpack = lazy(
   () => import('./plane-api-playground.sandpack.js'),
 );
+
+function PlaneDemoPreviewPlaceholder() {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      role="img"
+      aria-label="Plane API preview loading"
+    >
+      <path
+        d="M 8 90 L 16 72 L 24 58 L 34 44 L 47 32 L 61 24 L 74 19 L 86 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        opacity="0.55"
+      />
+    </svg>
+  );
+}
 
 function PlaneQuickStartStaticPreview() {
   return (
@@ -20,9 +40,14 @@ function PlaneQuickStartStaticPreview() {
         border: '1px solid oklch(50% 0 0 / 0.1)',
         borderRadius: '0.5rem',
         overflow: 'hidden',
+        display: 'grid',
+        placeItems: 'center',
+        color: '#dbe7ff',
       }}
     >
-      <PlaneApiPlaygroundDemo />
+      <Suspense fallback={<PlaneDemoPreviewPlaceholder />}>
+        <PlaneApiPlaygroundDemo />
+      </Suspense>
     </div>
   );
 }
