@@ -15,7 +15,40 @@ function formatList(items) {
   return items.map((item) => `- ${item}`).join('\n');
 }
 
+function findDuplicates(items) {
+  const seen = new Set();
+  const duplicates = new Set();
+
+  for (const item of items) {
+    if (seen.has(item)) {
+      duplicates.add(item);
+    } else {
+      seen.add(item);
+    }
+  }
+
+  return [...duplicates].sort();
+}
+
 function assertSameSet(label, left, right) {
+  const leftDuplicates = findDuplicates(left);
+  const rightDuplicates = findDuplicates(right);
+
+  if (leftDuplicates.length || rightDuplicates.length) {
+    const details = [
+      leftDuplicates.length
+        ? `Duplicated in docs navigation:\n${formatList(leftDuplicates)}`
+        : '',
+      rightDuplicates.length
+        ? `Duplicated in component docs data:\n${formatList(rightDuplicates)}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    throw new Error(`${label} contain duplicates.\n\n${details}`);
+  }
+
   const leftSet = new Set(left);
   const rightSet = new Set(right);
   const missing = [...leftSet].filter((item) => !rightSet.has(item));
@@ -37,11 +70,27 @@ function assertSameSet(label, left, right) {
   throw new Error(`${label} are out of sync.\n\n${details}`);
 }
 
-const entries = await readdir(componentContentDir);
-const staleMdxFiles = entries
-  .filter((entry) => entry.endsWith('.mdx'))
-  .map((entry) => path.join('src/content/components', entry))
-  .sort();
+async function findMdxFiles(dir, relativeDir = '') {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const entryRelativePath = path.join(relativeDir, entry.name);
+      const entryPath = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        return findMdxFiles(entryPath, entryRelativePath);
+      }
+
+      return entry.isFile() && entry.name.endsWith('.mdx')
+        ? [path.join('src/content/components', entryRelativePath)]
+        : [];
+    }),
+  );
+
+  return files.flat();
+}
+
+const staleMdxFiles = (await findMdxFiles(componentContentDir)).sort();
 
 if (staleMdxFiles.length > 0) {
   throw new Error(

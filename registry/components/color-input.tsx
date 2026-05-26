@@ -252,6 +252,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           {channelGlyph}
         </div>
         <input
+          {...inputProps}
           ref={inputRef}
           type="text"
           role="spinbutton"
