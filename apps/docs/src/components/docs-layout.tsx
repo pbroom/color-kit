@@ -27,6 +27,10 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import {
+  getComponentDoc,
+  getComponentDocSlug,
+} from '../content/components/component-docs-data.js';
 import { docsNavigation } from '../content/docs-registry.js';
 import {
   DocsInspectorProvider,
@@ -93,6 +97,13 @@ function readSidebarDefaultOpen(): boolean {
   return true;
 }
 
+function hasDescriptorPropertiesPanel(pathname: string): boolean {
+  const componentSlug = getComponentDocSlug(pathname);
+  return componentSlug
+    ? Boolean(getComponentDoc(componentSlug)?.PropertiesPanel)
+    : false;
+}
+
 function DocsSidebarNavConnected({ pathname }: { pathname: string }) {
   const { setOpenMobile } = useSidebar();
   return (
@@ -130,8 +141,9 @@ function DocsLayoutInner() {
   });
   const [panelsSheetOpen, setPanelsSheetOpen] = useState(false);
   const { setActiveTab } = useDocsInspector();
-  const supportsPropertiesPanel =
-    location.pathname.startsWith('/docs/components/');
+  const supportsPropertiesPanel = hasDescriptorPropertiesPanel(
+    location.pathname,
+  );
   const headings =
     headingsState.pathname === location.pathname ? headingsState.items : [];
   const closeSheetsOnRouteChange = useEffectEvent(() => {

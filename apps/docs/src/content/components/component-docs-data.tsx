@@ -6,6 +6,9 @@ type ComponentDemoProps = { inspectorDriven?: boolean };
 type ComponentDocDemo =
   | ComponentType<ComponentDemoProps>
   | LazyExoticComponent<ComponentType<ComponentDemoProps>>;
+type ComponentPropertiesPanel =
+  | ComponentType
+  | LazyExoticComponent<ComponentType>;
 
 const ColorAreaDemo = lazy(() =>
   import('@/components/component-demos').then((module) => ({
@@ -32,6 +35,21 @@ const ColorStringInputDemo = lazy(() =>
     default: module.ColorStringInputDemo,
   })),
 );
+const ColorAreaPropertiesPanel = lazy(() =>
+  import('@/components/docs-right-rail-panels').then((module) => ({
+    default: module.ColorAreaPropertiesPanel,
+  })),
+);
+const ColorSliderPropertiesPanel = lazy(() =>
+  import('@/components/docs-right-rail-panels').then((module) => ({
+    default: module.ColorSliderPropertiesPanel,
+  })),
+);
+const ColorInputPropertiesPanel = lazy(() =>
+  import('@/components/docs-right-rail-panels').then((module) => ({
+    default: module.ColorInputPropertiesPanel,
+  })),
+);
 
 export interface ComponentDocData {
   slug: string;
@@ -46,7 +64,7 @@ export interface ComponentDocData {
   accessibility: string[];
   props: ApiTableRow[];
   anatomy: string;
-  supportsPropertiesPanel?: boolean;
+  PropertiesPanel?: ComponentPropertiesPanel;
 }
 
 type ComponentDocRegistry = Record<string, ComponentDocData>;
@@ -133,7 +151,7 @@ export function Picker() {
     ],
     props: componentApiDocs.colorArea,
     anatomy: `<ColorArea>\n  <Background />\n  <ColorPlane />\n  <Thumb />\n</ColorArea>`,
-    supportsPropertiesPanel: true,
+    PropertiesPanel: ColorAreaPropertiesPanel,
   },
   'color-slider': {
     slug: 'color-slider',
@@ -173,7 +191,7 @@ export function Picker() {
     ],
     props: componentApiDocs.colorSlider,
     anatomy: `<ColorSlider>\n  <div data-color-slider-thumb />\n  <SliderMarker />\n  <ChromaMarkers />\n</ColorSlider>`,
-    supportsPropertiesPanel: true,
+    PropertiesPanel: ColorSliderPropertiesPanel,
   },
   'color-input': {
     slug: 'color-input',
@@ -203,7 +221,7 @@ export function Picker() {
     ],
     props: componentApiDocs.colorInput,
     anatomy: `<ColorInput>\n  <div data-color-input-scrub-handle />\n  <input role="spinbutton" />\n</ColorInput>`,
-    supportsPropertiesPanel: true,
+    PropertiesPanel: ColorInputPropertiesPanel,
   },
   'color-string-input': {
     slug: 'color-string-input',
@@ -237,4 +255,9 @@ export function Picker() {
 
 export function getComponentDoc(slug: string): ComponentDocData | undefined {
   return docs[slug];
+}
+
+export function getComponentDocSlug(pathname: string): string | null {
+  const match = /^\/docs\/components\/([^/]+)\/?$/.exec(pathname);
+  return match?.[1] ?? null;
 }

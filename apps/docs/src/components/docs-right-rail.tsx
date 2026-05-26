@@ -1,12 +1,26 @@
+import { lazy } from 'react';
 import { useLocation } from 'react-router';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getComponentDocSlug } from '@/content/components/component-docs-data';
 import { cn } from '@/lib/utils';
 import { useDocsInspector } from './docs-inspector-context.js';
-import {
-  DocsPropertiesPanel,
-  hasDocsPropertiesPanel,
-} from './docs-right-rail-panels.js';
+
+const ColorAreaPropertiesPanel = lazy(() =>
+  import('./docs-right-rail-panels.js').then((module) => ({
+    default: module.ColorAreaPropertiesPanel,
+  })),
+);
+const ColorSliderPropertiesPanel = lazy(() =>
+  import('./docs-right-rail-panels.js').then((module) => ({
+    default: module.ColorSliderPropertiesPanel,
+  })),
+);
+const ColorInputPropertiesPanel = lazy(() =>
+  import('./docs-right-rail-panels.js').then((module) => ({
+    default: module.ColorInputPropertiesPanel,
+  })),
+);
 
 export interface DocsHeading {
   id: string;
@@ -42,6 +56,19 @@ function OutlinePanel({ headings }: { headings: DocsHeading[] }) {
   );
 }
 
+function renderDocsPropertiesPanel(slug: string | null) {
+  switch (slug) {
+    case 'color-area':
+      return <ColorAreaPropertiesPanel />;
+    case 'color-slider':
+      return <ColorSliderPropertiesPanel />;
+    case 'color-input':
+      return <ColorInputPropertiesPanel />;
+    default:
+      return null;
+  }
+}
+
 export function DocsRightRail({
   headings,
   className,
@@ -51,7 +78,8 @@ export function DocsRightRail({
 }) {
   const { pathname } = useLocation();
   const { activeTab, setActiveTab } = useDocsInspector();
-  const hasPropertiesPanel = hasDocsPropertiesPanel(pathname);
+  const componentSlug = getComponentDocSlug(pathname);
+  const propertiesPanel = renderDocsPropertiesPanel(componentSlug);
 
   return (
     <aside className={cn('docs-right-rail ck-rightrail-panel', className)}>
@@ -93,8 +121,8 @@ export function DocsRightRail({
             <div className="ck-rightrail-content">
               {activeTab === 'outline' ? (
                 <OutlinePanel headings={headings} />
-              ) : hasPropertiesPanel ? (
-                <DocsPropertiesPanel pathname={pathname} />
+              ) : propertiesPanel ? (
+                propertiesPanel
               ) : (
                 <p className="docs-right-empty">
                   No live demo controls are available for this page yet.

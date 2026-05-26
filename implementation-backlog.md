@@ -405,21 +405,24 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-017 — Simplify multi-color collection state
 
 - **Priority:** P2
-- **Status:** Open
+- **Status:** Completed 2026-05-25
 - **Evidence:**
   - `packages/react/src/use-multi-color.ts` stores shared `activeGamut`/`activeView` on `MultiColorState`.
   - Each nested `ColorState` also stores `activeGamut`/`activeView`, forcing the hook to rebuild all entries when shared display context changes.
   - Collection operations such as remove/rename rebuild `ColorState` maps to keep the duplicated invariant aligned.
+  - `useMultiColor` now stores requested colors plus one shared display context internally, then materializes the existing public `MultiColorState` shape at the hook boundary.
+  - `packages/react/__tests__/multi-color-state.test.tsx` covers batched add/display-context/rename/remove flows so collection edits stay deterministic.
 - **Problem:** The collection stores the same display invariant in two places. That makes updates more stateful and less atomic than the conceptual model: many requested colors plus one shared display context.
 - **Target shape:** Store requested colors plus one shared display context. Derive per-entry `ColorState`s through selectors/helpers at the boundary where consumers need full color state.
 - **Suggested slices:**
-  1. Add tests around batched gamut/view changes, remove, rename, and selection.
-  2. Introduce a normalized internal state model with requested colors + shared context.
-  3. Preserve the public `MultiColorState` shape if needed via a compatibility selector, then evaluate a typed public model cleanup.
+  1. Add tests around batched gamut/view changes, remove, rename, and selection. Completed.
+  2. Introduce a normalized internal state model with requested colors + shared context. Completed.
+  3. Preserve the public `MultiColorState` shape if needed via a compatibility selector, then evaluate a typed public model cleanup. Completed with public shape preserved.
 - **Acceptance criteria:**
   - Shared gamut/view updates do not rebuild duplicated state by hand.
   - Batched multi-entry edits remain deterministic.
   - Public hook behavior remains unchanged.
+- **Completed:** Normalized the hook's internal state to requested colors plus shared display context, preserved the exported `MultiColorState` shape, and added regression coverage for batched display-context and collection edits.
 
 ---
 

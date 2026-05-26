@@ -72,7 +72,7 @@ export function ComponentDocPage({ doc }: { doc: ComponentDocData }) {
           <DeferredMount minHeight={320} fallback={<DemoFallback />}>
             <Suspense fallback={<DemoFallback />}>
               {createElement(Demo, {
-                ...(doc.supportsPropertiesPanel
+                ...(doc.PropertiesPanel
                   ? { inspectorDriven: true as const }
                   : {}),
               })}
