@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import {
   inP3Gamut,
   inSrgbGamut,
+  packPlaneQueryResults,
   toSrgbGamut,
   type Color,
 } from '@color-kit/core';
@@ -78,6 +79,23 @@ function pointInPolygon(
     if (intersects) inside = !inside;
   }
   return inside;
+}
+
+function packContrastRegionWorkerResult(
+  paths: Array<Array<{ l: number; c: number; x: number; y: number }>>,
+) {
+  return packPlaneQueryResults([
+    {
+      kind: 'contrastRegion',
+      hue: 210,
+      paths: paths.map((path) =>
+        path.map((point) => ({
+          ...point,
+          y: 1 - point.y,
+        })),
+      ),
+    },
+  ]);
 }
 
 function pathContainsPoint(
@@ -538,7 +556,9 @@ describe('ColorArea primitives', () => {
       postMessage(message: { id: number }): void {
         const payload = {
           id: message.id,
-          paths: message.id === 1 ? firstResponsePaths : [],
+          result: packContrastRegionWorkerResult(
+            message.id === 1 ? firstResponsePaths : [],
+          ),
           computeTimeMs: 1,
         };
         queueMicrotask(() => {
@@ -645,13 +665,13 @@ describe('ColorArea primitives', () => {
       postMessage(message: { id: number }): void {
         const payload = {
           id: message.id,
-          paths: [
+          result: packContrastRegionWorkerResult([
             [
               { l: 0.2, c: 0.18, x: 0.2, y: 0.82 },
               { l: 0.5, c: 0.32, x: 0.5, y: 0.55 },
               { l: 0.8, c: 0.2, x: 0.8, y: 0.8 },
             ],
-          ],
+          ]),
           backend: 'js',
           schedule: {
             bucketKey: 'contrastRegion|drag',
@@ -808,13 +828,13 @@ describe('ColorArea primitives', () => {
       postMessage(message: { id: number }): void {
         const payload = {
           id: message.id,
-          paths: [
+          result: packContrastRegionWorkerResult([
             [
               { l: 0.2, c: 0.18, x: 0.2, y: 0.82 },
               { l: 0.5, c: 0.32, x: 0.5, y: 0.55 },
               { l: 0.8, c: 0.2, x: 0.8, y: 0.8 },
             ],
-          ],
+          ]),
           backend: 'js',
           schedule: {
             bucketKey: 'contrastRegion|drag',
@@ -969,13 +989,13 @@ describe('ColorArea primitives', () => {
         postMessage(message: { id: number }): void {
           const payload = {
             id: message.id,
-            paths: [
+            result: packContrastRegionWorkerResult([
               [
                 { l: 0.2, c: 0.16, x: 0.2, y: 0.82 },
                 { l: 0.5, c: 0.3, x: 0.5, y: 0.56 },
                 { l: 0.8, c: 0.18, x: 0.8, y: 0.8 },
               ],
-            ],
+            ]),
             backend: 'wasm',
             schedule: {
               bucketKey: 'contrastRegion|drag',

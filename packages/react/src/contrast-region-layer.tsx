@@ -344,14 +344,6 @@ function toColorAreaContrastRegionPaths(
   );
 }
 
-function hasLegacyWorkerPaths(
-  payload: PlaneQueryWorkerResponse,
-): payload is PlaneQueryWorkerResponse & {
-  paths: ColorAreaContrastRegionPoint[][];
-} {
-  return Array.isArray((payload as unknown as { paths?: unknown }).paths);
-}
-
 const CLOSED_PATH_TOLERANCE = 1e-6;
 const BOUNDARY_CONNECT_TOLERANCE = 0.02;
 const BOUNDARY_SNAP_TOLERANCE = 0.008;
@@ -1490,9 +1482,6 @@ export function ContrastRegionLayer({
         nextPaths = contrastRegionResult
           ? toColorAreaContrastRegionPaths(contrastRegionResult)
           : [];
-      } else if (hasLegacyWorkerPaths(payload)) {
-        // Legacy worker payload compatibility during rollout.
-        nextPaths = payload.paths;
       } else if (syncComputation) {
         emitMetrics({
           source: 'sync',
