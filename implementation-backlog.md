@@ -33,22 +33,23 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-001 — Stop registry drift: thin wrappers + CI parity gate
 
 - **Priority:** P0
-- **Status:** Open
+- **Status:** Completed 2026-05-25
 - **Evidence:**
-  - `registry/components/color-input.tsx` (1,388 lines) reimplements scrub, expression parser, and channel logic inline; does not import `@color-kit/control-kit`.
-  - `registry/components/color-area.tsx` (1,020 lines) bundles 11 surfaces; lacks performance profiles, worker-backed queries, and Legend State integration present in `@color-kit/react`.
+  - `registry/components/color-input.tsx` now mirrors the canonical `packages/react/src/color-input.tsx` adapter and delegates parsing/scrubbing to `color-kit/react` + `color-kit/control-kit`.
+  - `scripts/check-registry-sync.mjs` runs through `pnpm check:preprod` so CI rejects color-input registry drift, missing registry dependencies, or a reintroduced local parser/scrub fork.
+  - `registry/components/color-area.tsx` remains an intentional standalone registry subset; known gaps are performance profiles, worker-backed queries, and Legend State integration from `@color-kit/react`.
   - `packages/react/src/color-input.tsx` (303 lines) is the canonical thin adapter over `usePrimitiveValueInput` + `api/color-input.ts`.
-  - No `registry:sync` script or CI parity gate exists.
-- **Problem:** Shadcn/registry consumers get a stale second implementation. Bug fixes in `control-kit` and `react` do not flow to registry without manual copy-paste. Expression parser exists in three places (registry, `api/color-input.ts`, lab via react API).
-- **Target shape:** Registry components are generated or thin-re-export from published packages. CI fails when public surfaces diverge. Single expression-parser source in `packages/react/src/api/color-input.ts`.
+- **Problem:** Shadcn/registry consumers had a stale second color-input implementation. Bug fixes in `control-kit` and `react` did not flow to registry without manual copy-paste.
+- **Target shape:** Registry color-input mirrors the published package adapter, CI fails when the registry surface drifts, and expression parsing lives in `packages/react/src/api/color-input.ts`.
 - **Suggested slices:**
-  1. Rewrite `registry/components/color-input.tsx` as a thin mirror of `packages/react/src/color-input.tsx`; add `control-kit` as a registry dependency.
-  2. Add `pnpm registry:sync` (copy + rewrite imports) or a CI contract test that diffs exported symbols against `@color-kit/react`.
-  3. Plan `color-area` generation from react modules (or document intentional subset with explicit gap list).
+  1. Rewrite `registry/components/color-input.tsx` as a thin mirror of `packages/react/src/color-input.tsx`; add `control-kit` as a registry dependency. Completed.
+  2. Add `pnpm registry:sync` (copy + rewrite imports) or a CI contract test that diffs exported symbols against `@color-kit/react`. Completed with `pnpm registry:check`.
+  3. Plan `color-area` generation from react modules (or document intentional subset with explicit gap list). Completed by documenting the current registry subset gaps above.
 - **Acceptance criteria:**
   - Registry color-input delegates to `usePrimitiveValueInput` and `api/color-input` helpers.
   - CI catches registry/react API drift.
   - Duplicated expression parser and scrub engine removed from registry.
+- **Completed:** Replaced the registry color-input fork with the package helper path, added the `color` registry dependency, and wired `pnpm check:preprod` to fail on color-input registry drift.
 
 ---
 
