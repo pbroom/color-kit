@@ -330,6 +330,22 @@ describe('plane compute packing', () => {
         },
       ],
     });
+
+    expectInvalidPackedResult({
+      ...makePackedBoundaryResult(),
+      queryDescriptors: [
+        {
+          kind: 'gamutRegion',
+          pathStart: 0,
+          pathCount: 1,
+          regionPathCount: 1,
+          gamut: 'srgb',
+          scope: 'viewport',
+          solver: 'implicit-contour',
+          viewportRelation: 'intersects',
+        },
+      ],
+    });
   });
 
   it('keeps packed LC/LCHA schema stable for non-OKLCH planes', () => {
