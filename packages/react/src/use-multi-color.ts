@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Color } from '@color-kit/core';
 import { parse } from '@color-kit/core';
 import {
@@ -69,8 +69,43 @@ export interface UseMultiColorReturn {
   renameColor: (id: string, nextId: string, source?: ColorSource) => void;
 }
 
+interface MultiColorEntryState {
+  requested: Color;
+  source: ColorSource;
+}
+
+interface MultiColorInternalState {
+  entries: Record<string, MultiColorEntryState>;
+  order: string[];
+  selectedId: string | null;
+  activeGamut: GamutTarget;
+  activeView: ViewModel;
+}
+
+interface PendingMultiColorUpdate {
+  sequence: number;
+  nextInternal: MultiColorInternalState;
+  interaction: ColorInteraction;
+  id?: string;
+  changedChannel?: ColorChannel;
+}
+
 function resolveColor(input: Color | string): Color {
   return typeof input === 'string' ? parse(input) : input;
+}
+
+function cloneColor(color: Color): Color {
+  return { ...color };
+}
+
+function createEntry(
+  input: Color | string,
+  source: ColorSource = 'programmatic',
+): MultiColorEntryState {
+  return {
+    requested: cloneColor(resolveColor(input)),
+    source,
+  };
 }
 
 function normalizeInputColors(
@@ -90,38 +125,103 @@ function normalizeInputColors(
     : [{ id: 'color-1', color: { l: 0.6, c: 0.2, h: 250, alpha: 1 } }];
 }
 
-function buildState(
+function buildInternalState(
   colorsInput: MultiColorInput | undefined,
   selectedIdInput: string | undefined,
   activeGamut: GamutTarget,
   activeView: ViewModel,
-): MultiColorState {
+): MultiColorInternalState {
   const entries = normalizeInputColors(colorsInput);
   const order: string[] = [];
-  const colors: Record<string, ColorState> = {};
+  const entryState: Record<string, MultiColorEntryState> = {};
 
   for (const entry of entries) {
-    if (colors[entry.id]) continue;
+    if (entryState[entry.id]) continue;
     order.push(entry.id);
-    colors[entry.id] = createColorState(resolveColor(entry.color), {
-      activeGamut,
-      activeView,
-      source: 'programmatic',
-    });
+    entryState[entry.id] = createEntry(entry.color);
   }
 
   const selectedId =
-    selectedIdInput && colors[selectedIdInput]
+    selectedIdInput && entryState[selectedIdInput]
       ? selectedIdInput
       : (order[0] ?? null);
 
   return {
-    colors,
+    entries: entryState,
     order,
     selectedId,
     activeGamut,
     activeView,
   };
+}
+
+function materializeState(
+  internalState: MultiColorInternalState,
+): MultiColorState {
+  const colors: Record<string, ColorState> = {};
+
+  for (const id of internalState.order) {
+    const entry = internalState.entries[id];
+    if (!entry) continue;
+    colors[id] = createColorState(entry.requested, {
+      activeGamut: internalState.activeGamut,
+      activeView: internalState.activeView,
+      source: entry.source,
+    });
+  }
+
+  return {
+    colors,
+    order: [...internalState.order],
+    selectedId: internalState.selectedId,
+    activeGamut: internalState.activeGamut,
+    activeView: internalState.activeView,
+  };
+}
+
+function internalFromState(state: MultiColorState): MultiColorInternalState {
+  const entries: Record<string, MultiColorEntryState> = {};
+  const order: string[] = [];
+
+  for (const id of state.order) {
+    const colorState = state.colors[id];
+    if (!colorState) continue;
+    order.push(id);
+    entries[id] = {
+      requested: cloneColor(colorState.requested),
+      source: colorState.meta.source,
+    };
+  }
+
+  const selectedId =
+    state.selectedId && entries[state.selectedId]
+      ? state.selectedId
+      : (order[0] ?? null);
+
+  return {
+    entries,
+    order,
+    selectedId,
+    activeGamut: state.activeGamut,
+    activeView: state.activeView,
+  };
+}
+
+function updateEntrySources(
+  entries: Record<string, MultiColorEntryState>,
+  order: string[],
+  source: ColorSource,
+): Record<string, MultiColorEntryState> {
+  let nextEntries: Record<string, MultiColorEntryState> | null = null;
+
+  for (const id of order) {
+    const entry = entries[id];
+    if (!entry || entry.source === source) continue;
+    nextEntries ??= { ...entries };
+    nextEntries[id] = { ...entry, source };
+  }
+
+  return nextEntries ?? entries;
 }
 
 function resolveSource(
@@ -130,6 +230,41 @@ function resolveSource(
 ): ColorSource {
   if (source) return source;
   return interaction === 'programmatic' ? 'programmatic' : 'user';
+}
+
+function createPendingUpdate(
+  sequence: number,
+  nextInternal: MultiColorInternalState,
+  interaction: ColorInteraction,
+  id?: string,
+  changedChannel?: ColorChannel,
+): PendingMultiColorUpdate {
+  const update: PendingMultiColorUpdate = {
+    sequence,
+    nextInternal,
+    interaction,
+  };
+
+  if (id !== undefined) update.id = id;
+  if (changedChannel !== undefined) update.changedChannel = changedChannel;
+
+  return update;
+}
+
+function materializeUpdateEvent(
+  update: PendingMultiColorUpdate,
+): MultiColorUpdateEvent {
+  const event: MultiColorUpdateEvent = {
+    next: materializeState(update.nextInternal),
+    interaction: update.interaction,
+  };
+
+  if (update.id !== undefined) event.id = update.id;
+  if (update.changedChannel !== undefined) {
+    event.changedChannel = update.changedChannel;
+  }
+
+  return event;
 }
 
 export function useMultiColor(
@@ -144,46 +279,86 @@ export function useMultiColor(
     onChange,
   } = options;
 
-  const [internalState, setInternalState] = useState<MultiColorState>(() =>
-    buildState(defaultColors, defaultSelectedId, defaultGamut, defaultView),
+  const [internalState, setInternalState] = useState<MultiColorInternalState>(
+    () =>
+      buildInternalState(
+        defaultColors,
+        defaultSelectedId,
+        defaultGamut,
+        defaultView,
+      ),
   );
+  const pendingUpdateSequence = useRef(0);
+  const pendingUpdates = useRef<PendingMultiColorUpdate[]>([]);
+  const [pendingUpdateVersion, setPendingUpdateVersion] = useState(0);
 
   const isControlled = controlledState !== undefined;
-  const state = isControlled ? controlledState : internalState;
+  const state = useMemo<MultiColorState>(
+    () => controlledState ?? materializeState(internalState),
+    [controlledState, internalState],
+  );
+
+  useEffect(() => {
+    if (pendingUpdates.current.length === 0) return;
+
+    const updates = pendingUpdates.current;
+    pendingUpdates.current = [];
+    const flushedSequences = new Set<number>();
+
+    for (const update of updates) {
+      if (flushedSequences.has(update.sequence)) continue;
+      flushedSequences.add(update.sequence);
+      onChange?.(materializeUpdateEvent(update));
+    }
+  }, [onChange, pendingUpdateVersion]);
 
   const applyUpdate = useCallback(
     (
-      updater: (current: MultiColorState) => MultiColorState,
+      updater: (current: MultiColorInternalState) => MultiColorInternalState,
       interaction: ColorInteraction,
       id?: string,
       changedChannel?: ColorChannel,
     ) => {
-      if (isControlled) {
-        const next = updater(state);
-        if (next === state) return;
-        onChange?.({
-          next,
-          interaction,
-          id,
-          changedChannel,
-        });
+      if (isControlled && controlledState) {
+        const current = internalFromState(controlledState);
+        const nextInternal = updater(current);
+        if (nextInternal === current) return;
+        onChange?.(
+          materializeUpdateEvent(
+            createPendingUpdate(
+              0,
+              nextInternal,
+              interaction,
+              id,
+              changedChannel,
+            ),
+          ),
+        );
         return;
       }
 
+      const sequence = pendingUpdateSequence.current + 1;
+      pendingUpdateSequence.current = sequence;
+
       setInternalState((current) => {
-        const next = updater(current);
-        if (next !== current) {
-          onChange?.({
-            next,
+        const nextInternal = updater(current);
+        if (nextInternal === current) return current;
+
+        pendingUpdates.current.push(
+          createPendingUpdate(
+            sequence,
+            nextInternal,
             interaction,
             id,
             changedChannel,
-          });
-        }
-        return next;
+          ),
+        );
+
+        return nextInternal;
       });
+      setPendingUpdateVersion(sequence);
     },
-    [isControlled, onChange, state],
+    [controlledState, isControlled, onChange],
   );
 
   const setRequested = useCallback(
@@ -193,19 +368,16 @@ export function useMultiColor(
 
       applyUpdate(
         (current) => {
-          if (!current.colors[id]) return current;
-
-          const nextColorState = createColorState(requested, {
-            activeGamut: current.activeGamut,
-            activeView: current.activeView,
-            source,
-          });
+          if (!current.entries[id]) return current;
 
           return {
             ...current,
-            colors: {
-              ...current.colors,
-              [id]: nextColorState,
+            entries: {
+              ...current.entries,
+              [id]: {
+                requested: cloneColor(requested),
+                source,
+              },
             },
           };
         },
@@ -226,7 +398,7 @@ export function useMultiColor(
     ) => {
       applyUpdate(
         (current) => {
-          const existing = current.colors[id];
+          const existing = current.entries[id];
           if (!existing) return current;
 
           const interaction = options.interaction ?? 'programmatic';
@@ -234,19 +406,15 @@ export function useMultiColor(
 
           return {
             ...current,
-            colors: {
-              ...current.colors,
-              [id]: createColorState(
-                {
+            entries: {
+              ...current.entries,
+              [id]: {
+                requested: {
                   ...existing.requested,
                   [channel]: value,
                 },
-                {
-                  activeGamut: current.activeGamut,
-                  activeView: current.activeView,
-                  source,
-                },
-              ),
+                source,
+              },
             },
           };
         },
@@ -263,21 +431,10 @@ export function useMultiColor(
       applyUpdate((current) => {
         if (current.activeGamut === gamut) return current;
 
-        const nextColors: Record<string, ColorState> = {};
-        for (const id of current.order) {
-          const entry = current.colors[id];
-          if (!entry) continue;
-          nextColors[id] = createColorState(entry.requested, {
-            activeGamut: gamut,
-            activeView: current.activeView,
-            source,
-          });
-        }
-
         return {
           ...current,
           activeGamut: gamut,
-          colors: nextColors,
+          entries: updateEntrySources(current.entries, current.order, source),
         };
       }, 'programmatic');
     },
@@ -289,21 +446,10 @@ export function useMultiColor(
       applyUpdate((current) => {
         if (current.activeView === view) return current;
 
-        const nextColors: Record<string, ColorState> = {};
-        for (const id of current.order) {
-          const entry = current.colors[id];
-          if (!entry) continue;
-          nextColors[id] = createColorState(entry.requested, {
-            activeGamut: current.activeGamut,
-            activeView: view,
-            source,
-          });
-        }
-
         return {
           ...current,
           activeView: view,
-          colors: nextColors,
+          entries: updateEntrySources(current.entries, current.order, source),
         };
       }, 'programmatic');
     },
@@ -314,7 +460,7 @@ export function useMultiColor(
     (id: string, interaction: ColorInteraction = 'programmatic') => {
       applyUpdate(
         (current) => {
-          if (!current.colors[id] || current.selectedId === id) return current;
+          if (!current.entries[id] || current.selectedId === id) return current;
 
           return {
             ...current,
@@ -336,21 +482,15 @@ export function useMultiColor(
     ) => {
       applyUpdate(
         (current) => {
-          if (current.colors[id]) return current;
-
-          const nextColorState = createColorState(resolveColor(color), {
-            activeGamut: current.activeGamut,
-            activeView: current.activeView,
-            source,
-          });
+          if (current.entries[id]) return current;
 
           return {
             ...current,
             order: [...current.order, id],
             selectedId: current.selectedId ?? id,
-            colors: {
-              ...current.colors,
-              [id]: nextColorState,
+            entries: {
+              ...current.entries,
+              [id]: createEntry(color, source),
             },
           };
         },
@@ -362,21 +502,17 @@ export function useMultiColor(
   );
 
   const removeColor = useCallback(
-    (id: string, source: ColorSource = 'programmatic') => {
+    (id: string, _source: ColorSource = 'programmatic') => {
       applyUpdate(
         (current) => {
-          if (!current.colors[id]) return current;
+          if (!current.entries[id]) return current;
 
           const nextOrder = current.order.filter((entryId) => entryId !== id);
-          const nextColors: Record<string, ColorState> = {};
+          const nextEntries: Record<string, MultiColorEntryState> = {};
           for (const entryId of nextOrder) {
-            const entry = current.colors[entryId];
+            const entry = current.entries[entryId];
             if (!entry) continue;
-            nextColors[entryId] = createColorState(entry.requested, {
-              activeGamut: current.activeGamut,
-              activeView: current.activeView,
-              source,
-            });
+            nextEntries[entryId] = entry;
           }
 
           const nextSelectedId =
@@ -387,7 +523,7 @@ export function useMultiColor(
           return {
             ...current,
             order: nextOrder,
-            colors: nextColors,
+            entries: nextEntries,
             selectedId: nextSelectedId,
           };
         },
@@ -402,29 +538,32 @@ export function useMultiColor(
     (id: string, nextId: string, source: ColorSource = 'programmatic') => {
       applyUpdate(
         (current) => {
-          if (id === nextId || !current.colors[id] || current.colors[nextId]) {
+          if (
+            id === nextId ||
+            !current.entries[id] ||
+            current.entries[nextId]
+          ) {
             return current;
           }
 
           const nextOrder = current.order.map((entryId) =>
             entryId === id ? nextId : entryId,
           );
-          const nextColors = { ...current.colors };
-          const existing = nextColors[id];
+          const nextEntries = { ...current.entries };
+          const existing = nextEntries[id];
           if (!existing) return current;
 
-          nextColors[nextId] = createColorState(existing.requested, {
-            activeGamut: current.activeGamut,
-            activeView: current.activeView,
+          nextEntries[nextId] = {
+            requested: cloneColor(existing.requested),
             source,
-          });
-          delete nextColors[id];
+          };
+          delete nextEntries[id];
 
           return {
             ...current,
             order: nextOrder,
             selectedId: current.selectedId === id ? nextId : current.selectedId,
-            colors: nextColors,
+            entries: nextEntries,
           };
         },
         'programmatic',
