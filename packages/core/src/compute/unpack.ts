@@ -55,19 +55,11 @@ function getPointCount(packed: PackedPlaneQueryResult): number {
 function validatePathRange(
   packed: PackedPlaneQueryResult,
   pathIndex: number,
-  pathRangeCount: number,
   pointCount: number,
 ): void {
-  assertNonNegativeInteger(pathIndex, 'path index');
-  if (pathIndex >= pathRangeCount) {
-    invalidPackedResult(`path index ${pathIndex} is outside pathRanges.`);
-  }
-
   const offset = pathIndex * 2;
   const startPoint = packed.pathRanges[offset];
   const rangePointCount = packed.pathRanges[offset + 1];
-  assertNonNegativeInteger(startPoint, `path ${pathIndex} startPoint`);
-  assertNonNegativeInteger(rangePointCount, `path ${pathIndex} pointCount`);
   if (startPoint + rangePointCount > pointCount) {
     invalidPackedResult(`path ${pathIndex} points are outside point buffers.`);
   }
@@ -111,7 +103,7 @@ function validatePackedPlaneQueryResult(packed: PackedPlaneQueryResult): void {
   const pointCount = getPointCount(packed);
 
   for (let index = 0; index < pathRangeCount; index += 1) {
-    validatePathRange(packed, index, pathRangeCount, pointCount);
+    validatePathRange(packed, index, pointCount);
   }
 
   packed.queryDescriptors.forEach((descriptor, index) => {
