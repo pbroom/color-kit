@@ -54,13 +54,6 @@ describe('createWasmPlaneComputeBackendFromKernel()', () => {
           samplingMode: 'hybrid',
           hue: 275,
         },
-        {
-          kind: 'gamutBoundary',
-          gamut: 'srgb',
-          hue: 275,
-          samplingMode: 'adaptive',
-          steps: 48,
-        },
       ],
       priority: 'drag',
       quality: 'high',
@@ -79,8 +72,70 @@ describe('createWasmPlaneComputeBackendFromKernel()', () => {
     );
     expect(contrastResult).toBeDefined();
     expect((contrastResult?.paths[0] ?? []).length).toBeGreaterThan(0);
-    expect(gamutResult).toBeDefined();
-    expect((gamutResult?.points ?? []).length).toBeGreaterThan(0);
+    expect(gamutResult).toBeUndefined();
+  });
+
+  it('advertises support only for contrast kernel requests', () => {
+    const backend = createWasmPlaneComputeBackendFromKernel(createEchoKernel());
+    const baseRequest = {
+      plane: {
+        model: 'oklch' as const,
+        x: { channel: 'l' as const, range: [0, 1] as [number, number] },
+        y: { channel: 'c' as const, range: [0, 0.4] as [number, number] },
+        fixed: { h: 275, alpha: 1 },
+      },
+      priority: 'drag' as const,
+      quality: 'high' as const,
+      performanceProfile: 'balanced' as const,
+    };
+    const contrastQuery = {
+      kind: 'contrastRegion' as const,
+      reference: { l: 0.58, c: 0.15, h: 275, alpha: 1 },
+      metric: 'wcag' as const,
+      threshold: 4.5,
+      samplingMode: 'hybrid' as const,
+      hue: 275,
+    };
+    const contrastBoundaryQuery = {
+      kind: 'contrastBoundary' as const,
+      reference: { l: 0.58, c: 0.15, h: 275, alpha: 1 },
+      metric: 'wcag' as const,
+      threshold: 4.5,
+      samplingMode: 'hybrid' as const,
+      hue: 275,
+    };
+    const gamutQuery = {
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      hue: 275,
+      samplingMode: 'adaptive' as const,
+      steps: 48,
+    };
+
+    expect(
+      backend.supportsRequest?.({
+        ...baseRequest,
+        queries: [contrastQuery],
+      }),
+    ).toBe(true);
+    expect(
+      backend.supportsRequest?.({
+        ...baseRequest,
+        queries: [contrastBoundaryQuery],
+      }),
+    ).toBe(true);
+    expect(
+      backend.supportsRequest?.({
+        ...baseRequest,
+        queries: [gamutQuery],
+      }),
+    ).toBe(false);
+    expect(
+      backend.supportsRequest?.({
+        ...baseRequest,
+        queries: [contrastQuery, gamutQuery],
+      }),
+    ).toBe(false);
   });
 
   it('throws when the kernel reports an error payload', () => {

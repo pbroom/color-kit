@@ -284,6 +284,7 @@ const WORKER_JS_FALLBACK_REASONS = new Set([
   'default-js',
   'backend-error',
   'circuit-open',
+  'unsupported-backend',
   'telemetry-regression',
 ]);
 

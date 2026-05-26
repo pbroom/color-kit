@@ -268,6 +268,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           spellCheck={false}
           autoComplete="off"
           style={{ flex: 1, minWidth: 0 }}
+          {...inputProps}
         />
       </div>
     );

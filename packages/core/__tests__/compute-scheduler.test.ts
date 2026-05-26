@@ -245,6 +245,37 @@ describe('plane compute scheduler', () => {
     ).toBe(true);
   });
 
+  it('skips unsupported non-js backends before recording telemetry', () => {
+    let wasmRunCount = 0;
+    const unsupportedWasmBackend: PlaneComputeBackend = {
+      kind: 'wasm',
+      supportsRequest: (request) =>
+        request.queries.every((query) => query.kind === 'contrastRegion'),
+      run(request) {
+        wasmRunCount += 1;
+        return createTimedBackend('wasm', 1).run(request);
+      },
+    };
+    const scheduler = createPlaneComputeScheduler({
+      backends: {
+        js: createTimedBackend('js', 6),
+        wasm: unsupportedWasmBackend,
+      },
+      options: {
+        preferredBackends: ['wasm', 'js'],
+      },
+    });
+
+    const response = scheduler.run(schedulerRequest);
+    const snapshot = scheduler.getTelemetrySnapshot();
+
+    expect(response.backend).toBe('js');
+    expect(response.schedule?.reason).toBe('unsupported-backend');
+    expect(wasmRunCount).toBe(0);
+    expect(snapshot.buckets[0]?.backends.wasm).toBeUndefined();
+    expect(snapshot.buckets[0]?.backends.js?.sampleCount).toBe(1);
+  });
+
   it('distributes batched debug timings across traced queries', () => {
     const response = createJsPlaneComputeBackend().run({
       plane: gamutRegionSchedulerRequest.plane,

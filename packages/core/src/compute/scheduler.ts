@@ -232,6 +232,17 @@ function totalTimeMs(response: PlaneComputeResponse): number {
   return response.computeTimeMs + response.marshalTimeMs;
 }
 
+function backendSupportsRequest(
+  backend: PlaneComputeBackend,
+  request: PlaneComputeRequest,
+): boolean {
+  try {
+    return backend.supportsRequest?.(request) ?? true;
+  } catch {
+    return false;
+  }
+}
+
 function cloneCircuitBreakers(
   circuitBreakers: Partial<
     Record<PlaneComputeBackendKind, PlaneComputeCircuitBreakerState>
@@ -401,9 +412,14 @@ export function createPlaneComputeScheduler({
         : config.idleRegressionRatio;
 
     let skippedForCircuit = false;
+    let skippedForUnsupported = false;
     for (const kind of config.preferredBackends) {
       const backend = backendMap[kind];
       if (!backend) {
+        continue;
+      }
+      if (!backendSupportsRequest(backend, request)) {
+        skippedForUnsupported = true;
         continue;
       }
       if (kind === 'js') {
@@ -412,7 +428,11 @@ export function createPlaneComputeScheduler({
           trace: {
             bucketKey: key,
             selectedBackend: 'js',
-            reason: skippedForCircuit ? 'circuit-open' : 'default-js',
+            reason: skippedForUnsupported
+              ? 'unsupported-backend'
+              : skippedForCircuit
+                ? 'circuit-open'
+                : 'default-js',
           },
         };
       }
@@ -467,7 +487,11 @@ export function createPlaneComputeScheduler({
       trace: {
         bucketKey: key,
         selectedBackend: 'js',
-        reason: skippedForCircuit ? 'circuit-open' : 'telemetry-regression',
+        reason: skippedForCircuit
+          ? 'circuit-open'
+          : skippedForUnsupported
+            ? 'unsupported-backend'
+            : 'telemetry-regression',
       },
     };
   };
