@@ -487,10 +487,10 @@ export function createPlaneComputeScheduler({
       trace: {
         bucketKey: key,
         selectedBackend: 'js',
-        reason: skippedForUnsupported
-          ? 'unsupported-backend'
-          : skippedForCircuit
-            ? 'circuit-open'
+        reason: skippedForCircuit
+          ? 'circuit-open'
+          : skippedForUnsupported
+            ? 'unsupported-backend'
             : 'telemetry-regression',
       },
     };

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 const COLOR_INPUT_SOURCE = 'registry/components/color-input.tsx';
 const REGISTRY_MANIFEST = 'registry/registry.json';
 
-function includesAll(source, values) {
+function findMissingValues(source, values) {
   return values.filter((value) => !source.includes(value));
 }
 
@@ -51,7 +51,7 @@ async function main() {
     'ColorApi.resolveColorInputSteps',
     'ColorApi.resolveColorInputWrap',
   ];
-  for (const missing of includesAll(
+  for (const missing of findMissingValues(
     colorInputSource,
     requiredColorApiHelpers,
   )) {

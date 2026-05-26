@@ -96,6 +96,14 @@ describe('createWasmPlaneComputeBackendFromKernel()', () => {
       samplingMode: 'hybrid' as const,
       hue: 275,
     };
+    const contrastBoundaryQuery = {
+      kind: 'contrastBoundary' as const,
+      reference: { l: 0.58, c: 0.15, h: 275, alpha: 1 },
+      metric: 'wcag' as const,
+      threshold: 4.5,
+      samplingMode: 'hybrid' as const,
+      hue: 275,
+    };
     const gamutQuery = {
       kind: 'gamutBoundary' as const,
       gamut: 'srgb' as const,
@@ -108,6 +116,12 @@ describe('createWasmPlaneComputeBackendFromKernel()', () => {
       backend.supportsRequest?.({
         ...baseRequest,
         queries: [contrastQuery],
+      }),
+    ).toBe(true);
+    expect(
+      backend.supportsRequest?.({
+        ...baseRequest,
+        queries: [contrastBoundaryQuery],
       }),
     ).toBe(true);
     expect(
