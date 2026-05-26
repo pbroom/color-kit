@@ -5,6 +5,7 @@ import {
   TextConfigField,
   ToggleField,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useCheckboxLabPageController() {
@@ -77,3 +78,5 @@ export const checkboxLabPage: LabPageDescriptor<
 };
 
 export type { CheckboxLabPageController };
+
+export const CheckboxLabActivePage = createActiveLabPage(checkboxLabPage);

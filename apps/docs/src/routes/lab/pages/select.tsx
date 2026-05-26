@@ -12,6 +12,7 @@ import {
   type SelectTriggerContent,
   type SelectTriggerIconTextPlacement,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useSelectLabPageController() {
@@ -175,3 +176,5 @@ export const selectLabPage: LabPageDescriptor<
 };
 
 export type { SelectLabPageController };
+
+export const SelectLabActivePage = createActiveLabPage(selectLabPage);

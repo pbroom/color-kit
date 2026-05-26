@@ -2,24 +2,27 @@ import { useCallback, useState } from 'react';
 import {
   Check,
   Circle,
+  Menu as MenuIcon,
+  MousePointer2,
+  Sparkles,
+  User,
+} from 'lucide-react';
+import {
   CONFIGURABLE_MENU_ITEM_IDS,
   CONFIGURABLE_MENU_ITEM_LABELS,
   DEFAULT_CONFIGURABLE_MENU_ITEMS,
-  Menu as MenuIcon,
   MenuPlaygroundStage,
-  MousePointer2,
   PANEL_TWO_COLUMN_GRID_CLASS,
   PanelSection,
   SegmentedField,
   Separator,
-  Sparkles,
   TextConfigField,
   ToggleField,
-  User,
   type ConfigurableMenuItemConfig,
   type ConfigurableMenuItemId,
   type SelectOptionId,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useMenuLabPageController() {
@@ -345,3 +348,5 @@ export const menuLabPage: LabPageDescriptor<'menu', MenuLabPageController> = {
 };
 
 export type { MenuLabPageController };
+
+export const MenuLabActivePage = createActiveLabPage(menuLabPage);

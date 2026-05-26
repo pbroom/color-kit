@@ -26,6 +26,7 @@ import {
   type ColorAreaPerformanceProfile,
   type MultiInputFieldId,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useColorPlaneLabPageController() {
@@ -337,3 +338,5 @@ export const colorPlaneLabPage: LabPageDescriptor<
 };
 
 export type { ColorPlaneLabPageController };
+
+export const PlaneLabActivePage = createActiveLabPage(colorPlaneLabPage);

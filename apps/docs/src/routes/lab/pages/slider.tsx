@@ -13,6 +13,7 @@ import {
   type SliderMarkerMode,
   type SliderOrientation,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useSliderLabPageController() {
@@ -219,3 +220,5 @@ export const sliderLabPage: LabPageDescriptor<
 };
 
 export type { SliderLabPageController };
+
+export const SliderLabActivePage = createActiveLabPage(sliderLabPage);

@@ -11,6 +11,7 @@ import {
   type ToggleButtonInteractionState,
   type ToggleButtonSelectionState,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useToggleButtonLabPageController() {
@@ -147,3 +148,6 @@ export const toggleButtonLabPage: LabPageDescriptor<
 };
 
 export type { ToggleButtonLabPageController };
+
+export const ToggleButtonLabActivePage =
+  createActiveLabPage(toggleButtonLabPage);
