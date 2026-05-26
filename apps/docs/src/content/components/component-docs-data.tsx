@@ -256,3 +256,8 @@ export function Picker() {
 export function getComponentDoc(slug: string): ComponentDocData | undefined {
   return docs[slug];
 }
+
+export function getComponentDocSlug(pathname: string): string | null {
+  const match = /^\/docs\/components\/([^/]+)\/?$/.exec(pathname);
+  return match?.[1] ?? null;
+}

@@ -27,7 +27,10 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
-import { getComponentDoc } from '../content/components/component-docs-data.js';
+import {
+  getComponentDoc,
+  getComponentDocSlug,
+} from '../content/components/component-docs-data.js';
 import { docsNavigation } from '../content/docs-registry.js';
 import {
   DocsInspectorProvider,
@@ -92,11 +95,6 @@ function readSidebarDefaultOpen(): boolean {
     // ignore
   }
   return true;
-}
-
-function getComponentDocSlug(pathname: string): string | null {
-  const match = /^\/docs\/components\/([^/]+)\/?$/.exec(pathname);
-  return match?.[1] ?? null;
 }
 
 function hasDescriptorPropertiesPanel(pathname: string): boolean {
