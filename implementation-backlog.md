@@ -146,10 +146,11 @@ Do not green-light large features on these surfaces without a decomposition plan
   - `packages/core/src/contrast/index.ts` imports `InternalPlaneTraceContext` from `../plane/trace.js` and `PlanePoint` from `../plane/types.js`.
   - `packages/core/src/plane/types.ts` imports contrast types from `../contrast/index.js`.
   - `ContrastRegionPathOptions` and `PlaneContrastRegionQuery` duplicate legacy option semantics.
+  - Shared contrast option/point types now live in `packages/core/src/contrast/types.ts`, and plane query types import from that sidecar instead of the contrast implementation barrel.
 - **Problem:** Contrast — a domain module — depends on plane diagnostics internals. Circular type pressure prevents using contrast without plane trace types. Release cycles are coupled.
 - **Target shape:** Neutral `trace/` module or callback interface. Contrast imports only types, not plane implementation. Shared contrast option types in `contrast/types.ts`.
 - **Suggested slices:**
-  1. Extract shared types to `contrast/types.ts`; have `plane/types.ts` import types only.
+  1. Extract shared types to `contrast/types.ts`; have `plane/types.ts` import types only. Completed.
   2. Replace direct `InternalPlaneTraceContext` import with optional trace callback interface.
   3. Collapse duplicated option shapes between contrast and plane query types.
 - **Acceptance criteria:**
