@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseColorInputExpression } from '../src/api/color-input.js';
+import { parseColorInputExpression } from '../src/api/color-input-parser.js';
 
 const options = {
   currentValue: 25,
@@ -18,6 +18,7 @@ describe('color input expression parser', () => {
 
   it('resolves relative expressions from the current channel value', () => {
     expect(parseColorInputExpression('+10', options)).toBeCloseTo(35, 6);
+    expect(parseColorInputExpression('-10', options)).toBeCloseTo(15, 6);
     expect(parseColorInputExpression('*2', options)).toBeCloseTo(50, 6);
     expect(parseColorInputExpression('/2', options)).toBeCloseTo(12.5, 6);
   });
