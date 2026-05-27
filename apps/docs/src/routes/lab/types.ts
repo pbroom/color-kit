@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { LabPageKey } from './shared.js';
 
-export type { LabPageNavigationItem } from './shared.js';
+export type { LabPageNavigationItem } from './lab-page-runtime.js';
 
 export type LabPageDescriptor<TKey extends LabPageKey, TController> = {
   key: TKey;

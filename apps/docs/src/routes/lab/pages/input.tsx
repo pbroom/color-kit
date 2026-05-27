@@ -4,20 +4,22 @@ import {
   ArrowLeftToLine,
   ArrowRightToLine,
   Braces,
-  BoundsConfigInput,
   Diff,
+  Infinity as InfinityIcon,
+  Option,
+  RotateCw,
+} from 'lucide-react';
+import {
+  BoundsConfigInput,
   DragStepConfigInput,
   DragThresholdConfigInput,
   DynamicLucideIcon,
-  InfinityIcon,
   LucideIconPicker,
-  Option,
   PANEL_TWO_COLUMN_GRID_CLASS,
   PanelSection,
   PrecisionConfigInput,
   PrimitiveValueInput,
   PropertyFieldTooltip,
-  RotateCw,
   SegmentedField,
   Separator,
   StepConfigInput,
@@ -32,6 +34,7 @@ import {
   type PrimitiveVisualState,
   type PrimitiveWrapMode,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useInputLabPageController() {
@@ -523,3 +526,5 @@ export const inputLabPage: LabPageDescriptor<'input', InputLabPageController> =
   };
 
 export type { InputLabPageController };
+
+export const InputLabActivePage = createActiveLabPage(inputLabPage);

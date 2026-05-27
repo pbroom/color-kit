@@ -57,7 +57,6 @@ import {
   ChevronsUpDown,
   ArrowLeftToLine,
   ArrowRightToLine,
-  Braces,
   Check,
   Circle,
   Clipboard,
@@ -78,7 +77,6 @@ import {
   Grid3X3,
   Heart,
   Image,
-  Infinity as InfinityIcon,
   Info,
   Layers,
   LinkIcon,
@@ -102,7 +100,6 @@ import {
   SlidersHorizontal,
   Sparkles,
   Star,
-  User,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -144,6 +141,10 @@ import {
   SelectListItem,
 } from './lab-menu.js';
 import { ThemeSwitcher } from '../../components/theme-switcher.js';
+import {
+  LabPageSlotProvider,
+  useLabPageSlotContent,
+} from './lab-page-slots.js';
 
 type OutputGamut = 'display-p3' | 'srgb';
 type LabPageKey =
@@ -2758,19 +2759,34 @@ type LabPageFrameProps = {
   activePage: LabPageKey;
   onPageChange: (page: LabPageKey) => void;
   pages: readonly LabPageNavigationItem[];
-  panelTooltipProviderProps: LabPanelTooltipProviderProps;
-  preview: ReactNode;
-  properties: ReactNode;
+  children: ReactNode;
 };
 
-function LabPageFrame({
+function LabPagePreviewFallback() {
+  return (
+    <div className="size-full min-h-[320px] animate-pulse rounded-[24px] bg-white/[0.04]" />
+  );
+}
+
+function LabPagePropertiesFallback() {
+  return (
+    <div className="space-y-4">
+      <div className="h-5 w-32 animate-pulse rounded bg-white/10" />
+      <div className="h-24 animate-pulse rounded-xl bg-white/[0.04]" />
+      <div className="h-24 animate-pulse rounded-xl bg-white/[0.04]" />
+    </div>
+  );
+}
+
+function LabPageFrameContent({
   activePage,
   onPageChange,
   pages,
-  panelTooltipProviderProps,
-  preview,
-  properties,
+  children,
 }: LabPageFrameProps) {
+  const { panelTooltipProviderProps, preview, properties } =
+    useLabPageSlotContent();
+
   return (
     <div className="min-h-screen overflow-hidden bg-[#171717]">
       <LabHeaderExit />
@@ -2783,7 +2799,7 @@ function LabPageFrame({
               onPageChange={onPageChange}
               pages={pages}
             />
-            {preview}
+            {preview ?? <LabPagePreviewFallback />}
           </section>
 
           <aside className="min-w-0 max-w-full overflow-hidden border-t border-white/8 p-3 lg:min-h-0 lg:border-t-0 lg:p-4">
@@ -2796,7 +2812,7 @@ function LabPageFrame({
                   }
                 >
                   <div className="w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-4">
-                    {properties}
+                    {properties ?? <LabPagePropertiesFallback />}
                   </div>
                 </TooltipProvider>
               </ScrollArea>
@@ -2804,23 +2820,25 @@ function LabPageFrame({
           </aside>
         </div>
       </main>
+      {children}
     </div>
   );
 }
 
+function LabPageFrame(props: LabPageFrameProps) {
+  return (
+    <LabPageSlotProvider>
+      <LabPageFrameContent {...props} />
+    </LabPageSlotProvider>
+  );
+}
+
 export {
-  ArrowBigDown,
-  ArrowBigUp,
-  ArrowLeftToLine,
-  ArrowRightToLine,
   Background,
   BoundsConfigInput,
-  Braces,
-  Check,
   Checkbox,
   CheckboxPlaygroundStage,
   ChromaMarkers,
-  Circle,
   ColorApi,
   ColorArea,
   ColorPlane,
@@ -2831,14 +2849,11 @@ export {
   COLOR_PLANE_MULTI_INPUT_FIELDS,
   DEFAULT_CONFIGURABLE_MENU_ITEMS,
   DEFAULT_MULTI_INPUT_CONFIG,
-  DecimalsArrowRight,
-  Diff,
   DragStepConfigInput,
   DragThresholdConfigInput,
   DynamicLucideIcon,
   FallbackPointsLayer,
   GamutBoundaryLayer,
-  InfinityIcon,
   InlineConfigurableMenuContent,
   InlineLabMenuContent,
   LAB_PANEL_SCROLL_AREA_CLASS,
@@ -2849,11 +2864,9 @@ export {
   MULTI_INPUT_FIELDS,
   Menu,
   MenuPlaygroundStage,
-  MousePointer2,
   MultiInputControl,
   MultiInputPlaygroundStage,
   NumberConfigField,
-  Option,
   PANEL_TWO_COLUMN_GRID_CLASS,
   PanelSection,
   PlacementGridField,
@@ -2861,7 +2874,6 @@ export {
   PrimitiveValueInput,
   PropertyFieldTooltip,
   Radius,
-  RotateCw,
   SELECT_OPTION_BY_ID,
   SELECT_OPTIONS,
   SLIDER_RANGE_EPSILON,
@@ -2870,14 +2882,12 @@ export {
   SelectPlaygroundStage,
   Separator,
   SliderPlaygroundStage,
-  Sparkles,
   StepConfigInput,
   TextConfigField,
   ToggleButtonPlaygroundStage,
   ToggleField,
   ToggleGroupPlaygroundStage,
   TooltipPlaygroundStage,
-  User,
   alternateAxis,
   getOklchSliderRail,
   getToggleButtonStateClass,

@@ -1,27 +1,38 @@
 import { useState } from 'react';
-import {
-  getLabPagePanelTooltipProviderProps,
-  LAB_PAGE_NAVIGATION,
-  renderLabPageSlots,
-  useLabPageControllers,
-} from './lab/page-registry.js';
+import { LAB_PAGE_NAVIGATION, LazyActiveLabPage } from './lab/page-registry.js';
 import { LabPageFrame, type LabPageKey } from './lab/shared.js';
+
+function appendVisitedPage(
+  pages: readonly LabPageKey[],
+  page: LabPageKey,
+): readonly LabPageKey[] {
+  return pages.includes(page) ? pages : [...pages, page];
+}
 
 export function LabPage() {
   const [activePage, setActivePage] = useState<LabPageKey>('plane');
-  const controllers = useLabPageControllers();
-  const slots = renderLabPageSlots(activePage, controllers);
+  const [visitedPages, setVisitedPages] = useState<readonly LabPageKey[]>([
+    'plane',
+  ]);
+
+  const handlePageChange = (page: LabPageKey) => {
+    setActivePage(page);
+    setVisitedPages((pages) => appendVisitedPage(pages, page));
+  };
 
   return (
     <LabPageFrame
       activePage={activePage}
-      onPageChange={setActivePage}
+      onPageChange={handlePageChange}
       pages={LAB_PAGE_NAVIGATION}
-      panelTooltipProviderProps={getLabPagePanelTooltipProviderProps(
-        controllers,
-      )}
-      preview={slots.preview}
-      properties={slots.properties}
-    />
+    >
+      {visitedPages.map((page) => (
+        <LazyActiveLabPage
+          key={page}
+          activePage={page}
+          isActive={page === activePage}
+        />
+      ))}
+    </LabPageFrame>
   );
 }

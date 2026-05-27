@@ -3,19 +3,21 @@ import {
   ArrowBigUp,
   ArrowLeftToLine,
   ArrowRightToLine,
-  BoundsConfigInput,
   Braces,
-  DEFAULT_MULTI_INPUT_CONFIG,
   Diff,
-  InfinityIcon,
+  Infinity as InfinityIcon,
+  Option,
+  RotateCw,
+} from 'lucide-react';
+import {
+  BoundsConfigInput,
+  DEFAULT_MULTI_INPUT_CONFIG,
   MULTI_INPUT_FIELD_BY_ID,
   MULTI_INPUT_FIELDS,
   MultiInputPlaygroundStage,
-  Option,
   PANEL_TWO_COLUMN_GRID_CLASS,
   PanelSection,
   PrecisionConfigInput,
-  RotateCw,
   SegmentedField,
   Separator,
   StepConfigInput,
@@ -23,6 +25,7 @@ import {
   type MultiInputConfig,
   type MultiInputFieldId,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useInputMultiLabPageController() {
@@ -392,3 +395,5 @@ export const inputMultiLabPage: LabPageDescriptor<
 };
 
 export type { InputMultiLabPageController };
+
+export const InputMultiLabActivePage = createActiveLabPage(inputMultiLabPage);

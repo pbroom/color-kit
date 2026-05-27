@@ -5,6 +5,7 @@ import {
   ToggleGroupPlaygroundStage,
   type ToggleGroupIconMode,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useToggleGroupLabPageController() {
@@ -68,3 +69,5 @@ export const toggleGroupLabPage: LabPageDescriptor<
 };
 
 export type { ToggleGroupLabPageController };
+
+export const ToggleGroupLabActivePage = createActiveLabPage(toggleGroupLabPage);

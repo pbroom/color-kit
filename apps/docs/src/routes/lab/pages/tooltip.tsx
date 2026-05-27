@@ -10,6 +10,7 @@ import {
   type PlacementAlign,
   type TooltipSide,
 } from '../shared.js';
+import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
 function useTooltipLabPageController() {
@@ -118,3 +119,13 @@ export const tooltipLabPage: LabPageDescriptor<
 };
 
 export type { TooltipLabPageController };
+
+export const TooltipLabActivePage = createActiveLabPage(
+  tooltipLabPage,
+  (controller) => ({
+    panelTooltipProviderProps: {
+      delayDuration: controller.delayDuration,
+      skipDelayDuration: controller.skipDelayDuration,
+    },
+  }),
+);
