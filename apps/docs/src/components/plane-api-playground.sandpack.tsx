@@ -585,7 +585,8 @@ export default function PlaneApiPlaygroundSandpack({
         visibleFiles: [appFile, '/public/index.html', '/styles.css'],
         autorun: true,
         bundlerTimeOut: 120000,
-        initMode: 'immediate',
+        initMode: 'lazy',
+        initModeObserverOptions: { rootMargin: '1000px 0px' },
         recompileDelay: 300,
         recompileMode: 'delayed',
       }}
