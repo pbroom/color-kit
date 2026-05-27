@@ -1,4 +1,3 @@
-import dynamicIconImports from 'lucide-react/dynamicIconImports';
 import { ChevronDown } from 'lucide-react';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 import {
@@ -7,6 +6,7 @@ import {
   Suspense,
   useCallback,
   useDeferredValue,
+  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -18,10 +18,53 @@ import {
 } from 'react';
 import { cn } from '@/lib/utils';
 
-/** Sorted slugs matching `lucide-react/dynamicIconImports` (lazy, per-icon chunks). */
-export const LUCIDE_DYNAMIC_ICON_SLUGS: readonly string[] = Object.keys(
-  dynamicIconImports,
-).sort((a, b) => a.localeCompare(b));
+type DynamicIconImportMap = Record<
+  string,
+  () => Promise<{ default: ComponentType<GlyphProps> }>
+>;
+
+type GlyphProps = {
+  className?: string;
+  strokeWidth?: number;
+  'aria-hidden'?: boolean | 'true';
+};
+
+type LucideGlyphComponent = ComponentType<GlyphProps>;
+
+let dynamicIconImportsCache: DynamicIconImportMap | null = null;
+let dynamicIconImportsPromise: Promise<DynamicIconImportMap> | null = null;
+let lucideIconSlugsCache: readonly string[] | null = null;
+let lucideIconSlugsPromise: Promise<readonly string[]> | null = null;
+
+async function loadDynamicIconImports(): Promise<DynamicIconImportMap> {
+  if (dynamicIconImportsCache) {
+    return dynamicIconImportsCache;
+  }
+
+  dynamicIconImportsPromise ??= import('lucide-react/dynamicIconImports').then(
+    (module) => {
+      dynamicIconImportsCache = module.default;
+      return module.default;
+    },
+  );
+
+  return dynamicIconImportsPromise;
+}
+
+async function loadLucideIconSlugs(): Promise<readonly string[]> {
+  if (lucideIconSlugsCache) {
+    return lucideIconSlugsCache;
+  }
+
+  lucideIconSlugsPromise ??= loadDynamicIconImports().then((imports) => {
+    lucideIconSlugsCache = Object.keys(imports).sort((a, b) =>
+      a.localeCompare(b),
+    );
+    return lucideIconSlugsCache;
+  });
+
+  return lucideIconSlugsPromise;
+}
 
 const ROW_HEIGHT_PX = 34;
 const LIST_MAX_HEIGHT_PX = 240;
@@ -45,19 +88,12 @@ const LUCIDE_SEARCH_ALIASES: Record<string, readonly string[]> = {
   x: ['close', 'dismiss', 'remove'],
 };
 
-type GlyphProps = {
-  className?: string;
-  strokeWidth?: number;
-  'aria-hidden'?: boolean | 'true';
-};
-
-type LucideGlyphComponent = ComponentType<GlyphProps>;
-
 type LazyLucideEntry = LazyExoticComponent<LucideGlyphComponent>;
 
 function createLazyLucideGlyph(slug: string): LazyLucideEntry {
   return lazy(async () => {
-    const load = dynamicIconImports[slug as keyof typeof dynamicIconImports];
+    const imports = await loadDynamicIconImports();
+    const load = imports[slug];
     if (!load) {
       const Fallback: LucideGlyphComponent = () => null;
       return { default: Fallback };
@@ -86,11 +122,19 @@ export function formatLucideSlugLabel(slug: string): string {
     .join(' ');
 }
 
-function resolveDynamicSlug(slug: string): string {
-  if (slug && dynamicIconImports[slug as keyof typeof dynamicIconImports]) {
-    return slug;
+function resolveDynamicSlug(
+  slug: string,
+  imports: DynamicIconImportMap | null = dynamicIconImportsCache,
+): string {
+  if (!slug) {
+    return 'circle-help';
   }
-  return 'circle-help';
+
+  if (imports) {
+    return imports[slug] ? slug : 'circle-help';
+  }
+
+  return slug;
 }
 
 function keepMenuSearchFocusedOnMouseDown(
@@ -450,10 +494,12 @@ export function LucideIconPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [allSlugs, setAllSlugs] = useState<readonly string[]>([]);
   const [immediateFiltered, setImmediateFiltered] = useState<readonly string[]>(
-    LUCIDE_DYNAMIC_ICON_SLUGS,
+    [],
   );
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const searchRef = useRef('');
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const pickerId = useId();
@@ -471,9 +517,34 @@ export function LucideIconPicker({
   );
 
   const resetSearch = useCallback(() => {
+    searchRef.current = '';
     setSearch('');
-    setImmediateFiltered(LUCIDE_DYNAMIC_ICON_SLUGS);
-  }, []);
+    setImmediateFiltered(allSlugs);
+  }, [allSlugs]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void loadLucideIconSlugs().then((slugs) => {
+      if (cancelled) {
+        return;
+      }
+
+      setAllSlugs(slugs);
+      const currentSearch = searchRef.current;
+      setImmediateFiltered(
+        currentSearch.trim() ? searchLucideSlugs(slugs, currentSearch) : slugs,
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const pickSlug = useCallback(
     (slug: string) => {
@@ -500,15 +571,16 @@ export function LucideIconPicker({
     [resetSearch, resolvedValue],
   );
 
-  const handleSearchChange = useCallback((nextSearch: string) => {
-    const nextFiltered = searchLucideSlugs(
-      LUCIDE_DYNAMIC_ICON_SLUGS,
-      nextSearch,
-    );
-    setSearch(nextSearch);
-    setImmediateFiltered(nextFiltered);
-    setActiveSlug(nextFiltered[0] ?? null);
-  }, []);
+  const handleSearchChange = useCallback(
+    (nextSearch: string) => {
+      searchRef.current = nextSearch;
+      const nextFiltered = searchLucideSlugs(allSlugs, nextSearch);
+      setSearch(nextSearch);
+      setImmediateFiltered(nextFiltered);
+      setActiveSlug(nextFiltered[0] ?? null);
+    },
+    [allSlugs],
+  );
 
   const handleSearchKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {
