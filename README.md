@@ -160,8 +160,12 @@ pnpm build
 # Run tests
 pnpm test
 
-# Start docs dev server
+# Start docs dev server (instant; reads workspace packages from source)
 pnpm dev
+
+# Start docs dev server AND watch-build the publishable packages
+# (only needed when validating the built dist output, not for normal docs/component work)
+pnpm dev:full
 ```
 
 ## Publishing (Maintainers)
