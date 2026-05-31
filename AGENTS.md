@@ -52,6 +52,8 @@ This file defines top-level guidance for Codex in this repository.
 
 ## Agent Learnings
 
+- **2026-05-26 — Docs shell must not import Lab UI3 dropdown**: `ThemeSwitcher` pulls `@/components/ui/dropdown-menu` into the main entry chunk (~447KB vs ~237KB baseline); keep a tiny theme-select primitive for the global shell and lazy-load the full Lab menu implementation only on Lab routes.
+- **2026-05-26 — Lazy Lab tabs need visited-page mounts**: Keep per-tab controller state by mounting visited `LazyActiveLabPage` instances without remount keys, and gate `LabPreviewSlot`/`LabPropertiesSlot`/`LabPanelTooltipPropsSlot` with `enabled={isActive}` so hidden pages do not overwrite the frame.
 - **Keep AGENTS memory high-signal**: Prefer compact, hard-to-rediscover lessons; archive or remove low-leverage run history and avoid metadata-only prefixes like dates.
 - **Rebase before push on diverged branch**: If your branch is ahead/behind remote, rebase first so push is fast-forward and your fixes stay on top of the latest upstream work.
 - **Dry-run Graphite submit before publish**: Use `gt submit --dry-run` to verify included branches; if unrelated descendants appear, submit without `--stack`.

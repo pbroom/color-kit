@@ -30,13 +30,31 @@ const mdxLoaders = import.meta.glob('./**/*.mdx') as Record<
   DocsMdxLoader
 >;
 
+const docsPageEntries = Object.entries(mdxLoaders).filter(
+  ([mdxPath]) => !normalizeMdxPath(mdxPath).startsWith('components/'),
+);
+
+/**
+ * Raw MDX module loaders keyed by normalized docs path (e.g. `introduction`,
+ * `api/plane-api`). Exposed so navigation can warm a page's chunk on hover/focus
+ * before the user clicks, making the eventual `lazy()` resolve synchronously.
+ */
+export const docsPageLoaders: Record<string, DocsMdxLoader> =
+  Object.fromEntries(
+    docsPageEntries.map(([mdxPath, loader]) => [
+      normalizeMdxPath(mdxPath),
+      loader,
+    ]),
+  );
+
 export const docsPages: Record<
   string,
   LazyExoticComponent<ComponentType>
 > = Object.fromEntries(
-  Object.entries(mdxLoaders)
-    .filter(([mdxPath]) => !normalizeMdxPath(mdxPath).startsWith('components/'))
-    .map(([mdxPath, loader]) => [normalizeMdxPath(mdxPath), lazy(loader)]),
+  docsPageEntries.map(([mdxPath, loader]) => [
+    normalizeMdxPath(mdxPath),
+    lazy(loader),
+  ]),
 );
 
 const componentPages = [
