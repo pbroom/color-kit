@@ -18,6 +18,8 @@ function run(name, args) {
   return new Promise((resolve, reject) => {
     const child = spawn('pnpm', args, {
       stdio: 'inherit',
+      // On Windows, pnpm resolves to pnpm.cmd, which spawn() only finds via the shell.
+      shell: process.platform === 'win32',
       env: process.env,
     });
     child.on('error', reject);
