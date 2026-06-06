@@ -49,13 +49,6 @@ export default defineConfig({
         replacement: resolve(__dirname, '../../packages/react/src/index.ts'),
       },
       {
-        find: /^color-kit\/control-kit$/,
-        replacement: resolve(
-          __dirname,
-          '../../packages/control-kit/src/index.ts',
-        ),
-      },
-      {
         find: /^color-kit\/wasm$/,
         replacement: resolve(
           __dirname,
@@ -72,13 +65,6 @@ export default defineConfig({
       {
         find: /^@color-kit\/core$/,
         replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
-      },
-      {
-        find: /^@color-kit\/control-kit$/,
-        replacement: resolve(
-          __dirname,
-          '../../packages/control-kit/src/index.ts',
-        ),
       },
       {
         find: /^@color-kit\/react$/,

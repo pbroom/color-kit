@@ -25,6 +25,12 @@ import {
 } from './api/color-input.js';
 import type { SetRequestedOptions } from './use-color.js';
 
+interface PrimitiveExpressionParserOptions {
+  allowExpressions: boolean;
+  currentValue: number;
+  range: [number, number];
+}
+
 interface ColorInputBaseProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
@@ -166,7 +172,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     );
 
     const parseExpression = useCallback<PrimitiveExpressionParser>(
-      (draft, options) =>
+      (draft: string, options: PrimitiveExpressionParserOptions) =>
         parseColorInputExpression(draft, {
           currentValue: options.currentValue,
           range: options.range,

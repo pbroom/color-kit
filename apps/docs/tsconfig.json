@@ -7,10 +7,8 @@
       "color-kit": ["../../packages/core/src/index.ts"],
       "color-kit/core": ["../../packages/core/src/index.ts"],
       "color-kit/react": ["../../packages/react/src/index.ts"],
-      "color-kit/control-kit": ["../../packages/control-kit/src/index.ts"],
       "color-kit/wasm": ["../../packages/core-wasm/src/index.ts"],
       "@color-kit/core": ["../../packages/core/src/index.ts"],
-      "@color-kit/control-kit": ["../../packages/control-kit/src/index.ts"],
       "@color-kit/react": ["../../packages/react/src/index.ts"]
     },
     "types": ["vite/client"]

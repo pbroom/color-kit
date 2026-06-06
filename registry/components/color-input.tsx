@@ -6,7 +6,7 @@ import {
   usePrimitiveValueInput,
   type PrimitiveExpressionParser,
   type PrimitiveValueChangeDetails,
-} from 'color-kit/control-kit';
+} from '@color-kit/control-kit';
 import {
   ColorApi,
   type HslColorInputChannel,

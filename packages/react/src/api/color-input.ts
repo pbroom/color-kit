@@ -61,6 +61,12 @@ export interface ResolveColorInputDraftValueOptions extends ParseColorInputExpre
   wrap?: boolean;
 }
 
+interface PrimitiveDraftParserOptions {
+  allowExpressions: boolean;
+  currentValue: number;
+  range: [number, number];
+}
+
 type ColorInputChannelTable<Value> = {
   oklch: Record<OklchColorInputChannel, Value>;
   rgb: Record<RgbColorInputChannel, Value>;
@@ -382,7 +388,7 @@ export function resolveColorInputDraftValue(
     options.range[0],
     options.range[1],
     options.allowExpressions ?? false,
-    (draft, primitiveOptions) =>
+    (draft: string, primitiveOptions: PrimitiveDraftParserOptions) =>
       parseColorInputExpression(draft, {
         currentValue: primitiveOptions.currentValue,
         range: primitiveOptions.range,

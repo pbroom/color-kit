@@ -69,7 +69,10 @@
       "type": "registry:component",
       "title": "Color Input",
       "description": "A channel-based value input with expression parsing and left-edge scrubbing.",
-      "dependencies": ["color-kit@next"],
+      "dependencies": [
+        "@color-kit/control-kit@github:pbroom/control-kit",
+        "color-kit@next"
+      ],
       "registryDependencies": ["color"],
       "files": [
         {

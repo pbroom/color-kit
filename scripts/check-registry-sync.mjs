@@ -24,11 +24,19 @@ async function main() {
     errors.push(
       `${REGISTRY_MANIFEST}: color-input must depend on the registry color provider`,
     );
+  } else if (
+    !colorInputEntry.dependencies?.includes(
+      '@color-kit/control-kit@github:pbroom/control-kit',
+    )
+  ) {
+    errors.push(
+      `${REGISTRY_MANIFEST}: color-input must install @color-kit/control-kit from the standalone repo`,
+    );
   }
 
-  if (!/from ['"]color-kit\/control-kit['"]/.test(colorInputSource)) {
+  if (!/from ['"]@color-kit\/control-kit['"]/.test(colorInputSource)) {
     errors.push(
-      `${COLOR_INPUT_SOURCE}: must import primitive input behavior from color-kit/control-kit`,
+      `${COLOR_INPUT_SOURCE}: must import primitive input behavior from @color-kit/control-kit`,
     );
   }
 
