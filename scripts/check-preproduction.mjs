@@ -37,13 +37,14 @@ async function collectPackageJsonPaths() {
 async function main() {
   const errors = [];
   const packageJsonPaths = await collectPackageJsonPaths();
-  const packageNames = packageJsonPaths.map((packageJsonPath) =>
-    path.basename(path.dirname(packageJsonPath)),
+  const controlKitPath = packageJsonPaths.find(
+    (packageJsonPath) =>
+      path.basename(path.dirname(packageJsonPath)) === 'control-kit',
   );
 
-  if (packageNames.includes('control-kit')) {
+  if (controlKitPath) {
     errors.push(
-      'packages/control-kit: control-kit lives in github.com/pbroom/control-kit and must be consumed as an external package',
+      `${path.dirname(controlKitPath)}: control-kit lives in github.com/pbroom/control-kit and must be consumed as an external package`,
     );
   }
 
