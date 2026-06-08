@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 
 const COLOR_INPUT_SOURCE = 'registry/components/color-input.tsx';
 const REGISTRY_MANIFEST = 'registry/registry.json';
+const CONTROL_KIT_REGISTRY_DEPENDENCY =
+  '@color-kit/control-kit@github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289';
 
 function findMissingValues(source, values) {
   return values.filter((value) => !source.includes(value));
@@ -20,17 +22,23 @@ async function main() {
 
   if (!colorInputEntry) {
     errors.push(`${REGISTRY_MANIFEST}: missing color-input item`);
-  } else if (!colorInputEntry.registryDependencies?.includes('color')) {
+  }
+
+  if (
+    colorInputEntry &&
+    !colorInputEntry.registryDependencies?.includes('color')
+  ) {
     errors.push(
       `${REGISTRY_MANIFEST}: color-input must depend on the registry color provider`,
     );
-  } else if (
-    !colorInputEntry.dependencies?.includes(
-      '@color-kit/control-kit@github:pbroom/control-kit',
-    )
+  }
+
+  if (
+    colorInputEntry &&
+    !colorInputEntry.dependencies?.includes(CONTROL_KIT_REGISTRY_DEPENDENCY)
   ) {
     errors.push(
-      `${REGISTRY_MANIFEST}: color-input must install @color-kit/control-kit from the standalone repo`,
+      `${REGISTRY_MANIFEST}: color-input must install pinned @color-kit/control-kit from the standalone repo`,
     );
   }
 

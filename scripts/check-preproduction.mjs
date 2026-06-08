@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const PACKAGE_ROOTS = ['packages', 'apps'];
 const CONTROL_KIT_PACKAGE = '@color-kit/control-kit';
+const CONTROL_KIT_GITHUB_SPEC_PREFIX = 'github:pbroom/control-kit';
 const LOCAL_DEPENDENCY_PREFIXES = ['workspace:', 'file:', 'link:'];
 
 function parseMajor(version) {
@@ -68,6 +69,16 @@ async function main() {
       ) {
         errors.push(
           `${packageJsonPath}: ${CONTROL_KIT_PACKAGE} must use the standalone repo/package, not ${spec}`,
+        );
+      }
+
+      if (
+        typeof spec === 'string' &&
+        spec.startsWith(CONTROL_KIT_GITHUB_SPEC_PREFIX) &&
+        !spec.includes('#')
+      ) {
+        errors.push(
+          `${packageJsonPath}: ${CONTROL_KIT_PACKAGE} GitHub dependency must pin a tag or commit, not ${spec}`,
         );
       }
     }
