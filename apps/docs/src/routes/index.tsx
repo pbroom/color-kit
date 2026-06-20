@@ -1,12 +1,14 @@
 import {
   lazy,
   Suspense,
+  useEffect,
   type ComponentType,
   type LazyExoticComponent,
 } from 'react';
-import { Link } from 'react-router';
 import { ArrowRight, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PrefetchLink } from '@/components/prefetch-link';
+import { prefetchHref } from '@/lib/prefetch';
 import {
   Card,
   CardContent,
@@ -118,10 +120,10 @@ function ShowcaseCard({ card }: { card: ShowcaseCard }) {
       </CardContent>
       <CardFooter className="mt-auto pt-4">
         <Button asChild variant="ghost" className="px-0">
-          <Link to={card.href}>
+          <PrefetchLink to={card.href}>
             Open docs
             <ArrowRight className="size-4" />
-          </Link>
+          </PrefetchLink>
         </Button>
       </CardFooter>
     </Card>
@@ -129,29 +131,46 @@ function ShowcaseCard({ card }: { card: ShowcaseCard }) {
 }
 
 export function HomePage() {
+  useEffect(() => {
+    // Warm the docs shell while the browser is idle so the most likely first
+    // navigation (home -> docs) resolves instantly without a chunk fetch.
+    const warm = () => prefetchHref('/docs/introduction');
+    const idle = window.requestIdleCallback;
+    if (typeof idle === 'function') {
+      // `timeout` guarantees the warm fires even while the home demos keep the
+      // main thread busy, so it never gets starved out of an idle window.
+      const handle = idle(warm, { timeout: 2000 });
+      return () => window.cancelIdleCallback?.(handle);
+    }
+    const timer = window.setTimeout(warm, 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <div className="ck-shell-bg min-h-screen">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 w-full max-w-[1560px] items-center justify-between gap-4 px-4">
           <div className="flex items-center gap-3">
-            <Link to="/" className="docs-brand">
+            <PrefetchLink to="/" className="docs-brand">
               <span className="docs-brand-dot" />
               Color Kit
-            </Link>
+            </PrefetchLink>
           </div>
           <div className="flex items-center gap-2">
             <nav className="hidden items-center gap-1 md:flex">
               <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/introduction">Docs</Link>
+                <PrefetchLink to="/docs/introduction">Docs</PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/components/color-area">Components</Link>
+                <PrefetchLink to="/docs/components/color-area">
+                  Components
+                </PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/shadcn-registry">Registry</Link>
+                <PrefetchLink to="/docs/shadcn-registry">Registry</PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/lab">Lab</Link>
+                <PrefetchLink to="/lab">Lab</PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
                 <a
@@ -184,10 +203,12 @@ export function HomePage() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
-                <Link to="/docs/introduction">Get Started</Link>
+                <PrefetchLink to="/docs/introduction">Get Started</PrefetchLink>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link to="/docs/components/color-area">Explore Components</Link>
+                <PrefetchLink to="/docs/components/color-area">
+                  Explore Components
+                </PrefetchLink>
               </Button>
             </div>
           </div>

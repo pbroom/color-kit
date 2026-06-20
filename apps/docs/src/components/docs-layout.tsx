@@ -27,6 +27,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { PrefetchLink } from './prefetch-link.js';
 import {
   getComponentDoc,
   getComponentDocSlug,
@@ -68,14 +69,14 @@ function DocsSidebarNav({
           <ul className="space-y-1">
             {section.items.map((item) => (
               <li key={item.href}>
-                <Link
+                <PrefetchLink
                   to={item.href}
                   className="ck-nav-link"
                   data-active={pathname === item.href}
                   onClick={onNavigate}
                 >
                   {item.title}
-                </Link>
+                </PrefetchLink>
               </li>
             ))}
           </ul>
@@ -252,16 +253,18 @@ function DocsLayoutInner() {
           <div className="flex items-center gap-2">
             <nav className="hidden items-center gap-1 md:flex">
               <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/introduction">Docs</Link>
+                <PrefetchLink to="/docs/introduction">Docs</PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/components/color-area">Components</Link>
+                <PrefetchLink to="/docs/components/color-area">
+                  Components
+                </PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/docs/shadcn-registry">Registry</Link>
+                <PrefetchLink to="/docs/shadcn-registry">Registry</PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/lab">Lab</Link>
+                <PrefetchLink to="/lab">Lab</PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
                 <a
