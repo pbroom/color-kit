@@ -19,6 +19,7 @@ import {
   resolveColorInputRange,
   resolveColorInputSteps,
   resolveColorInputWrap,
+  type ColorInputPrimitiveExpressionOptions,
   type HslColorInputChannel,
   type OklchColorInputChannel,
   type RgbColorInputChannel,
@@ -166,7 +167,7 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     );
 
     const parseExpression = useCallback<PrimitiveExpressionParser>(
-      (draft, options) =>
+      (draft: string, options: ColorInputPrimitiveExpressionOptions) =>
         parseColorInputExpression(draft, {
           currentValue: options.currentValue,
           range: options.range,

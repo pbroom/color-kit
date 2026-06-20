@@ -52,8 +52,8 @@ importers:
         specifier: file:../../vendor/sandpack/sandpack-themes
         version: file:vendor/sandpack/sandpack-themes
       '@color-kit/control-kit':
-        specifier: workspace:*
-        version: link:../../packages/control-kit
+        specifier: github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289
+        version: https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@color-kit/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -172,18 +172,12 @@ importers:
       '@base-ui/react':
         specifier: ^1.4.1
         version: 1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@color-kit/control-kit':
+        specifier: github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289
+        version: https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@legendapp/state':
         specifier: ^2.1.15
         version: 2.1.15(react@19.2.4)
-      class-variance-authority:
-        specifier: ^0.7.1
-        version: 0.7.1
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      lucide-react:
-        specifier: ^0.575.0
-        version: 0.575.0(react@19.2.4)
       radix-ui:
         specifier: ^1.4.3
         version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -193,52 +187,6 @@ importers:
       react-dom:
         specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
-      tailwind-merge:
-        specifier: ^3.5.0
-        version: 3.5.0
-
-  packages/control-kit:
-    dependencies:
-      class-variance-authority:
-        specifier: ^0.7.1
-        version: 0.7.1
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      lucide-react:
-        specifier: ^0.575.0
-        version: 0.575.0(react@19.2.4)
-      tailwind-merge:
-        specifier: ^3.5.0
-        version: 3.5.0
-    devDependencies:
-      '@base-ui/react':
-        specifier: ^1.4.1
-        version: 1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@types/react':
-        specifier: ^19.2.13
-        version: 19.2.13
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.13)
-      radix-ui:
-        specifier: ^1.4.3
-        version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react:
-        specifier: ^19.2.4
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.2.4
-        version: 19.2.4(react@19.2.4)
-      tsup:
-        specifier: ^8.0.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/debug@4.1.12)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)
 
   packages/core:
     dependencies:
@@ -275,8 +223,8 @@ importers:
   packages/react:
     dependencies:
       '@color-kit/control-kit':
-        specifier: workspace:*
-        version: link:../control-kit
+        specifier: github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289
+        version: https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@color-kit/core':
         specifier: workspace:*
         version: link:../core
@@ -520,6 +468,16 @@ packages:
 
   '@codesandbox/sandpack-themes@file:vendor/sandpack/sandpack-themes':
     resolution: {directory: vendor/sandpack/sandpack-themes, type: directory}
+
+  '@color-kit/control-kit@https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289':
+    resolution: {tarball: https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289}
+    version: 0.0.1
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@base-ui/react': ^1.4.1
+      radix-ui: ^1.4.3
+      react: ^19.2.4
+      react-dom: ^19.2.4
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -4585,6 +4543,17 @@ snapshots:
       react-is: 17.0.2
 
   '@codesandbox/sandpack-themes@file:vendor/sandpack/sandpack-themes': {}
+
+  '@color-kit/control-kit@https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@base-ui/react': 1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      class-variance-authority: 0.7.1
+      clsx: 2.1.1
+      lucide-react: 0.575.0(react@19.2.4)
+      radix-ui: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      tailwind-merge: 3.5.0
 
   '@csstools/color-helpers@5.1.0': {}
 

@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@600;700&family=Inter:opsz,wght@14..32,100..900&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
-@source '../../../packages/control-kit/src';
+/* @color-kit/control-kit intentionally ships src/ so Tailwind v4 can scan package-authored utilities. */
+@source '../node_modules/@color-kit/control-kit/src';
 @plugin '@tailwindcss/typography';
 @import 'tw-animate-css';
 @import './styles/legacy-docs.css';

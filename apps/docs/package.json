@@ -15,7 +15,7 @@
     "@base-ui/react": "^1.4.1",
     "@codesandbox/sandpack-react": "file:../../vendor/sandpack/sandpack-react",
     "@codesandbox/sandpack-themes": "file:../../vendor/sandpack/sandpack-themes",
-    "@color-kit/control-kit": "workspace:*",
+    "@color-kit/control-kit": "github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289",
     "@color-kit/core": "workspace:*",
     "@color-kit/react": "workspace:*",
     "@mdx-js/rollup": "^3.0.0",
