@@ -48,9 +48,15 @@ async function main() {
     );
   }
 
-  if (!/from ['"]color-kit\/react['"]/.test(colorInputSource)) {
+  if (!/from ['"]color-kit\/driver['"]/.test(colorInputSource)) {
     errors.push(
-      `${COLOR_INPUT_SOURCE}: must import color input API helpers from color-kit/react`,
+      `${COLOR_INPUT_SOURCE}: must import color input API helpers from color-kit/driver`,
+    );
+  }
+
+  if (/from ['"]@?color-kit\/react['"]/.test(colorInputSource)) {
+    errors.push(
+      `${COLOR_INPUT_SOURCE}: must not import from color-kit/react (or @color-kit/react); the adapter consumes color-kit/driver and local hooks only`,
     );
   }
 

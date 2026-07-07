@@ -20,7 +20,7 @@ The Plane API is a geometry-first layer for color tooling. It lets you:
 - compile points and paths into SVG-ready output
 - reuse query results with stable cache keys
 
-It is intentionally UI-agnostic and pairs with `color-kit/react` adapters.
+It is intentionally UI-agnostic and pairs with the framework-agnostic `color-kit/driver` adapters.
 
 ## Playground
 
@@ -507,12 +507,12 @@ const merged = unionRegions(aaOnly, aaa, { resolution: 96 });
 const transformed = rotateRegion(scaleRegion(merged, 0.96), 6);
 ```
 
-## React Bridge (`ColorApi`)
+## UI Bridge (`ColorApi`)
 
-`color-kit/react` exposes adapter helpers that map Plane API results into ColorArea UI coordinates.
+`color-kit/driver` exposes framework-agnostic adapter helpers that map Plane API results into ColorArea UI coordinates.
 
 ```ts
-import { ColorApi } from 'color-kit/react';
+import * as ColorApi from 'color-kit/driver';
 
 const axes = ColorApi.resolveColorAreaAxes({
   x: { channel: 'l' },
@@ -541,5 +541,5 @@ const boundary = ColorApi.getColorAreaGamutBoundaryPoints(
   - `unionRegions`, `intersectRegions`, `differenceRegions`, `containsPoint`, `nearestPointOnPath`, `pointDistance`
 - **Transforms**
   - `translateRegion`, `scaleRegion`, `rotateRegion`, `projectRegionBetweenPlanes`
-- **React adapters**
+- **UI driver adapters (`color-kit/driver`)**
   - `ColorApi.getColorAreaGamutBoundaryPoints`, `ColorApi.getColorAreaContrastRegionPaths`, `ColorApi.getColorAreaChromaBandPoints`, `ColorApi.getColorAreaFallbackPoint`

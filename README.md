@@ -61,6 +61,38 @@ console.log(contrastRatio(blue, white)); // WCAG 2.1
 const comp = complementary(blue);
 ```
 
+### Driver (framework-agnostic UI logic)
+
+`color-kit/driver` holds the interaction math that powers color UI without
+depending on any framework: area/slider/input coordinate mapping, expression
+parsing, slider gradient sampling, and the dual requested/displayed color
+state model. Use it to drive React, Svelte, vanilla DOM, or canvas UIs alike.
+
+```typescript
+import { parse } from 'color-kit';
+import * as ColorApi from 'color-kit/driver';
+
+const state = ColorApi.createColorState(parse('#3b82f6'));
+
+const axes = ColorApi.resolveColorAreaAxes({
+  x: { channel: 'l' },
+  y: { channel: 'c' },
+});
+const next = ColorApi.colorFromColorAreaPosition(
+  state.requested,
+  axes,
+  0.5,
+  0.25,
+);
+
+const gradient = ColorApi.getSliderGradientStyles({
+  model: 'oklch',
+  channel: 'h',
+  baseColor: state.requested,
+  range: ColorApi.resolveColorSliderRange('h'),
+});
+```
+
 ### React
 
 ```tsx

@@ -1,10 +1,10 @@
 import { toCss, toP3Gamut, toSrgbGamut, type Color } from 'color-kit';
 import {
-  ColorApi,
   useColorContext,
   type ColorSliderChannel,
   type SliderHueGradientMode,
 } from 'color-kit/react';
+import * as ColorApi from 'color-kit/driver';
 import type { CSSProperties } from 'react';
 
 type SliderRailStyle = CSSProperties & {
