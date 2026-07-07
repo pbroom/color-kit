@@ -1,6 +1,6 @@
 import { forwardRef, type HTMLAttributes } from 'react';
 import { clamp } from '@color-kit/core';
-import { getColorSliderNormFromValue } from './api/color-slider.js';
+import { getColorSliderNormFromValue } from '@color-kit/driver';
 import { useColorSliderContext } from './color-slider-context.js';
 
 export type SliderMarkerVariant = 'dot' | 'mini-thumb';

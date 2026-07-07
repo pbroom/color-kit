@@ -8,7 +8,7 @@ import {
   type CanvasHTMLAttributes,
 } from 'react';
 import { parse, toRgb } from '@color-kit/core';
-import { colorFromColorAreaPosition } from './api/color-area.js';
+import { colorFromColorAreaPosition } from '@color-kit/driver';
 import {
   clamp01,
   inP3Linear,

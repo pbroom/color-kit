@@ -8,7 +8,7 @@ import {
 import {
   getColorAreaGamutBoundaryPoints,
   type ResolvedColorAreaAxes,
-} from './api/color-area.js';
+} from '@color-kit/driver';
 import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Line } from './line.js';

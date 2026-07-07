@@ -24,7 +24,7 @@ import {
   type ColorUpdateEvent,
   type GamutTarget,
   type ViewModel,
-} from './color-state.js';
+} from '@color-kit/driver';
 
 export interface UseColorOptions {
   /** Initial color value (CSS string, hex, or Color object) */

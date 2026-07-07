@@ -3,7 +3,7 @@ import type { Color } from '@color-kit/core';
 import type {
   ColorSliderChannel,
   ColorSliderOrientation,
-} from './api/color-slider.js';
+} from '@color-kit/driver';
 
 export interface ColorSliderContextValue {
   channel: ColorSliderChannel;

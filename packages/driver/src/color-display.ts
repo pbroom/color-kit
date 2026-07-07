@@ -1,6 +1,6 @@
 import type { Color } from '@color-kit/core';
 import { toCss, toHex } from '@color-kit/core';
-import type { GamutTarget } from '../color-state.js';
+import type { GamutTarget } from './color-state.js';
 
 export interface ColorDisplayStyles {
   backgroundColor: string;

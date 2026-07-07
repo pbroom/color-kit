@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'react';
 import { toHex, type Color } from '@color-kit/core';
-import { getColorDisplayStyles } from './api/color-display.js';
-import { getColorAreaFallbackPoint } from './api/color-area.js';
+import { getColorDisplayStyles } from '@color-kit/driver';
+import { getColorAreaFallbackPoint } from '@color-kit/driver';
 import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Point } from './point.js';

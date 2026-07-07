@@ -15,7 +15,7 @@ import {
   isColorStringInputValueValid,
   parseColorStringInputValue,
   type ColorStringInputFormat,
-} from './api/color-string-input.js';
+} from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
 
 export interface ColorStringInputProps extends Omit<

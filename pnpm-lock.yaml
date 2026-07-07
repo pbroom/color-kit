@@ -57,6 +57,9 @@ importers:
       '@color-kit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@color-kit/driver':
+        specifier: workspace:*
+        version: link:../../packages/driver
       '@color-kit/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -220,6 +223,22 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.12)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)
 
+  packages/driver:
+    dependencies:
+      '@color-kit/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.12)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)
+
   packages/react:
     dependencies:
       '@color-kit/control-kit':
@@ -231,6 +250,9 @@ importers:
       '@color-kit/core-wasm':
         specifier: workspace:*
         version: link:../core-wasm
+      '@color-kit/driver':
+        specifier: workspace:*
+        version: link:../driver
       '@legendapp/state':
         specifier: ^2.1.15
         version: 2.1.15(react@19.2.4)

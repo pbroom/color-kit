@@ -22,7 +22,7 @@ import {
   resolveColorAreaAxes,
   type ColorAreaAxes,
   type ResolvedColorAreaAxes,
-} from './api/color-area.js';
+} from '@color-kit/driver';
 import {
   ColorAreaContext,
   type ColorAreaInteractionFrameStats,

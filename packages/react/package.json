@@ -58,6 +58,7 @@
     "@color-kit/control-kit": "github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289",
     "@color-kit/core": "workspace:*",
     "@color-kit/core-wasm": "workspace:*",
+    "@color-kit/driver": "workspace:*",
     "@legendapp/state": "^2.1.15"
   },
   "peerDependencies": {

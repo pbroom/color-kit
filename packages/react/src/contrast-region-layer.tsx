@@ -30,7 +30,7 @@ import {
   getColorAreaGamutBoundaryPoints,
   type ColorAreaContrastRegionOptions,
   type ColorAreaContrastRegionPoint,
-} from './api/color-area.js';
+} from '@color-kit/driver';
 import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Line, pathWithRoundedCorners } from './line.js';

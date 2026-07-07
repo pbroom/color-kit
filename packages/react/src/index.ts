@@ -25,11 +25,17 @@ export type {
   UseMultiColorOptions,
   UseMultiColorReturn,
 } from './use-multi-color.js';
+// Temporary re-exports during the driver extraction; removed in the follow-up
+// cutover PR once consumers import from @color-kit/driver directly.
 export {
   createColorState,
   getActiveDisplayedColor,
   mapDisplayedColors,
-} from './color-state.js';
+} from '@color-kit/driver';
+export * as ColorApi from '@color-kit/driver';
+
+// Driver types used in component prop/return signatures. Values (including
+// the ColorApi helpers and color-state utilities) live in @color-kit/driver.
 export type {
   ColorChannel,
   ColorInteraction,
@@ -38,8 +44,7 @@ export type {
   ColorUpdateEvent,
   GamutTarget,
   ViewModel,
-} from './color-state.js';
-export * as ColorApi from './api/index.js';
+} from '@color-kit/driver';
 export type {
   ColorAreaAxes,
   ColorAreaAxis,
@@ -74,7 +79,7 @@ export type {
   SliderGradientStyles,
   SliderModelChannel,
   HctSliderModelChannel,
-} from './api/index.js';
+} from '@color-kit/driver';
 
 // Primitives
 export { ColorArea } from './color-area.js';

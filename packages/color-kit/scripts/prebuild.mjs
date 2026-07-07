@@ -22,6 +22,7 @@ function run(args) {
 }
 
 run(['--filter', '@color-kit/core', 'build']);
+run(['--filter', '@color-kit/driver', 'build']);
 run([
   '--filter',
   '@color-kit/core-wasm',

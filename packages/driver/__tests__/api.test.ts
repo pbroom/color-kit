@@ -22,7 +22,7 @@ import {
   normalizeColorSliderPointer,
   resolveColorInputDraftValue,
   resolveColorAreaAxes,
-} from '../src/api/index.js';
+} from '../src/index.js';
 
 describe('Color API helpers', () => {
   it('maps color area pointer positions into channel values', () => {

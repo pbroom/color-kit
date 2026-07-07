@@ -1,6 +1,6 @@
 import { createContext, useContext, type MutableRefObject } from 'react';
 import type { Color } from '@color-kit/core';
-import type { ResolvedColorAreaAxes } from './api/color-area.js';
+import type { ResolvedColorAreaAxes } from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
 
 export type ColorAreaPerformanceProfile =

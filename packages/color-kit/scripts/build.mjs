@@ -20,12 +20,15 @@ const skipWasmGenerated = /^(1|true)$/i.test(
 );
 
 const coreDistRoot = path.join(repoRoot, 'packages', 'core', 'dist');
+const driverDistRoot = path.join(repoRoot, 'packages', 'driver', 'dist');
 const reactDistRoot = path.join(repoRoot, 'packages', 'react', 'dist');
 const wasmDistRoot = path.join(repoRoot, 'packages', 'core-wasm', 'dist');
 
 const rewriteRules = [
-  [/(["'])@color-kit\/core\1/g, '$1color-kit$1'],
+  // Order matters: rewrite the longer specifiers before the bare core one.
   [/(["'])@color-kit\/core-wasm\1/g, '$1color-kit/wasm$1'],
+  [/(["'])@color-kit\/driver\1/g, '$1color-kit/driver$1'],
+  [/(["'])@color-kit\/core\1/g, '$1color-kit$1'],
 ];
 
 function shouldRewriteFile(filePath) {
@@ -81,6 +84,7 @@ async function copyDirectory(sourceDir, targetDir, rewriteImports) {
 
 async function main() {
   await assertPathExists(coreDistRoot, 'core build output');
+  await assertPathExists(driverDistRoot, 'driver build output');
   await assertPathExists(reactDistRoot, 'react build output');
   await assertPathExists(wasmDistRoot, 'wasm build output');
   if (!skipWasmGenerated) {
@@ -99,6 +103,7 @@ async function main() {
 
   await copyDirectory(coreDistRoot, distRoot, false);
   await copyDirectory(coreDistRoot, path.join(distRoot, 'core'), false);
+  await copyDirectory(driverDistRoot, path.join(distRoot, 'driver'), true);
   await copyDirectory(reactDistRoot, path.join(distRoot, 'react'), true);
   await copyDirectory(wasmDistRoot, path.join(distRoot, 'wasm'), true);
 }
