@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { useState } from 'react';
 import { act, cleanup, render } from '@testing-library/react';
-import { createColorState } from '../src/color-state.js';
+import { createColorState } from '@color-kit/driver';
 import {
   useMultiColor,
   type MultiColorState,

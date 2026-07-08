@@ -9,7 +9,7 @@ import {
   type ColorState,
   type GamutTarget,
   type ViewModel,
-} from './color-state.js';
+} from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
 
 export interface MultiColorEntryInput {

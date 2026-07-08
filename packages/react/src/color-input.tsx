@@ -23,7 +23,7 @@ import {
   type HslColorInputChannel,
   type OklchColorInputChannel,
   type RgbColorInputChannel,
-} from './api/color-input.js';
+} from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
 
 interface ColorInputBaseProps extends Omit<

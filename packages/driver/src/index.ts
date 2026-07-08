@@ -82,6 +82,7 @@ export type {
   ColorInputModel,
   ColorInputChannel,
   ColorInputChannelFor,
+  ColorInputPrimitiveExpressionOptions,
   ColorInputSpec,
   OklchColorInputChannel,
   RgbColorInputChannel,
@@ -99,3 +100,22 @@ export {
   parseColorStringInputValue,
 } from './color-string-input.js';
 export type { ColorStringInputFormat } from './color-string-input.js';
+
+export { getColorDisplayHex, getColorDisplayStyles } from './color-display.js';
+export type { ColorDisplayStyles } from './color-display.js';
+
+export {
+  createColorState,
+  getActiveDisplayedColor,
+  mapDisplayedColors,
+} from './color-state.js';
+export type {
+  ColorChannel,
+  ColorInteraction,
+  ColorSource,
+  ColorState,
+  ColorUpdateEvent,
+  CreateColorStateOptions,
+  GamutTarget,
+  ViewModel,
+} from './color-state.js';

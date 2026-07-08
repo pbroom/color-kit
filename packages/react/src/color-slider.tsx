@@ -21,7 +21,7 @@ import {
   resolveColorSliderRange,
   type ColorSliderChannel,
   type ColorSliderOrientation,
-} from './api/color-slider.js';
+} from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
 import {
   ColorSliderContext,

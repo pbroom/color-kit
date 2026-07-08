@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useSelector } from '@legendapp/state/react';
 import { type Color, type GamutTarget } from '@color-kit/core';
-import { colorFromColorAreaPosition } from './api/color-area.js';
+import { colorFromColorAreaPosition } from '@color-kit/driver';
 import {
   COLOR_PLANE_FRAGMENT_SHADER_SOURCE,
   COLOR_PLANE_VERTEX_SHADER_SOURCE,

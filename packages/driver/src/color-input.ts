@@ -4,9 +4,7 @@ import {
   formatPrimitiveValue,
   getPrimitiveSteppedValue,
   normalizePrimitiveValue,
-  parsePrimitiveDraft,
-  type PrimitiveExpressionParser,
-} from '@color-kit/control-kit';
+} from './primitive-number.js';
 import { parseColorInputExpression } from './color-input-parser.js';
 import type { ParseColorInputExpressionOptions } from './color-input-parser.js';
 
@@ -62,15 +60,15 @@ export interface ResolveColorInputDraftValueOptions extends ParseColorInputExpre
   wrap?: boolean;
 }
 
-type ControlKitPrimitiveExpressionOptions =
-  Parameters<PrimitiveExpressionParser>[1];
-
-export type ColorInputPrimitiveExpressionOptions =
-  ControlKitPrimitiveExpressionOptions & {
-    allowExpressions: boolean;
-    currentValue: number;
-    range: [number, number];
-  };
+/**
+ * Options shape shared with primitive input expression parsers (structurally
+ * compatible with control-kit's `PrimitiveExpressionParser` callback).
+ */
+export interface ColorInputPrimitiveExpressionOptions {
+  allowExpressions: boolean;
+  currentValue: number;
+  range: [number, number];
+}
 
 type ColorInputChannelTable<Value> = {
   oklch: Record<OklchColorInputChannel, Value>;
@@ -387,19 +385,11 @@ export function resolveColorInputDraftValue(
   input: string,
   options: ResolveColorInputDraftValueOptions,
 ): number | null {
-  const parsed = parsePrimitiveDraft(
-    input,
-    options.currentValue,
-    options.range[0],
-    options.range[1],
-    options.allowExpressions ?? false,
-    (draft: string, primitiveOptions: ColorInputPrimitiveExpressionOptions) =>
-      parseColorInputExpression(draft, {
-        currentValue: primitiveOptions.currentValue,
-        range: primitiveOptions.range,
-        allowExpressions: primitiveOptions.allowExpressions,
-      }),
-  );
+  const parsed = parseColorInputExpression(input, {
+    currentValue: options.currentValue,
+    range: options.range,
+    allowExpressions: options.allowExpressions ?? false,
+  });
   if (parsed === null) {
     return null;
   }

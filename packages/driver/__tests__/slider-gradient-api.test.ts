@@ -3,7 +3,7 @@ import { parse } from '@color-kit/core';
 import {
   getSliderGradientStyles,
   sampleSliderGradient,
-} from '../src/api/slider-gradient.js';
+} from '../src/slider-gradient.js';
 
 describe('slider gradient api', () => {
   it('produces model-specific hue ramps (HSL hue 0 differs from OKLCH hue 0)', () => {

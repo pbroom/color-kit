@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseColorInputExpression } from '../src/api/color-input-parser.js';
+import { parseColorInputExpression } from '../src/color-input-parser.js';
 
 const options = {
   currentValue: 25,

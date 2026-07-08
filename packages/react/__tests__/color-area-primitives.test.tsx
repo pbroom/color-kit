@@ -9,7 +9,7 @@ import {
   toSrgbGamut,
   type Color,
 } from '@color-kit/core';
-import * as colorAreaApi from '../src/api/color-area.js';
+import * as colorAreaApi from '@color-kit/driver';
 import { ChromaBandLayer } from '../src/chroma-band-layer.js';
 import { ColorArea } from '../src/color-area.js';
 import { ColorPlane } from '../src/color-plane.js';

@@ -45,6 +45,10 @@ export default defineConfig({
         replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
       },
       {
+        find: /^color-kit\/driver$/,
+        replacement: resolve(__dirname, '../../packages/driver/src/index.ts'),
+      },
+      {
         find: /^color-kit\/react$/,
         replacement: resolve(__dirname, '../../packages/react/src/index.ts'),
       },
@@ -65,6 +69,10 @@ export default defineConfig({
       {
         find: /^@color-kit\/core$/,
         replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
+      },
+      {
+        find: /^@color-kit\/driver$/,
+        replacement: resolve(__dirname, '../../packages/driver/src/index.ts'),
       },
       {
         find: /^@color-kit\/react$/,

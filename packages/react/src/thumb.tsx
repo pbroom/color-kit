@@ -4,14 +4,14 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { useSelector } from '@legendapp/state/react';
-import type { ColorAreaChannel } from './api/color-area.js';
-import { getColorDisplayStyles } from './api/color-display.js';
+import type { ColorAreaChannel } from '@color-kit/driver';
+import { getColorDisplayStyles } from '@color-kit/driver';
 import {
   colorFromColorAreaKey,
   getColorAreaThumbPosition,
-} from './api/color-area.js';
+} from '@color-kit/driver';
 import { useColorAreaContext } from './color-area-context.js';
-import { createColorState, getActiveDisplayedColor } from './color-state.js';
+import { createColorState, getActiveDisplayedColor } from '@color-kit/driver';
 import { useOptionalColorContext } from './context.js';
 
 export interface ThumbProps extends Omit<
