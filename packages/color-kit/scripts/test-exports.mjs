@@ -83,17 +83,22 @@ assert.equal(
   root.createJsPlaneComputeBackend,
   compute.createJsPlaneComputeBackend,
 );
+assert.equal(
+  root.createJsPlaneComputeBackend,
+  core.createJsPlaneComputeBackend,
+);
 assert.equal(root.definePlane, plane.definePlane);
 assertSharedDefaultSchedulerTelemetry(root, compute);
+assertSharedDefaultSchedulerTelemetry(core, compute);
 
-const cjsRoot = require('../dist/index.cjs');
-const cjsCore = require('../dist/core/index.cjs');
-const cjsDriver = require('../dist/driver/index.cjs');
-const cjsPlane = require('../dist/plane/index.cjs');
-const cjsCompute = require('../dist/compute/index.cjs');
-const cjsHct = require('../dist/hct/index.cjs');
-const cjsReact = require('../dist/react/index.cjs');
-const cjsWasm = require('../dist/wasm/index.cjs');
+const cjsRoot = require('color-kit');
+const cjsCore = require('color-kit/core');
+const cjsDriver = require('color-kit/driver');
+const cjsPlane = require('color-kit/plane');
+const cjsCompute = require('color-kit/compute');
+const cjsHct = require('color-kit/hct');
+const cjsReact = require('color-kit/react');
+const cjsWasm = require('color-kit/wasm');
 
 assert.equal(typeof cjsRoot.definePlane, 'function');
 assert.equal(typeof cjsCore.definePlane, 'function');
@@ -113,5 +118,10 @@ assert.equal(
   cjsRoot.createJsPlaneComputeBackend,
   cjsCompute.createJsPlaneComputeBackend,
 );
+assert.equal(
+  cjsRoot.createJsPlaneComputeBackend,
+  cjsCore.createJsPlaneComputeBackend,
+);
 assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);
 assertSharedDefaultSchedulerTelemetry(cjsRoot, cjsCompute);
+assertSharedDefaultSchedulerTelemetry(cjsCore, cjsCompute);

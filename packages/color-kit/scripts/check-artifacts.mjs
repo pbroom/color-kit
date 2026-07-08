@@ -30,6 +30,6 @@ assert.equal(esmBackend?.kind, 'wasm');
 
 wasm.clearWasmPlaneComputeBackendFactory();
 
-const cjsWasm = require('../dist/wasm/index.cjs');
+const cjsWasm = require('color-kit/wasm');
 const cjsBackend = await cjsWasm.loadWasmPlaneComputeBackend();
 assert.equal(cjsBackend?.kind, 'wasm');
