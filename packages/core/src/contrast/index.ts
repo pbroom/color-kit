@@ -56,9 +56,10 @@ export function contrastRatio(color1: Color, color2: Color): number {
 
 /**
  * Calculate APCA (Advanced Perceptual Contrast Algorithm) contrast.
- * Returns a value roughly between -108 and 106.
- * Positive values = light text on dark background.
- * Negative values = dark text on light background.
+ * Returns a normalized Lc value roughly between -1.08 and 1.06
+ * (multiply by 100 for the conventional APCA Lc scale).
+ * Positive values = dark text on light background (normal polarity).
+ * Negative values = light text on dark background (reverse polarity).
  *
  * Based on APCA-W3 0.0.98G-4g.
  * https://github.com/Myndex/SAPC-APCA

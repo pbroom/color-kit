@@ -17,7 +17,11 @@ export function darken(color: Color, amount: number): Color {
   };
 }
 
-/** Increase chroma by a relative amount (0-1) */
+/**
+ * Increase chroma by an absolute fraction of the chroma range:
+ * adds `amount * 0.4`, clamped to `[0, 0.4]`. Note this is not the
+ * relative scaling that `desaturate` applies.
+ */
 export function saturate(color: Color, amount: number): Color {
   return {
     ...color,

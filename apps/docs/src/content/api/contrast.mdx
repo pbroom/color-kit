@@ -1,0 +1,258 @@
+<p className="docs-kicker">API Reference</p>
+
+# Contrast
+
+<p className="docs-lede">
+  WCAG 2.1 and APCA contrast measurement for `Color` values, plus
+  contrast-region geometry helpers that trace threshold contours in
+  lightness/chroma space at a fixed hue.
+</p>
+
+<div className="prose-api">
+
+## Shared Notes
+
+- All functions take the internal `Color` representation (OKLCH: `l` in `[0, 1]`, `c` in `[0, ~0.4]`, `h` in degrees, `alpha` in `[0, 1]`).
+- Scalar helpers (`relativeLuminance`, `contrastRatio`, `contrastAPCA`, `meetsAA`, `meetsAAA`) convert through sRGB before measuring.
+- `contrastAPCA` returns a **normalized** Lc value (roughly `-1.08` to `1.06`), not the conventional `-108`–`106` scale. Thresholds elsewhere in Color Kit (for example `apcaPreset`) use the same normalized scale: conventional Lc 60 is `0.6`.
+- The region helpers evaluate contrast with an unclamped luminance path so Display P3-only colors stay accurate instead of being silently clipped through sRGB.
+
+## `relativeLuminance`
+
+Calculates relative luminance per [WCAG 2.1](https://www.w3.org/TR/WCAG21/#dfn-relative-luminance). The color is converted to sRGB, each channel is linearized, and the result is the weighted sum `0.2126 R + 0.7152 G + 0.0722 B`.
+
+```ts
+import { parse, relativeLuminance } from 'color-kit';
+
+const y = relativeLuminance(parse('#3b82f6'));
+// ~0.21
+```
+
+| Parameter | Type    | Default | Description      |
+| --------- | ------- | ------- | ---------------- |
+| `color`   | `Color` | —       | Color to measure |
+
+<p className="api-returns">
+  Returns a <code>number</code> in `[0, 1]` (0 = black, 1 = white).
+</p>
+
+## `contrastRatio`
+
+Calculates the [WCAG 2.1 contrast ratio](https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio) between two colors: `(lighter + 0.05) / (darker + 0.05)` using their relative luminances. Argument order does not matter.
+
+```ts
+import { contrastRatio, parse } from 'color-kit';
+
+const ratio = contrastRatio(parse('#111827'), parse('#ffffff'));
+// ~17.7
+```
+
+| Parameter | Type    | Default | Description  |
+| --------- | ------- | ------- | ------------ |
+| `color1`  | `Color` | —       | First color  |
+| `color2`  | `Color` | —       | Second color |
+
+<p className="api-returns">
+  Returns a <code>number</code> between 1 and 21.
+</p>
+
+## `meetsAA`
+
+Checks whether two colors meet the WCAG AA contrast requirement. Normal text requires a ratio of at least `4.5:1`; pass `largeText: true` to use the large-text threshold of `3:1`.
+
+```ts
+import { meetsAA, parse } from 'color-kit';
+
+meetsAA(parse('#6b7280'), parse('#ffffff')); // false (4.5:1 required)
+meetsAA(parse('#6b7280'), parse('#ffffff'), true); // true (3:1 required)
+```
+
+| Parameter   | Type      | Default | Description                          |
+| ----------- | --------- | ------- | ------------------------------------ |
+| `color1`    | `Color`   | —       | First color                          |
+| `color2`    | `Color`   | —       | Second color                         |
+| `largeText` | `boolean` | `false` | Use the large-text threshold (`3:1`) |
+
+<p className="api-returns">
+  Returns a <code>boolean</code>.
+</p>
+
+## `meetsAAA`
+
+Checks whether two colors meet the WCAG AAA contrast requirement. Normal text requires a ratio of at least `7:1`; pass `largeText: true` to use the large-text threshold of `4.5:1`.
+
+```ts
+import { meetsAAA, parse } from 'color-kit';
+
+meetsAAA(parse('#111827'), parse('#ffffff')); // true
+```
+
+| Parameter   | Type      | Default | Description                            |
+| ----------- | --------- | ------- | -------------------------------------- |
+| `color1`    | `Color`   | —       | First color                            |
+| `color2`    | `Color`   | —       | Second color                           |
+| `largeText` | `boolean` | `false` | Use the large-text threshold (`4.5:1`) |
+
+<p className="api-returns">
+  Returns a <code>boolean</code>.
+</p>
+
+## `contrastAPCA`
+
+Calculates APCA (Advanced Perceptual Contrast Algorithm) contrast, based on APCA-W3 0.0.98G-4g. Unlike `contrastRatio`, APCA is polarity-aware — the argument order matters:
+
+- Positive Lc &mdash; dark text on a light background (normal polarity).
+- Negative Lc &mdash; light text on a dark background (reverse polarity).
+- Values with magnitude below the low clip (`0.1` normalized) return `0`.
+
+```ts
+import { contrastAPCA, parse } from 'color-kit';
+
+const lc = contrastAPCA(parse('#111827'), parse('#ffffff'));
+// positive ~0.9+ (dark text on light background)
+
+const reversed = contrastAPCA(parse('#ffffff'), parse('#111827'));
+// negative (light text on dark background)
+```
+
+| Parameter   | Type    | Default | Description      |
+| ----------- | ------- | ------- | ---------------- |
+| `textColor` | `Color` | —       | Foreground color |
+| `bgColor`   | `Color` | —       | Background color |
+
+<p className="api-returns">
+  Returns a normalized Lc <code>number</code>, roughly between `-1.08` and
+  `1.06`. Multiply by 100 for the conventional APCA scale.
+</p>
+
+## Contrast Region Geometry
+
+`contrastRegionPaths` and `contrastRegionPath` trace the contour of the region where colors at a fixed hue meet a contrast criterion against a reference color. Points are expressed in lightness/chroma coordinates (`{ l, c }`), ready to project onto an LC plane.
+
+For the plane-integrated variants that return viewport-aware, plane-space results (`contrastBoundary`, `contrastRegion`), see [Plane Queries](/docs/api/plane-queries).
+
+## `contrastRegionPaths`
+
+Generates contour paths for the region that meets or exceeds the configured contrast criterion at a fixed hue. By default it uses the `hybrid` solver (direct root solving with adaptive lightness refinement) and falls back to the legacy adaptive marching-squares solver when the contour topology is too complex to trace directly.
+
+```ts
+import { contrastRegionPaths, parse } from 'color-kit';
+
+const paths = contrastRegionPaths(parse('#ffffff'), 220, {
+  metric: 'wcag',
+  level: 'AA',
+  gamut: 'srgb',
+  simplifyTolerance: 0.001,
+});
+```
+
+| Parameter   | Type                                   | Default | Description                                    |
+| ----------- | -------------------------------------- | ------- | ---------------------------------------------- |
+| `reference` | `Color`                                | —       | Reference color (mapped into the target gamut) |
+| `hue`       | `number`                               | —       | Fixed hue angle in degrees                     |
+| `options`   | `ContrastRegionPathOptions` (optional) | `{}`    | Criterion and solver options (see below)       |
+
+<p className="api-returns">
+  Returns <code>{'ContrastRegionPoint[][]'}</code> &mdash; contour paths of{' '}
+  <code>{'{ l, c }'}</code> points, sorted longest first.
+</p>
+
+### Criterion options
+
+| Option         | Type                                     | Default         | Description                                                                                                                              |
+| -------------- | ---------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `metric`       | `'wcag' \| 'apca'`                       | `'wcag'`        | Contrast metric used when evaluating region membership                                                                                   |
+| `threshold`    | `number`                                 | from preset     | Explicit threshold; overrides `level` / `apcaPreset`. For `wcag` a ratio (must be `> 1`); for `apca` a normalized Lc (must be `> 0`)     |
+| `level`        | `'AA' \| 'AAA' \| 'AA-large'`            | `'AA'`          | WCAG threshold preset: `AA` = 4.5, `AAA` = 7, `AA-large` = 3                                                                             |
+| `apcaPreset`   | `'body' \| 'large-text' \| 'ui'`         | `'body'`        | APCA threshold preset used when `metric: 'apca'` and `threshold` is omitted: `body` = 0.6, `large-text` = 0.45, `ui` = 0.3               |
+| `apcaPolarity` | `'absolute' \| 'positive' \| 'negative'` | `'absolute'`    | APCA polarity test: `absolute` passes when `abs(Lc) >= threshold`, `positive` when `Lc >= threshold`, `negative` when `Lc <= -threshold` |
+| `apcaRole`     | `'sample-text' \| 'sample-background'`   | `'sample-text'` | Whether each sampled color is treated as the text (`Lc = APCA(sample, reference)`) or the background (`Lc = APCA(reference, sample)`)    |
+
+### Sampling options
+
+| Option              | Type                     | Default  | Description                                                                                                                                    |
+| ------------------- | ------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gamut`             | `'srgb' \| 'display-p3'` | `'srgb'` | Target gamut; both the reference and every sample are gamut-mapped before evaluation                                                           |
+| `maxChroma`         | `number`                 | `0.4`    | Upper chroma bound used for sampling                                                                                                           |
+| `alpha`             | `number`                 | `1`      | Alpha channel used while sampling                                                                                                              |
+| `lightnessSteps`    | `number`                 | `64`     | Sampled lightness cells (legacy grid). The hybrid solver uses it as an initial density guide (its own default is `72`)                         |
+| `chromaSteps`       | `number`                 | `64`     | Sampled chroma cells (legacy grid). The hybrid solver uses it for root-bracketing density (its own default is `96`)                            |
+| `tolerance`         | `number`                 | —        | Search precision forwarded to `maxChromaAt`                                                                                                    |
+| `maxIterations`     | `number`                 | —        | Search iteration cap forwarded to `maxChromaAt`                                                                                                |
+| `simplifyTolerance` | `number`                 | off      | If set, runs Ramer&ndash;Douglas&ndash;Peucker simplification on each path; tolerance in normalized `(l, c)` space, e.g. `0.001`&ndash;`0.002` |
+
+### Solver options
+
+| Option                 | Type                                  | Default    | Description                                                                                                          |
+| ---------------------- | ------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------- |
+| `samplingMode`         | `'hybrid' \| 'uniform' \| 'adaptive'` | `'hybrid'` | `hybrid` traces the implicit contour directly; `uniform` / `adaptive` select the legacy marching-squares solvers     |
+| `hybridMaxDepth`       | `number`                              | `7`        | Hybrid solver: maximum adaptive lightness refinement depth                                                           |
+| `hybridErrorTolerance` | `number`                              | `0.0015`   | Hybrid solver: maximum midpoint root deviation (in chroma units) before splitting an interval                        |
+| `adaptiveBaseSteps`    | `number`                              | `16`       | Legacy adaptive mode: base grid size per axis, subdivided where the contour crosses                                  |
+| `adaptiveMaxDepth`     | `number`                              | `3`        | Legacy adaptive mode: maximum subdivision depth                                                                      |
+| `edgeInterpolation`    | `'linear' \| 'midpoint'`              | `'linear'` | Legacy modes only: `linear` interpolates edge crossings at the threshold; `midpoint` keeps legacy midpoint placement |
+
+Solver selection notes:
+
+- Passing any legacy-only control (`edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`) or a legacy `samplingMode` routes the call to the legacy solver.
+- The legacy `adaptive` mode only applies to the `wcag` metric; APCA requests fall back to the legacy `uniform` grid.
+- When the hybrid solver detects complex contour topology it automatically retries with the legacy adaptive solver, so results stay well-formed.
+
+## `contrastRegionPath`
+
+Convenience helper that runs `contrastRegionPaths` and returns only the largest detected contour path (or an empty array when no contour exists).
+
+```ts
+import { contrastRegionPath, parse } from 'color-kit';
+
+const path = contrastRegionPath(parse('#ffffff'), 220, {
+  metric: 'apca',
+  apcaPreset: 'large-text',
+  gamut: 'display-p3',
+});
+```
+
+| Parameter   | Type                                   | Default | Description                           |
+| ----------- | -------------------------------------- | ------- | ------------------------------------- |
+| `reference` | `Color`                                | —       | Reference color                       |
+| `hue`       | `number`                               | —       | Fixed hue angle in degrees            |
+| `options`   | `ContrastRegionPathOptions` (optional) | `{}`    | Same options as `contrastRegionPaths` |
+
+<p className="api-returns">
+  Returns <code>{'ContrastRegionPoint[]'}</code> &mdash; the largest contour
+  path, or <code>[]</code>.
+</p>
+
+## Exported Types
+
+<ul className="api-field-list">
+  <li>
+    <code>ContrastMetric</code> &mdash; <code>'wcag' | 'apca'</code>
+  </li>
+  <li>
+    <code>ContrastRegionLevel</code> &mdash;{' '}
+    <code>'AA' | 'AAA' | 'AA-large'</code>
+  </li>
+  <li>
+    <code>ContrastApcaPreset</code> &mdash;{' '}
+    <code>'body' | 'large-text' | 'ui'</code>
+  </li>
+  <li>
+    <code>ContrastApcaPolarity</code> &mdash;{' '}
+    <code>'absolute' | 'positive' | 'negative'</code>
+  </li>
+  <li>
+    <code>ContrastApcaRole</code> &mdash;{' '}
+    <code>'sample-text' | 'sample-background'</code>
+  </li>
+  <li>
+    <code>ContrastRegionPoint</code> &mdash;{' '}
+    <code>{'{ l: number; c: number }'}</code>
+  </li>
+  <li>
+    <code>ContrastRegionPathOptions</code> &mdash; the options object accepted
+    by <code>contrastRegionPaths</code> and <code>contrastRegionPath</code>
+  </li>
+</ul>
+
+</div>

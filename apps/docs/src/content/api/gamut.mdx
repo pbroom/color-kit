@@ -1,0 +1,278 @@
+<p className="docs-kicker">API Reference</p>
+
+# Gamut
+
+<p className="docs-lede">
+  Standalone gamut helpers: membership checks, deterministic gamut mapping, and
+  gamut geometry primitives for sRGB and Display P3.
+</p>
+
+<div className="prose-api">
+
+## Gamut Targets
+
+Every helper accepts a `GamutTarget` of `'srgb'` or `'display-p3'`. Geometry
+helpers default to `'srgb'`. For plane-projected equivalents of the geometry
+helpers, see [Plane Queries](/docs/api/plane-queries).
+
+## `inSrgbGamut`
+
+Checks whether a color is inside the sRGB gamut. The check converts through
+OKLab to unclamped linear sRGB and tests the raw channel values, so
+out-of-gamut colors are never masked by the clamping in the display conversion
+pipeline. A small epsilon (`0.000075`) is applied at both channel bounds to
+absorb floating-point rounding on the gamut boundary.
+
+```ts
+import { inSrgbGamut } from 'color-kit';
+
+const vivid = { l: 0.7, c: 0.23, h: 150, alpha: 1 };
+
+inSrgbGamut(vivid); // false
+```
+
+<p className="api-returns">
+  Returns <code>boolean</code>
+</p>
+
+## `inP3Gamut`
+
+Same contract as `inSrgbGamut`, but tests unclamped linear Display P3 channel
+values (with the same epsilon tolerance).
+
+```ts
+import { inP3Gamut } from 'color-kit';
+
+inP3Gamut({ l: 0.7, c: 0.23, h: 150, alpha: 1 }); // true
+```
+
+<p className="api-returns">
+  Returns <code>boolean</code>
+</p>
+
+## `toSrgbGamut`
+
+Maps a color into the sRGB gamut by reducing chroma only. Lightness and hue
+are preserved, which produces the most visually similar in-gamut color. The
+implementation binary-searches chroma between `0` and the input chroma until
+the search interval is below `0.0001`, keeping the largest chroma that stays
+in gamut.
+
+Two shortcuts run before the search: colors at the lightness endpoints snap to
+pure black or white (`l: 0` or `l: 1` with `c: 0`), and colors already in
+gamut are returned as a copy without modification.
+
+```ts
+import { inSrgbGamut, toSrgbGamut } from 'color-kit';
+
+const requested = { l: 0.7, c: 0.23, h: 150, alpha: 1 };
+
+const mapped = toSrgbGamut(requested);
+// { l: 0.7, c: ~0.193, h: 150, alpha: 1 }
+
+inSrgbGamut(mapped); // true
+```
+
+<p className="api-returns">
+  Returns <code>Color</code>
+</p>
+
+## `toP3Gamut`
+
+Same chroma-reduction algorithm as `toSrgbGamut`, targeting the Display P3
+gamut.
+
+```ts
+import { toP3Gamut } from 'color-kit';
+
+const mapped = toP3Gamut({ l: 0.7, c: 0.32, h: 150, alpha: 1 });
+```
+
+<p className="api-returns">
+  Returns <code>Color</code>
+</p>
+
+## `maxChromaForHue`
+
+Resolves the hue cusp: the lightness/chroma point with the maximum in-gamut
+chroma for a fixed hue. This avoids scanning lightness values, and the cached
+LUT mode is designed for very high-throughput repeated queries such as
+interactive hue wheels and overlays.
+
+```ts
+import { maxChromaForHue } from 'color-kit';
+
+const cusp = maxChromaForHue(280, { gamut: 'display-p3' });
+// { l: ..., c: ... }
+
+const exact = maxChromaForHue(280, { method: 'direct' });
+```
+
+| Parameter         | Type                | Default  | Description                                                                                                      |
+| ----------------- | ------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `hue`             | `number`            | required | Hue angle in degrees (normalized internally).                                                                    |
+| `options.gamut`   | `GamutTarget`       | `'srgb'` | Target gamut.                                                                                                    |
+| `options.method`  | `'lut' \| 'direct'` | `'lut'`  | `lut` interpolates a cached hue lookup table for maximum throughput; `direct` computes the cusp exactly.         |
+| `options.lutSize` | `number`            | `4096`   | Evenly spaced hue samples in the cached LUT. Higher values increase warm-up cost and reduce interpolation error. |
+
+<p className="api-returns">
+  Returns <code>HueCusp</code>
+</p>
+
+<ul className="api-field-list">
+  <li>
+    <code>l</code> &mdash; cusp lightness
+  </li>
+  <li>
+    <code>c</code> &mdash; maximum in-gamut chroma at that lightness
+  </li>
+</ul>
+
+In `lut` mode, if the interpolated cusp lands out of gamut (the cusp curve
+changes branch near sRGB blue), the helper transparently falls back to the
+exact `direct` computation for that hue.
+
+## `maxChromaAt`
+
+Resolves the maximum in-gamut chroma for a specific lightness and hue. This is
+the geometry primitive behind gamut boundary overlays and model-accurate
+hue/chroma gradients. It binary-searches chroma between `0` and `maxChroma`
+until the interval is within `tolerance` or `maxIterations` is reached.
+
+```ts
+import { maxChromaAt } from 'color-kit';
+
+const c = maxChromaAt(0.6, 280, { gamut: 'display-p3' });
+```
+
+| Parameter               | Type          | Default  | Description                                                                                |
+| ----------------------- | ------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `lightness`             | `number`      | required | Lightness, clamped to `[0, 1]`. Returns `0` at either endpoint.                            |
+| `hue`                   | `number`      | required | Hue angle in degrees (normalized internally).                                              |
+| `options.gamut`         | `GamutTarget` | `'srgb'` | Target gamut.                                                                              |
+| `options.tolerance`     | `number`      | `0.0001` | Absolute precision for the binary search stop condition.                                   |
+| `options.maxIterations` | `number`      | `30`     | Hard cap on binary search iterations.                                                      |
+| `options.maxChroma`     | `number`      | `0.4`    | Upper chroma search bound. If this bound is already in gamut it is returned as a hard cap. |
+| `options.alpha`         | `number`      | `1`      | Alpha channel used while sampling.                                                         |
+
+<p className="api-returns">
+  Returns <code>number</code> &mdash; the maximum in-gamut chroma
+</p>
+
+## `gamutBoundaryPath`
+
+Samples the lightness/chroma gamut boundary for a fixed hue and returns
+deterministic points usable for SVG or Canvas overlay paths. Uniform mode
+takes `steps + 1` evenly spaced lightness samples; adaptive mode anchors the
+sweep at the lightness endpoints and the hue cusp, then recursively subdivides
+segments where the boundary curvature exceeds `adaptiveTolerance`.
+
+```ts
+import { gamutBoundaryPath } from 'color-kit';
+
+const path = gamutBoundaryPath(280, {
+  gamut: 'display-p3',
+  samplingMode: 'adaptive',
+  simplifyTolerance: 0.001,
+});
+```
+
+`GamutBoundaryPathOptions` extends `MaxChromaAtOptions` (see `maxChromaAt`
+above) with:
+
+| Parameter                   | Type                      | Default     | Description                                                                                      |
+| --------------------------- | ------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| `options.steps`             | `number`                  | `100`       | Equal lightness segments to sample (`steps + 1` points, minimum `2`). Ignored in adaptive mode.  |
+| `options.samplingMode`      | `'uniform' \| 'adaptive'` | `'uniform'` | Fixed lightness stepping, or recursive midpoint refinement where curvature exceeds tolerance.    |
+| `options.adaptiveTolerance` | `number`                  | `0.001`     | Max perpendicular error in `(l, c)` before subdividing in adaptive mode.                         |
+| `options.adaptiveMaxDepth`  | `number`                  | `12`        | Max recursion depth in adaptive mode.                                                            |
+| `options.simplifyTolerance` | `number`                  | disabled    | If set, runs Ramer-Douglas-Peucker simplification after sampling (in normalized `(l, c)` space). |
+
+<p className="api-returns">
+  Returns <code>{'GamutBoundaryPoint[]'}</code> &mdash; ordered{' '}
+  <code>{'{ l, c }'}</code> points
+</p>
+
+The plane-projected equivalent is the
+[`gamutBoundary` query](/docs/api/plane-queries), which returns points already
+mapped into plane coordinates.
+
+## `chromaBand`
+
+Generates a tonal strip of colors for a fixed hue and requested chroma across
+the lightness sweep, useful for showing the achievable lightness range at a
+chroma level.
+
+```ts
+import { chromaBand } from 'color-kit';
+
+const band = chromaBand(280, 0.2, {
+  mode: 'proportional',
+  selectedLightness: 0.56,
+  gamut: 'display-p3',
+});
+```
+
+`ChromaBandOptions` extends `MaxChromaAtOptions` (see `maxChromaAt` above)
+with:
+
+| Parameter                   | Type                          | Default     | Description                                                                                       |
+| --------------------------- | ----------------------------- | ----------- | ------------------------------------------------------------------------------------------------- |
+| `options.mode`              | `'clamped' \| 'proportional'` | `'clamped'` | Chroma distribution strategy (see below).                                                         |
+| `options.steps`             | `number`                      | `12`        | Equal lightness segments to sample (`steps + 1` colors, minimum `2`). Ignored in adaptive mode.   |
+| `options.samplingMode`      | `'uniform' \| 'adaptive'`     | `'uniform'` | `adaptive` reuses adaptive boundary sampling and projects each boundary point to the chroma mode. |
+| `options.adaptiveTolerance` | `number`                      | `0.001`     | Max perpendicular error in `(l, c)` before subdividing in adaptive mode.                          |
+| `options.adaptiveMaxDepth`  | `number`                      | `12`        | Max recursion depth in adaptive mode.                                                             |
+| `options.selectedLightness` | `number`                      | `0.5`       | Lightness anchor for `proportional` mode; resolves the requested/max chroma ratio.                |
+
+The two `ChromaBandMode` strategies:
+
+- `clamped` &mdash; use the requested chroma where available, otherwise clamp
+  to the gamut boundary. In adaptive mode, exact boundary-crossing points are
+  inserted so the band follows the clamp transition precisely.
+- `proportional` &mdash; resolve the requested/max chroma ratio once at
+  `selectedLightness`, then scale every step's boundary chroma by that fixed
+  ratio.
+
+<p className="api-returns">
+  Returns <code>{'Color[]'}</code> &mdash; one color per lightness sample
+</p>
+
+## Types
+
+<ul className="api-field-list">
+  <li>
+    <code>GamutTarget</code> &mdash; <code>'srgb' | 'display-p3'</code>
+  </li>
+  <li>
+    <code>GamutBoundaryPoint</code> &mdash; <code>{'{ l, c }'}</code> boundary
+    sample
+  </li>
+  <li>
+    <code>HueCusp</code> &mdash; <code>{'{ l, c }'}</code> maximum-chroma point
+    for a hue
+  </li>
+  <li>
+    <code>MaxChromaForHueMethod</code> &mdash; <code>'direct' | 'lut'</code>
+  </li>
+  <li>
+    <code>MaxChromaForHueOptions</code> &mdash; options for{' '}
+    <code>maxChromaForHue</code>
+  </li>
+  <li>
+    <code>MaxChromaAtOptions</code> &mdash; shared search options; base for the
+    path and band option types
+  </li>
+  <li>
+    <code>GamutBoundaryPathOptions</code> &mdash; options for{' '}
+    <code>gamutBoundaryPath</code>
+  </li>
+  <li>
+    <code>ChromaBandMode</code> &mdash; <code>'clamped' | 'proportional'</code>
+  </li>
+  <li>
+    <code>ChromaBandOptions</code> &mdash; options for <code>chromaBand</code>
+  </li>
+</ul>
+
+</div>

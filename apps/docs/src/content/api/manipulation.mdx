@@ -1,0 +1,191 @@
+<p className="docs-kicker">API Reference</p>
+
+# Manipulation
+
+<p className="docs-lede">
+  Pure functions for transforming colors in OKLCH space. Every function takes a
+  `Color`, returns a new `Color`, and never mutates its input.
+</p>
+
+<div className="prose-api">
+
+## Shared Notes
+
+- All functions operate on the internal `Color` representation (OKLCH: `l` in `[0, 1]`, `c` in `[0, ~0.4]`, `h` in degrees, `alpha` in `[0, 1]`).
+- All functions are immutable — they return new `Color` objects and leave the input untouched.
+- `lighten` and `darken` use **relative** scaling rather than absolute offsets: the same `amount` produces proportionally smaller changes as a color approaches the lightness bounds, so results never overshoot pure black or white.
+
+## `lighten`
+
+Moves lightness toward `1` by a relative amount. The new lightness is `l + amount * (1 - l)`, so `lighten(color, 0.5)` closes half the remaining distance to white. This differs from libraries that add an absolute offset.
+
+```ts
+import { lighten, parse } from 'color-kit';
+
+const base = parse('#3b82f6');
+const lighter = lighten(base, 0.2);
+```
+
+| Parameter | Type     | Default | Description                                                          |
+| --------- | -------- | ------- | -------------------------------------------------------------------- |
+| `color`   | `Color`  | —       | Source color                                                         |
+| `amount`  | `number` | —       | Relative amount in `[0, 1]`; fraction of remaining headroom to white |
+
+<p className="api-returns">
+  Returns a new <code>Color</code> with lightness clamped to `[0, 1]`.
+</p>
+
+## `darken`
+
+Scales lightness down by a relative amount. The new lightness is `l - amount * l`, so `darken(color, 0.5)` halves the current lightness rather than subtracting a fixed value.
+
+```ts
+import { darken, parse } from 'color-kit';
+
+const base = parse('#3b82f6');
+const darker = darken(base, 0.2);
+```
+
+| Parameter | Type     | Default | Description                                                          |
+| --------- | -------- | ------- | -------------------------------------------------------------------- |
+| `color`   | `Color`  | —       | Source color                                                         |
+| `amount`  | `number` | —       | Relative amount in `[0, 1]`; fraction of current lightness to remove |
+
+<p className="api-returns">
+  Returns a new <code>Color</code> with lightness clamped to `[0, 1]`.
+</p>
+
+## `saturate`
+
+Increases chroma by a fraction of the full chroma range. The new chroma is `c + amount * 0.4`, clamped to `[0, 0.4]` (the practical OKLCH chroma ceiling).
+
+```ts
+import { saturate, parse } from 'color-kit';
+
+const vivid = saturate(parse('#6b7280'), 0.3);
+```
+
+| Parameter | Type     | Default | Description                                                          |
+| --------- | -------- | ------- | -------------------------------------------------------------------- |
+| `color`   | `Color`  | —       | Source color                                                         |
+| `amount`  | `number` | —       | Amount in `[0, 1]`; each `0.1` adds `0.04` chroma (10% of the range) |
+
+<p className="api-returns">
+  Returns a new <code>Color</code> with chroma clamped to `[0, 0.4]`.
+</p>
+
+## `desaturate`
+
+Scales chroma down relatively. The new chroma is `c - amount * c`, so `desaturate(color, 1)` fully removes chroma while `desaturate(color, 0.5)` halves it.
+
+```ts
+import { desaturate, parse } from 'color-kit';
+
+const muted = desaturate(parse('#ef4444'), 0.5);
+```
+
+| Parameter | Type     | Default | Description                                                       |
+| --------- | -------- | ------- | ----------------------------------------------------------------- |
+| `color`   | `Color`  | —       | Source color                                                      |
+| `amount`  | `number` | —       | Relative amount in `[0, 1]`; fraction of current chroma to remove |
+
+<p className="api-returns">
+  Returns a new <code>Color</code> with chroma clamped to `[0, 0.4]`.
+</p>
+
+## `adjustHue`
+
+Rotates the hue by a number of degrees. The result is normalized back into `[0, 360)`, so rotations wrap correctly in either direction.
+
+```ts
+import { adjustHue, parse } from 'color-kit';
+
+const shifted = adjustHue(parse('#3b82f6'), -45);
+```
+
+| Parameter | Type     | Default | Description                                        |
+| --------- | -------- | ------- | -------------------------------------------------- |
+| `color`   | `Color`  | —       | Source color                                       |
+| `degrees` | `number` | —       | Rotation in degrees; may be negative or beyond 360 |
+
+<p className="api-returns">
+  Returns a new <code>Color</code> with the normalized hue.
+</p>
+
+## `setAlpha`
+
+Replaces the alpha channel with a new value, clamped to `[0, 1]`.
+
+```ts
+import { setAlpha, parse } from 'color-kit';
+
+const translucent = setAlpha(parse('#3b82f6'), 0.5);
+```
+
+| Parameter | Type     | Default | Description                    |
+| --------- | -------- | ------- | ------------------------------ |
+| `color`   | `Color`  | —       | Source color                   |
+| `alpha`   | `number` | —       | New alpha, clamped to `[0, 1]` |
+
+<p className="api-returns">
+  Returns a new <code>Color</code> with the updated alpha.
+</p>
+
+## `mix`
+
+Interpolates two colors in OKLCH space. Lightness, chroma, and alpha are linearly interpolated; hue takes the shortest path around the hue circle, so mixing red and blue passes through purple rather than green.
+
+```ts
+import { mix, parse } from 'color-kit';
+
+const blend = mix(parse('#3b82f6'), parse('#ef4444'));
+const nearRed = mix(parse('#3b82f6'), parse('#ef4444'), 0.9);
+```
+
+| Parameter | Type     | Default | Description                                        |
+| --------- | -------- | ------- | -------------------------------------------------- |
+| `color1`  | `Color`  | —       | First color; returned when `t = 0`                 |
+| `color2`  | `Color`  | —       | Second color; returned when `t = 1`                |
+| `t`       | `number` | `0.5`   | Interpolation position along the shortest hue path |
+
+<p className="api-returns">
+  Returns a new interpolated <code>Color</code>.
+</p>
+
+## `invert`
+
+Inverts a color by complementing lightness (`1 - l`) and rotating hue 180 degrees. Chroma and alpha are preserved.
+
+```ts
+import { invert, parse } from 'color-kit';
+
+const opposite = invert(parse('#3b82f6'));
+```
+
+| Parameter | Type    | Default | Description  |
+| --------- | ------- | ------- | ------------ |
+| `color`   | `Color` | —       | Source color |
+
+<p className="api-returns">
+  Returns a new <code>Color</code> with complemented lightness and hue.
+</p>
+
+## `grayscale`
+
+Removes all chroma, producing a neutral gray with the same lightness and alpha.
+
+```ts
+import { grayscale, parse } from 'color-kit';
+
+const gray = grayscale(parse('#3b82f6'));
+```
+
+| Parameter | Type    | Default | Description  |
+| --------- | ------- | ------- | ------------ |
+| `color`   | `Color` | —       | Source color |
+
+<p className="api-returns">
+  Returns a new <code>Color</code> with <code>c: 0</code>.
+</p>
+
+</div>

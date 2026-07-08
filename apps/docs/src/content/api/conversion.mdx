@@ -1,0 +1,175 @@
+<p className="docs-kicker">API Reference</p>
+
+# Conversion
+
+<p className="docs-lede">
+  Parse CSS color strings and convert colors across formats. Every conversion
+  flows through the canonical `Color` type, an OKLCH value that stays
+  perceptually uniform for manipulation and interpolation.
+</p>
+
+<div className="prose-api">
+
+## The `Color` Type
+
+`Color` is the internal representation used across Color Kit. It is plain OKLCH:
+
+<ul className="api-field-list">
+  <li>
+    <code>l</code> &mdash; lightness, <code>0</code> (black) to <code>1</code>{' '}
+    (white)
+  </li>
+  <li>
+    <code>c</code> &mdash; chroma, <code>0</code> (gray) to <code>~0.4</code>{' '}
+    (most saturated)
+  </li>
+  <li>
+    <code>h</code> &mdash; hue angle in degrees, <code>0</code> to{' '}
+    <code>360</code>
+  </li>
+  <li>
+    <code>alpha</code> &mdash; opacity, <code>0</code> (transparent) to{' '}
+    <code>1</code> (opaque)
+  </li>
+</ul>
+
+The conversion pipeline is: any format &rarr; sRGB &rarr; linear sRGB &rarr;
+OKLAB &rarr; OKLCH (`Color`), and the same chain in reverse for output.
+
+## `parse`
+
+Parses a CSS color string into a `Color`. This is the main entry point for
+getting colors into Color Kit.
+
+```ts
+import { parse } from 'color-kit';
+
+const violet = parse('#7c3aed');
+const blue = parse('rgb(59 130 246)');
+const accent = parse('oklch(0.7 0.15 280 / 0.8)');
+const wide = parse('color(display-p3 0 1 0)');
+```
+
+<p className="api-returns">
+  Returns <code>Color</code>
+</p>
+
+Input is trimmed and lowercased before matching. The supported syntaxes,
+exactly as implemented:
+
+| Syntax                | Examples                                                   | Notes                                                                                            |
+| --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Hex                   | `#f0a`, `#f0a8`, `#ff00aa`, `#ff00aa88`                    | 3, 4, 6, or 8 digits; 4th/8th pair is alpha                                                      |
+| `rgb()` / `rgba()`    | `rgb(59 130 246)`, `rgba(59, 130, 246, 0.5)`               | Comma or space separated; channels clamped to `0–255`; alpha via `/` or `,`, plain number or `%` |
+| `hsl()` / `hsla()`    | `hsl(220 90% 60%)`, `hsla(220, 90%, 60%, 0.5)`             | Optional `deg` on hue; `%` required on saturation and lightness                                  |
+| `oklch()`             | `oklch(0.7 0.15 280)`, `oklch(70% 40% 280 / 80%)`          | `l` accepts number or `%`; `c` as `%` maps `100%` to `0.4`; optional `deg` on hue                |
+| `oklab()`             | `oklab(0.7 0.1 -0.08)`, `oklab(70% 25% -20%)`              | `L` accepts number or `%`; `a`/`b` as `%` map `100%` to `±0.4`                                   |
+| `color(display-p3 …)` | `color(display-p3 0 1 0)`, `color(display-p3 0 1 0 / 50%)` | Channels are `0–1`; converted through linear P3 into the canonical `Color`                       |
+
+Alpha is always clamped to `[0, 1]` and defaults to `1` when omitted. Any
+string that matches none of these patterns throws
+`Error: Unable to parse color: "..."` &mdash; named colors such as `red` and
+keywords such as `none` are not supported.
+
+## `toCss`
+
+Serializes a `Color` to a CSS color string.
+
+```ts
+import { parse, toCss } from 'color-kit';
+
+const color = parse('#7c3aed');
+
+toCss(color); // '#7c3aed'
+toCss(color, 'oklch'); // 'oklch(<l> <c> <h>)'
+toCss(color, 'p3'); // 'color(display-p3 <r> <g> <b>)'
+```
+
+<p className="api-returns">
+  Returns <code>string</code>
+</p>
+
+| Parameter | Type     | Default  | Description                                                                                       |
+| --------- | -------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `color`   | `Color`  | required | The color to serialize.                                                                           |
+| `format`  | `string` | `'hex'`  | One of `'hex'`, `'rgb'`, `'hsl'`, `'oklch'`, `'oklab'`, `'p3'`. Unknown formats fall back to hex. |
+
+Alpha is only included in the output when it is below `1` (as a `/ a` suffix,
+or as an 8-digit hex). Values are rounded per format: HSL to 1 decimal, OKLCH
+lightness/chroma to 4 and hue to 2, OKLAB and P3 channels to 4, alpha to 3.
+
+## High-Level Conversions
+
+Each supported format has a `toX(color)` / `fromX(value)` pair converting to
+and from the canonical `Color`. Behavior is uniform: `to*` runs the OKLCH
+&rarr; OKLAB &rarr; linear sRGB &rarr; target chain, `from*` runs it in
+reverse.
+
+| Pair                    | Value type | Channel ranges                                     |
+| ----------------------- | ---------- | -------------------------------------------------- |
+| `toHex` / `fromHex`     | `string`   | `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`            |
+| `toRgb` / `fromRgb`     | `Rgb`      | `r`, `g`, `b`: `0–255`                             |
+| `toHsl` / `fromHsl`     | `Hsl`      | `h`: `0–360`; `s`, `l`: `0–100`                    |
+| `toHsv` / `fromHsv`     | `Hsv`      | `h`: `0–360`; `s`, `v`: `0–100`                    |
+| `toHct` / `fromHct`     | `Hct`      | `h`: `0–360`; `c`: `>= 0`; `t`: `0–100` (Material) |
+| `toOklab` / `fromOklab` | `Oklab`    | `L`: `0–1`; `a`, `b`: `~-0.4` to `~0.4`            |
+| `toOklch` / `fromOklch` | `Oklch`    | Identity with `Color`; returns a new object        |
+| `toP3` / `fromP3`       | `P3`       | `r`, `g`, `b`: `0–1` (Display P3, gamma encoded)   |
+
+All value types carry an `alpha` field (`0–1`) alongside their channels.
+
+```ts
+import { fromHsl, parse, toP3, toRgb } from 'color-kit';
+
+const color = parse('oklch(0.7 0.15 280)');
+
+const rgb = toRgb(color); // { r, g, b, alpha } in 0-255
+const p3 = toP3(color); // { r, g, b, alpha } in 0-1
+
+const fromCss = fromHsl({ h: 220, s: 90, l: 60, alpha: 1 });
+```
+
+Notes on non-obvious behavior:
+
+- **Gamut clamping.** `toRgb` rounds each channel to an integer and clamps to
+  `0–255`, and `toP3` clamps gamma-encoded channels to `0–1`. Colors outside
+  the target gamut are silently clamped channel-by-channel, not gamut-mapped.
+  `toHex`, `toHsl`, `toHsv`, and `toHct` route through `toRgb`, so they inherit
+  the sRGB clamp.
+- **HCT round-trips.** `toHct` and `fromHct` go through Material's 8-bit ARGB
+  representation, so conversions are quantized to sRGB precision. `fromHct`
+  preserves the input `alpha` verbatim.
+- **`toOklch` / `fromOklch`** are identity conversions that return new
+  objects, since `Color` already is OKLCH.
+
+## Low-Level Converters
+
+The individual pipeline steps are exported for advanced use. Each takes a
+single value and returns the converted value; none of them accept options.
+
+| Function               | Input       | Output      | Notes                                                |
+| ---------------------- | ----------- | ----------- | ---------------------------------------------------- |
+| `srgbToLinear`         | `Rgb`       | `LinearRgb` | Decodes gamma; `0–255` in, `0–1` linear out          |
+| `linearToSrgb`         | `LinearRgb` | `Rgb`       | Encodes gamma; rounds and clamps channels to `0–255` |
+| `rgbToHex`             | `Rgb`       | `string`    | Clamps channels; appends alpha pair when `alpha < 1` |
+| `hexToRgb`             | `string`    | `Rgb`       | Accepts 3/4/6/8 digits; throws on invalid input      |
+| `rgbToHsl`             | `Rgb`       | `Hsl`       |                                                      |
+| `hslToRgb`             | `Hsl`       | `Rgb`       |                                                      |
+| `rgbToHsv`             | `Rgb`       | `Hsv`       |                                                      |
+| `hsvToRgb`             | `Hsv`       | `Rgb`       |                                                      |
+| `linearRgbToOklab`     | `LinearRgb` | `Oklab`     | Ottosson reference matrices                          |
+| `oklabToLinearRgb`     | `Oklab`     | `LinearRgb` | Output is unclamped linear light                     |
+| `oklabToOklch`         | `Oklab`     | `Oklch`     | Hue defaults to `0` when chroma is below `0.0001`    |
+| `oklchToOklab`         | `Oklch`     | `Oklab`     |                                                      |
+| `oklchToColor`         | `Oklch`     | `Color`     | Passthrough with hue normalization                   |
+| `colorToOklch`         | `Color`     | `Oklch`     | Passthrough with hue normalization                   |
+| `linearSrgbToLinearP3` | `LinearRgb` | `P3`        | CSS Color 4 matrix; linear values                    |
+| `linearP3ToLinearSrgb` | `P3`        | `LinearRgb` | Linear values                                        |
+| `linearP3ToP3`         | `P3`        | `P3`        | Applies gamma; clamps channels to `0–1`              |
+| `p3ToLinearP3`         | `P3`        | `P3`        | Removes gamma                                        |
+
+Only `linearToSrgb`, `rgbToHex`, and `linearP3ToP3` clamp their output; the
+OKLAB/OKLCH and matrix converters pass unclamped values through, which is what
+makes accurate gamut checks possible upstream.
+
+</div>
