@@ -3,4 +3,5 @@ packages:
   - 'apps/*'
 
 onlyBuiltDependencies:
+  # External GitHub tarball dep runs `prepare: pnpm build` on install.
   - '@color-kit/control-kit'
