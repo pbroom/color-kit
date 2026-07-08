@@ -1,6 +1,6 @@
 # color-kit
 
-Unified consumer package for Color Kit.
+A queryable color-space engine for building color tooling. OKLCH-canonical conversion, contrast, harmony, manipulation, gamut mapping, and plane-geometry queries, with React bindings available under `color-kit/react`.
 
 ## Install
 

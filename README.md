@@ -1,14 +1,14 @@
 # color-kit
 
-Open-source primitive UI components and tooling for building color interfaces.
+A queryable color-space engine for building color tooling.
 
-Built on **OKLCH** for perceptually uniform color manipulation. Headless React primitives with full accessibility support.
+Most color libraries convert and manipulate colors. color-kit does that too — but its core is a **queryable model of color-space geometry**: define a 2D plane through any color space, then ask it for gamut boundaries, contrast regions, and safe-color solutions as resolution-independent geometry. Everything is **OKLCH**-canonical and perceptually uniform, and the engine is plain TypeScript — no DOM, no UI framework, SVG output as path strings. React bindings ship as one consumer of the engine, not as the product.
 
 ## Packages
 
-| Package                             | Description                                                                             |
-| ----------------------------------- | --------------------------------------------------------------------------------------- |
-| [`color-kit`](./packages/color-kit) | Unified consumer package with the core API at the root plus `react` and `wasm` subpaths |
+| Package                             | Description                                                                               |
+| ----------------------------------- | ----------------------------------------------------------------------------------------- |
+| [`color-kit`](./packages/color-kit) | Unified consumer package with the engine API at the root plus `react` and `wasm` subpaths |
 
 ## Stability Policy
 
@@ -41,7 +41,28 @@ npx shadcn add color-area --registry color-kit
 
 ## Quick Start
 
-### Core
+### Plane queries (the engine)
+
+Define a plane through a color space and query its geometry:
+
+```ts
+import { definePlane, sense, toSvgPath } from 'color-kit';
+
+const plane = definePlane({
+  model: 'oklch',
+  x: { channel: 'l', range: [0, 1] },
+  y: { channel: 'c', range: [0, 0.4] },
+  fixed: { h: 250, alpha: 1 },
+});
+
+const query = sense(plane);
+const boundary = query.gamutBoundary({ gamut: 'display-p3' });
+const d = toSvgPath(boundary.points); // resolution-independent SVG path
+```
+
+This is the layer that powers gamut visualizations, contrast-safe pickers, and other color tooling that needs to reason about color-space shape rather than individual colors.
+
+### Everyday toolkit
 
 ```typescript
 import { parse, toHex, lighten, contrastRatio, complementary } from 'color-kit';
@@ -93,7 +114,9 @@ const gradient = ColorApi.getSliderGradientStyles({
 });
 ```
 
-### React
+### React (one binding)
+
+React components and hooks consume the same engine. Other bindings can be built on the framework-agnostic driver layer the same way.
 
 ```tsx
 import { Color, ColorArea, useColor } from 'color-kit/react';
@@ -137,6 +160,10 @@ palette.setActiveGamut('srgb');
 
 ## Core API
 
+### Plane Geometry
+
+`definePlane()` `sense()` `runPlaneQuery()` `toSvgPath()` `toSvgCompoundPath()` `PlaneQueryCache()`
+
 ### Conversion
 
 `parse()` `toHex()` `toRgb()` `toHsl()` `toHsv()` `toOklch()` `toOklab()` `toP3()` `toCss()` `fromRgb()` `fromHex()` `fromHsl()` `fromHsv()` `fromOklch()` `fromOklab()` `fromP3()`
@@ -160,25 +187,6 @@ palette.setActiveGamut('srgb');
 ### Gamut
 
 `inSrgbGamut()` `inP3Gamut()` `toSrgbGamut()` `toP3Gamut()`
-
-### Plane Geometry
-
-`definePlane()` `sense()` `runPlaneQuery()` `toSvgPath()` `toSvgCompoundPath()` `PlaneQueryCache()`
-
-```ts
-import { definePlane, sense, toSvgPath } from 'color-kit';
-
-const resolvedPlane = definePlane({
-  model: 'oklch',
-  x: { channel: 'l', range: [0, 1] },
-  y: { channel: 'c', range: [0, 0.4] },
-  fixed: { h: 250, alpha: 1 },
-});
-
-const query = sense(resolvedPlane);
-const boundary = query.gamutBoundary({ gamut: 'display-p3' });
-const d = toSvgPath(boundary.points);
-```
 
 ## Development
 

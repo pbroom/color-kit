@@ -1,7 +1,7 @@
 {
   "name": "color-kit-workspace",
   "private": true,
-  "description": "Open-source primitive UI components and tooling for building color interfaces",
+  "description": "A queryable color-space engine for building color tooling: OKLCH-canonical conversion, contrast, gamut geometry, and plane queries, with React bindings as one consumer",
   "type": "module",
   "scripts": {
     "build": "node scripts/build-all.mjs",
@@ -31,12 +31,15 @@
   },
   "keywords": [
     "color",
-    "color-picker",
+    "color-space",
     "oklch",
-    "ui-components",
-    "react",
-    "headless",
-    "accessibility"
+    "gamut",
+    "display-p3",
+    "contrast",
+    "apca",
+    "color-engine",
+    "color-picker",
+    "react"
   ],
   "author": "pbroom",
   "license": "MIT",
