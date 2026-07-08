@@ -214,15 +214,16 @@ async function runWorkerOnce(
     globalThis as unknown as {
       self?: WorkerHarnessScope;
       __COLOR_KIT_WASM_PLANE_BACKEND__?: PlaneComputeBackend;
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
   ).self = scope;
   (
     globalThis as unknown as {
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
-  ).__COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__ =
-    options.disableAutoBootstrap ?? false;
+  ).__COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__ = !(
+    options.disableAutoBootstrap ?? false
+  );
   if (wasmBackend) {
     (
       globalThis as unknown as {
@@ -252,20 +253,20 @@ afterEach(() => {
     globalThis as unknown as {
       self?: WorkerHarnessScope;
       __COLOR_KIT_WASM_PLANE_BACKEND__?: PlaneComputeBackend;
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
   ).self;
   delete (
     globalThis as unknown as {
       __COLOR_KIT_WASM_PLANE_BACKEND__?: PlaneComputeBackend;
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
   ).__COLOR_KIT_WASM_PLANE_BACKEND__;
   delete (
     globalThis as unknown as {
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
-  ).__COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__;
+  ).__COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__;
   vi.resetModules();
 });
 
