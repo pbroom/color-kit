@@ -1,7 +1,7 @@
 {
   "name": "color-kit",
   "version": "0.0.1",
-  "description": "Unified Color Kit package with root core exports and React/WASM subpaths",
+  "description": "A queryable color-space engine for building color tooling: OKLCH-canonical conversion, contrast, gamut geometry, and plane queries, with React bindings as one consumer",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -72,12 +72,15 @@
   },
   "keywords": [
     "color",
-    "color-picker",
+    "color-space",
     "oklch",
-    "ui-components",
-    "react",
-    "headless",
-    "accessibility"
+    "gamut",
+    "display-p3",
+    "contrast",
+    "apca",
+    "color-engine",
+    "color-picker",
+    "react"
   ],
   "author": "pbroom",
   "license": "MIT",
