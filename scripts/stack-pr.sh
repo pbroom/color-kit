@@ -223,7 +223,7 @@ fi
 milestones=()
 while IFS= read -r line; do
   milestones+=("$line")
-done < <(git diff -U0 "${diff_base}...HEAD" -- notes.md 2>/dev/null | rg -o 'M[0-9]+' | sort -u)
+done < <(git diff -U0 "${diff_base}...HEAD" -- archive/notes.md 2>/dev/null | rg -o 'M[0-9]+' | sort -u)
 if [[ "${#milestones[@]}" -eq 0 ]]; then
   milestones=("Not specified in this branch")
 fi
