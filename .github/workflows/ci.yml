@@ -35,6 +35,9 @@ jobs:
           COLOR_KIT_SKIP_WASM_GENERATED: '1'
         run: pnpm build
 
+      - name: Validate published package artifacts
+        run: pnpm check:artifacts
+
       - name: Run tests
         env:
           COLOR_KIT_SKIP_WASM_GENERATED: '1'

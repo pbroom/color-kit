@@ -6,6 +6,9 @@ const require = createRequire(import.meta.url);
 const root = await import('color-kit');
 const core = await import('color-kit/core');
 const driver = await import('color-kit/driver');
+const plane = await import('color-kit/plane');
+const compute = await import('color-kit/compute');
+const hct = await import('color-kit/hct');
 const react = await import('color-kit/react');
 const wasm = await import('color-kit/wasm');
 
@@ -17,19 +20,44 @@ assert.equal(typeof driver.createColorState, 'function');
 assert.equal(typeof driver.colorFromColorAreaPosition, 'function');
 assert.equal(typeof driver.parseColorInputExpression, 'function');
 assert.equal(typeof driver.getSliderGradientStyles, 'function');
+assert.equal(typeof plane.definePlane, 'function');
+assert.equal(typeof plane.sense, 'function');
+assert.equal(typeof compute.createPlaneComputeScheduler, 'function');
+assert.equal(typeof compute.runPlaneCompute, 'function');
+assert.equal(typeof hct.maxHctChromaForHue, 'function');
 assert.equal(typeof react.Color, 'function');
 assert.equal(typeof react.useColor, 'function');
 assert.equal(typeof wasm.loadWasmPlaneComputeBackend, 'function');
 assert.equal(typeof wasm.createWasmAwarePlaneComputeScheduler, 'function');
 
+// Subpath entries must share module state with the root barrel (chunk
+// splitting), otherwise module-level singletons like the default compute
+// scheduler would be duplicated per entry point.
+assert.equal(
+  root.createJsPlaneComputeBackend,
+  compute.createJsPlaneComputeBackend,
+);
+assert.equal(root.definePlane, plane.definePlane);
+
 const cjsRoot = require('../dist/index.cjs');
 const cjsCore = require('../dist/core/index.cjs');
 const cjsDriver = require('../dist/driver/index.cjs');
+const cjsPlane = require('../dist/plane/index.cjs');
+const cjsCompute = require('../dist/compute/index.cjs');
+const cjsHct = require('../dist/hct/index.cjs');
 const cjsReact = require('../dist/react/index.cjs');
 const cjsWasm = require('../dist/wasm/index.cjs');
 
 assert.equal(typeof cjsRoot.definePlane, 'function');
 assert.equal(typeof cjsCore.definePlane, 'function');
 assert.equal(typeof cjsDriver.createColorState, 'function');
+assert.equal(typeof cjsPlane.definePlane, 'function');
+assert.equal(typeof cjsCompute.createPlaneComputeScheduler, 'function');
+assert.equal(typeof cjsHct.maxHctChromaForHue, 'function');
 assert.equal(typeof cjsReact.Color, 'function');
 assert.equal(typeof cjsWasm.loadWasmPlaneComputeBackend, 'function');
+assert.equal(
+  cjsRoot.createJsPlaneComputeBackend,
+  cjsCompute.createJsPlaneComputeBackend,
+);
+assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);
