@@ -134,13 +134,16 @@ function resolveInstalledWasmBackend(): PlaneComputeBackend | undefined {
   return undefined;
 }
 
-function shouldDisableAutoWasmBootstrap(): boolean {
+// The WASM path is parked: the JS backend is the default and the wasm
+// backend only auto-loads when a host explicitly opts in with this flag
+// (or installs a backend directly via __COLOR_KIT_WASM_PLANE_BACKEND__).
+function shouldAutoBootstrapWasm(): boolean {
   return Boolean(
     (
       globalThis as unknown as {
-        __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+        __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
       }
-    ).__COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__,
+    ).__COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__,
   );
 }
 
@@ -210,9 +213,10 @@ async function bootstrapWasmBackendIfNeeded(): Promise<void> {
   wasmInitState.attempted = true;
   wasmInitState.status = 'pending';
   wasmInitState.error = undefined;
-  if (shouldDisableAutoWasmBootstrap()) {
+  if (!shouldAutoBootstrapWasm()) {
     wasmInitState.status = 'unavailable';
-    wasmInitState.error = 'auto bootstrap disabled';
+    wasmInitState.error =
+      'WASM auto bootstrap not enabled; set __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__ to opt in';
     return;
   }
   try {

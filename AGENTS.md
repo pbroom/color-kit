@@ -138,6 +138,7 @@ This file defines top-level guidance for Codex in this repository.
 
 ## Learned Workspace Facts
 
+- The WASM path is parked (2026-07): JS is the default plane-compute backend; the worker only auto-loads WASM when `__COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__` is set. Rust CI jobs live in `.github/workflows/wasm.yml`, gated to WASM-relevant paths plus weekly/manual runs; `release:verify` still runs the full strict parity gate. Unparking starts by moving hot loops (gamut-region sampling, chroma search) into the Rust kernel.
 - The Input Primitive Lab is intended to be color-agnostic: it should refine, test, and visualize a standalone input component primitive independently from ColorPlane state.
 - `PrimitiveValueInput` should stay focused on numeric behavior (formatting, parsing, stepping, scrubbing, validation); visible invalid border/error states are opt-in, and affix/unit/accessory UI belongs in wrapper utilities rather than generic primitive slots.
 - Dogfooding the input primitive in the properties panel should use multi-input grouping for ColorPlane `L`, `C`, and `H` while preserving the existing labels and behavior rather than replacing them with property-panel icons.

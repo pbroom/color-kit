@@ -61,7 +61,7 @@ async function runWorkerOnce(): Promise<PlaneQueryWorkerResponse> {
     globalThis as unknown as {
       self?: WorkerHarnessScope;
       __COLOR_KIT_WASM_PLANE_BACKEND__?: unknown;
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
   ).self = scope;
   delete (
@@ -71,9 +71,9 @@ async function runWorkerOnce(): Promise<PlaneQueryWorkerResponse> {
   ).__COLOR_KIT_WASM_PLANE_BACKEND__;
   (
     globalThis as unknown as {
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
-  ).__COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__ = false;
+  ).__COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__ = true;
 
   await import('../src/workers/plane-query.worker.ts');
   expect(typeof scope.onmessage).toBe('function');
@@ -90,7 +90,7 @@ afterEach(() => {
     globalThis as unknown as {
       self?: WorkerHarnessScope;
       __COLOR_KIT_WASM_PLANE_BACKEND__?: unknown;
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
   ).self;
   delete (
@@ -100,9 +100,9 @@ afterEach(() => {
   ).__COLOR_KIT_WASM_PLANE_BACKEND__;
   delete (
     globalThis as unknown as {
-      __COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
+      __COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__?: boolean;
     }
-  ).__COLOR_KIT_DISABLE_WASM_AUTO_BOOTSTRAP__;
+  ).__COLOR_KIT_ENABLE_WASM_AUTO_BOOTSTRAP__;
   vi.resetModules();
 });
 

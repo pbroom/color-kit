@@ -268,6 +268,12 @@ else
         core_changed=1
         format_changed=1
         ;;
+      packages/react/src/workers/*|packages/react/__tests__/plane-query-worker-*.test.ts|packages/react/__tests__/wasm-parity-gate.test.ts)
+        react_changed=1
+        wasm_changed=1
+        needs_browser_smoke_hint=1
+        format_changed=1
+        ;;
       packages/react/*)
         react_changed=1
         needs_browser_smoke_hint=1
@@ -333,7 +339,9 @@ if [[ -n "$format_command" ]]; then
   add_profile "format"
 fi
 
-if [[ "$core_changed" == "1" || "$react_changed" == "1" || "$wasm_changed" == "1" || "$umbrella_changed" == "1" ]]; then
+# The WASM path is parked: only run the Rust build + parity matrix when
+# WASM-relevant files change. release:verify still runs it before publishes.
+if [[ "$wasm_changed" == "1" ]]; then
   needs_wasm_matrix=1
 fi
 

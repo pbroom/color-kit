@@ -68,58 +68,8 @@ jobs:
       - name: Run lint (including React Compiler hooks rules)
         run: pnpm lint
 
-  wasm-build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install wasm-pack
-        run: cargo install wasm-pack --locked
-
-      - name: Build and validate wasm kernel package
-        run: pnpm ci:wasm
-
-      - name: Build and validate published package artifacts
-        run: pnpm --filter color-kit build && pnpm check:artifacts
-
-  wasm-parity-gate:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install wasm-pack
-        run: cargo install wasm-pack --locked
-
-      - name: Run strict wasm parity gate
-        run: pnpm ci:wasm-parity
+  # wasm-build and wasm-parity-gate moved to .github/workflows/wasm.yml,
+  # gated to WASM-relevant paths plus a weekly schedule and manual dispatch.
 
   plane-bench:
     runs-on: ubuntu-latest
