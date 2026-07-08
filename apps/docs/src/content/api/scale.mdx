@@ -1,0 +1,95 @@
+<p className="docs-kicker">API Reference</p>
+
+# Scale
+
+<p className="docs-lede">
+  Interpolation and scale generation in OKLCH space. Build smooth two-color
+  ramps or fixed-hue lightness scales with perceptually even steps.
+</p>
+
+<div className="prose-api">
+
+## Shared Notes
+
+- All interpolation is per-channel linear interpolation of OKLCH components (`l`, `c`, `h`, `alpha`).
+- Hue interpolation takes the shortest path around the wheel: when the raw hue difference exceeds 180 degrees, one endpoint is wrapped by 360 before interpolating, and the result is normalized back into `[0, 360)`.
+- Near-achromatic endpoints (chroma below `0.001`) do not contribute a hue: the other endpoint's hue is used as-is, and if both endpoints are achromatic the hue is `0`.
+
+## `interpolate`
+
+Interpolates between two colors in OKLCH space. `t = 0` returns the first color, `t = 1` returns the second.
+
+```ts
+import { interpolate, parse } from 'color-kit';
+
+const midpoint = interpolate(parse('#3b82f6'), parse('#ef4444'), 0.5);
+```
+
+| Parameter | Type     | Default  | Description                                                   |
+| --------- | -------- | -------- | ------------------------------------------------------------- |
+| `color1`  | `Color`  | required | Start color (returned when `t` is 0).                         |
+| `color2`  | `Color`  | required | End color (returned when `t` is 1).                           |
+| `t`       | `number` | required | Interpolation position. Values outside 0&ndash;1 extrapolate. |
+
+<p className="api-returns">
+  Returns <code>Color</code> with each channel linearly interpolated and the hue
+  normalized into <code>[0, 360)</code>.
+</p>
+
+## `generateScale`
+
+Generates an evenly spaced color scale between two endpoints. Both endpoints are included, and each intermediate stop is produced by `interpolate`.
+
+```ts
+import { generateScale, parse } from 'color-kit';
+
+const ramp = generateScale(parse('#0f172a'), parse('#f8fafc'), 7);
+```
+
+| Parameter | Type     | Default  | Description                                                                      |
+| --------- | -------- | -------- | -------------------------------------------------------------------------------- |
+| `from`    | `Color`  | required | Starting color (first entry in the scale).                                       |
+| `to`      | `Color`  | required | Ending color (last entry in the scale).                                          |
+| `steps`   | `number` | required | Number of colors in the scale. Must be at least 2, otherwise an error is thrown. |
+
+<p className="api-returns">
+  Returns <code>Color[]</code> of length <code>steps</code>, from{' '}
+  <code>from</code> to <code>to</code> inclusive.
+</p>
+
+## `lightnessScale`
+
+Generates a dark-to-light scale at a fixed hue and chroma. Only lightness varies; chroma, hue, and alpha are copied from the base color.
+
+```ts
+import { lightnessScale, parse } from 'color-kit';
+
+const tones = lightnessScale(parse('#3b82f6'), 11, [0.05, 0.95]);
+```
+
+| Parameter | Type               | Default        | Description                                                        |
+| --------- | ------------------ | -------------- | ------------------------------------------------------------------ |
+| `color`   | `Color`            | required       | Base color whose chroma, hue, and alpha are preserved.             |
+| `steps`   | `number`           | `11`           | Number of stops. Must be at least 2, otherwise an error is thrown. |
+| `range`   | `[number, number]` | `[0.05, 0.95]` | Lightness range as `[min, max]`, interpolated linearly.            |
+
+<p className="api-returns">
+  Returns <code>Color[]</code> ordered from the darkest stop (`range[0]`) to the
+  lightest stop (`range[1]`).
+</p>
+
+<ul className="api-field-list">
+  <li>
+    <code>l</code> &mdash; evenly spaced between <code>range[0]</code> and{' '}
+    <code>range[1]</code>
+  </li>
+  <li>
+    <code>c</code>, <code>h</code>, <code>alpha</code> &mdash; copied unchanged
+    from the base color
+  </li>
+</ul>
+
+Note that stops are not gamut-mapped: high-chroma base colors can produce
+out-of-gamut stops at the extremes of the lightness range.
+
+</div>

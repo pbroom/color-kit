@@ -117,6 +117,36 @@ export const docsNavigation: DocsNavSection[] = [
         path: 'api/plane-queries',
         href: toDocsHref('api/plane-queries'),
       },
+      {
+        title: 'Conversion',
+        path: 'api/conversion',
+        href: toDocsHref('api/conversion'),
+      },
+      {
+        title: 'Contrast',
+        path: 'api/contrast',
+        href: toDocsHref('api/contrast'),
+      },
+      {
+        title: 'Harmony',
+        path: 'api/harmony',
+        href: toDocsHref('api/harmony'),
+      },
+      {
+        title: 'Scale',
+        path: 'api/scale',
+        href: toDocsHref('api/scale'),
+      },
+      {
+        title: 'Manipulation',
+        path: 'api/manipulation',
+        href: toDocsHref('api/manipulation'),
+      },
+      {
+        title: 'Gamut',
+        path: 'api/gamut',
+        href: toDocsHref('api/gamut'),
+      },
     ],
   },
 ];

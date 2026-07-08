@@ -1,0 +1,116 @@
+<p className="docs-kicker">API Reference</p>
+
+# Harmony
+
+<p className="docs-lede">
+  Classic color-wheel relationships computed as hue rotations in OKLCH space.
+  Every helper preserves the input color's lightness, chroma, and alpha, and
+  only shifts hue.
+</p>
+
+<div className="prose-api">
+
+## Shared Notes
+
+- All rotations happen on the OKLCH hue wheel. Lightness (`l`), chroma (`c`), and `alpha` are copied from the input color unchanged.
+- Resulting hues are normalized into the `[0, 360)` range, so rotations past 360 or below 0 wrap around the wheel.
+- Helpers that return arrays include the original color object itself (not a copy) at the documented position.
+
+## `complementary`
+
+Returns the complementary color &mdash; the input hue rotated 180 degrees.
+
+```ts
+import { complementary, parse } from 'color-kit';
+
+const base = parse('#3b82f6');
+const opposite = complementary(base);
+```
+
+| Parameter | Type    | Default  | Description                          |
+| --------- | ------- | -------- | ------------------------------------ |
+| `color`   | `Color` | required | Base color to rotate by 180 degrees. |
+
+<p className="api-returns">
+  Returns <code>Color</code> with the hue shifted by 180 degrees.
+</p>
+
+## `analogous`
+
+Returns three adjacent colors on the wheel: one rotated below the base hue, the base color itself, and one rotated above it.
+
+```ts
+import { analogous, parse } from 'color-kit';
+
+const [left, base, right] = analogous(parse('#3b82f6'), 30);
+```
+
+| Parameter | Type     | Default  | Description                                       |
+| --------- | -------- | -------- | ------------------------------------------------- |
+| `color`   | `Color`  | required | Base color at the center of the trio.             |
+| `angle`   | `number` | `30`     | Spread in degrees on each side of the base color. |
+
+<p className="api-returns">
+  Returns <code>Color[]</code> ordered as{' '}
+  <code>[color &minus; angle, color, color + angle]</code>.
+</p>
+
+## `triadic`
+
+Returns three colors equally spaced 120 degrees apart, starting from the base color.
+
+```ts
+import { parse, triadic } from 'color-kit';
+
+const [base, second, third] = triadic(parse('#3b82f6'));
+```
+
+| Parameter | Type    | Default  | Description                      |
+| --------- | ------- | -------- | -------------------------------- |
+| `color`   | `Color` | required | Base color; returned at index 0. |
+
+<p className="api-returns">
+  Returns <code>Color[]</code> ordered as{' '}
+  <code>[color, color + 120, color + 240]</code>.
+</p>
+
+## `tetradic`
+
+Returns four colors forming two complementary pairs, spaced 90 degrees apart (a rectangular/square scheme).
+
+```ts
+import { parse, tetradic } from 'color-kit';
+
+const scheme = tetradic(parse('#3b82f6'));
+```
+
+| Parameter | Type    | Default  | Description                      |
+| --------- | ------- | -------- | -------------------------------- |
+| `color`   | `Color` | required | Base color; returned at index 0. |
+
+<p className="api-returns">
+  Returns <code>Color[]</code> ordered as{' '}
+  <code>[color, color + 90, color + 180, color + 270]</code>.
+</p>
+
+## `splitComplementary`
+
+Returns the base color plus two colors flanking its complement.
+
+```ts
+import { parse, splitComplementary } from 'color-kit';
+
+const [base, lower, upper] = splitComplementary(parse('#3b82f6'), 30);
+```
+
+| Parameter | Type     | Default  | Description                                           |
+| --------- | -------- | -------- | ----------------------------------------------------- |
+| `color`   | `Color`  | required | Base color; returned at index 0.                      |
+| `angle`   | `number` | `30`     | Spread in degrees on each side of the complement hue. |
+
+<p className="api-returns">
+  Returns <code>Color[]</code> ordered as{' '}
+  <code>[color, color + (180 &minus; angle), color + (180 + angle)]</code>.
+</p>
+
+</div>
