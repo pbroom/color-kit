@@ -102,7 +102,6 @@ async function main() {
   await mkdir(distRoot, { recursive: true });
 
   await copyDirectory(coreDistRoot, distRoot, false);
-  await copyDirectory(coreDistRoot, path.join(distRoot, 'core'), false);
   await copyDirectory(driverDistRoot, path.join(distRoot, 'driver'), true);
   await copyDirectory(reactDistRoot, path.join(distRoot, 'react'), true);
   await copyDirectory(wasmDistRoot, path.join(distRoot, 'wasm'), true);

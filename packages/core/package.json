@@ -17,8 +17,40 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
-    }
+    },
+    "./plane": {
+      "import": {
+        "types": "./dist/plane/index.d.ts",
+        "default": "./dist/plane/index.js"
+      },
+      "require": {
+        "types": "./dist/plane/index.d.cts",
+        "default": "./dist/plane/index.cjs"
+      }
+    },
+    "./compute": {
+      "import": {
+        "types": "./dist/compute/index.d.ts",
+        "default": "./dist/compute/index.js"
+      },
+      "require": {
+        "types": "./dist/compute/index.d.cts",
+        "default": "./dist/compute/index.cjs"
+      }
+    },
+    "./hct": {
+      "import": {
+        "types": "./dist/hct/index.d.ts",
+        "default": "./dist/hct/index.js"
+      },
+      "require": {
+        "types": "./dist/hct/index.d.cts",
+        "default": "./dist/hct/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
+  "sideEffects": false,
   "files": [
     "dist",
     "README.md"

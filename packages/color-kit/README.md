@@ -19,3 +19,11 @@ import { Color, ColorArea, useColor } from 'color-kit/react';
 ```
 
 The root `color-kit` entry and `color-kit/core` expose the same core API.
+
+Focused subpaths are available when you only need one part of the engine:
+
+```ts
+import { definePlane, sense, toSvgPath } from 'color-kit/plane';
+import { createPlaneComputeScheduler } from 'color-kit/compute';
+import { maxHctChromaForHue } from 'color-kit/hct'; // isolates the bundled Material dependency
+```

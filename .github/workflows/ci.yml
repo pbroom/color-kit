@@ -35,6 +35,9 @@ jobs:
           COLOR_KIT_SKIP_WASM_GENERATED: '1'
         run: pnpm build
 
+      - name: Validate package metadata artifacts
+        run: pnpm check:artifacts:metadata
+
       - name: Run tests
         env:
           COLOR_KIT_SKIP_WASM_GENERATED: '1'
@@ -89,6 +92,9 @@ jobs:
 
       - name: Build and validate wasm kernel package
         run: pnpm ci:wasm
+
+      - name: Build and validate published package artifacts
+        run: pnpm --filter color-kit build && pnpm check:artifacts
 
   wasm-parity-gate:
     runs-on: ubuntu-latest

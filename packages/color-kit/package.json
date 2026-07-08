@@ -19,12 +19,12 @@
     },
     "./core": {
       "import": {
-        "types": "./dist/core/index.d.ts",
-        "default": "./dist/core/index.js"
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
       },
       "require": {
-        "types": "./dist/core/index.d.cts",
-        "default": "./dist/core/index.cjs"
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
       }
     },
     "./driver": {
@@ -35,6 +35,36 @@
       "require": {
         "types": "./dist/driver/index.d.cts",
         "default": "./dist/driver/index.cjs"
+      }
+    },
+    "./plane": {
+      "import": {
+        "types": "./dist/plane/index.d.ts",
+        "default": "./dist/plane/index.js"
+      },
+      "require": {
+        "types": "./dist/plane/index.d.cts",
+        "default": "./dist/plane/index.cjs"
+      }
+    },
+    "./compute": {
+      "import": {
+        "types": "./dist/compute/index.d.ts",
+        "default": "./dist/compute/index.js"
+      },
+      "require": {
+        "types": "./dist/compute/index.d.cts",
+        "default": "./dist/compute/index.cjs"
+      }
+    },
+    "./hct": {
+      "import": {
+        "types": "./dist/hct/index.d.ts",
+        "default": "./dist/hct/index.js"
+      },
+      "require": {
+        "types": "./dist/hct/index.d.cts",
+        "default": "./dist/hct/index.cjs"
       }
     },
     "./react": {
@@ -63,6 +93,10 @@
     "dist",
     "README.md"
   ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "prebuild": "node ./scripts/prebuild.mjs",
     "build": "node ./scripts/build.mjs",
@@ -86,7 +120,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pbroom/color-kit.git",
+    "url": "git+https://github.com/pbroom/color-kit.git",
     "directory": "packages/color-kit"
   },
   "publishConfig": {
