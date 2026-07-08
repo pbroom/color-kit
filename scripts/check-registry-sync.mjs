@@ -1,27 +1,57 @@
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 
-const COLOR_INPUT_SOURCE = 'registry/components/color-input.tsx';
-const REGISTRY_MANIFEST = 'registry/registry.json';
-const CONTROL_KIT_REGISTRY_DEPENDENCY =
+export const COLOR_INPUT_SOURCE = 'registry/components/color-input.tsx';
+export const REGISTRY_MANIFEST = 'registry/registry.json';
+export const CONTROL_KIT_REGISTRY_DEPENDENCY =
   '@color-kit/control-kit@github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289';
 
-function findMissingValues(source, values) {
+export const REQUIRED_COLOR_API_HELPERS = [
+  'ColorApi.colorFromColorInputChannelValue',
+  'ColorApi.formatColorInputChannelValue',
+  'ColorApi.getColorInputChangedChannel',
+  'ColorApi.getColorInputChannelGlyph',
+  'ColorApi.getColorInputChannelValue',
+  'ColorApi.getColorInputLabel',
+  'ColorApi.getColorInputPrecisionFromStep',
+  'ColorApi.parseColorInputExpression',
+  'ColorApi.resolveColorInputRange',
+  'ColorApi.resolveColorInputSteps',
+  'ColorApi.resolveColorInputWrap',
+];
+
+export const BANNED_FORK_MARKERS = [
+  'COMMIT_NOOP_EPSILON',
+  'InputSelectionSnapshot',
+  'ReactKeyboardEvent',
+  'ScrubSnapshot',
+  'parseExpressionValue',
+  'resolvePointerClientX',
+  'tokenizeExpression',
+  'useLayoutEffect',
+  'useRef',
+  'useState',
+  'onPointerDown={',
+  'onPointerMove={',
+];
+
+export function findMissingValues(source, values) {
   return values.filter((value) => !source.includes(value));
 }
 
-async function main() {
+export function validateRegistrySync({
+  colorInputSource,
+  registry,
+  colorInputPath = COLOR_INPUT_SOURCE,
+  registryManifestPath = REGISTRY_MANIFEST,
+}) {
   const errors = [];
-  const [colorInputSource, registryRaw] = await Promise.all([
-    readFile(COLOR_INPUT_SOURCE, 'utf8'),
-    readFile(REGISTRY_MANIFEST, 'utf8'),
-  ]);
-  const registry = JSON.parse(registryRaw);
   const colorInputEntry = registry.items?.find(
     (item) => item.name === 'color-input',
   );
 
   if (!colorInputEntry) {
-    errors.push(`${REGISTRY_MANIFEST}: missing color-input item`);
+    errors.push(`${registryManifestPath}: missing color-input item`);
   }
 
   if (
@@ -29,7 +59,7 @@ async function main() {
     !colorInputEntry.registryDependencies?.includes('color')
   ) {
     errors.push(
-      `${REGISTRY_MANIFEST}: color-input must depend on the registry color provider`,
+      `${registryManifestPath}: color-input must depend on the registry color provider`,
     );
   }
 
@@ -38,74 +68,70 @@ async function main() {
     !colorInputEntry.dependencies?.includes(CONTROL_KIT_REGISTRY_DEPENDENCY)
   ) {
     errors.push(
-      `${REGISTRY_MANIFEST}: color-input must install pinned @color-kit/control-kit from the standalone repo`,
+      `${registryManifestPath}: color-input must install pinned @color-kit/control-kit from the standalone repo`,
     );
   }
 
   if (!/from ['"]@color-kit\/control-kit['"]/.test(colorInputSource)) {
     errors.push(
-      `${COLOR_INPUT_SOURCE}: must import primitive input behavior from @color-kit/control-kit`,
+      `${colorInputPath}: must import primitive input behavior from @color-kit/control-kit`,
     );
   }
 
   if (!/from ['"]color-kit\/driver['"]/.test(colorInputSource)) {
     errors.push(
-      `${COLOR_INPUT_SOURCE}: must import color input API helpers from color-kit/driver`,
+      `${colorInputPath}: must import color input API helpers from color-kit/driver`,
     );
   }
 
   if (/from ['"]@?color-kit\/react['"]/.test(colorInputSource)) {
     errors.push(
-      `${COLOR_INPUT_SOURCE}: must not import from color-kit/react (or @color-kit/react); the adapter consumes color-kit/driver and local hooks only`,
+      `${colorInputPath}: must not import from color-kit/react (or @color-kit/react); the adapter consumes color-kit/driver and local hooks only`,
     );
   }
 
-  const requiredColorApiHelpers = [
-    'ColorApi.colorFromColorInputChannelValue',
-    'ColorApi.formatColorInputChannelValue',
-    'ColorApi.getColorInputChangedChannel',
-    'ColorApi.getColorInputChannelGlyph',
-    'ColorApi.getColorInputChannelValue',
-    'ColorApi.getColorInputLabel',
-    'ColorApi.getColorInputPrecisionFromStep',
-    'ColorApi.parseColorInputExpression',
-    'ColorApi.resolveColorInputRange',
-    'ColorApi.resolveColorInputSteps',
-    'ColorApi.resolveColorInputWrap',
-  ];
   for (const missing of findMissingValues(
     colorInputSource,
-    requiredColorApiHelpers,
+    REQUIRED_COLOR_API_HELPERS,
   )) {
-    errors.push(`${COLOR_INPUT_SOURCE}: missing ${missing}`);
+    errors.push(`${colorInputPath}: missing ${missing}`);
   }
 
-  const bannedForkMarkers = [
-    'COMMIT_NOOP_EPSILON',
-    'InputSelectionSnapshot',
-    'ReactKeyboardEvent',
-    'ScrubSnapshot',
-    'parseExpressionValue',
-    'resolvePointerClientX',
-    'tokenizeExpression',
-    'useLayoutEffect',
-    'useRef',
-    'useState',
-    'onPointerDown={',
-    'onPointerMove={',
-  ];
-  for (const marker of bannedForkMarkers) {
+  for (const marker of BANNED_FORK_MARKERS) {
     if (colorInputSource.includes(marker)) {
-      errors.push(`${COLOR_INPUT_SOURCE}: contains fork marker ${marker}`);
+      errors.push(`${colorInputPath}: contains fork marker ${marker}`);
     }
   }
 
   const lineCount = colorInputSource.split('\n').length;
   if (lineCount > 500) {
     errors.push(
-      `${COLOR_INPUT_SOURCE}: expected a thin registry adapter, found ${lineCount} lines`,
+      `${colorInputPath}: expected a thin registry adapter, found ${lineCount} lines`,
     );
   }
+
+  return errors;
+}
+
+export async function readRegistrySyncInputs({
+  colorInputPath = COLOR_INPUT_SOURCE,
+  registryManifestPath = REGISTRY_MANIFEST,
+} = {}) {
+  const [colorInputSource, registryRaw] = await Promise.all([
+    readFile(colorInputPath, 'utf8'),
+    readFile(registryManifestPath, 'utf8'),
+  ]);
+
+  return {
+    colorInputPath,
+    registryManifestPath,
+    colorInputSource,
+    registry: JSON.parse(registryRaw),
+  };
+}
+
+export async function main() {
+  const errors = validateRegistrySync(await readRegistrySyncInputs());
 
   if (errors.length > 0) {
     console.error('Registry sync guard failed:');
@@ -118,4 +144,6 @@ async function main() {
   console.log('Registry sync guard passed.');
 }
 
-await main();
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  await main();
+}
