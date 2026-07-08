@@ -25,15 +25,6 @@ export type {
   UseMultiColorOptions,
   UseMultiColorReturn,
 } from './use-multi-color.js';
-// Temporary re-exports during the driver extraction; removed in the follow-up
-// cutover PR once consumers import from @color-kit/driver directly.
-export {
-  createColorState,
-  getActiveDisplayedColor,
-  mapDisplayedColors,
-} from '@color-kit/driver';
-export * as ColorApi from '@color-kit/driver';
-
 // Driver types used in component prop/return signatures. Values (including
 // the ColorApi helpers and color-state utilities) live in @color-kit/driver.
 export type {

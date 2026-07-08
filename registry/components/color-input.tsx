@@ -7,12 +7,12 @@ import {
   type PrimitiveExpressionParser,
   type PrimitiveValueChangeDetails,
 } from '@color-kit/control-kit';
-import {
-  ColorApi,
-  type HslColorInputChannel,
-  type OklchColorInputChannel,
-  type RgbColorInputChannel,
-} from 'color-kit/react';
+import * as ColorApi from 'color-kit/driver';
+import type {
+  HslColorInputChannel,
+  OklchColorInputChannel,
+  RgbColorInputChannel,
+} from 'color-kit/driver';
 import { useOptionalColorContext } from '@/hooks/color-context';
 import type { SetRequestedOptions } from '@/hooks/use-color';
 

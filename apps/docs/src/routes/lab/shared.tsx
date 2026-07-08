@@ -1,7 +1,6 @@
 import {
   Background,
   ChromaMarkers,
-  ColorApi,
   ColorArea,
   ColorPlane,
   ColorSlider,
@@ -15,6 +14,7 @@ import {
   type ColorSliderChannel,
   type SliderHueGradientMode,
 } from 'color-kit/react';
+import * as ColorApi from 'color-kit/driver';
 import {
   toCss,
   toP3Gamut,

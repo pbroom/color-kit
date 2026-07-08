@@ -9,7 +9,6 @@ import {
   Background,
   ChromaBandLayer,
   ChromaMarkers,
-  ColorApi,
   ColorArea,
   ColorPlane,
   ColorInput,
@@ -31,6 +30,7 @@ import {
   type SliderHueGradientMode,
   useColor,
 } from 'color-kit/react';
+import * as ColorApi from 'color-kit/driver';
 import {
   useCallback,
   useEffect,

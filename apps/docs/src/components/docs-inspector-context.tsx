@@ -7,11 +7,10 @@ import {
   type ReactNode,
 } from 'react';
 import { parse, type Color } from 'color-kit';
-import {
-  createColorState,
-  type ColorAreaLayerQuality,
-  type ColorAreaPerformanceProfile,
-  type ColorState,
+import { createColorState, type ColorState } from 'color-kit/driver';
+import type {
+  ColorAreaLayerQuality,
+  ColorAreaPerformanceProfile,
 } from 'color-kit/react';
 import { COLOR_AREA_DOT_PATTERN } from './color-area-dot-pattern.js';
 
