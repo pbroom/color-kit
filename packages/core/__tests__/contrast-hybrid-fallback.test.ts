@@ -64,7 +64,9 @@ describe('contrastRegionPaths() hybrid fallback', () => {
         ...options,
       },
     );
-    const hybridAuto = inspection.result.paths;
+    const hybridAuto = inspection.result.paths.map((path) =>
+      path.map(({ l, c }) => ({ l, c })),
+    );
     const explicitLegacy = contrastRegionPaths(reference, 210, {
       ...options,
       samplingMode: 'adaptive',
