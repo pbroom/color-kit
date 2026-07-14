@@ -10,8 +10,6 @@ import {
 } from '../sampling/adaptive1d.js';
 import { GAMUT_EPSILON } from './constants.js';
 
-export { GAMUT_EPSILON } from './constants.js';
-
 const DEFAULT_MAX_CHROMA = 0.4;
 const DEFAULT_TOLERANCE = 0.0001;
 const DEFAULT_MAX_ITERATIONS = 30;
