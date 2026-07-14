@@ -10,7 +10,7 @@ import type {
   PlaneViewportRelation,
 } from '../plane/types.js';
 
-export type PlaneComputeBackendKind = 'js' | 'wasm' | 'webgpu';
+export type PlaneComputeBackendKind = 'js' | 'webgpu';
 export type PlaneComputePriority = 'drag' | 'idle';
 export type PlaneComputeQuality = 'high' | 'medium' | 'low';
 export type PlaneComputePerformanceProfile =

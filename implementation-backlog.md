@@ -23,7 +23,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 - No manual registry forks diverging from `@color-kit/react` + `@color-kit/control-kit`
 - No inverted package layering (e.g. contrast ↔ plane type cycles)
 - No compute backend should report a backend it did not truly execute
-- No worker/WASM ABI should silently manufacture geometry from missing payload fields
+- No worker/backend ABI should silently manufacture geometry from missing payload fields
 - No dual docs source of truth for the same routed page
 
 ---
@@ -59,10 +59,10 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Status:** Open
 - **Evidence:**
   - `packages/react/src/gamut-boundary-layer.tsx`, `chroma-band-layer.tsx`, and `contrast-region-layer.tsx` each duplicate `resolveQuality`, `canUseWorkerOffload`, `rangeSpan`, adaptive tolerance/depth, ResizeObserver area measurement (~60 lines), and worker lifecycle (~65 lines).
-  - Each layer calls `new Worker(plane-query.worker.js)` independently — three mounted layers = three schedulers + three WASM init paths.
+  - Each layer calls `new Worker(plane-query.worker.js)` independently — three mounted layers = three schedulers.
   - `chroma-band-layer.tsx` imports `ColorAreaLayerQuality` from `gamut-boundary-layer.tsx` (sibling type coupling).
   - Layers rebuild `plane: { model, x, y, fixed }` inline instead of using `toPlaneDefinition()` from `api/color-area.ts`.
-- **Problem:** ~600 lines triplicated across three files. Worker payload shape can drift from the API facade. Runtime pays N× scheduler/WASM cost.
+- **Problem:** ~600 lines triplicated across three files. Worker payload shape can drift from the API facade. Runtime pays N× scheduler cost.
 - **Target shape:** One `usePlaneQueryLayer<T>()` hook + `buildPlaneQueryRequest()` in `api/color-area.ts` + one module-level worker singleton with multiplexed request IDs. Each layer: build queries → hook → render `<Line>`.
 - **Suggested slices:**
   1. Extract shared quality/resize helpers into `layer-quality-utils.ts`.
@@ -322,22 +322,11 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-013 — Make plane compute backends capability-aware and honest
 
 - **Priority:** P0
-- **Status:** Open
-- **Evidence:**
-  - `packages/core-wasm/src/index.ts` calls `runPlaneQuery()` for every request before invoking the WASM kernel.
-  - The WASM kernel receives already-computed contrast paths and normalizes/sorts payloads, but the response reports `backend: 'wasm'`.
-  - `packages/react/src/workers/plane-query.worker.ts` owns WASM bootstrap, global backend state, compute selection, parity checks, telemetry, and protocol response emission in one file.
-- **Problem:** Scheduler telemetry can benchmark "JS compute + WASM normalization" as if it were a real WASM compute backend. Backend capability, normalization, parity, and worker lifecycle are tangled enough that future backend choices will be hard to trust.
-- **Target shape:** Backends advertise capabilities per query kind. If WASM only post-processes contrast paths, model it as a `contrastPathNormalizer` stage or report JS as the compute backend with normalization metadata. The worker orchestrates protocol only; backend loading, compute running, and parity checking live in separate modules.
-- **Suggested slices:**
-  1. Split WASM contrast normalization from `PlaneComputeBackend.run()` or make the backend refuse unsupported query kinds.
-  2. Add backend capability checks to scheduler selection and telemetry.
-  3. Extract `wasmBackendLoader`, `computeRunner`, and `parityChecker` from `plane-query.worker.ts`.
-  4. Replace global backend side-channel reads with explicit worker init/factory wiring.
-- **Acceptance criteria:**
-  - Backend telemetry names the backend that actually performed the compute.
-  - Scheduler never picks WASM for unsupported query kinds by accident.
-  - Worker protocol code no longer owns backend lifecycle policy.
+- **Status:** Resolved — the Rust/WASM path was removed entirely. The WASM "backend" never computed queries (it ran JS compute and then normalized contrast paths while reporting `backend: 'wasm'`), so it was deleted rather than fixed. The worker now runs JS compute only and emits protocol responses; a future second backend (WASM or WebGPU) must advertise per-query capabilities and report only compute it actually performed.
+- **Evidence (historical):**
+  - `packages/core-wasm/src/index.ts` called `runPlaneQuery()` for every request before invoking the WASM kernel.
+  - The WASM kernel received already-computed contrast paths and normalized/sorted payloads, but the response reported `backend: 'wasm'`.
+  - `packages/react/src/workers/plane-query.worker.ts` owned WASM bootstrap, global backend state, compute selection, parity checks, telemetry, and protocol response emission in one file.
 
 ---
 
@@ -347,7 +336,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Status:** Open
 - **Evidence:**
   - Query execution dispatch lives in `packages/core/src/plane/query.ts`.
-  - Packing lives in `packages/core/src/compute/pack.ts`, unpacking in `packages/core/src/compute/unpack.ts`, trace geometry in `packages/core/src/plane/trace.ts`, scheduler budget/keying in `packages/core/src/compute/scheduler.ts`, and WASM filtering in `packages/core-wasm/src/index.ts`.
+  - Packing lives in `packages/core/src/compute/pack.ts`, unpacking in `packages/core/src/compute/unpack.ts`, trace geometry in `packages/core/src/plane/trace.ts`, and scheduler budget/keying in `packages/core/src/compute/scheduler.ts`.
   - `PackedPlaneQueryDescriptor` is one optional-field interface for every query kind.
   - The unpacker defaults missing path ranges, coordinates, LC payloads, colors, gamut, scope, solver, viewport relation, and hue to plausible values.
 - **Problem:** Adding or changing a query kind requires remembering every switch across execution, packing, unpacking, tracing, scheduling, and backend filtering. The transfer ABI is loose enough to turn corrupt or mismatched payloads into fake geometry instead of failing at the boundary.
@@ -359,8 +348,8 @@ Do not green-light large features on these surfaces without a decomposition plan
   4. Move scheduler bucket/keying and backend capability data into specs.
 - **Acceptance criteria:**
   - New query kinds are registered once instead of patched through several switches.
-  - Worker/WASM boundaries fail closed on malformed packed payloads.
-  - Existing worker parity tests pass with no public result-shape changes.
+  - Worker boundaries fail closed on malformed packed payloads.
+  - Existing worker protocol tests pass with no public result-shape changes.
 
 ---
 

@@ -227,7 +227,7 @@ if [[ -z "$BASE_REF" ]]; then
 fi
 
 MERGE_BASE="$(git merge-base "$HEAD_REF" "$BASE_REF")"
-WORKSPACE_BUILD_COMMAND="pnpm --filter @color-kit/core build && COLOR_KIT_SKIP_WASM_GENERATED=1 pnpm --filter @color-kit/core-wasm build && pnpm --filter @color-kit/react build && COLOR_KIT_SKIP_WASM_GENERATED=1 pnpm --filter color-kit build && pnpm --filter @color-kit/docs build"
+WORKSPACE_BUILD_COMMAND="pnpm --filter @color-kit/core build && pnpm --filter @color-kit/react build && pnpm --filter color-kit build && pnpm --filter @color-kit/docs build"
 
 changed_files=()
 profiles=()
@@ -245,13 +245,11 @@ fi
 docs_changed=0
 core_changed=0
 react_changed=0
-wasm_changed=0
 umbrella_changed=0
 automation_changed=0
 agents_changed=0
 format_changed=0
 workspace_changed=0
-needs_wasm_matrix=0
 needs_browser_smoke_hint=0
 
 if [[ "${#changed_files[@]}" -eq 0 ]]; then
@@ -268,19 +266,9 @@ else
         core_changed=1
         format_changed=1
         ;;
-      packages/react/src/workers/*|packages/react/__tests__/plane-query-worker-*.test.ts|packages/react/__tests__/wasm-parity-gate.test.ts)
-        react_changed=1
-        wasm_changed=1
-        needs_browser_smoke_hint=1
-        format_changed=1
-        ;;
       packages/react/*)
         react_changed=1
         needs_browser_smoke_hint=1
-        format_changed=1
-        ;;
-      packages/core-wasm/*)
-        wasm_changed=1
         format_changed=1
         ;;
       packages/color-kit/*)
@@ -329,20 +317,11 @@ fi
 if [[ "$react_changed" == "1" ]]; then
   add_profile "react"
 fi
-if [[ "$wasm_changed" == "1" ]]; then
-  add_profile "core-wasm"
-fi
 if [[ "$umbrella_changed" == "1" ]]; then
   add_profile "color-kit"
 fi
 if [[ -n "$format_command" ]]; then
   add_profile "format"
-fi
-
-# The WASM path is parked: only run the Rust build + parity matrix when
-# WASM-relevant files change. release:verify still runs it before publishes.
-if [[ "$wasm_changed" == "1" ]]; then
-  needs_wasm_matrix=1
 fi
 
 add_command "lint" "pnpm lint"
@@ -358,7 +337,7 @@ fi
 if [[ "$workspace_changed" == "1" ]]; then
   add_command "preprod" "pnpm check:preprod"
   add_command "workspace-build" "$WORKSPACE_BUILD_COMMAND"
-  add_command "workspace-test" "COLOR_KIT_SKIP_WASM_GENERATED=1 pnpm test"
+  add_command "workspace-test" "pnpm test"
 fi
 
 if [[ "$core_changed" == "1" && "$workspace_changed" == "0" ]]; then
@@ -372,25 +351,14 @@ if [[ "$react_changed" == "1" && "$workspace_changed" == "0" ]]; then
   add_command "react-test" "pnpm --filter @color-kit/react test"
 fi
 
-if [[ "$wasm_changed" == "1" && "$workspace_changed" == "0" ]]; then
-  add_command "core-build-for-wasm" "pnpm --filter @color-kit/core build"
-  add_command "core-wasm-build" "pnpm --filter @color-kit/core-wasm build"
-  add_command "core-wasm-test" "pnpm --filter @color-kit/core-wasm test"
-fi
-
 if [[ "$umbrella_changed" == "1" && "$workspace_changed" == "0" ]]; then
-  add_command "color-kit-build" "COLOR_KIT_SKIP_WASM_GENERATED=1 pnpm --filter color-kit build"
+  add_command "color-kit-build" "pnpm --filter color-kit build"
   add_command "color-kit-test" "pnpm --filter color-kit test"
 fi
 
 if [[ "$docs_changed" == "1" && "$workspace_changed" == "0" ]]; then
   add_command "docs-build" "pnpm --filter @color-kit/docs build"
   add_command "docs-test" "pnpm --filter @color-kit/docs test"
-fi
-
-if [[ "$needs_wasm_matrix" == "1" ]]; then
-  add_command "wasm-build" "pnpm ci:wasm"
-  add_command "wasm-parity" "pnpm ci:wasm-parity"
 fi
 
 echo "Validation profile: ${profiles[*]}"

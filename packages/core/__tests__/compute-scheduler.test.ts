@@ -111,14 +111,14 @@ function createTimedBackend(
 }
 
 describe('plane compute scheduler', () => {
-  it('prefers faster wasm backend after baseline telemetry', () => {
+  it('prefers faster non-js backend after baseline telemetry', () => {
     const scheduler = createPlaneComputeScheduler({
       backends: {
         js: createTimedBackend('js', 8),
-        wasm: createTimedBackend('wasm', 3),
+        webgpu: createTimedBackend('webgpu', 3),
       },
       options: {
-        preferredBackends: ['wasm', 'js'],
+        preferredBackends: ['webgpu', 'js'],
         minSamplesForDecision: 1,
         warmupSamples: 1,
         baselineProbeInterval: 3,
@@ -133,30 +133,30 @@ describe('plane compute scheduler', () => {
     const fourth = scheduler.run(schedulerRequest);
     const fifth = scheduler.run(schedulerRequest);
 
-    expect(first.backend).toBe('wasm');
-    expect(second.backend).toBe('wasm');
-    expect(third.backend).toBe('wasm');
+    expect(first.backend).toBe('webgpu');
+    expect(second.backend).toBe('webgpu');
+    expect(third.backend).toBe('webgpu');
     expect(fourth.backend).toBe('js');
     expect(fourth.schedule?.reason).toBe('baseline-probe');
-    expect(fifth.backend).toBe('wasm');
+    expect(fifth.backend).toBe('webgpu');
     expect(fifth.schedule?.reason).toBe('telemetry-win');
   });
 
-  it('opens a circuit breaker after repeated wasm backend errors', () => {
+  it('opens a circuit breaker after repeated non-js backend errors', () => {
     const jsBackend = createTimedBackend('js', 5);
-    const throwingWasmBackend: PlaneComputeBackend = {
-      kind: 'wasm',
+    const throwingBackend: PlaneComputeBackend = {
+      kind: 'webgpu',
       run() {
-        throw new Error('wasm backend unavailable');
+        throw new Error('webgpu backend unavailable');
       },
     };
     const scheduler = createPlaneComputeScheduler({
       backends: {
         js: jsBackend,
-        wasm: throwingWasmBackend,
+        webgpu: throwingBackend,
       },
       options: {
-        preferredBackends: ['wasm', 'js'],
+        preferredBackends: ['webgpu', 'js'],
         baselineProbeInterval: 99,
         backendErrorTripCount: 2,
         circuitBreakerCooldownMs: 60_000,
@@ -174,26 +174,26 @@ describe('plane compute scheduler', () => {
     expect(second.schedule?.reason).toBe('backend-error');
     expect(third.backend).toBe('js');
     expect(third.schedule?.reason).toBe('circuit-open');
-    expect(snapshot.circuitBreakers.wasm?.disabledUntilMs ?? 0).toBeGreaterThan(
-      0,
-    );
+    expect(
+      snapshot.circuitBreakers.webgpu?.disabledUntilMs ?? 0,
+    ).toBeGreaterThan(0);
   });
 
-  it('falls back to js and opens circuit for contrast queries when wasm fails', () => {
+  it('falls back to js and opens circuit for contrast queries when the backend fails', () => {
     const jsBackend = createTimedBackend('js', 7);
-    const throwingWasmBackend: PlaneComputeBackend = {
-      kind: 'wasm',
+    const throwingBackend: PlaneComputeBackend = {
+      kind: 'webgpu',
       run() {
-        throw new Error('contrast wasm backend unavailable');
+        throw new Error('contrast webgpu backend unavailable');
       },
     };
     const scheduler = createPlaneComputeScheduler({
       backends: {
         js: jsBackend,
-        wasm: throwingWasmBackend,
+        webgpu: throwingBackend,
       },
       options: {
-        preferredBackends: ['wasm', 'js'],
+        preferredBackends: ['webgpu', 'js'],
         baselineProbeInterval: 99,
         backendErrorTripCount: 2,
         circuitBreakerCooldownMs: 60_000,
@@ -246,23 +246,23 @@ describe('plane compute scheduler', () => {
   });
 
   it('skips unsupported non-js backends before recording telemetry', () => {
-    let wasmRunCount = 0;
-    const unsupportedWasmBackend: PlaneComputeBackend = {
-      kind: 'wasm',
+    let backendRunCount = 0;
+    const unsupportedBackend: PlaneComputeBackend = {
+      kind: 'webgpu',
       supportsRequest: (request) =>
         request.queries.every((query) => query.kind === 'contrastRegion'),
       run(request) {
-        wasmRunCount += 1;
-        return createTimedBackend('wasm', 1).run(request);
+        backendRunCount += 1;
+        return createTimedBackend('webgpu', 1).run(request);
       },
     };
     const scheduler = createPlaneComputeScheduler({
       backends: {
         js: createTimedBackend('js', 6),
-        wasm: unsupportedWasmBackend,
+        webgpu: unsupportedBackend,
       },
       options: {
-        preferredBackends: ['wasm', 'js'],
+        preferredBackends: ['webgpu', 'js'],
       },
     });
 
@@ -271,8 +271,8 @@ describe('plane compute scheduler', () => {
 
     expect(response.backend).toBe('js');
     expect(response.schedule?.reason).toBe('unsupported-backend');
-    expect(wasmRunCount).toBe(0);
-    expect(snapshot.buckets[0]?.backends.wasm).toBeUndefined();
+    expect(backendRunCount).toBe(0);
+    expect(snapshot.buckets[0]?.backends.webgpu).toBeUndefined();
     expect(snapshot.buckets[0]?.backends.js?.sampleCount).toBe(1);
   });
 

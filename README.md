@@ -6,9 +6,9 @@ Most color libraries convert and manipulate colors. color-kit does that too — 
 
 ## Packages
 
-| Package                             | Description                                                                               |
-| ----------------------------------- | ----------------------------------------------------------------------------------------- |
-| [`color-kit`](./packages/color-kit) | Unified consumer package with the engine API at the root plus `react` and `wasm` subpaths |
+| Package                             | Description                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------- |
+| [`color-kit`](./packages/color-kit) | Unified consumer package with the engine API at the root plus a `react` subpath |
 
 ## Stability Policy
 
