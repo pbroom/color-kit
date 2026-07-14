@@ -135,10 +135,12 @@ export class PlaneQueryCache {
   private readonly maxEntries: number;
 
   constructor(options: PlaneQueryCacheOptions = {}) {
-    this.maxEntries = Math.max(
-      1,
-      Math.floor(options.maxEntries ?? DEFAULT_PLANE_QUERY_CACHE_MAX_ENTRIES),
+    const maxEntries = Math.floor(
+      options.maxEntries ?? DEFAULT_PLANE_QUERY_CACHE_MAX_ENTRIES,
     );
+    this.maxEntries = Number.isFinite(maxEntries)
+      ? Math.max(1, maxEntries)
+      : DEFAULT_PLANE_QUERY_CACHE_MAX_ENTRIES;
   }
 
   /** Gets a cached query result for the given plane/query pair. */
