@@ -4,7 +4,7 @@ import type {
   ContrastApcaRole,
   ContrastMetric,
   ContrastRegionLevel,
-} from '../contrast/index.js';
+} from '../contrast/types.js';
 import type { ChromaBandMode, GamutTarget } from '../gamut/index.js';
 import type { Color } from '../types.js';
 
