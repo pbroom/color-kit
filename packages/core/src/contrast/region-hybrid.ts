@@ -18,6 +18,7 @@ import {
   toTracePaths,
 } from './region-shared.js';
 import type {
+  ContrastHybridFallbackReason,
   ContrastRegionPathOptions,
   ContrastRegionPoint,
 } from './types.js';
@@ -30,18 +31,6 @@ const DEFAULT_HYBRID_CHROMA_BRACKETS = 96;
 const HYBRID_LIGHTNESS_EPSILON = 1e-6;
 const HYBRID_ROOT_EPSILON = 1e-7;
 const HYBRID_BRANCH_JOIN_EPSILON = 0.06;
-
-/**
- * Reasons the hybrid solver declines to produce a result and asks the
- * router to fall back to the legacy adaptive solver.
- */
-export type ContrastHybridFallbackReason =
-  /** More simultaneous chroma roots than the branch tracker can join reliably. */
-  | 'complex-topology'
-  /** Roots were found but no branch could be reconstructed into a path. */
-  | 'branch-reconstruction-empty'
-  /** No roots traced, yet probing detected a sign change in the field. */
-  | 'unresolved-sign-change';
 
 /**
  * Explicit solver outcome: either usable paths or a fallback request with

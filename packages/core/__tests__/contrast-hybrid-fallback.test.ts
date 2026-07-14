@@ -39,6 +39,9 @@ describe('contrastRegionPaths() hybrid fallback', () => {
 
     const { contrastRegionPaths } = await import('../src/contrast/index.js');
     const { fromHex } = await import('../src/conversion/index.js');
+    const { definePlane, inspectPlaneQuery } = await import(
+      '../src/plane/index.js'
+    );
     const reference = fromHex('#ffffff');
     const options = {
       metric: 'wcag' as const,
@@ -50,7 +53,18 @@ describe('contrastRegionPaths() hybrid fallback', () => {
       hybridErrorTolerance: 0.0006,
     };
 
-    const hybridAuto = contrastRegionPaths(reference, 210, options);
+    const inspection = inspectPlaneQuery(
+      definePlane({
+        fixed: { h: 210 },
+      }),
+      {
+        kind: 'contrastRegion',
+        reference,
+        hue: 210,
+        ...options,
+      },
+    );
+    const hybridAuto = inspection.result.paths;
     const explicitLegacy = contrastRegionPaths(reference, 210, {
       ...options,
       samplingMode: 'adaptive',
@@ -58,5 +72,7 @@ describe('contrastRegionPaths() hybrid fallback', () => {
 
     expect(hybridAuto.length).toBeGreaterThan(0);
     expect(hybridAuto).toEqual(explicitLegacy);
+    expect(inspection.trace.summary.solver).toBe('contrast-legacy-adaptive');
+    expect(inspection.trace.summary.fallbackReason).toBe('complex-topology');
   });
 });
