@@ -7,7 +7,7 @@ import {
 import { contrastRegionPath, contrastRegionPaths } from '../contrast/index.js';
 import { generateScale } from '../scale/index.js';
 import type { Color } from '../types.js';
-import { getPlaneGamutRegion } from './gamut-region.js';
+import { getPlaneGamutRegion } from './gamut-region/index.js';
 import {
   createPlaneTraceContext,
   finalizePlaneTrace,
