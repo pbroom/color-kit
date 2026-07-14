@@ -644,6 +644,83 @@ describe('plane api', () => {
     expect(compound.includes('Z')).toBe(true);
   });
 
+  it('evicts the least-recently-used cache entry once capacity is exceeded', () => {
+    const cache = new PlaneQueryCache({ maxEntries: 2 });
+    const queryFor = (steps: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      steps,
+    });
+    const resultFor = (hue: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      hue,
+      points: [],
+    });
+
+    cache.set(basePlane, queryFor(4), resultFor(1));
+    cache.set(basePlane, queryFor(8), resultFor(2));
+    cache.set(basePlane, queryFor(16), resultFor(3));
+
+    expect(cache.has(basePlane, queryFor(4))).toBe(false);
+    expect(cache.has(basePlane, queryFor(8))).toBe(true);
+    expect(cache.has(basePlane, queryFor(16))).toBe(true);
+  });
+
+  it('refreshes cache entry recency on get', () => {
+    const cache = new PlaneQueryCache({ maxEntries: 2 });
+    const queryFor = (steps: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      steps,
+    });
+    const resultFor = (hue: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      hue,
+      points: [],
+    });
+
+    cache.set(basePlane, queryFor(4), resultFor(1));
+    cache.set(basePlane, queryFor(8), resultFor(2));
+    // Touch the oldest entry so the other becomes least-recently-used.
+    expect(cache.get(basePlane, queryFor(4))).toEqual(resultFor(1));
+    cache.set(basePlane, queryFor(16), resultFor(3));
+
+    expect(cache.has(basePlane, queryFor(4))).toBe(true);
+    expect(cache.has(basePlane, queryFor(8))).toBe(false);
+    expect(cache.has(basePlane, queryFor(16))).toBe(true);
+  });
+
+  it('honors a custom maxEntries capacity override', () => {
+    const cache = new PlaneQueryCache({ maxEntries: 1 });
+    const queryFor = (steps: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      steps,
+    });
+    const resultFor = (hue: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      hue,
+      points: [],
+    });
+
+    cache.set(basePlane, queryFor(4), resultFor(1));
+    cache.set(basePlane, queryFor(8), resultFor(2));
+
+    expect(cache.has(basePlane, queryFor(4))).toBe(false);
+    expect(cache.get(basePlane, queryFor(8))).toEqual(resultFor(2));
+
+    // Overwriting an existing key must not evict other entries.
+    const wide = new PlaneQueryCache({ maxEntries: 2 });
+    wide.set(basePlane, queryFor(4), resultFor(1));
+    wide.set(basePlane, queryFor(8), resultFor(2));
+    wide.set(basePlane, queryFor(4), resultFor(9));
+    expect(wide.has(basePlane, queryFor(8))).toBe(true);
+    expect(wide.get(basePlane, queryFor(4))).toEqual(resultFor(9));
+  });
+
   it('normalizes equivalent plane definitions into the same cache key', () => {
     const query = {
       kind: 'gamutBoundary' as const,

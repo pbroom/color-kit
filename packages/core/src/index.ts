@@ -282,6 +282,7 @@ export type {
   PlaneModel,
   PlanePoint,
   PlaneQuery,
+  PlaneQueryCacheOptions,
   PlaneQueryResult,
   PlaneQueryTrace,
   PlaneQueryTraceBranchingStage,
