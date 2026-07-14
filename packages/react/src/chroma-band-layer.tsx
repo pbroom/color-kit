@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { SVGAttributes } from 'react';
 import {
   unpackPlaneQueryResults,
@@ -7,17 +7,25 @@ import {
 } from '@color-kit/core';
 import {
   getColorAreaChromaBandPoints,
-  type ResolvedColorAreaAxes,
+  toColorAreaPlaneDefinition,
 } from '@color-kit/driver';
 import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Line } from './line.js';
-import type { ColorAreaLayerQuality } from './gamut-boundary-layer.js';
+import {
+  autoAdaptiveLineMaxDepth,
+  autoAdaptiveLineTolerance,
+  qualityStepMultiplier,
+  resolveQuality,
+  type ColorAreaLayerQuality,
+} from './layer-quality-utils.js';
+import { useMeasuredElementSize } from './use-measured-element-size.js';
+import {
+  usePlaneQueryLayer,
+  type PlaneQueryWorkerPayload,
+} from './use-plane-query-layer.js';
 import type { LinePoint } from './line.js';
-import type {
-  PlaneQueryWorkerRequest,
-  PlaneQueryWorkerResponse,
-} from './workers/plane-query.worker.types.js';
+import type { PlaneQueryWorkerResponse } from './workers/plane-query-client.js';
 
 export type ChromaBandLayerMode = 'closest' | 'percentage';
 
@@ -36,91 +44,8 @@ export interface ChromaBandLayerProps extends LayerProps {
   points?: LinePoint[];
 }
 
-type PlaneQueryWorkerPayload = Omit<PlaneQueryWorkerRequest, 'id'>;
-
-function resolveQuality(
-  quality: ColorAreaLayerQuality,
-  contextQuality: 'high' | 'medium' | 'low',
-): 'high' | 'medium' | 'low' {
-  if (quality === 'auto') {
-    return contextQuality;
-  }
-  return quality;
-}
-
-function qualityStepMultiplier(quality: 'high' | 'medium' | 'low'): number {
-  if (quality === 'high') return 1;
-  if (quality === 'medium') return 0.72;
-  return 0.5;
-}
-
 function resolveMode(mode: ChromaBandLayerMode): 'clamped' | 'proportional' {
   return mode === 'percentage' ? 'proportional' : 'clamped';
-}
-
-const MIN_AUTO_ADAPTIVE_TOLERANCE = 0.00005;
-const MAX_AUTO_ADAPTIVE_TOLERANCE = 0.003;
-const MIN_AUTO_ADAPTIVE_DEPTH = 8;
-const MAX_AUTO_ADAPTIVE_DEPTH = 18;
-
-function rangeSpan(range: [number, number]): number {
-  return Math.abs(range[1] - range[0]);
-}
-
-function unitsPerPixelForChannel(
-  axes: ResolvedColorAreaAxes,
-  channel: 'l' | 'c',
-  widthPx: number,
-  heightPx: number,
-): number {
-  const xUnits =
-    axes.x.channel === channel
-      ? rangeSpan(axes.x.range) / Math.max(1, widthPx)
-      : Number.POSITIVE_INFINITY;
-  const yUnits =
-    axes.y.channel === channel
-      ? rangeSpan(axes.y.range) / Math.max(1, heightPx)
-      : Number.POSITIVE_INFINITY;
-  const best = Math.min(xUnits, yUnits);
-  if (Number.isFinite(best) && best > 0) {
-    return best;
-  }
-  return 1 / Math.max(1, Math.max(widthPx, heightPx));
-}
-
-function autoAdaptiveTolerance(
-  axes: ResolvedColorAreaAxes,
-  quality: 'high' | 'medium' | 'low',
-  widthPx: number,
-  heightPx: number,
-): number {
-  const lUnitsPerPixel = unitsPerPixelForChannel(axes, 'l', widthPx, heightPx);
-  const cUnitsPerPixel = unitsPerPixelForChannel(axes, 'c', widthPx, heightPx);
-  const pixelError =
-    quality === 'high' ? 0.35 : quality === 'medium' ? 0.55 : 0.8;
-  const tolerance = pixelError * Math.min(lUnitsPerPixel, cUnitsPerPixel);
-  return Math.min(
-    MAX_AUTO_ADAPTIVE_TOLERANCE,
-    Math.max(MIN_AUTO_ADAPTIVE_TOLERANCE, tolerance),
-  );
-}
-
-function autoAdaptiveMaxDepth(
-  quality: 'high' | 'medium' | 'low',
-  widthPx: number,
-  heightPx: number,
-): number {
-  const longestEdge = Math.max(1, Math.max(widthPx, heightPx));
-  const qualityBias = quality === 'high' ? 4 : quality === 'medium' ? 3 : 2;
-  const computed = Math.ceil(Math.log2(longestEdge)) + qualityBias;
-  return Math.min(
-    MAX_AUTO_ADAPTIVE_DEPTH,
-    Math.max(MIN_AUTO_ADAPTIVE_DEPTH, computed),
-  );
-}
-
-function canUseWorkerOffload(): boolean {
-  return typeof window !== 'undefined' && typeof Worker !== 'undefined';
 }
 
 function toLinePointsFromBand(result: PlaneChromaBandResult): LinePoint[] {
@@ -155,78 +80,13 @@ export function ChromaBandLayer({
     qualityLevel,
     isDragging,
   } = useColorAreaContext();
-  const [areaSize, setAreaSize] = useState({
-    width: 0,
-    height: 0,
-    dpr: 1,
-  });
+  const areaSize = useMeasuredElementSize(areaRef);
   const resolvedQuality = resolveQuality(quality, qualityLevel);
   const effectiveSteps = useMemo(
     () =>
       Math.max(8, Math.round(steps * qualityStepMultiplier(resolvedQuality))),
     [resolvedQuality, steps],
   );
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const areaNode = areaRef.current;
-    if (!areaNode) {
-      return;
-    }
-
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      const rect = areaNode.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) {
-        return;
-      }
-      const nextDpr = window.devicePixelRatio || 1;
-      setAreaSize((current) => {
-        if (
-          Math.abs(current.width - rect.width) < 0.5 &&
-          Math.abs(current.height - rect.height) < 0.5 &&
-          Math.abs(current.dpr - nextDpr) < 0.01
-        ) {
-          return current;
-        }
-        return {
-          width: rect.width,
-          height: rect.height,
-          dpr: nextDpr,
-        };
-      });
-    };
-    const schedule = () => {
-      if (frame !== 0) {
-        return;
-      }
-      frame = window.requestAnimationFrame(measure);
-    };
-
-    schedule();
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(schedule);
-      observer.observe(areaNode);
-      window.addEventListener('resize', schedule);
-      return () => {
-        observer.disconnect();
-        window.removeEventListener('resize', schedule);
-        if (frame !== 0) {
-          window.cancelAnimationFrame(frame);
-        }
-      };
-    }
-
-    window.addEventListener('resize', schedule);
-    return () => {
-      window.removeEventListener('resize', schedule);
-      if (frame !== 0) {
-        window.cancelAnimationFrame(frame);
-      }
-    };
-  }, [areaRef]);
 
   const resolvedAdaptiveTolerance = useMemo(() => {
     if (samplingMode !== 'adaptive') {
@@ -240,7 +100,7 @@ export function ChromaBandLayer({
     }
     const widthPx = areaSize.width * areaSize.dpr;
     const heightPx = areaSize.height * areaSize.dpr;
-    return autoAdaptiveTolerance(axes, resolvedQuality, widthPx, heightPx);
+    return autoAdaptiveLineTolerance(axes, resolvedQuality, widthPx, heightPx);
   }, [
     adaptiveTolerance,
     areaSize.dpr,
@@ -263,7 +123,7 @@ export function ChromaBandLayer({
     }
     const widthPx = areaSize.width * areaSize.dpr;
     const heightPx = areaSize.height * areaSize.dpr;
-    return autoAdaptiveMaxDepth(resolvedQuality, widthPx, heightPx);
+    return autoAdaptiveLineMaxDepth(resolvedQuality, widthPx, heightPx);
   }, [
     adaptiveMaxDepth,
     areaSize.dpr,
@@ -273,76 +133,34 @@ export function ChromaBandLayer({
     samplingMode,
   ]);
 
-  const [workerPoints, setWorkerPoints] = useState<{
-    requestId: number;
-    points: LinePoint[];
-  } | null>(null);
-  const [activeWorkerRequestId, setActiveWorkerRequestId] = useState<
-    number | null
-  >(null);
-  const workerRef = useRef<Worker | null>(null);
-  const requestIdRef = useRef(0);
-
-  const syncComputation = useMemo(() => {
-    if (pointsProp) {
-      return {
-        points: pointsProp,
-      };
-    }
-    if (isDragging && canUseWorkerOffload() && workerPoints != null) {
-      return null;
-    }
-    return {
-      points: getColorAreaChromaBandPoints(
-        requested,
-        hue ?? requested.h,
-        axes,
-        {
-          gamut,
-          mode: resolveMode(mode),
-          steps: effectiveSteps,
-          samplingMode,
-          adaptiveTolerance: resolvedAdaptiveTolerance,
-          adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
-          selectedLightness: requested.l,
-          alpha: requested.alpha,
-        },
-      ),
-    };
-  }, [
-    axes,
-    effectiveSteps,
-    gamut,
-    hue,
-    isDragging,
-    mode,
-    pointsProp,
-    requested,
-    workerPoints,
-    samplingMode,
-    resolvedAdaptiveTolerance,
-    resolvedAdaptiveMaxDepth,
-  ]);
+  const computeSync = useCallback(
+    () =>
+      getColorAreaChromaBandPoints(requested, hue ?? requested.h, axes, {
+        gamut,
+        mode: resolveMode(mode),
+        steps: effectiveSteps,
+        samplingMode,
+        adaptiveTolerance: resolvedAdaptiveTolerance,
+        adaptiveMaxDepth: resolvedAdaptiveMaxDepth,
+        selectedLightness: requested.l,
+        alpha: requested.alpha,
+      }),
+    [
+      axes,
+      effectiveSteps,
+      gamut,
+      hue,
+      mode,
+      requested,
+      resolvedAdaptiveMaxDepth,
+      resolvedAdaptiveTolerance,
+      samplingMode,
+    ],
+  );
 
   const workerPayload = useMemo<PlaneQueryWorkerPayload>(
     () => ({
-      plane: {
-        model: 'oklch',
-        x: {
-          channel: axes.x.channel,
-          range: axes.x.range,
-        },
-        y: {
-          channel: axes.y.channel,
-          range: axes.y.range,
-        },
-        fixed: {
-          l: requested.l,
-          c: requested.c,
-          h: requested.h,
-          alpha: requested.alpha,
-        },
-      },
+      plane: toColorAreaPlaneDefinition(axes, requested),
       queries: [
         {
           kind: 'chromaBand',
@@ -363,20 +181,14 @@ export function ChromaBandLayer({
       performanceProfile,
     }),
     [
-      axes.x.channel,
-      axes.x.range,
-      axes.y.channel,
-      axes.y.range,
+      axes,
       effectiveSteps,
       gamut,
       hue,
       isDragging,
       mode,
       performanceProfile,
-      requested.alpha,
-      requested.c,
-      requested.h,
-      requested.l,
+      requested,
       resolvedAdaptiveMaxDepth,
       resolvedAdaptiveTolerance,
       resolvedQuality,
@@ -384,99 +196,42 @@ export function ChromaBandLayer({
     ],
   );
 
-  const hasCurrentWorkerResponse = useMemo(
-    () =>
-      activeWorkerRequestId != null &&
-      workerPoints != null &&
-      workerPoints.requestId === activeWorkerRequestId,
-    [activeWorkerRequestId, workerPoints],
-  );
-
-  useEffect(() => {
-    if (pointsProp || !canUseWorkerOffload() || !isDragging) {
-      queueMicrotask(() => setActiveWorkerRequestId(null));
-      return;
-    }
-
-    if (!workerRef.current) {
-      workerRef.current = new Worker(
-        new URL('./workers/plane-query.worker.js', import.meta.url),
-        {
-          type: 'module',
-        },
-      );
-    }
-
-    const worker = workerRef.current;
-    if (!worker) {
-      return;
-    }
-
-    const nextRequestId = requestIdRef.current + 1;
-    requestIdRef.current = nextRequestId;
-    queueMicrotask(() => setActiveWorkerRequestId(nextRequestId));
-
-    const onMessage = (event: MessageEvent<PlaneQueryWorkerResponse>) => {
-      const payload = event.data;
-      if (!payload || payload.id !== nextRequestId) {
-        return;
+  const extractResult = useCallback(
+    (response: PlaneQueryWorkerResponse): LinePoint[] | undefined => {
+      if (response.error || !response.result) {
+        return undefined;
       }
-      if (payload.error || !payload.result) {
-        return;
-      }
-
-      const unpacked = unpackPlaneQueryResults(payload.result);
+      const unpacked = unpackPlaneQueryResults(response.result);
       const bandResult = unpacked.find(
         (entry): entry is PlaneChromaBandResult => entry.kind === 'chromaBand',
       );
-      const nextPoints = bandResult ? toLinePointsFromBand(bandResult) : [];
+      return bandResult ? toLinePointsFromBand(bandResult) : [];
+    },
+    [],
+  );
 
-      setWorkerPoints({
-        requestId: payload.id,
-        points: nextPoints,
-      });
-    };
-
-    worker.addEventListener('message', onMessage);
-
-    const message: PlaneQueryWorkerRequest = {
-      id: nextRequestId,
-      ...workerPayload,
-    };
-    worker.postMessage(message);
-
-    return () => {
-      worker.removeEventListener('message', onMessage);
-    };
-  }, [isDragging, pointsProp, workerPayload]);
-
-  useEffect(() => {
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-    };
-  }, []);
+  const { sync, workerData, hasCurrentWorkerResponse, usingWorkerPath } =
+    usePlaneQueryLayer<LinePoint[]>({
+      external: pointsProp != null,
+      isDragging,
+      computeSync,
+      syncWhileDragging: 'until-worker-response',
+      workerPayload,
+      extractResult,
+    });
 
   const points = useMemo(() => {
     if (pointsProp) {
       return pointsProp;
     }
-    if (!(isDragging && canUseWorkerOffload())) {
-      return syncComputation?.points ?? [];
+    if (!usingWorkerPath) {
+      return sync?.data ?? [];
     }
-    if (hasCurrentWorkerResponse && workerPoints != null) {
-      return workerPoints.points;
+    if (hasCurrentWorkerResponse && workerData != null) {
+      return workerData.data;
     }
-    return workerPoints?.points ?? syncComputation?.points ?? [];
-  }, [
-    hasCurrentWorkerResponse,
-    isDragging,
-    pointsProp,
-    syncComputation,
-    workerPoints,
-  ]);
+    return workerData?.data ?? sync?.data ?? [];
+  }, [hasCurrentWorkerResponse, pointsProp, sync, usingWorkerPath, workerData]);
 
   return (
     <Layer

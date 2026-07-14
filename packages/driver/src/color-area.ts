@@ -176,8 +176,23 @@ function usesLightnessAndChroma(axes: {
   );
 }
 
-function toPlaneDefinition(axes: ResolvedColorAreaAxes, reference: Color) {
-  return definePlane({
+export interface ColorAreaPlaneDefinition {
+  model: typeof COLOR_AREA_PLANE_MODEL;
+  x: { channel: ColorAreaChannel; range: [number, number] };
+  y: { channel: ColorAreaChannel; range: [number, number] };
+  fixed: { l: number; c: number; h: number; alpha: number };
+}
+
+/**
+ * Builds the plain plane definition for a color area's axes and reference
+ * color. This is the single source of truth for plane payloads sent to
+ * plane-query workers and other transport boundaries.
+ */
+export function toColorAreaPlaneDefinition(
+  axes: ResolvedColorAreaAxes,
+  reference: Color,
+): ColorAreaPlaneDefinition {
+  return {
     model: COLOR_AREA_PLANE_MODEL,
     x: {
       channel: axes.x.channel,
@@ -193,7 +208,11 @@ function toPlaneDefinition(axes: ResolvedColorAreaAxes, reference: Color) {
       h: reference.h,
       alpha: reference.alpha,
     },
-  });
+  };
+}
+
+function toPlaneDefinition(axes: ResolvedColorAreaAxes, reference: Color) {
+  return definePlane(toColorAreaPlaneDefinition(axes, reference));
 }
 
 function planeToUiPoint(point: { x: number; y: number }): {
