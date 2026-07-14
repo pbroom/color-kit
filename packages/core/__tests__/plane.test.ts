@@ -37,6 +37,42 @@ const basePlane = definePlane({
   fixed: { h: 250, alpha: 1 },
 });
 
+const hybridFallbackCases = [
+  {
+    reason: 'branch-reconstruction-empty',
+    finalSolver: 'contrast-legacy-adaptive',
+    query: {
+      metric: 'wcag',
+      threshold: 1.01,
+      lightnessSteps: 12,
+      chromaSteps: 16,
+      hybridMaxDepth: 0,
+    },
+  },
+  {
+    reason: 'unresolved-sign-change',
+    finalSolver: 'contrast-legacy-adaptive',
+    query: {
+      metric: 'wcag',
+      threshold: 1.01,
+      lightnessSteps: 16,
+      chromaSteps: 16,
+      hybridMaxDepth: 0,
+    },
+  },
+  {
+    reason: 'complex-topology',
+    finalSolver: 'contrast-legacy-uniform',
+    query: {
+      metric: 'apca',
+      threshold: 0.9,
+      lightnessSteps: 16,
+      chromaSteps: 48,
+      hybridMaxDepth: 3,
+    },
+  },
+] as const;
+
 function expectUnitInterval(value: number): void {
   expect(value).toBeGreaterThanOrEqual(0);
   expect(value).toBeLessThanOrEqual(1);
@@ -471,6 +507,32 @@ describe('plane api', () => {
     const inspectedContrast = inspectPlaneQuery(basePlane, contrastQuery);
     expect(inspectedContrast.result).toEqual(directContrast);
   });
+
+  it.each(hybridFallbackCases)(
+    'preserves the $reason hybrid fallback reason with the final solver',
+    ({ reason, finalSolver, query }) => {
+      const inspection = inspectPlaneQuery(
+        basePlane,
+        {
+          kind: 'contrastRegion',
+          reference: parse('#000000'),
+          hue: 0,
+          samplingMode: 'hybrid',
+          ...query,
+        },
+        { level: 'stages' },
+      );
+      const solverStages = inspection.trace.stages.filter(
+        (stage) => stage.kind === 'solver',
+      );
+
+      expect(inspection.trace.summary.fallbackReason).toBe(reason);
+      expect(inspection.trace.summary.solver).toBe(finalSolver);
+      expect(solverStages).toHaveLength(2);
+      expect(solverStages[0]?.solver).toBe('contrast-hybrid');
+      expect(solverStages[1]?.solver).toBe(finalSolver);
+    },
+  );
 
   it('captures viewport sampling and marching-squares trace stages for implicit gamut regions', () => {
     const p3Plane = definePlane({

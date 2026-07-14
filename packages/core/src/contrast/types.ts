@@ -6,6 +6,15 @@ export type ContrastApcaPolarity = 'absolute' | 'positive' | 'negative';
 export type ContrastApcaRole = 'sample-text' | 'sample-background';
 export type ContrastApcaPreset = 'body' | 'large-text' | 'ui';
 
+/** Why the hybrid solver declined and routed the query to a legacy solver. */
+export type ContrastHybridFallbackReason =
+  /** More simultaneous chroma roots than the branch tracker can join reliably. */
+  | 'complex-topology'
+  /** Roots were found but no branch could be reconstructed into a path. */
+  | 'branch-reconstruction-empty'
+  /** No roots traced, yet probing detected a sign change in the field. */
+  | 'unresolved-sign-change';
+
 export interface ContrastRegionPoint {
   l: number;
   c: number;

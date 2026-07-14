@@ -1,5 +1,8 @@
 import type { Color } from '../types.js';
-import type { InternalPlaneTraceContext } from '../plane/trace.js';
+import {
+  setTraceSummaryField,
+  type InternalPlaneTraceContext,
+} from '../plane/trace.js';
 import { contrastRegionPathsHybrid } from './region-hybrid.js';
 import { contrastRegionPathsLegacy } from './region-legacy.js';
 import { validateSteps } from './region-shared.js';
@@ -70,6 +73,7 @@ export function contrastRegionPaths(
   if (hybridOutcome.status === 'ok') {
     return hybridOutcome.paths;
   }
+  setTraceSummaryField(trace, 'fallbackReason', hybridOutcome.fallbackReason);
   return contrastRegionPathsLegacy(
     reference,
     hue,
