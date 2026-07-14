@@ -5,6 +5,9 @@ export default defineConfig((options) => ({
   // The current library pipeline relies on tsup/esbuild, while docs precompile via Vite+Babel.
   entry: {
     index: 'src/index.ts',
+    // Separate entry: the only module that touches the optional
+    // @color-kit/control-kit peer, so the root entry never imports it.
+    'color-input': 'src/color-input.tsx',
     'workers/plane-query.worker': 'src/workers/plane-query.worker.ts',
   },
   format: ['esm', 'cjs'],

@@ -77,6 +77,16 @@
         "default": "./dist/react/index.cjs"
       }
     },
+    "./react/color-input": {
+      "import": {
+        "types": "./dist/react/color-input.d.ts",
+        "default": "./dist/react/color-input.js"
+      },
+      "require": {
+        "types": "./dist/react/color-input.d.cts",
+        "default": "./dist/react/color-input.cjs"
+      }
+    },
     "./wasm": {
       "import": {
         "types": "./dist/wasm/index.d.ts",
@@ -129,11 +139,15 @@
   },
   "peerDependencies": {
     "@base-ui/react": "^1.4.1",
+    "@color-kit/control-kit": "*",
     "radix-ui": "^1.4.3",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
   },
   "peerDependenciesMeta": {
+    "@color-kit/control-kit": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
@@ -142,7 +156,9 @@
     }
   },
   "dependencies": {
-    "@color-kit/control-kit": "github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289",
     "@legendapp/state": "^2.1.15"
+  },
+  "devDependencies": {
+    "@color-kit/control-kit": "github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289"
   }
 }

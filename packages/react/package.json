@@ -17,6 +17,16 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./color-input": {
+      "import": {
+        "types": "./dist/color-input.d.ts",
+        "default": "./dist/color-input.js"
+      },
+      "require": {
+        "types": "./dist/color-input.d.cts",
+        "default": "./dist/color-input.cjs"
+      }
     }
   },
   "files": [
@@ -55,17 +65,23 @@
     "tag": "next"
   },
   "dependencies": {
-    "@color-kit/control-kit": "github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289",
     "@color-kit/core": "workspace:*",
     "@color-kit/core-wasm": "workspace:*",
     "@color-kit/driver": "workspace:*",
     "@legendapp/state": "^2.1.15"
   },
   "peerDependencies": {
+    "@color-kit/control-kit": "*",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
   },
+  "peerDependenciesMeta": {
+    "@color-kit/control-kit": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@color-kit/control-kit": "github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
