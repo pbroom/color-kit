@@ -20,7 +20,7 @@ export interface ColorProps extends UseColorOptions {
  * ```
  */
 export function Color({ children, ...colorOptions }: ColorProps) {
-  // Provider stays stable while children subscribe to state$ slices.
+  // Provider stays stable while children subscribe to store slices.
   const colorState = useColor({
     ...colorOptions,
     reactive: false,

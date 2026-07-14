@@ -7,7 +7,7 @@ import {
   useState,
   type CanvasHTMLAttributes,
 } from 'react';
-import { useSelector } from '@legendapp/state/react';
+import { useColorStoreSelector } from './color-store.js';
 import { type Color, type GamutTarget } from '@color-kit/core';
 import { colorFromColorAreaPosition } from '@color-kit/driver';
 import {
@@ -398,8 +398,9 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
     const { requested, axes, qualityLevel, performanceProfile, isDragging } =
       useColorAreaContext();
     const colorContext = useOptionalColorContext();
-    const contextDisplayGamut = useSelector(
-      () => colorContext?.state$.activeGamut.get() ?? 'display-p3',
+    const contextDisplayGamut = useColorStoreSelector(
+      colorContext?.store ?? null,
+      (state) => state?.activeGamut ?? 'display-p3',
     );
     const displayGamut = displayGamutProp ?? contextDisplayGamut;
     const canvasRef = useRef<HTMLCanvasElement | null>(null);

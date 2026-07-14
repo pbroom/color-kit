@@ -1,6 +1,6 @@
 import { useMemo, type HTMLAttributes } from 'react';
 import { maxChromaAt, maxChromaForHue } from '@color-kit/core';
-import { useSelector } from '@legendapp/state/react';
+import { useColorStoreSelector } from './color-store.js';
 import { useOptionalColorContext } from './context.js';
 import { SliderMarker } from './slider-marker.js';
 import { useColorSliderContext } from './color-slider-context.js';
@@ -35,8 +35,9 @@ export function ChromaMarkers({
 }: ChromaMarkersProps) {
   const slider = useColorSliderContext();
   const colorContext = useOptionalColorContext();
-  const activeGamut = useSelector(
-    () => colorContext?.state$.activeGamut.get() ?? null,
+  const activeGamut = useColorStoreSelector(
+    colorContext?.store ?? null,
+    (state) => state?.activeGamut ?? null,
   );
 
   const resolvedGamut = gamut ?? activeGamut ?? 'display-p3';
