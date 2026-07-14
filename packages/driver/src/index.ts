@@ -105,9 +105,11 @@ export { getColorDisplayHex, getColorDisplayStyles } from './color-display.js';
 export type { ColorDisplayStyles } from './color-display.js';
 
 export {
+  colorsEqual,
   createColorState,
   getActiveDisplayedColor,
   mapDisplayedColors,
+  resolveColorSource,
 } from './color-state.js';
 export type {
   ColorChannel,
@@ -119,3 +121,26 @@ export type {
   GamutTarget,
   ViewModel,
 } from './color-state.js';
+
+export {
+  addMultiColorEntry,
+  createMultiColorModel,
+  materializeMultiColorState,
+  multiColorModelFromState,
+  removeMultiColorEntry,
+  renameMultiColorEntry,
+  selectMultiColorEntry,
+  setMultiColorActiveGamut,
+  setMultiColorActiveView,
+  setMultiColorChannel,
+  setMultiColorRequested,
+} from './multi-color-state.js';
+export type {
+  CreateMultiColorModelOptions,
+  MultiColorEntryInput,
+  MultiColorEntryModel,
+  MultiColorInput,
+  MultiColorModel,
+  MultiColorState,
+  MultiColorUpdateEvent,
+} from './multi-color-state.js';
