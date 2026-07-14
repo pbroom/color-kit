@@ -2,6 +2,7 @@ import type {
   ContrastApcaPolarity,
   ContrastApcaPreset,
   ContrastApcaRole,
+  ContrastHybridFallbackReason,
   ContrastMetric,
   ContrastRegionLevel,
 } from '../contrast/types.js';
@@ -240,6 +241,7 @@ export interface PlaneQueryTraceSummary {
     | 'contrast-legacy-uniform'
     | 'contrast-legacy-adaptive';
   samplingMode?: 'analytic' | 'uniform' | 'adaptive' | 'hybrid';
+  fallbackReason?: ContrastHybridFallbackReason;
   viewportRelation?: PlaneViewportRelation;
   backend?: 'js' | 'wasm' | 'webgpu';
   bucketKey?: string;
