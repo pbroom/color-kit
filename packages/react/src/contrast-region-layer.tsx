@@ -61,21 +61,9 @@ export interface ContrastRegionLayerMetrics {
   chromaSteps: number;
   samplingMode: 'hybrid' | 'uniform' | 'adaptive';
   contrastMetric: ContrastMetric;
-  backend?: 'js' | 'wasm' | 'webgpu';
+  backend?: 'js' | 'webgpu';
   scheduleReason?: string;
   schedulerBucketCount?: number;
-  wasmCircuitOpen?: boolean;
-  wasmParityStatus?:
-    | 'ok'
-    | 'shape-mismatch'
-    | 'numeric-mismatch'
-    | 'no-wasm'
-    | 'error';
-  wasmParityPathDelta?: number;
-  wasmParityPointDelta?: number;
-  wasmInitStatus?: 'pending' | 'ready' | 'unavailable' | 'error';
-  wasmInitError?: string;
-  wasmBackendVersion?: string;
   quality: 'high' | 'medium' | 'low';
   isDragging: boolean;
 }
@@ -111,7 +99,6 @@ export interface ContrastRegionLayerProps extends LayerProps {
   hybridMaxDepth?: number;
   hybridErrorTolerance?: number;
   includeSchedulerTelemetry?: boolean;
-  wasmParityMode?: 'off' | 'shape' | 'numeric';
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
   /** Optional precomputed contour paths (for plane-driven overlays). */
@@ -232,10 +219,6 @@ export function ContrastRegionFill({
       ) : null}
     </svg>
   );
-}
-
-function nowMs(): number {
-  return typeof performance === 'undefined' ? Date.now() : performance.now();
 }
 
 function countPathPoints(paths: ColorAreaContrastRegionPoint[][]): number {
@@ -797,7 +780,6 @@ export function ContrastRegionLayer({
   hybridMaxDepth,
   hybridErrorTolerance,
   includeSchedulerTelemetry = false,
-  wasmParityMode = 'off',
   cornerRadius,
   paths: pathsProp,
   children,
@@ -1052,8 +1034,6 @@ export function ContrastRegionLayer({
       quality: resolvedQuality,
       performanceProfile,
       includeSchedulerTelemetry,
-      includeWasmInitStatus: includeSchedulerTelemetry,
-      wasmParityMode,
     }),
     [
       axes,
@@ -1064,7 +1044,6 @@ export function ContrastRegionLayer({
       resolvedHue,
       resolvedQuality,
       includeSchedulerTelemetry,
-      wasmParityMode,
     ],
   );
 
@@ -1096,21 +1075,9 @@ export function ContrastRegionLayer({
       requestId: number;
       computeTimeMs: number;
       paths: ColorAreaContrastRegionPoint[][];
-      backend?: 'js' | 'wasm' | 'webgpu';
+      backend?: 'js' | 'webgpu';
       scheduleReason?: string;
       schedulerBucketCount?: number;
-      wasmCircuitOpen?: boolean;
-      wasmParityStatus?:
-        | 'ok'
-        | 'shape-mismatch'
-        | 'numeric-mismatch'
-        | 'no-wasm'
-        | 'error';
-      wasmParityPathDelta?: number;
-      wasmParityPointDelta?: number;
-      wasmInitStatus?: 'pending' | 'ready' | 'unavailable' | 'error';
-      wasmInitError?: string;
-      wasmBackendVersion?: string;
     }) => {
       onMetrics?.({
         source: payload.source,
@@ -1125,13 +1092,6 @@ export function ContrastRegionLayer({
         backend: payload.backend,
         scheduleReason: payload.scheduleReason,
         schedulerBucketCount: payload.schedulerBucketCount,
-        wasmCircuitOpen: payload.wasmCircuitOpen,
-        wasmParityStatus: payload.wasmParityStatus,
-        wasmParityPathDelta: payload.wasmParityPathDelta,
-        wasmParityPointDelta: payload.wasmParityPointDelta,
-        wasmInitStatus: payload.wasmInitStatus,
-        wasmInitError: payload.wasmInitError,
-        wasmBackendVersion: payload.wasmBackendVersion,
         quality: resolvedQuality,
         isDragging,
       });
@@ -1155,9 +1115,6 @@ export function ContrastRegionLayer({
       if (response.error || !response.result || data === undefined) {
         return;
       }
-      const wasmDisabledUntilMs =
-        response.schedulerTelemetry?.circuitBreakers.wasm?.disabledUntilMs ?? 0;
-      const now = nowMs();
       emitMetrics({
         source: 'worker',
         requestId: response.id,
@@ -1167,13 +1124,6 @@ export function ContrastRegionLayer({
         backend: response.backend,
         scheduleReason: response.schedule?.reason,
         schedulerBucketCount: response.schedulerTelemetry?.buckets.length,
-        wasmCircuitOpen: wasmDisabledUntilMs > now,
-        wasmParityStatus: response.wasmParity?.status,
-        wasmParityPathDelta: response.wasmParity?.pathCountDelta,
-        wasmParityPointDelta: response.wasmParity?.pointCountDelta,
-        wasmInitStatus: response.wasmInit?.status,
-        wasmInitError: response.wasmInit?.error,
-        wasmBackendVersion: response.wasmInit?.backendVersion,
       });
     },
     [emitMetrics],

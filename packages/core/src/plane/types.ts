@@ -241,7 +241,7 @@ export interface PlaneQueryTraceSummary {
     | 'contrast-legacy-adaptive';
   samplingMode?: 'analytic' | 'uniform' | 'adaptive' | 'hybrid';
   viewportRelation?: PlaneViewportRelation;
-  backend?: 'js' | 'wasm' | 'webgpu';
+  backend?: 'js' | 'webgpu';
   bucketKey?: string;
   scheduleReason?:
     | 'default-js'

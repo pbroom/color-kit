@@ -51,7 +51,6 @@ const compute = await import('color-kit/compute');
 const hct = await import('color-kit/hct');
 const react = await import('color-kit/react');
 const reactColorInput = await import('color-kit/react/color-input');
-const wasm = await import('color-kit/wasm');
 
 assert.equal(typeof root.definePlane, 'function');
 assert.equal(typeof root.sense, 'function');
@@ -76,8 +75,6 @@ assert.equal(typeof react.Color, 'function');
 assert.equal(typeof react.useColor, 'function');
 assert.equal('ColorInput' in react, false);
 assert.equal('ColorInput' in reactColorInput, true);
-assert.equal(typeof wasm.loadWasmPlaneComputeBackend, 'function');
-assert.equal(typeof wasm.createWasmAwarePlaneComputeScheduler, 'function');
 
 // Subpath entries must share module state with the root barrel (chunk
 // splitting), otherwise module-level singletons like the default compute
@@ -102,7 +99,6 @@ const cjsCompute = require('color-kit/compute');
 const cjsHct = require('color-kit/hct');
 const cjsReact = require('color-kit/react');
 const cjsReactColorInput = require('color-kit/react/color-input');
-const cjsWasm = require('color-kit/wasm');
 
 assert.equal(typeof cjsRoot.definePlane, 'function');
 assert.equal(typeof cjsCore.definePlane, 'function');
@@ -119,7 +115,6 @@ assert.equal(typeof cjsHct.maxHctChromaForHue, 'function');
 assert.equal(typeof cjsReact.Color, 'function');
 assert.equal('ColorInput' in cjsReact, false);
 assert.equal('ColorInput' in cjsReactColorInput, true);
-assert.equal(typeof cjsWasm.loadWasmPlaneComputeBackend, 'function');
 assert.equal(
   cjsRoot.createJsPlaneComputeBackend,
   cjsCompute.createJsPlaneComputeBackend,
