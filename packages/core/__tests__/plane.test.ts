@@ -721,6 +721,28 @@ describe('plane api', () => {
     expect(wide.get(basePlane, queryFor(4))).toEqual(resultFor(9));
   });
 
+  it('falls back to the default capacity for a non-finite maxEntries', () => {
+    const cache = new PlaneQueryCache({ maxEntries: Number.NaN });
+    const queryFor = (steps: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      steps,
+    });
+    const result = {
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      hue: 0,
+      points: [],
+    };
+
+    for (let steps = 1; steps <= 129; steps += 1) {
+      cache.set(basePlane, queryFor(steps), result);
+    }
+
+    expect(cache.has(basePlane, queryFor(1))).toBe(false);
+    expect(cache.has(basePlane, queryFor(129))).toBe(true);
+  });
+
   it('normalizes equivalent plane definitions into the same cache key', () => {
     const query = {
       kind: 'gamutBoundary' as const,
