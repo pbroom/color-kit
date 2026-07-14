@@ -10,10 +10,12 @@ export {
   getColorAreaThumbPosition,
   resolveColorAreaAxes,
   resolveColorAreaRange,
+  toColorAreaPlaneDefinition,
 } from './color-area.js';
 export type {
   ColorAreaAxes,
   ColorAreaAxis,
+  ColorAreaPlaneDefinition,
   ColorAreaChromaBandOptions,
   ColorAreaChannel,
   ColorAreaContrastRegionOptions,
