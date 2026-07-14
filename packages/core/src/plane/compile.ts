@@ -105,13 +105,51 @@ export function createPlaneQueryKey(
   return `${stableStringify(resolvePlaneDefinition(plane))}:${stableStringify(query)}`;
 }
 
-/** Caches plane query results by a deterministic plane/query key. */
+export interface PlaneQueryCacheOptions {
+  /**
+   * Maximum number of cached query results retained. When the cache grows
+   * past this bound, least-recently-used entries are evicted first.
+   *
+   * @default 128
+   */
+  maxEntries?: number;
+}
+
+/**
+ * Default entry bound for {@link PlaneQueryCache}. Cached values hold query
+ * geometry (point/path arrays that can reach tens of kilobytes each), so 128
+ * entries keeps worst-case retained memory in the low megabytes while still
+ * covering typical interactive plane workloads.
+ */
+const DEFAULT_PLANE_QUERY_CACHE_MAX_ENTRIES = 128;
+
+/**
+ * Caches plane query results by a deterministic plane/query key.
+ *
+ * The cache is LRU-bounded: reads refresh an entry's recency and writes evict
+ * the least-recently-used entries once {@link PlaneQueryCacheOptions.maxEntries}
+ * is exceeded.
+ */
 export class PlaneQueryCache {
   private entries = new Map<string, PlaneQueryResult>();
+  private readonly maxEntries: number;
+
+  constructor(options: PlaneQueryCacheOptions = {}) {
+    this.maxEntries = Math.max(
+      1,
+      Math.floor(options.maxEntries ?? DEFAULT_PLANE_QUERY_CACHE_MAX_ENTRIES),
+    );
+  }
 
   /** Gets a cached query result for the given plane/query pair. */
   get(plane: PlaneDefinition, query: PlaneQuery): PlaneQueryResult | undefined {
-    return this.entries.get(createPlaneQueryKey(plane, query));
+    const key = createPlaneQueryKey(plane, query);
+    const cached = this.entries.get(key);
+    if (cached === undefined) return undefined;
+    // Re-insert on hit so Map iteration order tracks least-recently-used.
+    this.entries.delete(key);
+    this.entries.set(key, cached);
+    return cached;
   }
 
   /** Stores a query result for the given plane/query pair. */
@@ -120,7 +158,14 @@ export class PlaneQueryCache {
     query: PlaneQuery,
     result: PlaneQueryResult,
   ): void {
-    this.entries.set(createPlaneQueryKey(plane, query), result);
+    const key = createPlaneQueryKey(plane, query);
+    this.entries.delete(key);
+    this.entries.set(key, result);
+    while (this.entries.size > this.maxEntries) {
+      const oldest = this.entries.keys().next().value;
+      if (oldest === undefined) break;
+      this.entries.delete(oldest);
+    }
   }
 
   /** Returns `true` when a cached value exists for the plane/query pair. */
