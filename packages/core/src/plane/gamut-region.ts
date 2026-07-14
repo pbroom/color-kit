@@ -10,7 +10,11 @@ import {
   type AdaptiveContourCell,
   type ContourSegment,
 } from '../contour/index.js';
-import { GAMUT_EPSILON, gamutBoundaryPath, maxChromaAt } from '../gamut/index.js';
+import {
+  GAMUT_EPSILON,
+  gamutBoundaryPath,
+  maxChromaAt,
+} from '../gamut/index.js';
 import { maxHctChromaAtTone } from '../hct/index.js';
 import type { Color } from '../types.js';
 import { normalizeHue, simplifyPolyline } from '../utils/index.js';
