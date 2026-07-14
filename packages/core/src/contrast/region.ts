@@ -82,11 +82,7 @@ export function contrastRegionPaths(
     },
     trace,
   );
-  setTraceSummaryField(
-    trace,
-    'fallbackReason',
-    hybridOutcome.fallbackReason,
-  );
+  setTraceSummaryField(trace, 'fallbackReason', hybridOutcome.fallbackReason);
   return paths;
 }
 
