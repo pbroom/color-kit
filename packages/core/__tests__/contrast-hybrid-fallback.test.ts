@@ -39,9 +39,8 @@ describe('contrastRegionPaths() hybrid fallback', () => {
 
     const { contrastRegionPaths } = await import('../src/contrast/index.js');
     const { fromHex } = await import('../src/conversion/index.js');
-    const { definePlane, inspectPlaneQuery } = await import(
-      '../src/plane/index.js'
-    );
+    const { definePlane, inspectPlaneQuery } =
+      await import('../src/plane/index.js');
     const reference = fromHex('#ffffff');
     const options = {
       metric: 'wcag' as const,
