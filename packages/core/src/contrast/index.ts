@@ -27,6 +27,7 @@ import {
   type InternalPlaneTraceContext,
 } from '../plane/trace.js';
 import type { PlanePoint } from '../plane/types.js';
+import { buildAxisAnchors } from '../sampling/adaptive1d.js';
 import { srgbToLinearChannel, simplifyPolyline } from '../utils/index.js';
 
 /**
@@ -623,66 +624,18 @@ const ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON = 1e-6;
 const ADAPTIVE_CHROMA_DEDUPE_EPSILON = 1e-6;
 const ADAPTIVE_EDGE_PROBES = [0.02, 0.05] as const;
 
-function appendUniqueAdaptiveAxis(
-  values: number[],
-  value: number,
-  min: number,
-  max: number,
-  epsilon: number,
-): void {
-  if (!Number.isFinite(value)) {
-    return;
-  }
-  const normalized = Math.max(min, Math.min(max, value));
-  for (const current of values) {
-    if (Math.abs(current - normalized) <= epsilon) {
-      return;
-    }
-  }
-  values.push(normalized);
-}
-
 function buildAdaptiveLightnessAnchors(
   baseSteps: number,
   cuspLightness: number,
 ): number[] {
-  const anchors: number[] = [];
-  appendUniqueAdaptiveAxis(anchors, 0, 0, 1, ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON);
-  appendUniqueAdaptiveAxis(anchors, 1, 0, 1, ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON);
-  appendUniqueAdaptiveAxis(
-    anchors,
-    cuspLightness,
-    0,
-    1,
-    ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
-  );
-  for (const probe of ADAPTIVE_EDGE_PROBES) {
-    appendUniqueAdaptiveAxis(
-      anchors,
-      probe,
-      0,
-      1,
-      ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
-    );
-    appendUniqueAdaptiveAxis(
-      anchors,
-      1 - probe,
-      0,
-      1,
-      ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
-    );
-  }
-  for (let index = 1; index < baseSteps; index += 1) {
-    appendUniqueAdaptiveAxis(
-      anchors,
-      index / baseSteps,
-      0,
-      1,
-      ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
-    );
-  }
-  anchors.sort((a, b) => a - b);
-  return anchors;
+  return buildAxisAnchors({
+    min: 0,
+    max: 1,
+    epsilon: ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
+    extraAnchors: [cuspLightness],
+    edgeProbes: ADAPTIVE_EDGE_PROBES,
+    uniformSteps: baseSteps,
+  });
 }
 
 function buildAdaptiveChromaAnchors(
@@ -690,55 +643,14 @@ function buildAdaptiveChromaAnchors(
   maxChroma: number,
   cuspChroma: number,
 ): number[] {
-  const anchors: number[] = [];
-  appendUniqueAdaptiveAxis(
-    anchors,
-    0,
-    0,
-    maxChroma,
-    ADAPTIVE_CHROMA_DEDUPE_EPSILON,
-  );
-  appendUniqueAdaptiveAxis(
-    anchors,
-    maxChroma,
-    0,
-    maxChroma,
-    ADAPTIVE_CHROMA_DEDUPE_EPSILON,
-  );
-  appendUniqueAdaptiveAxis(
-    anchors,
-    cuspChroma,
-    0,
-    maxChroma,
-    ADAPTIVE_CHROMA_DEDUPE_EPSILON,
-  );
-  for (const probe of ADAPTIVE_EDGE_PROBES) {
-    appendUniqueAdaptiveAxis(
-      anchors,
-      probe * maxChroma,
-      0,
-      maxChroma,
-      ADAPTIVE_CHROMA_DEDUPE_EPSILON,
-    );
-    appendUniqueAdaptiveAxis(
-      anchors,
-      (1 - probe) * maxChroma,
-      0,
-      maxChroma,
-      ADAPTIVE_CHROMA_DEDUPE_EPSILON,
-    );
-  }
-  for (let index = 1; index < baseSteps; index += 1) {
-    appendUniqueAdaptiveAxis(
-      anchors,
-      (index / baseSteps) * maxChroma,
-      0,
-      maxChroma,
-      ADAPTIVE_CHROMA_DEDUPE_EPSILON,
-    );
-  }
-  anchors.sort((a, b) => a - b);
-  return anchors;
+  return buildAxisAnchors({
+    min: 0,
+    max: maxChroma,
+    epsilon: ADAPTIVE_CHROMA_DEDUPE_EPSILON,
+    extraAnchors: [cuspChroma],
+    edgeProbes: ADAPTIVE_EDGE_PROBES,
+    uniformSteps: baseSteps,
+  });
 }
 
 function contrastRegionPathsAdaptive(
@@ -1001,37 +913,14 @@ function buildHybridLightnessAnchors(
   targetSteps: number,
   cuspLightness: number,
 ): number[] {
-  const anchors: number[] = [];
-  appendUniqueAdaptiveAxis(anchors, 0, 0, 1, HYBRID_LIGHTNESS_EPSILON);
-  appendUniqueAdaptiveAxis(anchors, 1, 0, 1, HYBRID_LIGHTNESS_EPSILON);
-  appendUniqueAdaptiveAxis(
-    anchors,
-    cuspLightness,
-    0,
-    1,
-    HYBRID_LIGHTNESS_EPSILON,
-  );
-  for (const probe of ADAPTIVE_EDGE_PROBES) {
-    appendUniqueAdaptiveAxis(anchors, probe, 0, 1, HYBRID_LIGHTNESS_EPSILON);
-    appendUniqueAdaptiveAxis(
-      anchors,
-      1 - probe,
-      0,
-      1,
-      HYBRID_LIGHTNESS_EPSILON,
-    );
-  }
-  for (let index = 1; index < targetSteps; index += 1) {
-    appendUniqueAdaptiveAxis(
-      anchors,
-      index / targetSteps,
-      0,
-      1,
-      HYBRID_LIGHTNESS_EPSILON,
-    );
-  }
-  anchors.sort((a, b) => a - b);
-  return anchors;
+  return buildAxisAnchors({
+    min: 0,
+    max: 1,
+    epsilon: HYBRID_LIGHTNESS_EPSILON,
+    extraAnchors: [cuspLightness],
+    edgeProbes: ADAPTIVE_EDGE_PROBES,
+    uniformSteps: targetSteps,
+  });
 }
 
 function contrastRegionPathsHybrid(
