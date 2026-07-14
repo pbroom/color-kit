@@ -102,6 +102,7 @@ export {
 
 // Gamut
 export {
+  GAMUT_EPSILON,
   inSrgbGamut,
   inP3Gamut,
   toSrgbGamut,

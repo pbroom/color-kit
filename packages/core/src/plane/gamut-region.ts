@@ -10,7 +10,11 @@ import {
   type AdaptiveContourCell,
   type ContourSegment,
 } from '../contour/index.js';
-import { gamutBoundaryPath, maxChromaAt } from '../gamut/index.js';
+import {
+  GAMUT_EPSILON,
+  gamutBoundaryPath,
+  maxChromaAt,
+} from '../gamut/index.js';
 import { maxHctChromaAtTone } from '../hct/index.js';
 import type { Color } from '../types.js';
 import { normalizeHue, simplifyPolyline } from '../utils/index.js';
@@ -47,7 +51,6 @@ import type {
   PlaneViewportRelation,
 } from './types.js';
 
-const GAMUT_MARGIN_EPSILON = 0.000075;
 const DEFAULT_BOUNDARY_STEPS = 192;
 const DEFAULT_VIEWPORT_RESOLUTION = 64;
 const DEFAULT_FULL_RESOLUTION = 96;
@@ -55,7 +58,7 @@ const DEFAULT_VIEWPORT_FILL_RESOLUTION = 32;
 const DEFAULT_VIEWPORT_BASE_RESOLUTION = 8;
 const DEFAULT_FULL_BASE_RESOLUTION = 12;
 const DEFAULT_IMPLICIT_MAX_DEPTH = 3;
-const ADAPTIVE_REFINEMENT_EPSILON = GAMUT_MARGIN_EPSILON * 8;
+const ADAPTIVE_REFINEMENT_EPSILON = GAMUT_EPSILON * 8;
 const CLIP_EPSILON = 1e-6;
 // `extendViewportGrid()` inserts a one-cell border of outside samples around the
 // original scalar grid. Expanding the bounds by one full cell keeps the shifted
@@ -361,14 +364,14 @@ function classifyAdaptiveContourResult(
       maxValue: result.maxValue,
     };
   }
-  if (result.minValue >= -GAMUT_MARGIN_EPSILON) {
+  if (result.minValue >= -GAMUT_EPSILON) {
     return {
       relation: 'inside',
       minValue: result.minValue,
       maxValue: result.maxValue,
     };
   }
-  if (result.maxValue < -GAMUT_MARGIN_EPSILON) {
+  if (result.maxValue < -GAMUT_EPSILON) {
     return {
       relation: 'outside',
       minValue: result.minValue,

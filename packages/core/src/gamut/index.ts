@@ -3,9 +3,15 @@ import { oklchToOklab } from '../conversion/oklch.js';
 import { oklabToLinearRgb } from '../conversion/oklab.js';
 import { linearSrgbToLinearP3 } from '../conversion/p3.js';
 import { clamp, normalizeHue, simplifyPolyline } from '../utils/index.js';
+import {
+  adaptiveMaxErrorProbe,
+  buildAxisAnchors,
+  MIN_SEGMENT_LENGTH,
+} from '../sampling/adaptive1d.js';
+import { GAMUT_EPSILON } from './constants.js';
 
-/** Small epsilon to account for floating-point rounding */
-const EPSILON = 0.000075;
+export { GAMUT_EPSILON } from './constants.js';
+
 const DEFAULT_MAX_CHROMA = 0.4;
 const DEFAULT_TOLERANCE = 0.0001;
 const DEFAULT_MAX_ITERATIONS = 30;
@@ -641,75 +647,8 @@ export function gamutBoundaryPath(
 
 const DEFAULT_ADAPTIVE_TOLERANCE = 0.001;
 const DEFAULT_ADAPTIVE_MAX_DEPTH = 12;
-const MIN_SEGMENT_LENGTH = 1e-6;
 const ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON = 1e-7;
-const ADAPTIVE_PROBE_FRACTIONS = [0.25, 0.5, 0.75] as const;
 const ADAPTIVE_EDGE_PROBES = [1 / 128, 1 / 64, 1 / 32, 1 / 16] as const;
-
-function perpendicularDistance(
-  p: GamutBoundaryPoint,
-  a: GamutBoundaryPoint,
-  b: GamutBoundaryPoint,
-): number {
-  const dl = b.l - a.l;
-  const dc = b.c - a.c;
-  const lenSq = dl * dl + dc * dc;
-  if (lenSq <= 0) {
-    return Math.hypot(p.l - a.l, p.c - a.c);
-  }
-  let t = ((p.l - a.l) * dl + (p.c - a.c) * dc) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  const projL = a.l + t * dl;
-  const projC = a.c + t * dc;
-  return Math.hypot(p.l - projL, p.c - projC);
-}
-
-function appendUniqueLightness(lightnesses: number[], lightness: number): void {
-  if (!Number.isFinite(lightness)) {
-    return;
-  }
-  const normalized = clamp(lightness, 0, 1);
-  for (const current of lightnesses) {
-    if (Math.abs(current - normalized) <= ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON) {
-      return;
-    }
-  }
-  lightnesses.push(normalized);
-}
-
-function adaptiveMaxErrorProbe(
-  a: GamutBoundaryPoint,
-  b: GamutBoundaryPoint,
-  maxChromaAtBound: (l: number) => number,
-): { probe: GamutBoundaryPoint; error: number } {
-  const span = b.l - a.l;
-  let bestProbe: GamutBoundaryPoint | null = null;
-  let bestError = -1;
-
-  for (const fraction of ADAPTIVE_PROBE_FRACTIONS) {
-    const l = a.l + span * fraction;
-    if (l <= a.l + MIN_SEGMENT_LENGTH || l >= b.l - MIN_SEGMENT_LENGTH) {
-      continue;
-    }
-    const probe: GamutBoundaryPoint = { l, c: maxChromaAtBound(l) };
-    const error = perpendicularDistance(probe, a, b);
-    if (error > bestError) {
-      bestError = error;
-      bestProbe = probe;
-    }
-  }
-
-  if (bestProbe) {
-    return { probe: bestProbe, error: bestError };
-  }
-
-  const lMid = (a.l + b.l) / 2;
-  const mid: GamutBoundaryPoint = { l: lMid, c: maxChromaAtBound(lMid) };
-  return {
-    probe: mid,
-    error: perpendicularDistance(mid, a, b),
-  };
-}
 
 function gamutBoundaryPathAdaptive(
   hue: number,
@@ -738,15 +677,13 @@ function gamutBoundaryPathAdaptive(
     l: cuspLightness,
     c: Math.min(Math.max(0, maxChromaAtBound(cuspLightness)), maxChromaBound),
   };
-  const anchorLightnesses: number[] = [];
-  appendUniqueLightness(anchorLightnesses, 0);
-  appendUniqueLightness(anchorLightnesses, 1);
-  appendUniqueLightness(anchorLightnesses, cuspPoint.l);
-  for (const probe of ADAPTIVE_EDGE_PROBES) {
-    appendUniqueLightness(anchorLightnesses, probe);
-    appendUniqueLightness(anchorLightnesses, 1 - probe);
-  }
-  anchorLightnesses.sort((a, b) => a - b);
+  const anchorLightnesses = buildAxisAnchors({
+    min: 0,
+    max: 1,
+    epsilon: ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON,
+    extraAnchors: [cuspPoint.l],
+    edgeProbes: ADAPTIVE_EDGE_PROBES,
+  });
   const anchorPoints = anchorLightnesses.map((lightness) => {
     if (
       Math.abs(lightness - cuspPoint.l) <= ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON
@@ -963,12 +900,12 @@ export function inSrgbGamut(color: Color): boolean {
   });
   const linear = oklabToLinearRgb(lab);
   return (
-    linear.r >= -EPSILON &&
-    linear.r <= 1 + EPSILON &&
-    linear.g >= -EPSILON &&
-    linear.g <= 1 + EPSILON &&
-    linear.b >= -EPSILON &&
-    linear.b <= 1 + EPSILON
+    linear.r >= -GAMUT_EPSILON &&
+    linear.r <= 1 + GAMUT_EPSILON &&
+    linear.g >= -GAMUT_EPSILON &&
+    linear.g <= 1 + GAMUT_EPSILON &&
+    linear.b >= -GAMUT_EPSILON &&
+    linear.b <= 1 + GAMUT_EPSILON
   );
 }
 
@@ -988,12 +925,12 @@ export function inP3Gamut(color: Color): boolean {
   const linearSrgb = oklabToLinearRgb(lab);
   const linearP3 = linearSrgbToLinearP3(linearSrgb);
   return (
-    linearP3.r >= -EPSILON &&
-    linearP3.r <= 1 + EPSILON &&
-    linearP3.g >= -EPSILON &&
-    linearP3.g <= 1 + EPSILON &&
-    linearP3.b >= -EPSILON &&
-    linearP3.b <= 1 + EPSILON
+    linearP3.r >= -GAMUT_EPSILON &&
+    linearP3.r <= 1 + GAMUT_EPSILON &&
+    linearP3.g >= -GAMUT_EPSILON &&
+    linearP3.g <= 1 + GAMUT_EPSILON &&
+    linearP3.b >= -GAMUT_EPSILON &&
+    linearP3.b <= 1 + GAMUT_EPSILON
   );
 }
 
