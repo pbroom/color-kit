@@ -45,7 +45,7 @@ interface SchedulerDecision {
 }
 
 const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
-  preferredBackends: ['wasm', 'webgpu', 'js'],
+  preferredBackends: ['webgpu', 'js'],
   minSamplesForDecision: 4,
   warmupSamples: 2,
   baselineProbeInterval: 8,
@@ -250,7 +250,6 @@ function cloneCircuitBreakers(
 ): PlaneComputeTelemetrySnapshot['circuitBreakers'] {
   return {
     js: circuitBreakers.js ? { ...circuitBreakers.js } : undefined,
-    wasm: circuitBreakers.wasm ? { ...circuitBreakers.wasm } : undefined,
     webgpu: circuitBreakers.webgpu ? { ...circuitBreakers.webgpu } : undefined,
   };
 }
@@ -262,12 +261,10 @@ function sortBucketsByRecentUse(
     .sort((left, right) => {
       const leftLast = Math.max(
         left.backends.js?.lastUpdatedMs ?? 0,
-        left.backends.wasm?.lastUpdatedMs ?? 0,
         left.backends.webgpu?.lastUpdatedMs ?? 0,
       );
       const rightLast = Math.max(
         right.backends.js?.lastUpdatedMs ?? 0,
-        right.backends.wasm?.lastUpdatedMs ?? 0,
         right.backends.webgpu?.lastUpdatedMs ?? 0,
       );
       return rightLast - leftLast;
@@ -282,13 +279,6 @@ function sortBucketsByRecentUse(
               sampleCount: bucket.backends.js.sampleCount,
               averageTotalMs: bucket.backends.js.averageTotalMs,
               lastTotalMs: bucket.backends.js.lastTotalMs,
-            }
-          : undefined,
-        wasm: bucket.backends.wasm
-          ? {
-              sampleCount: bucket.backends.wasm.sampleCount,
-              averageTotalMs: bucket.backends.wasm.averageTotalMs,
-              lastTotalMs: bucket.backends.wasm.lastTotalMs,
             }
           : undefined,
         webgpu: bucket.backends.webgpu
@@ -314,18 +304,12 @@ export function createPlaneComputeScheduler({
     Record<PlaneComputeBackendKind, PlaneComputeBackend>
   > = {
     js: backends?.js ?? createJsPlaneComputeBackend(),
-    wasm: backends?.wasm,
     webgpu: backends?.webgpu,
   };
   const telemetryBuckets = new Map<string, MutableTelemetryBucket>();
   const circuitBreakers: Partial<
     Record<PlaneComputeBackendKind, PlaneComputeCircuitBreakerState>
   > = {
-    wasm: {
-      disabledUntilMs: 0,
-      regressionStreak: 0,
-      errorStreak: 0,
-    },
     webgpu: {
       disabledUntilMs: 0,
       regressionStreak: 0,
@@ -609,7 +593,7 @@ export function createPlaneComputeScheduler({
 
   const resetTelemetry = (): void => {
     telemetryBuckets.clear();
-    for (const kind of ['wasm', 'webgpu'] as const) {
+    for (const kind of ['webgpu'] as const) {
       const breaker = circuitBreakers[kind];
       if (!breaker) {
         continue;

@@ -110,7 +110,6 @@ export interface ColorAreaInspectorState {
     contrastMetric: 'wcag' | 'apca';
     contrastApcaPolarity: 'absolute' | 'positive' | 'negative';
     contrastApcaRole: 'sample-text' | 'sample-background';
-    wasmParityMode: 'off' | 'shape' | 'numeric';
     contrastEdgeInterpolation: 'linear' | 'midpoint';
     /** RDP simplification tolerance; undefined or 0 = off */
     simplifyTolerance?: number;
@@ -251,7 +250,6 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       contrastMetric: 'wcag',
       contrastApcaPolarity: 'absolute',
       contrastApcaRole: 'sample-text',
-      wasmParityMode: 'off',
       contrastEdgeInterpolation: 'linear',
       simplifyTolerance: 0.001,
       lineSamplingMode: 'adaptive',
@@ -361,7 +359,6 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       contrastMetric: 'wcag',
       contrastApcaPolarity: 'absolute',
       contrastApcaRole: 'sample-text',
-      wasmParityMode: 'off',
       contrastEdgeInterpolation: 'linear',
       simplifyTolerance: 0.001,
       lineSamplingMode: 'adaptive',
