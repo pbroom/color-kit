@@ -107,7 +107,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-004 — Split lab `shared.tsx` god file
 
 - **Priority:** P1
-- **Status:** Open
+- **Status:** Done (2026-07-14) — `shared.tsx` deleted; modules extracted to `components/`, `fixtures/`, `color/`, `hooks/`; `LabPageKey` moved to `types.ts`.
 - **Evidence:**
   - `apps/docs/src/routes/lab/shared.tsx` — 2,927 lines.
   - Mega barrel: pages import primitives, react components, Lucide icons, fixtures, menu demos, color-plane helpers, panel wrappers, and 10 playground stages from one module.

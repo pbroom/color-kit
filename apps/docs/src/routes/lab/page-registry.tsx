@@ -4,7 +4,7 @@ import {
   type ComponentType,
   type LazyExoticComponent,
 } from 'react';
-import type { LabPageKey } from './shared.js';
+import type { LabPageKey } from './types.js';
 
 export { LAB_PAGE_NAVIGATION } from './lab-page-runtime.js';
 

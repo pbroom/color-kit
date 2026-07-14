@@ -1,18 +1,22 @@
 import { useCallback, useMemo, useState } from 'react';
+import type {
+  ColorSliderChannel,
+  SliderHueGradientMode,
+} from 'color-kit/react';
+import * as ColorApi from 'color-kit/driver';
+import { SLIDER_RANGE_EPSILON } from '../color/slider-rail.js';
+import { NumberConfigField } from '../components/panel/config-fields.js';
 import {
-  ColorApi,
-  NumberConfigField,
   PANEL_TWO_COLUMN_GRID_CLASS,
   PanelSection,
-  SLIDER_RANGE_EPSILON,
-  SegmentedField,
-  SliderPlaygroundStage,
-  type ColorSliderChannel,
-  type OutputGamut,
-  type SliderHueGradientMode,
-  type SliderMarkerMode,
-  type SliderOrientation,
-} from '../shared.js';
+} from '../components/panel/panel-section.js';
+import { SegmentedField } from '../components/panel/segmented-field.js';
+import { SliderPlaygroundStage } from '../components/playgrounds/slider.js';
+import type {
+  OutputGamut,
+  SliderMarkerMode,
+  SliderOrientation,
+} from '../types.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 

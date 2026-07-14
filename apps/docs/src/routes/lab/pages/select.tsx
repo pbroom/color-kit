@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import {
-  PanelSection,
-  PlacementGridField,
-  SegmentedField,
-  SelectPlaygroundStage,
-  ToggleField,
-  type PlacementAlign,
-  type PlacementSide,
-  type SelectOptionId,
-  type SelectTriggerBehavior,
-  type SelectTriggerContent,
-  type SelectTriggerIconTextPlacement,
-} from '../shared.js';
+import { ToggleField } from '../components/panel/config-fields.js';
+import { PanelSection } from '../components/panel/panel-section.js';
+import { PlacementGridField } from '../components/panel/placement-grid-field.js';
+import { SegmentedField } from '../components/panel/segmented-field.js';
+import { SelectPlaygroundStage } from '../components/playgrounds/select.js';
+import type { SelectOptionId } from '../fixtures/select-options.js';
+import type {
+  PlacementAlign,
+  PlacementSide,
+  SelectTriggerBehavior,
+  SelectTriggerContent,
+  SelectTriggerIconTextPlacement,
+} from '../types.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 

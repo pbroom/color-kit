@@ -1,31 +1,37 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   Background,
-  COLOR_PLANE_MULTI_INPUT_FIELDS,
-  ColorApi,
   ColorArea,
   ColorPlane,
   ColorSlider,
   ColorStringInput,
-  DEFAULT_MULTI_INPUT_CONFIG,
   FallbackPointsLayer,
   GamutBoundaryLayer,
-  MultiInputControl,
-  PanelSection,
-  PropertyFieldTooltip,
-  SegmentedField,
-  Separator,
-  ToggleField,
-  alternateAxis,
-  getOklchSliderRail,
-  normalizeAxes,
-  parsePrimitiveExpression,
   useColor,
   type ColorAreaAxes,
   type ColorAreaChannel,
   type ColorAreaPerformanceProfile,
+} from 'color-kit/react';
+import * as ColorApi from 'color-kit/driver';
+import { MultiInputControl } from '@color-kit/control-kit';
+import { Separator } from '@/components/ui/separator';
+import {
+  alternateAxis,
+  getOklchSliderRail,
+  normalizeAxes,
+} from '../color/slider-rail.js';
+import { parsePrimitiveExpression } from '../color/parse-expression.js';
+import {
+  COLOR_PLANE_MULTI_INPUT_FIELDS,
+  DEFAULT_MULTI_INPUT_CONFIG,
   type MultiInputFieldId,
-} from '../shared.js';
+} from '../fixtures/multi-input-fields.js';
+import {
+  PanelSection,
+  PropertyFieldTooltip,
+} from '../components/panel/panel-section.js';
+import { SegmentedField } from '../components/panel/segmented-field.js';
+import { ToggleField } from '../components/panel/config-fields.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 

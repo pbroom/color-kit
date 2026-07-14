@@ -7,21 +7,25 @@ import {
   Sparkles,
   User,
 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import {
+  TextConfigField,
+  ToggleField,
+} from '../components/panel/config-fields.js';
+import {
+  PANEL_TWO_COLUMN_GRID_CLASS,
+  PanelSection,
+} from '../components/panel/panel-section.js';
+import { SegmentedField } from '../components/panel/segmented-field.js';
+import { MenuPlaygroundStage } from '../components/playgrounds/menu.js';
 import {
   CONFIGURABLE_MENU_ITEM_IDS,
   CONFIGURABLE_MENU_ITEM_LABELS,
   DEFAULT_CONFIGURABLE_MENU_ITEMS,
-  MenuPlaygroundStage,
-  PANEL_TWO_COLUMN_GRID_CLASS,
-  PanelSection,
-  SegmentedField,
-  Separator,
-  TextConfigField,
-  ToggleField,
   type ConfigurableMenuItemConfig,
   type ConfigurableMenuItemId,
-  type SelectOptionId,
-} from '../shared.js';
+} from '../fixtures/menu-items.js';
+import type { SelectOptionId } from '../fixtures/select-options.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LAB_PAGE_NAVIGATION, LazyActiveLabPage } from './lab/page-registry.js';
-import { LabPageFrame, type LabPageKey } from './lab/shared.js';
+import { LabPageFrame } from './lab/components/frame.js';
+import type { LabPageKey } from './lab/types.js';
 
 function appendVisitedPage(
   pages: readonly LabPageKey[],

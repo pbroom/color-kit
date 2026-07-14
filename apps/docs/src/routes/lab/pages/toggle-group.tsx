@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import {
-  PanelSection,
-  SegmentedField,
-  ToggleGroupPlaygroundStage,
-  type ToggleGroupIconMode,
-} from '../shared.js';
+import { PanelSection } from '../components/panel/panel-section.js';
+import { SegmentedField } from '../components/panel/segmented-field.js';
+import { ToggleGroupPlaygroundStage } from '../components/playgrounds/toggle-group.js';
+import type { ToggleGroupIconMode } from '../types.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
