@@ -620,7 +620,7 @@ describe('ColorArea primitives', () => {
     });
   });
 
-  it('emits worker scheduler/parity observability metrics during drag', async () => {
+  it('emits worker scheduler observability metrics during drag', async () => {
     const boundary = [
       { l: 0, c: 0, x: 0, y: 1 },
       { l: 0, c: 1, x: 0, y: 0 },
@@ -633,9 +633,6 @@ describe('ColorArea primitives', () => {
     vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths').mockReturnValue(
       [],
     );
-    const nowMs =
-      typeof performance === 'undefined' ? Date.now() : performance.now();
-    const futureDisabledUntilMs = nowMs + 60_000;
 
     class MockWorker {
       private listeners = new Set<(event: MessageEvent<unknown>) => void>();
@@ -693,23 +690,7 @@ describe('ColorArea primitives', () => {
                 },
               },
             ],
-            circuitBreakers: {
-              wasm: {
-                disabledUntilMs: futureDisabledUntilMs,
-                regressionStreak: 1,
-                errorStreak: 0,
-              },
-            },
-          },
-          wasmParity: {
-            mode: 'shape',
-            status: 'shape-mismatch',
-            wasmAvailable: true,
-            attempted: true,
-            jsTotalTimeMs: 4.6,
-            wasmTotalTimeMs: 7.2,
-            pathCountDelta: 1,
-            pointCountDelta: 4,
+            circuitBreakers: {},
           },
           computeTimeMs: 1.2,
           marshalTimeMs: 0.4,
@@ -734,7 +715,6 @@ describe('ColorArea primitives', () => {
           threshold={4.5}
           samplingMode="adaptive"
           includeSchedulerTelemetry
-          wasmParityMode="shape"
           onMetrics={onMetrics}
         />
       </ColorArea>,
@@ -775,155 +755,8 @@ describe('ColorArea primitives', () => {
     expect(latest.backend).toBe('js');
     expect(latest.scheduleReason).toBe('backend-error');
     expect(latest.schedulerBucketCount).toBe(1);
-    expect(latest.wasmCircuitOpen).toBe(true);
-    expect(latest.wasmParityStatus).toBe('shape-mismatch');
-    expect(latest.wasmParityPathDelta).toBe(1);
-    expect(latest.wasmParityPointDelta).toBe(4);
     expect(latest.contrastMetric).toBe('wcag');
     expect(latest.samplingMode).toBe('adaptive');
-  });
-
-  it('marks wasmCircuitOpen false when cooldown has already expired', async () => {
-    const boundary = [
-      { l: 0, c: 0, x: 0, y: 1 },
-      { l: 0, c: 1, x: 0, y: 0 },
-      { l: 1, c: 1, x: 1, y: 0 },
-      { l: 1, c: 0, x: 1, y: 1 },
-    ];
-    vi.spyOn(colorAreaApi, 'getColorAreaGamutBoundaryPoints').mockReturnValue(
-      boundary,
-    );
-    vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths').mockReturnValue(
-      [],
-    );
-    const nowMs =
-      typeof performance === 'undefined' ? Date.now() : performance.now();
-    const pastDisabledUntilMs = nowMs - 1_000;
-
-    class MockWorker {
-      private listeners = new Set<(event: MessageEvent<unknown>) => void>();
-
-      addEventListener(
-        type: string,
-        listener: EventListenerOrEventListenerObject,
-      ): void {
-        if (type !== 'message' || typeof listener !== 'function') {
-          return;
-        }
-        this.listeners.add(listener as (event: MessageEvent<unknown>) => void);
-      }
-
-      removeEventListener(
-        type: string,
-        listener: EventListenerOrEventListenerObject,
-      ): void {
-        if (type !== 'message' || typeof listener !== 'function') {
-          return;
-        }
-        this.listeners.delete(
-          listener as (event: MessageEvent<unknown>) => void,
-        );
-      }
-
-      postMessage(message: { id: number }): void {
-        const payload = {
-          id: message.id,
-          result: packContrastRegionWorkerResult([
-            [
-              { l: 0.2, c: 0.18, x: 0.2, y: 0.82 },
-              { l: 0.5, c: 0.32, x: 0.5, y: 0.55 },
-              { l: 0.8, c: 0.2, x: 0.8, y: 0.8 },
-            ],
-          ]),
-          backend: 'js',
-          schedule: {
-            bucketKey: 'contrastRegion|drag',
-            selectedBackend: 'js',
-            reason: 'telemetry-win',
-          },
-          schedulerTelemetry: {
-            buckets: [
-              {
-                key: 'contrastRegion|drag',
-                totalSamples: 4,
-                lastUsedBackend: 'js',
-                backends: {
-                  js: {
-                    sampleCount: 4,
-                    averageTotalMs: 3.8,
-                    lastTotalMs: 4.0,
-                  },
-                },
-              },
-            ],
-            circuitBreakers: {
-              wasm: {
-                disabledUntilMs: pastDisabledUntilMs,
-                regressionStreak: 0,
-                errorStreak: 0,
-              },
-            },
-          },
-          computeTimeMs: 1.1,
-          marshalTimeMs: 0.3,
-        };
-        queueMicrotask(() => {
-          for (const listener of this.listeners) {
-            listener({ data: payload } as MessageEvent<unknown>);
-          }
-        });
-      }
-
-      terminate(): void {}
-    }
-
-    vi.stubGlobal('Worker', MockWorker as unknown as typeof Worker);
-
-    const requested: Color = { l: 0.36, c: 0.16, h: 210, alpha: 1 };
-    const onMetrics = vi.fn();
-    const { container } = render(
-      <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ContrastRegionLayer
-          threshold={4.5}
-          samplingMode="adaptive"
-          includeSchedulerTelemetry
-          onMetrics={onMetrics}
-        />
-      </ColorArea>,
-    );
-
-    const root = container.querySelector('[data-color-area]') as HTMLDivElement;
-    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 100,
-      height: 100,
-      right: 100,
-      bottom: 100,
-      x: 0,
-      y: 0,
-      toJSON: () => '',
-    } as DOMRect);
-
-    fireEvent.pointerDown(root, {
-      pointerId: 8,
-      clientX: 25,
-      clientY: 74,
-    });
-
-    await waitFor(() => {
-      const workerMetrics = onMetrics.mock.calls
-        .map((call) => call[0])
-        .filter((metric) => metric.source === 'worker');
-      expect(workerMetrics.length).toBeGreaterThan(0);
-    });
-
-    const workerMetrics = onMetrics.mock.calls
-      .map((call) => call[0])
-      .filter((metric) => metric.source === 'worker');
-    const latest = workerMetrics[workerMetrics.length - 1];
-
-    expect(latest.wasmCircuitOpen).toBe(false);
   });
 
   it.each([
@@ -996,10 +829,10 @@ describe('ColorArea primitives', () => {
                 { l: 0.8, c: 0.18, x: 0.8, y: 0.8 },
               ],
             ]),
-            backend: 'wasm',
+            backend: 'js',
             schedule: {
               bucketKey: 'contrastRegion|drag',
-              selectedBackend: 'wasm',
+              selectedBackend: 'js',
               reason: 'telemetry-win',
             },
             computeTimeMs: 1,

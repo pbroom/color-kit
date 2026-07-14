@@ -120,12 +120,6 @@ const APCA_ROLE_OPTIONS = [
   { value: 'sample-background', label: 'Background' },
 ] as const;
 
-const WASM_PARITY_MODE_OPTIONS = [
-  { value: 'off', label: 'Off' },
-  { value: 'shape', label: 'Shape' },
-  { value: 'numeric', label: 'Numeric' },
-] as const;
-
 const SAMPLING_MODE_OPTIONS = [
   { value: 'uniform', label: 'Uniform' },
   { value: 'adaptive', label: 'Adaptive' },
@@ -1234,21 +1228,6 @@ export function ColorAreaPropertiesPanel() {
           }
           options={[...SAMPLING_MODE_OPTIONS]}
           label="Boundary/chroma sampling"
-        />
-
-        <label className="docs-properties-label">WASM parity probe</label>
-        <SegmentedOptions
-          value={colorAreaState.tuning.wasmParityMode}
-          onChange={(wasmParityMode) =>
-            setColorAreaState({
-              tuning: {
-                ...colorAreaState.tuning,
-                wasmParityMode,
-              },
-            })
-          }
-          options={[...WASM_PARITY_MODE_OPTIONS]}
-          label="Contrast JS/WASM parity planning probe"
         />
 
         <label className="docs-properties-label">Corner radius</label>

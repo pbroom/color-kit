@@ -148,7 +148,7 @@ With the knowledge I have now, it seems smartest to lower how oppinionated the c
 Questions:
 
 - What should be the API structure pattern?
-- Can we get performance wins by building the solvers and calculation engine in rust or zig?
+- Can we get performance wins by building the solvers and calculation engine in a compiled language? (Explored via a Rust/WASM backend; removed in favor of JS-only compute until a real second backend proves necessary.)
 
 ---
 
@@ -369,7 +369,7 @@ Updates at **pointer-move frequency** (e.g. thumb position, requested color) mus
 
 ### Future performance paths
 
-**Workers** and **WASM** are deferred until profiling shows necessity. Contrast region generation is a good candidate for a worker; bulk conversion or histogram could justify WASM later.
+**Workers** carry the heavy plane-query compute today. A Rust/WASM backend was prototyped and then removed: it never computed queries end-to-end and the JS backend met performance targets, so the engine is JS-only until profiling justifies a real second backend (WASM or WebGPU).
 
 > **Why:** Complexity and maintenance cost. Current pure-TypeScript path is sufficient for v1; optimization is driven by measurement, not speculation.
 

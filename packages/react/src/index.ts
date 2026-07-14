@@ -140,10 +140,3 @@ export type { ChromaMarkersProps } from './chroma-markers.js';
 // free of the optional @color-kit/control-kit peer dependency.
 export { ColorStringInput } from './color-string-input.js';
 export type { ColorStringInputProps } from './color-string-input.js';
-
-// Worker observability helpers
-export { evaluateWasmParityGate } from './workers/wasm-parity-gate.js';
-export type {
-  WasmParityGateDecision,
-  WasmParityGateMode,
-} from './workers/wasm-parity-gate.js';
