@@ -11,7 +11,6 @@ color-kit is an API-first, UI-agnostic color engine: conversion, contrast, harmo
 | Path                 | What it is                                                                                    |
 | -------------------- | --------------------------------------------------------------------------------------------- |
 | `packages/core`      | The engine: OKLCH-canonical conversion, contrast, harmony, manipulation, gamut, plane queries |
-| `packages/core-wasm` | Optional Rust/WASM kernel (currently parked; opt-in, JS backend is the default)               |
 | `packages/driver`    | Framework-agnostic interaction driver (`ColorApi`, dual requested/displayed state)            |
 | `packages/react`     | React bindings and components                                                                 |
 | `packages/color-kit` | The published umbrella package (`color-kit` on npm)                                           |

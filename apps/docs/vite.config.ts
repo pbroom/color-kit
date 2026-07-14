@@ -60,20 +60,6 @@ export default defineConfig({
         ),
       },
       {
-        find: /^color-kit\/wasm$/,
-        replacement: resolve(
-          __dirname,
-          '../../packages/core-wasm/src/index.ts',
-        ),
-      },
-      {
-        find: /^@color-kit\/core-wasm$/,
-        replacement: resolve(
-          __dirname,
-          '../../packages/core-wasm/src/index.ts',
-        ),
-      },
-      {
         find: /^@color-kit\/core$/,
         replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
       },

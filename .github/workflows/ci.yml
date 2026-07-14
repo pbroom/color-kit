@@ -31,16 +31,12 @@ jobs:
         run: pnpm check:preprod
 
       - name: Build packages
-        env:
-          COLOR_KIT_SKIP_WASM_GENERATED: '1'
         run: pnpm build
 
       - name: Validate package metadata artifacts
         run: pnpm check:artifacts:metadata
 
       - name: Run tests
-        env:
-          COLOR_KIT_SKIP_WASM_GENERATED: '1'
         run: pnpm test
 
   lint:
@@ -67,9 +63,6 @@ jobs:
 
       - name: Run lint (including React Compiler hooks rules)
         run: pnpm lint
-
-  # wasm-build and wasm-parity-gate moved to .github/workflows/wasm.yml,
-  # gated to WASM-relevant paths plus a weekly schedule and manual dispatch.
 
   plane-bench:
     runs-on: ubuntu-latest

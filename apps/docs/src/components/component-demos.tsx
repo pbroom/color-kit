@@ -238,21 +238,9 @@ interface ContrastMetricSample {
   chromaSteps: number;
   samplingMode: 'hybrid' | 'uniform' | 'adaptive';
   contrastMetric: ContrastMetric;
-  backend?: 'js' | 'wasm' | 'webgpu';
+  backend?: 'js' | 'webgpu';
   scheduleReason?: string;
   schedulerBucketCount?: number;
-  wasmCircuitOpen?: boolean;
-  wasmParityStatus?:
-    | 'ok'
-    | 'shape-mismatch'
-    | 'numeric-mismatch'
-    | 'no-wasm'
-    | 'error';
-  wasmParityPathDelta?: number;
-  wasmParityPointDelta?: number;
-  wasmInitStatus?: 'pending' | 'ready' | 'unavailable' | 'error';
-  wasmInitError?: string;
-  wasmBackendVersion?: string;
   quality: 'high' | 'medium' | 'low';
   isDragging: boolean;
 }
@@ -266,18 +254,6 @@ interface ContrastObservabilitySummary {
   syncFallbackRate: number;
   topScheduleReasons: Array<{ reason: string; count: number }>;
   latestSchedulerBucketCount: number;
-  wasmCircuitOpen: boolean;
-  parityProbeCount: number;
-  parityOkCount: number;
-  parityShapeMismatchCount: number;
-  parityNumericMismatchCount: number;
-  parityNoWasmCount: number;
-  parityErrorCount: number;
-  wasmInitReadyCount: number;
-  wasmInitUnavailableCount: number;
-  wasmInitErrorCount: number;
-  lastParityPathDelta?: number;
-  lastParityPointDelta?: number;
 }
 
 const WORKER_JS_FALLBACK_REASONS = new Set([
@@ -301,16 +277,6 @@ function summarizeContrastObservability(
       syncFallbackRate: 0,
       topScheduleReasons: [],
       latestSchedulerBucketCount: 0,
-      wasmCircuitOpen: false,
-      parityProbeCount: 0,
-      parityOkCount: 0,
-      parityShapeMismatchCount: 0,
-      parityNumericMismatchCount: 0,
-      parityNoWasmCount: 0,
-      parityErrorCount: 0,
-      wasmInitReadyCount: 0,
-      wasmInitUnavailableCount: 0,
-      wasmInitErrorCount: 0,
     };
   }
 
@@ -346,45 +312,7 @@ function summarizeContrastObservability(
 
   const latestWithTelemetry = [...samples]
     .reverse()
-    .find(
-      (sample) =>
-        sample.schedulerBucketCount != null || sample.wasmCircuitOpen != null,
-    );
-
-  const paritySamples = samples.filter(
-    (sample) => sample.wasmParityStatus != null,
-  );
-  const parityOkCount = paritySamples.filter(
-    (sample) => sample.wasmParityStatus === 'ok',
-  ).length;
-  const parityShapeMismatchCount = paritySamples.filter(
-    (sample) => sample.wasmParityStatus === 'shape-mismatch',
-  ).length;
-  const parityNumericMismatchCount = paritySamples.filter(
-    (sample) => sample.wasmParityStatus === 'numeric-mismatch',
-  ).length;
-  const parityNoWasmCount = paritySamples.filter(
-    (sample) => sample.wasmParityStatus === 'no-wasm',
-  ).length;
-  const parityErrorCount = paritySamples.filter(
-    (sample) => sample.wasmParityStatus === 'error',
-  ).length;
-  const wasmInitReadyCount = samples.filter(
-    (sample) => sample.wasmInitStatus === 'ready',
-  ).length;
-  const wasmInitUnavailableCount = samples.filter(
-    (sample) => sample.wasmInitStatus === 'unavailable',
-  ).length;
-  const wasmInitErrorCount = samples.filter(
-    (sample) => sample.wasmInitStatus === 'error',
-  ).length;
-  const latestParitySample = [...paritySamples]
-    .reverse()
-    .find(
-      (sample) =>
-        sample.wasmParityPathDelta != null ||
-        sample.wasmParityPointDelta != null,
-    );
+    .find((sample) => sample.schedulerBucketCount != null);
 
   return {
     sampleCount: samples.length,
@@ -397,18 +325,6 @@ function summarizeContrastObservability(
       syncSamples.length > 0 ? syncFallbackCount / syncSamples.length : 0,
     topScheduleReasons,
     latestSchedulerBucketCount: latestWithTelemetry?.schedulerBucketCount ?? 0,
-    wasmCircuitOpen: latestWithTelemetry?.wasmCircuitOpen ?? false,
-    parityProbeCount: paritySamples.length,
-    parityOkCount,
-    parityShapeMismatchCount,
-    parityNumericMismatchCount,
-    parityNoWasmCount,
-    parityErrorCount,
-    wasmInitReadyCount,
-    wasmInitUnavailableCount,
-    wasmInitErrorCount,
-    lastParityPathDelta: latestParitySample?.wasmParityPathDelta,
-    lastParityPointDelta: latestParitySample?.wasmParityPointDelta,
   };
 }
 
@@ -529,7 +445,6 @@ function ColorAreaDemoScene({
       contrastMetric: 'wcag' as const,
       contrastApcaPolarity: 'absolute' as const,
       contrastApcaRole: 'sample-text' as const,
-      wasmParityMode: 'off' as const,
       contrastEdgeInterpolation: 'linear' as const,
       simplifyTolerance: undefined,
       lineSamplingMode: 'adaptive' as const,
@@ -542,7 +457,6 @@ function ColorAreaDemoScene({
   const contrastMetric = scene.tuning.contrastMetric;
   const contrastApcaPolarity = scene.tuning.contrastApcaPolarity;
   const contrastApcaRole = scene.tuning.contrastApcaRole;
-  const wasmParityMode = scene.tuning.wasmParityMode ?? 'off';
   const includeSchedulerTelemetry = inspectorState != null;
   const simplifyTolerance = scene.tuning.simplifyTolerance;
   const lineSamplingMode = scene.tuning.lineSamplingMode ?? 'adaptive';
@@ -649,7 +563,6 @@ function ColorAreaDemoScene({
               apcaPolarity={contrastApcaPolarity}
               apcaRole={contrastApcaRole}
               includeSchedulerTelemetry={includeSchedulerTelemetry}
-              wasmParityMode={wasmParityMode}
               lightnessSteps={contrastSteps}
               chromaSteps={contrastSteps}
               quality={layerQuality}
@@ -682,7 +595,6 @@ function ColorAreaDemoScene({
               apcaPolarity={contrastApcaPolarity}
               apcaRole={contrastApcaRole}
               includeSchedulerTelemetry={includeSchedulerTelemetry}
-              wasmParityMode={wasmParityMode}
               lightnessSteps={contrastSteps}
               chromaSteps={contrastSteps}
               quality={layerQuality}
@@ -942,25 +854,7 @@ export function ColorAreaDemo({
                   .map((entry) => `${entry.reason}:${entry.count}`)
                   .join(', ')
               : 'n/a'}{' '}
-            · buckets {contrastObservability.latestSchedulerBucketCount} · wasm
-            circuit {contrastObservability.wasmCircuitOpen ? 'open' : 'closed'}
-          </div>
-        ) : null}
-        {contrastObservability.parityProbeCount > 0 ? (
-          <div>
-            WASM parity probes {contrastObservability.parityProbeCount} · ok{' '}
-            {contrastObservability.parityOkCount} · shape mismatch{' '}
-            {contrastObservability.parityShapeMismatchCount} · numeric mismatch{' '}
-            {contrastObservability.parityNumericMismatchCount} · no-wasm{' '}
-            {contrastObservability.parityNoWasmCount} · error{' '}
-            {contrastObservability.parityErrorCount} · init ready{' '}
-            {contrastObservability.wasmInitReadyCount} / unavailable{' '}
-            {contrastObservability.wasmInitUnavailableCount} / init error{' '}
-            {contrastObservability.wasmInitErrorCount}
-            {contrastObservability.lastParityPathDelta != null ||
-            contrastObservability.lastParityPointDelta != null
-              ? ` · last Δ paths ${contrastObservability.lastParityPathDelta ?? 0} / pts ${contrastObservability.lastParityPointDelta ?? 0}`
-              : ''}
+            · buckets {contrastObservability.latestSchedulerBucketCount}
           </div>
         ) : null}
         {contrastMetrics.length > 0 ? (
@@ -976,9 +870,6 @@ export function ColorAreaDemo({
                 {metric.computeTimeMs.toFixed(2)}ms · {metric.pathCount} paths /{' '}
                 {metric.pointCount} pts
                 {metric.scheduleReason ? ` · ${metric.scheduleReason}` : ''}
-                {metric.wasmParityStatus
-                  ? ` · parity:${metric.wasmParityStatus}`
-                  : ''}
               </span>
             ))}
           </div>

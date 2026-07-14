@@ -20,7 +20,7 @@
     ],
     "other": [
       {
-        "content": "This repository is a PNPM monorepo with packages/core, packages/core-wasm, packages/react, packages/color-kit, and apps/docs. Public API changes often require matching barrel exports, downstream package updates, and docs/demo sync in the same PR."
+        "content": "This repository is a PNPM monorepo with packages/core, packages/react, packages/color-kit, and apps/docs. Public API changes often require matching barrel exports, downstream package updates, and docs/demo sync in the same PR."
       },
       {
         "content": "The repo already has dedicated lint, format, and CI automation. High-signal reviews focus on logic bugs, flaky or ambiguous workflow behavior, stale snippets or demos, missing export plumbing, and missing regression coverage."
@@ -28,11 +28,10 @@
     ],
     "rules": [
       {
-        "rule": "When a PR changes public exports or runtime entry points in packages/core, packages/react, packages/core-wasm, or packages/color-kit, verify the relevant barrel exports, downstream consumers, and build/test wiring are updated in the same PR.",
+        "rule": "When a PR changes public exports or runtime entry points in packages/core, packages/react, or packages/color-kit, verify the relevant barrel exports, downstream consumers, and build/test wiring are updated in the same PR.",
         "scope": [
           "packages/core/**",
           "packages/react/**",
-          "packages/core-wasm/**",
           "packages/color-kit/**",
           "apps/docs/**"
         ]
