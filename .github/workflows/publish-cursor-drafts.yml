@@ -17,8 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       (github.event.pull_request.user.login == 'cursor[bot]' ||
-       startsWith(github.event.pull_request.head.ref, 'cursor/'))
+       (github.event.pull_request.user.login == github.repository_owner &&
+        startsWith(github.event.pull_request.head.ref, 'cursor/')))
     steps:
       - name: Publish draft PR
         env:
