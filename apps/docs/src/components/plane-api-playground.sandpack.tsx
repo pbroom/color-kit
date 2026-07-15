@@ -66,7 +66,7 @@ type SandpackFileValue = string | SandpackFileDescriptor;
 const rawCoreSourceFiles = import.meta.glob(
   [
     '../../../../packages/core/src/compute/types.ts',
-    '../../../../packages/core/src/contrast/index.ts',
+    '../../../../packages/core/src/contrast/**/*.ts',
     '../../../../packages/core/src/conversion/*.ts',
     '../../../../packages/core/src/gamut/index.ts',
     '../../../../packages/core/src/hct/index.ts',
@@ -79,6 +79,7 @@ const rawCoreSourceFiles = import.meta.glob(
     '../../../../packages/core/src/plane/trace.ts',
     '../../../../packages/core/src/plane/transforms.ts',
     '../../../../packages/core/src/plane/types.ts',
+    '../../../../packages/core/src/sampling/adaptive1d.ts',
     '../../../../packages/core/src/scale/index.ts',
     '../../../../packages/core/src/types.ts',
     '../../../../packages/core/src/utils/*.ts',
