@@ -47,7 +47,6 @@ import {
 import { useMeasuredElementSize } from './use-measured-element-size.js';
 import {
   usePlaneQueryLayer,
-  canUseWorkerOffload,
   type PlaneQueryWorkerPayload,
 } from './use-plane-query-layer.js';
 import type { PlaneQueryWorkerResponse } from './workers/plane-query-client.js';
@@ -1433,13 +1432,7 @@ export function ContrastRegionLayer({
       interactive={props.interactive ?? false}
       data-color-area-contrast-region-layer=""
       data-quality={resolvedQuality}
-      data-worker={
-        pathsProp
-          ? 'external'
-          : isDragging && canUseWorkerOffload()
-            ? 'async'
-            : 'sync'
-      }
+      data-worker={pathsProp ? 'external' : usingWorkerPath ? 'async' : 'sync'}
     >
       <ContrastRegionPathContext.Provider value={pathContextValue}>
         {children}
