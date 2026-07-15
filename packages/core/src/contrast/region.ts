@@ -64,6 +64,12 @@ export function contrastRegionPaths(
     );
   }
 
+  const countersBeforeHybrid = trace
+    ? {
+        sampleCount: trace.summary.sampleCount,
+        scalarEvaluationCount: trace.summary.scalarEvaluationCount,
+      }
+    : null;
   const hybridOutcome = contrastRegionPathsHybrid(
     reference,
     hue,
@@ -72,6 +78,18 @@ export function contrastRegionPaths(
   );
   if (hybridOutcome.status === 'ok') {
     return hybridOutcome.paths;
+  }
+  if (countersBeforeHybrid) {
+    setTraceSummaryField(
+      trace,
+      'sampleCount',
+      countersBeforeHybrid.sampleCount,
+    );
+    setTraceSummaryField(
+      trace,
+      'scalarEvaluationCount',
+      countersBeforeHybrid.scalarEvaluationCount,
+    );
   }
   const paths = contrastRegionPathsLegacy(
     reference,

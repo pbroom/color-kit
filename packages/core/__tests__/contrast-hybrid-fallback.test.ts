@@ -52,21 +52,26 @@ describe('contrastRegionPaths() hybrid fallback', () => {
       hybridErrorTolerance: 0.0006,
     };
 
-    const inspection = inspectPlaneQuery(
-      definePlane({
-        fixed: { h: 210 },
-      }),
-      {
-        kind: 'contrastRegion',
-        reference,
-        hue: 210,
-        ...options,
-      },
-    );
+    const plane = definePlane({
+      fixed: { h: 210 },
+    });
+    const inspection = inspectPlaneQuery(plane, {
+      kind: 'contrastRegion',
+      reference,
+      hue: 210,
+      ...options,
+    });
     const hybridAuto = inspection.result.paths.map((path) =>
       path.map(({ l, c }) => ({ l, c })),
     );
     const explicitLegacy = contrastRegionPaths(reference, 210, {
+      ...options,
+      samplingMode: 'adaptive',
+    });
+    const explicitLegacyInspection = inspectPlaneQuery(plane, {
+      kind: 'contrastRegion',
+      reference,
+      hue: 210,
       ...options,
       samplingMode: 'adaptive',
     });
@@ -75,5 +80,11 @@ describe('contrastRegionPaths() hybrid fallback', () => {
     expect(hybridAuto).toEqual(explicitLegacy);
     expect(inspection.trace.summary.solver).toBe('contrast-legacy-adaptive');
     expect(inspection.trace.summary.fallbackReason).toBe('complex-topology');
+    expect(inspection.trace.summary.sampleCount).toBe(
+      explicitLegacyInspection.trace.summary.sampleCount,
+    );
+    expect(inspection.trace.summary.scalarEvaluationCount).toBe(
+      explicitLegacyInspection.trace.summary.scalarEvaluationCount,
+    );
   });
 });
