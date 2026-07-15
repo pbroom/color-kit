@@ -5,9 +5,7 @@ import type {
 } from '../src/workers/plane-query.worker.types.js';
 
 interface WorkerHarnessScope {
-  onmessage:
-    | ((event: MessageEvent<PlaneQueryWorkerRequest>) => void | Promise<void>)
-    | null;
+  onmessage: ((event: MessageEvent<PlaneQueryWorkerRequest>) => void) | null;
   postMessage: (
     message: PlaneQueryWorkerResponse,
     transfer?: Transferable[],
@@ -57,10 +55,9 @@ async function runWorkerOnce(
 
   await import('../src/workers/plane-query.worker.ts');
   expect(typeof scope.onmessage).toBe('function');
-  await scope.onmessage?.({
+  scope.onmessage?.({
     data: request,
   } as MessageEvent<PlaneQueryWorkerRequest>);
-  await Promise.resolve();
   expect(responses.length).toBeGreaterThan(0);
   return responses[responses.length - 1];
 }
