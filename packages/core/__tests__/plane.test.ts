@@ -692,6 +692,31 @@ describe('plane api', () => {
     expect(cache.has(basePlane, queryFor(16))).toBe(true);
   });
 
+  it('refreshes cache entry recency on has', () => {
+    const cache = new PlaneQueryCache({ maxEntries: 2 });
+    const queryFor = (steps: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      steps,
+    });
+    const resultFor = (hue: number) => ({
+      kind: 'gamutBoundary' as const,
+      gamut: 'srgb' as const,
+      hue,
+      points: [],
+    });
+
+    cache.set(basePlane, queryFor(4), resultFor(1));
+    cache.set(basePlane, queryFor(8), resultFor(2));
+    // A presence check is still a read, so it must refresh recency.
+    expect(cache.has(basePlane, queryFor(4))).toBe(true);
+    cache.set(basePlane, queryFor(16), resultFor(3));
+
+    expect(cache.has(basePlane, queryFor(4))).toBe(true);
+    expect(cache.has(basePlane, queryFor(8))).toBe(false);
+    expect(cache.has(basePlane, queryFor(16))).toBe(true);
+  });
+
   it('honors a custom maxEntries capacity override', () => {
     const cache = new PlaneQueryCache({ maxEntries: 1 });
     const queryFor = (steps: number) => ({

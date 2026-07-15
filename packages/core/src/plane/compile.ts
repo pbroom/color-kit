@@ -172,7 +172,7 @@ export class PlaneQueryCache {
 
   /** Returns `true` when a cached value exists for the plane/query pair. */
   has(plane: PlaneDefinition, query: PlaneQuery): boolean {
-    return this.entries.has(createPlaneQueryKey(plane, query));
+    return this.get(plane, query) !== undefined;
   }
 
   /** Clears all cached query entries. */
