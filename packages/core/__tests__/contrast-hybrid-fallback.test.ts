@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ContrastHybridFallbackReason } from '../src/index.js';
 
 afterEach(() => {
   vi.doUnmock('../src/gamut/index.js');
@@ -79,6 +80,10 @@ describe('contrastRegionPaths() hybrid fallback', () => {
 
     expect(inspection.trace.summary.solver).toBe('contrast-legacy-adaptive');
     expect(inspection.trace.summary.samplingMode).toBe('adaptive');
-    expect(inspection.trace.summary.fallbackReason).toBe('complex-topology');
+    const expectedFallbackReason: ContrastHybridFallbackReason =
+      'complex-topology';
+    expect(inspection.trace.summary.fallbackReason).toBe(
+      expectedFallbackReason,
+    );
   });
 });
