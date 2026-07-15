@@ -31,6 +31,20 @@ function GamutToggle() {
   );
 }
 
+function GamutContextProbe() {
+  const { activeGamut, setActiveGamut } = useColorContext();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        setActiveGamut(activeGamut === 'display-p3' ? 'srgb' : 'display-p3')
+      }
+    >
+      {activeGamut}
+    </button>
+  );
+}
+
 describe('shared component contracts', () => {
   it('requires provider or standalone state props for context-driven primitives', () => {
     expect(() => render(<ColorArea />)).toThrowError(
@@ -62,6 +76,21 @@ describe('shared component contracts', () => {
     expect(screen.getAllByRole('slider')).toHaveLength(4);
     expect(screen.getByRole('spinbutton')).toBeTruthy();
     expect(screen.getByRole('textbox')).toBeTruthy();
+  });
+
+  it('keeps useColorContext snapshots reactive to store updates', () => {
+    render(
+      <Color>
+        <GamutContextProbe />
+      </Color>,
+    );
+
+    const toggle = screen.getByRole('button', { name: 'display-p3' });
+    fireEvent.click(toggle);
+    expect(toggle.textContent).toBe('srgb');
+
+    fireEvent.click(toggle);
+    expect(toggle.textContent).toBe('display-p3');
   });
 
   it('keeps ColorArea thumb coordinates stable across active gamut switches', () => {
