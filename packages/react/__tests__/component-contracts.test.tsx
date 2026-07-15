@@ -68,6 +68,33 @@ function ControlledContextProbe({
   return null;
 }
 
+function CssCallbackProbe({
+  onSnapshot,
+}: {
+  onSnapshot: (snapshot: {
+    requestedCss: (format?: string) => string;
+    displayedCss: (format?: string) => string;
+  }) => void;
+}) {
+  const context = useColorContext();
+  onSnapshot({
+    requestedCss: context.requestedCss,
+    displayedCss: context.displayedCss,
+  });
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        context.setActiveView(
+          context.activeView === 'oklch' ? 'rgb' : 'oklch',
+        )
+      }
+    >
+      Toggle view
+    </button>
+  );
+}
+
 describe('shared component contracts', () => {
   it('requires provider or standalone state props for context-driven primitives', () => {
     expect(() => render(<ColorArea />)).toThrowError(
@@ -114,6 +141,22 @@ describe('shared component contracts', () => {
 
     fireEvent.click(toggle);
     expect(toggle.textContent).toBe('display-p3');
+  });
+
+  it('keeps context CSS callbacks stable across unrelated state updates', () => {
+    const onSnapshot = vi.fn();
+    render(
+      <Color>
+        <CssCallbackProbe onSnapshot={onSnapshot} />
+      </Color>,
+    );
+
+    const first = onSnapshot.mock.calls.at(-1)?.[0];
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle view' }));
+    const second = onSnapshot.mock.calls.at(-1)?.[0];
+
+    expect(second.requestedCss).toBe(first.requestedCss);
+    expect(second.displayedCss).toBe(first.displayedCss);
   });
 
   it('reads controlled context snapshots on the first render of each state', () => {
