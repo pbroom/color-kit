@@ -3,6 +3,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { Color } from '@color-kit/core';
+import { toHex } from '@color-kit/core';
+import { createColorState } from '@color-kit/driver';
 import { ColorArea } from '../src/color-area.js';
 import { ColorInput } from '../src/color-input.js';
 import { Color } from '../src/color.js';
@@ -91,6 +93,43 @@ describe('shared component contracts', () => {
 
     fireEvent.click(toggle);
     expect(toggle.textContent).toBe('display-p3');
+  });
+
+  it('exposes controlled state on the first useColorContext paint', () => {
+    const controlledRequested: Color = {
+      l: 0.42,
+      c: 0.15,
+      h: 30,
+      alpha: 1,
+    };
+    const controlled = createColorState(controlledRequested, {
+      activeGamut: 'srgb',
+      activeView: 'oklch',
+      source: 'programmatic',
+    });
+
+    function ControlledProbe() {
+      const { activeGamut, hex, state } = useColorContext();
+      return (
+        <div>
+          <span data-testid="gamut">{activeGamut}</span>
+          <span data-testid="hex">{hex}</span>
+          <span data-testid="l">{state.requested.l}</span>
+        </div>
+      );
+    }
+
+    render(
+      <Color state={controlled}>
+        <ControlledProbe />
+      </Color>,
+    );
+
+    expect(screen.getByTestId('gamut').textContent).toBe('srgb');
+    expect(screen.getByTestId('l').textContent).toBe('0.42');
+    expect(screen.getByTestId('hex').textContent).toBe(
+      toHex(controlledRequested),
+    );
   });
 
   it('keeps ColorArea thumb coordinates stable across active gamut switches', () => {
