@@ -2,10 +2,7 @@ import {
   createPlaneComputeScheduler,
   getPackedPlaneQueryTransferables,
 } from '@color-kit/core';
-import type {
-  PlaneComputeRequest,
-  PlaneComputeSchedulerOptions,
-} from '@color-kit/core';
+import type { PlaneComputeRequest } from '@color-kit/core';
 import type {
   PlaneQueryWorkerRequest,
   PlaneQueryWorkerResponse,
@@ -20,19 +17,8 @@ interface MinimalWorkerScope {
 }
 
 const workerScope = self as unknown as MinimalWorkerScope;
-const SCHEDULER_OPTIONS: PlaneComputeSchedulerOptions = {
-  preferredBackends: ['js'],
-  minSamplesForDecision: 3,
-  warmupSamples: 2,
-  baselineProbeInterval: 8,
-  dragRegressionRatio: 1.1,
-  idleRegressionRatio: 1.25,
-  hysteresisTrips: 3,
-  circuitBreakerCooldownMs: 20_000,
-};
-
 const scheduler = createPlaneComputeScheduler({
-  options: SCHEDULER_OPTIONS,
+  options: { preferredBackends: ['js'] },
 });
 
 workerScope.onmessage = (event): void => {
