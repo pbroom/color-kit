@@ -68,7 +68,7 @@ const rawCoreSourceFiles = import.meta.glob(
     '../../../../packages/core/src/compute/types.ts',
     '../../../../packages/core/src/contrast/**/*.ts',
     '../../../../packages/core/src/conversion/*.ts',
-    '../../../../packages/core/src/gamut/index.ts',
+    '../../../../packages/core/src/gamut/*.ts',
     '../../../../packages/core/src/hct/index.ts',
     '../../../../packages/core/src/plane/compile.ts',
     '../../../../packages/core/src/plane/gamut-region/**/*.ts',
