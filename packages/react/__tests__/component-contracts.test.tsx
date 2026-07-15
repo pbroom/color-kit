@@ -85,9 +85,7 @@ function CssCallbackProbe({
     <button
       type="button"
       onClick={() =>
-        context.setActiveView(
-          context.activeView === 'oklch' ? 'rgb' : 'oklch',
-        )
+        context.setActiveView(context.activeView === 'oklch' ? 'rgb' : 'oklch')
       }
     >
       Toggle view
