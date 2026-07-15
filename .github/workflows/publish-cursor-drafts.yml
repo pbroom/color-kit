@@ -9,6 +9,8 @@ on:
     types: [opened, reopened]
 
 permissions:
+  # GitHub's ready-for-review GraphQL mutation currently requires this scope.
+  contents: write
   pull-requests: write
 
 jobs:
