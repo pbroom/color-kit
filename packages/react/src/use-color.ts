@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Color, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
 import {
   fromHsl,
@@ -101,7 +101,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
     reactive = true,
   } = options as UseColorOptions & { reactive?: boolean };
 
-  const [store] = useState<ColorStore>(() =>
+  const [baseStore] = useState<ColorStore>(() =>
     createColorStore(
       controlledState ??
         createColorState(resolveInitialColor(defaultColor), {
@@ -113,17 +113,26 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
   );
 
   const isControlled = controlledState !== undefined;
-  // Sync controlled props during render so store subscribers (including
-  // useColorContext) never read the default color on the first paint.
-  if (isControlled && controlledState && store.get() !== controlledState) {
-    store.set(controlledState);
-  }
-
+  const store = useMemo<ColorStore>(() => {
+    if (controlledState === undefined) {
+      return baseStore;
+    }
+    return {
+      get: () => controlledState,
+      set: baseStore.set,
+      subscribe: baseStore.subscribe,
+    };
+  }, [baseStore, controlledState]);
   const subscribedState = useColorStoreSelector(
     reactive ? store : null,
     (state) => state,
   );
 
+  useEffect(() => {
+    if (isControlled && controlledState) {
+      baseStore.set(controlledState);
+    }
+  }, [baseStore, controlledState, isControlled]);
   const state = isControlled
     ? (controlledState as ColorState)
     : (subscribedState ?? store.get());
