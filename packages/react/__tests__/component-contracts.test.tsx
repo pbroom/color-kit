@@ -2,9 +2,8 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import type { Color } from '@color-kit/core';
-import { toHex } from '@color-kit/core';
-import { createColorState } from '@color-kit/driver';
+import { fromHex, type Color } from '@color-kit/core';
+import { createColorState, type ColorState } from '@color-kit/driver';
 import { ColorArea } from '../src/color-area.js';
 import { ColorInput } from '../src/color-input.js';
 import { Color } from '../src/color.js';
@@ -45,6 +44,28 @@ function GamutContextProbe() {
       {activeGamut}
     </button>
   );
+}
+
+function ControlledContextProbe({
+  onSnapshot,
+}: {
+  onSnapshot: (snapshot: {
+    state: ColorState;
+    storeState: ColorState;
+    activeGamut: string;
+    hex: string;
+    requestedCss: string;
+  }) => void;
+}) {
+  const context = useColorContext();
+  onSnapshot({
+    state: context.state,
+    storeState: context.store.get(),
+    activeGamut: context.activeGamut,
+    hex: context.hex,
+    requestedCss: context.requestedCss('hex'),
+  });
+  return null;
 }
 
 describe('shared component contracts', () => {
@@ -95,41 +116,42 @@ describe('shared component contracts', () => {
     expect(toggle.textContent).toBe('display-p3');
   });
 
-  it('exposes controlled state on the first useColorContext paint', () => {
-    const controlledRequested: Color = {
-      l: 0.42,
-      c: 0.15,
-      h: 30,
-      alpha: 1,
-    };
-    const controlled = createColorState(controlledRequested, {
+  it('reads controlled context snapshots on the first render of each state', () => {
+    const onSnapshot = vi.fn();
+    const first = createColorState(fromHex('#ff0000'), {
       activeGamut: 'srgb',
-      activeView: 'oklch',
-      source: 'programmatic',
     });
-
-    function ControlledProbe() {
-      const { activeGamut, hex, state } = useColorContext();
-      return (
-        <div>
-          <span data-testid="gamut">{activeGamut}</span>
-          <span data-testid="hex">{hex}</span>
-          <span data-testid="l">{state.requested.l}</span>
-        </div>
-      );
-    }
-
-    render(
-      <Color state={controlled}>
-        <ControlledProbe />
+    const second = createColorState(fromHex('#00ff00'), {
+      activeGamut: 'display-p3',
+    });
+    const { rerender } = render(
+      <Color state={first}>
+        <ControlledContextProbe onSnapshot={onSnapshot} />
       </Color>,
     );
 
-    expect(screen.getByTestId('gamut').textContent).toBe('srgb');
-    expect(screen.getByTestId('l').textContent).toBe('0.42');
-    expect(screen.getByTestId('hex').textContent).toBe(
-      toHex(controlledRequested),
+    expect(onSnapshot.mock.calls[0]?.[0]).toMatchObject({
+      state: first,
+      storeState: first,
+      activeGamut: 'srgb',
+      hex: '#ff0000',
+      requestedCss: '#ff0000',
+    });
+
+    const callsBeforeRerender = onSnapshot.mock.calls.length;
+    rerender(
+      <Color state={second}>
+        <ControlledContextProbe onSnapshot={onSnapshot} />
+      </Color>,
     );
+
+    expect(onSnapshot.mock.calls[callsBeforeRerender]?.[0]).toMatchObject({
+      state: second,
+      storeState: second,
+      activeGamut: 'display-p3',
+      hex: '#00ff00',
+      requestedCss: '#00ff00',
+    });
   });
 
   it('keeps ColorArea thumb coordinates stable across active gamut switches', () => {
