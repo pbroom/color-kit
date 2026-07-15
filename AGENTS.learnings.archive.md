@@ -11,6 +11,8 @@ This archive is the source of truth for reusable agent learnings in this reposit
 
 ## Entries
 
+- **2026-07-15 — Retrigger Greptile via automation review**: When `gh pr comment`/`@greptileai` returns 403 for the integration token, include `@greptileai` in `post_review_comment_on_pr` instead; that can restart a cancelled Greptile check without needing issue-comment permission.
+
 - **2026-06-06 — Keep control-kit external in color-kit**: After extracting `@color-kit/control-kit`, color-kit consumers should depend on the standalone repo/package and docs Tailwind should source `../node_modules/@color-kit/control-kit/src` from `apps/docs/src/app.css`; do not restore `packages/control-kit` or the `color-kit/control-kit` umbrella subpath.
 - **2026-05-24 — Source package Tailwind classes explicitly**: When docs dogfood Tailwind-authored components from `packages/control-kit`, add an app stylesheet `@source` entry for that package; otherwise package-only utilities like `pl-1` can disappear from generated CSS while shared classes still seem to work.
 - **2026-05-24 — Preserve Lab page state through descriptor splits**: When splitting the Lab route, keep page controller hooks called in a stable registry order and render active preview/properties slots from descriptors; this preserves cross-page state while removing route-level ternary dispatch.
