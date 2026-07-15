@@ -227,7 +227,7 @@ if [[ -z "$BASE_REF" ]]; then
 fi
 
 MERGE_BASE="$(git merge-base "$HEAD_REF" "$BASE_REF")"
-WORKSPACE_BUILD_COMMAND="pnpm --filter @color-kit/core build && pnpm --filter @color-kit/react build && pnpm --filter color-kit build && pnpm --filter @color-kit/docs build"
+WORKSPACE_BUILD_COMMAND="pnpm --filter @color-kit/core build && pnpm --filter @color-kit/driver build && pnpm --filter @color-kit/react build && pnpm --filter color-kit build && pnpm --filter @color-kit/docs build"
 
 changed_files=()
 profiles=()
