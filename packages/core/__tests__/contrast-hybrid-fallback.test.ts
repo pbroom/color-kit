@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ContrastHybridFallbackReason } from '../src/contrast/types.js';
+import type { InternalPlaneTraceContext } from '../src/plane/trace.js';
 
 afterEach(() => {
   vi.doUnmock('../src/gamut/index.js');
+  vi.doUnmock('../src/contrast/region-hybrid.js');
   vi.resetModules();
 });
 
@@ -98,4 +101,83 @@ describe('contrastRegionPaths() hybrid fallback', () => {
       summary: expectedCounters,
     });
   });
+
+  it.each<ContrastHybridFallbackReason>([
+    'branch-reconstruction-empty',
+    'unresolved-sign-change',
+  ])(
+    'restores work counters for $fallbackReason fallback',
+    async (fallbackReason) => {
+      vi.resetModules();
+      vi.doMock('../src/contrast/region-hybrid.js', async () => {
+        const actual = await vi.importActual(
+          '../src/contrast/region-hybrid.js',
+        );
+        return {
+          ...actual,
+          contrastRegionPathsHybrid: (
+            _reference: unknown,
+            _hue: unknown,
+            _options: unknown,
+            trace: InternalPlaneTraceContext | null | undefined,
+          ) => {
+            if (trace) {
+              Object.assign(trace.summary, {
+                sampleCount: trace.summary.sampleCount + 11,
+                scalarEvaluationCount: trace.summary.scalarEvaluationCount + 13,
+                cellCount: trace.summary.cellCount + 17,
+                segmentCount: trace.summary.segmentCount + 19,
+                pathCount: trace.summary.pathCount + 23,
+                pointCount: trace.summary.pointCount + 29,
+              });
+            }
+            return { status: 'fallback' as const, fallbackReason };
+          },
+        };
+      });
+
+      const { fromHex } = await import('../src/conversion/index.js');
+      const { definePlane, inspectPlaneQuery } =
+        await import('../src/plane/index.js');
+      const reference = fromHex('#ffffff');
+      const options = {
+        metric: 'wcag' as const,
+        threshold: 4.5,
+        samplingMode: 'hybrid' as const,
+        lightnessSteps: 32,
+        chromaSteps: 64,
+      };
+      const plane = definePlane({
+        fixed: { h: 210 },
+      });
+      const inspection = inspectPlaneQuery(plane, {
+        kind: 'contrastRegion',
+        reference,
+        hue: 210,
+        ...options,
+      });
+      const explicitLegacyInspection = inspectPlaneQuery(plane, {
+        kind: 'contrastRegion',
+        reference,
+        hue: 210,
+        ...options,
+        samplingMode: 'adaptive',
+      });
+
+      expect(inspection.result.paths).toEqual(
+        explicitLegacyInspection.result.paths,
+      );
+      expect(inspection.trace.summary.solver).toBe('contrast-legacy-adaptive');
+      expect(inspection.trace.summary.fallbackReason).toBe(fallbackReason);
+      expect(inspection.trace.summary).toMatchObject({
+        sampleCount: explicitLegacyInspection.trace.summary.sampleCount,
+        scalarEvaluationCount:
+          explicitLegacyInspection.trace.summary.scalarEvaluationCount,
+        cellCount: explicitLegacyInspection.trace.summary.cellCount,
+        segmentCount: explicitLegacyInspection.trace.summary.segmentCount,
+        pathCount: explicitLegacyInspection.trace.summary.pathCount,
+        pointCount: explicitLegacyInspection.trace.summary.pointCount,
+      });
+    },
+  );
 });
