@@ -11,6 +11,45 @@ import type {
   ContrastRegionPoint,
 } from './types.js';
 
+interface TraceWorkCounters {
+  sampleCount: number;
+  scalarEvaluationCount: number;
+  cellCount: number;
+  segmentCount: number;
+  pathCount: number;
+  pointCount: number;
+}
+
+function snapshotTraceWorkCounters(
+  trace: InternalPlaneTraceContext | null | undefined,
+): TraceWorkCounters | null {
+  if (!trace) return null;
+  const {
+    sampleCount,
+    scalarEvaluationCount,
+    cellCount,
+    segmentCount,
+    pathCount,
+    pointCount,
+  } = trace.summary;
+  return {
+    sampleCount,
+    scalarEvaluationCount,
+    cellCount,
+    segmentCount,
+    pathCount,
+    pointCount,
+  };
+}
+
+function restoreTraceWorkCounters(
+  trace: InternalPlaneTraceContext | null | undefined,
+  counters: TraceWorkCounters | null,
+): void {
+  if (!trace || !counters) return;
+  Object.assign(trace.summary, counters);
+}
+
 /**
  * Generate contour paths for the region that meets/exceeds
  * the configured contrast criterion at a fixed hue.
@@ -64,6 +103,7 @@ export function contrastRegionPaths(
     );
   }
 
+  const traceCountersBeforeHybrid = snapshotTraceWorkCounters(trace);
   const hybridOutcome = contrastRegionPathsHybrid(
     reference,
     hue,
@@ -73,6 +113,7 @@ export function contrastRegionPaths(
   if (hybridOutcome.status === 'ok') {
     return hybridOutcome.paths;
   }
+  restoreTraceWorkCounters(trace, traceCountersBeforeHybrid);
   const paths = contrastRegionPathsLegacy(
     reference,
     hue,

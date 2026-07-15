@@ -37,7 +37,6 @@ describe('contrastRegionPaths() hybrid fallback', () => {
       };
     });
 
-    const { contrastRegionPaths } = await import('../src/contrast/index.js');
     const { fromHex } = await import('../src/conversion/index.js');
     const { definePlane, inspectPlaneQuery } =
       await import('../src/plane/index.js');
@@ -52,28 +51,41 @@ describe('contrastRegionPaths() hybrid fallback', () => {
       hybridErrorTolerance: 0.0006,
     };
 
-    const inspection = inspectPlaneQuery(
-      definePlane({
-        fixed: { h: 210 },
-      }),
-      {
-        kind: 'contrastRegion',
-        reference,
-        hue: 210,
-        ...options,
-      },
-    );
+    const plane = definePlane({
+      fixed: { h: 210 },
+    });
+    const inspection = inspectPlaneQuery(plane, {
+      kind: 'contrastRegion',
+      reference,
+      hue: 210,
+      ...options,
+    });
     const hybridAuto = inspection.result.paths.map((path) =>
       path.map(({ l, c }) => ({ l, c })),
     );
-    const explicitLegacy = contrastRegionPaths(reference, 210, {
+    const explicitLegacyInspection = inspectPlaneQuery(plane, {
+      kind: 'contrastRegion',
+      reference,
+      hue: 210,
       ...options,
       samplingMode: 'adaptive',
     });
+    const explicitLegacy = explicitLegacyInspection.result.paths.map((path) =>
+      path.map(({ l, c }) => ({ l, c })),
+    );
 
     expect(hybridAuto.length).toBeGreaterThan(0);
     expect(hybridAuto).toEqual(explicitLegacy);
     expect(inspection.trace.summary.solver).toBe('contrast-legacy-adaptive');
     expect(inspection.trace.summary.fallbackReason).toBe('complex-topology');
+    expect(inspection.trace.summary).toMatchObject({
+      sampleCount: explicitLegacyInspection.trace.summary.sampleCount,
+      scalarEvaluationCount:
+        explicitLegacyInspection.trace.summary.scalarEvaluationCount,
+      cellCount: explicitLegacyInspection.trace.summary.cellCount,
+      segmentCount: explicitLegacyInspection.trace.summary.segmentCount,
+      pathCount: explicitLegacyInspection.trace.summary.pathCount,
+      pointCount: explicitLegacyInspection.trace.summary.pointCount,
+    });
   });
 });
