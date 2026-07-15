@@ -64,6 +64,16 @@ export function contrastRegionPaths(
     );
   }
 
+  const traceWorkSummary = trace
+    ? {
+        sampleCount: trace.summary.sampleCount,
+        scalarEvaluationCount: trace.summary.scalarEvaluationCount,
+        cellCount: trace.summary.cellCount,
+        segmentCount: trace.summary.segmentCount,
+        pathCount: trace.summary.pathCount,
+        pointCount: trace.summary.pointCount,
+      }
+    : null;
   const hybridOutcome = contrastRegionPathsHybrid(
     reference,
     hue,
@@ -72,6 +82,9 @@ export function contrastRegionPaths(
   );
   if (hybridOutcome.status === 'ok') {
     return hybridOutcome.paths;
+  }
+  if (trace && traceWorkSummary) {
+    Object.assign(trace.summary, traceWorkSummary);
   }
   const paths = contrastRegionPathsLegacy(
     reference,

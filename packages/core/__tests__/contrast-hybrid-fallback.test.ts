@@ -37,7 +37,6 @@ describe('contrastRegionPaths() hybrid fallback', () => {
       };
     });
 
-    const { contrastRegionPaths } = await import('../src/contrast/index.js');
     const { fromHex } = await import('../src/conversion/index.js');
     const { definePlane, inspectPlaneQuery } =
       await import('../src/plane/index.js');
@@ -52,28 +51,51 @@ describe('contrastRegionPaths() hybrid fallback', () => {
       hybridErrorTolerance: 0.0006,
     };
 
-    const inspection = inspectPlaneQuery(
-      definePlane({
-        fixed: { h: 210 },
-      }),
-      {
-        kind: 'contrastRegion',
-        reference,
-        hue: 210,
-        ...options,
-      },
-    );
+    const plane = definePlane({
+      fixed: { h: 210 },
+    });
+    const query = {
+      kind: 'contrastRegion' as const,
+      reference,
+      hue: 210,
+      ...options,
+    };
+    const inspection = inspectPlaneQuery(plane, query);
+    const legacyInspection = inspectPlaneQuery(plane, {
+      ...query,
+      samplingMode: 'adaptive',
+    });
     const hybridAuto = inspection.result.paths.map((path) =>
       path.map(({ l, c }) => ({ l, c })),
     );
-    const explicitLegacy = contrastRegionPaths(reference, 210, {
-      ...options,
-      samplingMode: 'adaptive',
-    });
+    const explicitLegacy = legacyInspection.result.paths.map((path) =>
+      path.map(({ l, c }) => ({ l, c })),
+    );
+    const expectedCounters = {
+      sampleCount: legacyInspection.trace.summary.sampleCount,
+      scalarEvaluationCount:
+        legacyInspection.trace.summary.scalarEvaluationCount,
+      cellCount: legacyInspection.trace.summary.cellCount,
+      segmentCount: legacyInspection.trace.summary.segmentCount,
+      pathCount: legacyInspection.trace.summary.pathCount,
+      pointCount: legacyInspection.trace.summary.pointCount,
+    };
 
     expect(hybridAuto.length).toBeGreaterThan(0);
     expect(hybridAuto).toEqual(explicitLegacy);
     expect(inspection.trace.summary.solver).toBe('contrast-legacy-adaptive');
     expect(inspection.trace.summary.fallbackReason).toBe('complex-topology');
+    expect(inspection.trace.summary).toMatchObject(expectedCounters);
+    expect(
+      inspection.trace.stages
+        .filter((stage) => stage.kind === 'solver')
+        .map((stage) => stage.solver),
+    ).toEqual(['contrast-hybrid', 'contrast-legacy-adaptive']);
+    expect(
+      inspection.trace.stages.find((stage) => stage.kind === 'metrics'),
+    ).toMatchObject({
+      kind: 'metrics',
+      summary: expectedCounters,
+    });
   });
 });
