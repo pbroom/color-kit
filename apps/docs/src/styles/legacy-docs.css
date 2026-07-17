@@ -22,7 +22,7 @@
  * Known-dead sections (no references outside this file): all `landing-*`
  * rules, `docs-header*`, `docs-nav-section`, `docs-left-rail`,
  * `docs-top-link`, `docs-side-link`, `docs-right-tabs`, `docs-install-grid`,
- * `docs-body`, `docs-style-pills` / `docs-style-pill-group`, and the
+ * `docs-body`, `docs-style-pills`, `docs-style-pill-group`, and the
  * `ck-overlay-*` / `ck-color-area-overlay` rules.
  *
  * New styling belongs in styles/docs.css or component-level Tailwind classes.
