@@ -28,6 +28,7 @@ import {
 import {
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
+  toColorAreaPlaneDefinition,
   type ColorAreaContrastRegionOptions,
   type ColorAreaContrastRegionPoint,
 } from '@color-kit/driver';
@@ -35,11 +36,20 @@ import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Line, pathWithRoundedCorners } from './line.js';
 import { PathPointsOverlay } from './path-points-overlay.js';
-import type { ColorAreaLayerQuality } from './gamut-boundary-layer.js';
-import type {
-  PlaneQueryWorkerRequest,
-  PlaneQueryWorkerResponse,
-} from './workers/plane-query.worker.types.js';
+import {
+  autoAdaptiveRegionBaseSteps,
+  autoAdaptiveRegionMaxDepth,
+  qualityStepMultiplier,
+  REGION_QUALITY_STEP_MULTIPLIERS,
+  resolveQuality,
+  type ColorAreaLayerQuality,
+} from './layer-quality-utils.js';
+import { useMeasuredElementSize } from './use-measured-element-size.js';
+import {
+  usePlaneQueryLayer,
+  type PlaneQueryWorkerPayload,
+} from './use-plane-query-layer.js';
+import type { PlaneQueryWorkerResponse } from './workers/plane-query-client.js';
 
 export interface ContrastRegionLayerMetrics {
   source: 'sync' | 'worker';
@@ -114,8 +124,6 @@ interface ContrastRegionPathContextValue {
   cornerRadius?: number;
 }
 
-type PlaneQueryWorkerPayload = Omit<PlaneQueryWorkerRequest, 'id'>;
-
 const ContrastRegionPathContext =
   createContext<ContrastRegionPathContextValue | null>(null);
 
@@ -165,10 +173,14 @@ export function ContrastRegionFill({
   const { regionPathData } = useContrastRegionPath();
   const patternId = useId().replace(/[:]/g, '_');
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [size, setSize] = useState({ width: 100, height: 100 });
   const hasRegionPath = regionPathData.length > 0;
 
   const dotOpacityClamped = clamp01(dotOpacity);
+  const size = useMeasuredElementSize(svgRef, {
+    enabled: dotOpacityClamped > 0 && hasRegionPath,
+    initialWidth: 100,
+    initialHeight: 100,
+  });
   const dotSizeEffective = Math.max(1, dotSize);
   const dotGapEffective = Math.max(0, dotGap);
   const dotCell = dotSizeEffective + dotGapEffective;
@@ -176,52 +188,6 @@ export function ContrastRegionFill({
   const dotCellY = (dotCell * 100) / Math.max(1, size.height);
   const dotSizeX = (dotSizeEffective * 100) / Math.max(1, size.width);
   const dotSizeY = (dotSizeEffective * 100) / Math.max(1, size.height);
-
-  useEffect(() => {
-    if (
-      dotOpacityClamped <= 0 ||
-      !hasRegionPath ||
-      typeof window === 'undefined'
-    ) {
-      return;
-    }
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      const rect = svg.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      setSize((current) => {
-        if (
-          Math.abs(current.width - rect.width) < 0.5 &&
-          Math.abs(current.height - rect.height) < 0.5
-        ) {
-          return current;
-        }
-        return { width: rect.width, height: rect.height };
-      });
-    };
-    const schedule = () => {
-      if (frame !== 0) return;
-      frame = window.requestAnimationFrame(measure);
-    };
-    schedule();
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(schedule);
-      observer.observe(svg);
-      return () => {
-        observer.disconnect();
-        if (frame !== 0) window.cancelAnimationFrame(frame);
-      };
-    }
-    window.addEventListener('resize', schedule);
-    return () => {
-      window.removeEventListener('resize', schedule);
-      if (frame !== 0) window.cancelAnimationFrame(frame);
-    };
-  }, [dotOpacityClamped, hasRegionPath]);
 
   if (!hasRegionPath) return null;
 
@@ -266,61 +232,6 @@ export function ContrastRegionFill({
       ) : null}
     </svg>
   );
-}
-
-function resolveQuality(
-  quality: ColorAreaLayerQuality,
-  contextQuality: 'high' | 'medium' | 'low',
-): 'high' | 'medium' | 'low' {
-  if (quality === 'auto') {
-    return contextQuality;
-  }
-  return quality;
-}
-
-function qualityStepMultiplier(quality: 'high' | 'medium' | 'low'): number {
-  if (quality === 'high') return 1;
-  if (quality === 'medium') return 0.68;
-  return 0.45;
-}
-
-const MIN_AUTO_ADAPTIVE_BASE_STEPS = 8;
-const MAX_AUTO_ADAPTIVE_BASE_STEPS = 48;
-const MIN_AUTO_ADAPTIVE_DEPTH = 1;
-const MAX_AUTO_ADAPTIVE_DEPTH = 6;
-
-function autoAdaptiveBaseSteps(
-  quality: 'high' | 'medium' | 'low',
-  widthPx: number,
-  heightPx: number,
-): number {
-  const targetCellPx = quality === 'high' ? 28 : quality === 'medium' ? 36 : 48;
-  const longestEdge = Math.max(1, Math.max(widthPx, heightPx));
-  const baseSteps = Math.round(longestEdge / targetCellPx);
-  return Math.min(
-    MAX_AUTO_ADAPTIVE_BASE_STEPS,
-    Math.max(MIN_AUTO_ADAPTIVE_BASE_STEPS, baseSteps),
-  );
-}
-
-function autoAdaptiveMaxDepth(
-  quality: 'high' | 'medium' | 'low',
-  widthPx: number,
-  heightPx: number,
-  baseSteps: number,
-): number {
-  const longestEdge = Math.max(1, Math.max(widthPx, heightPx));
-  const baseCellPx = longestEdge / Math.max(1, baseSteps);
-  const targetLeafPx = quality === 'high' ? 7 : quality === 'medium' ? 9 : 12;
-  const depth = Math.ceil(Math.log2(Math.max(1, baseCellPx / targetLeafPx)));
-  return Math.min(
-    MAX_AUTO_ADAPTIVE_DEPTH,
-    Math.max(MIN_AUTO_ADAPTIVE_DEPTH, depth),
-  );
-}
-
-function canUseWorkerOffload(): boolean {
-  return typeof window !== 'undefined' && typeof Worker !== 'undefined';
 }
 
 function nowMs(): number {
@@ -900,13 +811,12 @@ export function ContrastRegionLayer({
     qualityLevel,
     isDragging,
   } = useColorAreaContext();
-  const [areaSize, setAreaSize] = useState({
-    width: 0,
-    height: 0,
-    dpr: 1,
-  });
+  const areaSize = useMeasuredElementSize(areaRef);
   const resolvedQuality = resolveQuality(quality, qualityLevel);
-  const multiplier = qualityStepMultiplier(resolvedQuality);
+  const multiplier = qualityStepMultiplier(
+    resolvedQuality,
+    REGION_QUALITY_STEP_MULTIPLIERS,
+  );
   const effectiveLightnessSteps = Math.max(
     12,
     Math.round((lightnessSteps ?? 64) * multiplier),
@@ -943,68 +853,6 @@ export function ContrastRegionLayer({
     maxDepth: number | undefined;
   } | null>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const areaNode = areaRef.current;
-    if (!areaNode) {
-      return;
-    }
-
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      const rect = areaNode.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) {
-        return;
-      }
-      const nextDpr = window.devicePixelRatio || 1;
-      setAreaSize((current) => {
-        if (
-          Math.abs(current.width - rect.width) < 0.5 &&
-          Math.abs(current.height - rect.height) < 0.5 &&
-          Math.abs(current.dpr - nextDpr) < 0.01
-        ) {
-          return current;
-        }
-        return {
-          width: rect.width,
-          height: rect.height,
-          dpr: nextDpr,
-        };
-      });
-    };
-    const schedule = () => {
-      if (frame !== 0) {
-        return;
-      }
-      frame = window.requestAnimationFrame(measure);
-    };
-
-    schedule();
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(schedule);
-      observer.observe(areaNode);
-      window.addEventListener('resize', schedule);
-      return () => {
-        observer.disconnect();
-        window.removeEventListener('resize', schedule);
-        if (frame !== 0) {
-          window.cancelAnimationFrame(frame);
-        }
-      };
-    }
-
-    window.addEventListener('resize', schedule);
-    return () => {
-      window.removeEventListener('resize', schedule);
-      if (frame !== 0) {
-        window.cancelAnimationFrame(frame);
-      }
-    };
-  }, [areaRef]);
-
   const resolvedAdaptiveBaseSteps = useMemo(() => {
     if (samplingMode !== 'adaptive') {
       return adaptiveBaseSteps;
@@ -1017,7 +865,7 @@ export function ContrastRegionLayer({
     }
     const widthPx = areaSize.width * areaSize.dpr;
     const heightPx = areaSize.height * areaSize.dpr;
-    return autoAdaptiveBaseSteps(resolvedQuality, widthPx, heightPx);
+    return autoAdaptiveRegionBaseSteps(resolvedQuality, widthPx, heightPx);
   }, [
     adaptiveBaseSteps,
     areaSize.dpr,
@@ -1041,8 +889,13 @@ export function ContrastRegionLayer({
     const heightPx = areaSize.height * areaSize.dpr;
     const baseSteps =
       resolvedAdaptiveBaseSteps ??
-      autoAdaptiveBaseSteps(resolvedQuality, widthPx, heightPx);
-    return autoAdaptiveMaxDepth(resolvedQuality, widthPx, heightPx, baseSteps);
+      autoAdaptiveRegionBaseSteps(resolvedQuality, widthPx, heightPx);
+    return autoAdaptiveRegionMaxDepth(
+      resolvedQuality,
+      widthPx,
+      heightPx,
+      baseSteps,
+    );
   }, [
     adaptiveMaxDepth,
     areaSize.dpr,
@@ -1173,47 +1026,20 @@ export function ContrastRegionLayer({
     ],
   );
 
-  const syncComputation = useMemo(() => {
-    if (pathsProp) {
-      return {
-        paths: pathsProp,
-        computeTimeMs: 0,
-      };
-    }
-    if (isDragging && canUseWorkerOffload()) {
-      return null;
-    }
-    const start = nowMs();
-    const paths = getColorAreaContrastRegionPaths(
-      contrastReference,
-      resolvedHue,
-      axes,
-      options,
-    );
-    return {
-      paths,
-      computeTimeMs: nowMs() - start,
-    };
-  }, [axes, contrastReference, isDragging, options, pathsProp, resolvedHue]);
+  const computeSync = useCallback(
+    () =>
+      getColorAreaContrastRegionPaths(
+        contrastReference,
+        resolvedHue,
+        axes,
+        options,
+      ),
+    [axes, contrastReference, options, resolvedHue],
+  );
+
   const workerPayload = useMemo<PlaneQueryWorkerPayload>(
     () => ({
-      plane: {
-        model: 'oklch' as const,
-        x: {
-          channel: axes.x.channel,
-          range: axes.x.range,
-        },
-        y: {
-          channel: axes.y.channel,
-          range: axes.y.range,
-        },
-        fixed: {
-          l: contrastReference.l,
-          c: contrastReference.c,
-          h: contrastReference.h,
-          alpha: contrastReference.alpha,
-        },
-      },
+      plane: toColorAreaPlaneDefinition(axes, contrastReference),
       queries: [
         {
           kind: 'contrastRegion' as const,
@@ -1230,10 +1056,7 @@ export function ContrastRegionLayer({
       wasmParityMode,
     }),
     [
-      axes.x.channel,
-      axes.x.range,
-      axes.y.channel,
-      axes.y.range,
+      axes,
       contrastReference,
       isDragging,
       options,
@@ -1245,80 +1068,26 @@ export function ContrastRegionLayer({
     ],
   );
 
-  const [workerPaths, setWorkerPaths] = useState<{
-    requestId: number;
-    payload: typeof workerPayload;
-    paths: ColorAreaContrastRegionPoint[][];
-  } | null>(null);
-  const [activeWorkerRequestId, setActiveWorkerRequestId] = useState<
-    number | null
-  >(null);
-  const workerRef = useRef<Worker | null>(null);
-  const requestIdRef = useRef(0);
-
-  const hasCurrentWorkerResponse = useMemo(
-    () =>
-      activeWorkerRequestId != null &&
-      workerPaths != null &&
-      workerPaths.requestId === activeWorkerRequestId,
-    [activeWorkerRequestId, workerPaths],
-  );
-
-  const rawPathsAreFresh = useMemo(() => {
-    if (pathsProp) return true;
-    if (!(isDragging && canUseWorkerOffload())) return true;
-    return hasCurrentWorkerResponse;
-  }, [hasCurrentWorkerResponse, isDragging, pathsProp]);
-
-  const rawPaths = useMemo(() => {
-    if (pathsProp) {
-      return pathsProp;
-    }
-    if (isDragging && canUseWorkerOffload()) {
-      if (hasCurrentWorkerResponse && workerPaths != null) {
-        return workerPaths.paths;
+  const extractResult = useCallback(
+    (
+      response: PlaneQueryWorkerResponse,
+    ): ColorAreaContrastRegionPoint[][] | undefined => {
+      if (response.error) {
+        return undefined;
       }
-      if (lastStablePaths.length > 0) {
-        return lastStablePaths;
+      if (!response.result) {
+        return [];
       }
-      return syncComputation?.paths ?? [];
-    }
-    return syncComputation?.paths ?? [];
-  }, [
-    isDragging,
-    lastStablePaths,
-    hasCurrentWorkerResponse,
-    pathsProp,
-    syncComputation,
-    workerPaths,
-  ]);
-
-  const contrastGamutBoundary = useMemo(
-    () =>
-      getColorAreaGamutBoundaryPoints(resolvedHue, axes, {
-        gamut,
-        steps: Math.max(128, stepsForOptions.lightness),
-        samplingMode: 'adaptive',
-        simplifyTolerance: simplifyTolerance ?? 0.001,
-      }),
-    [axes, gamut, resolvedHue, simplifyTolerance, stepsForOptions.lightness],
-  );
-
-  const paths = useMemo(
-    () =>
-      rawPaths.map((path) =>
-        snapPathToBoundary(
-          path,
-          contrastGamutBoundary,
-          BOUNDARY_SNAP_TOLERANCE,
-        ),
-      ),
-    [contrastGamutBoundary, rawPaths],
-  );
-
-  const contrastFillBoundary = useMemo(
-    () => withDomainBaselinePoints(contrastGamutBoundary),
-    [contrastGamutBoundary],
+      const unpacked = unpackPlaneQueryResults(response.result);
+      const contrastRegionResult = unpacked.find(
+        (entry): entry is PlaneContrastRegionResult =>
+          entry.kind === 'contrastRegion',
+      );
+      return contrastRegionResult
+        ? toColorAreaContrastRegionPaths(contrastRegionResult)
+        : [];
+    },
+    [],
   );
 
   const emitMetrics = useCallback(
@@ -1378,6 +1147,97 @@ export function ContrastRegionLayer({
     ],
   );
 
+  const handleWorkerResponse = useCallback(
+    (
+      response: PlaneQueryWorkerResponse,
+      data: ColorAreaContrastRegionPoint[][] | undefined,
+    ) => {
+      if (response.error || !response.result || data === undefined) {
+        return;
+      }
+      const wasmDisabledUntilMs =
+        response.schedulerTelemetry?.circuitBreakers.wasm?.disabledUntilMs ?? 0;
+      const now = nowMs();
+      emitMetrics({
+        source: 'worker',
+        requestId: response.id,
+        computeTimeMs:
+          (response.computeTimeMs ?? 0) + (response.marshalTimeMs ?? 0),
+        paths: data,
+        backend: response.backend,
+        scheduleReason: response.schedule?.reason,
+        schedulerBucketCount: response.schedulerTelemetry?.buckets.length,
+        wasmCircuitOpen: wasmDisabledUntilMs > now,
+        wasmParityStatus: response.wasmParity?.status,
+        wasmParityPathDelta: response.wasmParity?.pathCountDelta,
+        wasmParityPointDelta: response.wasmParity?.pointCountDelta,
+        wasmInitStatus: response.wasmInit?.status,
+        wasmInitError: response.wasmInit?.error,
+        wasmBackendVersion: response.wasmInit?.backendVersion,
+      });
+    },
+    [emitMetrics],
+  );
+
+  const {
+    sync,
+    workerData,
+    hasCurrentWorkerResponse,
+    usingWorkerPath,
+    requestIdRef,
+  } = usePlaneQueryLayer<ColorAreaContrastRegionPoint[][]>({
+    external: pathsProp != null,
+    isDragging,
+    computeSync,
+    syncWhileDragging: 'never',
+    workerPayload,
+    extractResult,
+    onWorkerResponse: handleWorkerResponse,
+  });
+
+  // External paths participate in metrics and stable-path tracking the same
+  // way an instant sync computation would.
+  const syncComputation = useMemo(() => {
+    if (pathsProp) {
+      return {
+        paths: pathsProp,
+        computeTimeMs: 0,
+      };
+    }
+    return sync
+      ? { paths: sync.data, computeTimeMs: sync.computeTimeMs }
+      : null;
+  }, [pathsProp, sync]);
+
+  const rawPathsAreFresh = useMemo(() => {
+    if (pathsProp) return true;
+    if (!usingWorkerPath) return true;
+    return hasCurrentWorkerResponse;
+  }, [hasCurrentWorkerResponse, pathsProp, usingWorkerPath]);
+
+  const rawPaths = useMemo(() => {
+    if (pathsProp) {
+      return pathsProp;
+    }
+    if (usingWorkerPath) {
+      if (hasCurrentWorkerResponse && workerData != null) {
+        return workerData.data;
+      }
+      if (lastStablePaths.length > 0) {
+        return lastStablePaths;
+      }
+      return syncComputation?.paths ?? [];
+    }
+    return syncComputation?.paths ?? [];
+  }, [
+    usingWorkerPath,
+    lastStablePaths,
+    hasCurrentWorkerResponse,
+    pathsProp,
+    syncComputation,
+    workerData,
+  ]);
+
   useEffect(() => {
     if (!syncComputation) {
       return;
@@ -1390,7 +1250,7 @@ export function ContrastRegionLayer({
       backend: 'js',
       scheduleReason: 'sync-inline',
     });
-  }, [emitMetrics, syncComputation]);
+  }, [emitMetrics, requestIdRef, syncComputation]);
 
   useEffect(() => {
     if (!isDragging) {
@@ -1399,152 +1259,39 @@ export function ContrastRegionLayer({
       }
       return;
     }
-    if (!hasCurrentWorkerResponse || !workerPaths) {
+    if (!hasCurrentWorkerResponse || !workerData) {
       return;
     }
-    queueMicrotask(() => setLastStablePaths(workerPaths.paths));
-  }, [hasCurrentWorkerResponse, isDragging, syncComputation, workerPaths]);
+    queueMicrotask(() => setLastStablePaths(workerData.data));
+  }, [hasCurrentWorkerResponse, isDragging, syncComputation, workerData]);
 
-  useEffect(() => {
-    if (pathsProp || !canUseWorkerOffload() || !isDragging) {
-      queueMicrotask(() => setActiveWorkerRequestId(null));
-      return;
-    }
+  const contrastGamutBoundary = useMemo(
+    () =>
+      getColorAreaGamutBoundaryPoints(resolvedHue, axes, {
+        gamut,
+        steps: Math.max(128, stepsForOptions.lightness),
+        samplingMode: 'adaptive',
+        simplifyTolerance: simplifyTolerance ?? 0.001,
+      }),
+    [axes, gamut, resolvedHue, simplifyTolerance, stepsForOptions.lightness],
+  );
 
-    if (!workerRef.current) {
-      try {
-        workerRef.current = new Worker(
-          new URL('./workers/plane-query.worker.js', import.meta.url),
-          {
-            type: 'module',
-          },
-        );
-      } catch {
-        if (syncComputation) {
-          emitMetrics({
-            source: 'sync',
-            requestId: requestIdRef.current,
-            computeTimeMs: syncComputation.computeTimeMs,
-            paths: syncComputation.paths,
-            backend: 'js',
-            scheduleReason: 'worker-init-failed',
-          });
-        }
-        return;
-      }
-    }
+  const paths = useMemo(
+    () =>
+      rawPaths.map((path) =>
+        snapPathToBoundary(
+          path,
+          contrastGamutBoundary,
+          BOUNDARY_SNAP_TOLERANCE,
+        ),
+      ),
+    [contrastGamutBoundary, rawPaths],
+  );
 
-    const worker = workerRef.current;
-    if (!worker) {
-      if (syncComputation) {
-        emitMetrics({
-          source: 'sync',
-          requestId: requestIdRef.current,
-          computeTimeMs: syncComputation.computeTimeMs,
-          paths: syncComputation.paths,
-          backend: 'js',
-          scheduleReason: 'worker-unavailable',
-        });
-      }
-      return;
-    }
-
-    const nextRequestId = requestIdRef.current + 1;
-    requestIdRef.current = nextRequestId;
-    queueMicrotask(() => setActiveWorkerRequestId(nextRequestId));
-
-    const onMessage = (event: MessageEvent<PlaneQueryWorkerResponse>) => {
-      const payload = event.data;
-      if (!payload || payload.id !== nextRequestId) {
-        return;
-      }
-      if (payload.error) {
-        if (syncComputation) {
-          emitMetrics({
-            source: 'sync',
-            requestId: requestIdRef.current,
-            computeTimeMs: syncComputation.computeTimeMs,
-            paths: syncComputation.paths,
-            backend: 'js',
-            scheduleReason: 'worker-error-fallback',
-          });
-        }
-        return;
-      }
-
-      let nextPaths: ColorAreaContrastRegionPoint[][];
-      if (payload.result) {
-        const unpacked = unpackPlaneQueryResults(payload.result);
-        const contrastRegionResult = unpacked.find(
-          (entry): entry is PlaneContrastRegionResult =>
-            entry.kind === 'contrastRegion',
-        );
-        nextPaths = contrastRegionResult
-          ? toColorAreaContrastRegionPaths(contrastRegionResult)
-          : [];
-      } else if (syncComputation) {
-        emitMetrics({
-          source: 'sync',
-          requestId: requestIdRef.current,
-          computeTimeMs: syncComputation.computeTimeMs,
-          paths: syncComputation.paths,
-          backend: 'js',
-          scheduleReason: 'worker-payload-fallback',
-        });
-        return;
-      } else {
-        nextPaths = [];
-      }
-
-      setWorkerPaths({
-        requestId: payload.id,
-        payload: workerPayload,
-        paths: nextPaths,
-      });
-      const wasmDisabledUntilMs =
-        payload.schedulerTelemetry?.circuitBreakers.wasm?.disabledUntilMs ?? 0;
-      const nowMs =
-        typeof performance === 'undefined' ? Date.now() : performance.now();
-      emitMetrics({
-        source: 'worker',
-        requestId: payload.id,
-        computeTimeMs:
-          (payload.computeTimeMs ?? 0) + (payload.marshalTimeMs ?? 0),
-        paths: nextPaths,
-        backend: payload.backend,
-        scheduleReason: payload.schedule?.reason,
-        schedulerBucketCount: payload.schedulerTelemetry?.buckets.length,
-        wasmCircuitOpen: wasmDisabledUntilMs > nowMs,
-        wasmParityStatus: payload.wasmParity?.status,
-        wasmParityPathDelta: payload.wasmParity?.pathCountDelta,
-        wasmParityPointDelta: payload.wasmParity?.pointCountDelta,
-        wasmInitStatus: payload.wasmInit?.status,
-        wasmInitError: payload.wasmInit?.error,
-        wasmBackendVersion: payload.wasmInit?.backendVersion,
-      });
-    };
-
-    worker.addEventListener('message', onMessage);
-
-    const message: PlaneQueryWorkerRequest = {
-      id: nextRequestId,
-      ...workerPayload,
-    };
-    worker.postMessage(message);
-
-    return () => {
-      worker.removeEventListener('message', onMessage);
-    };
-  }, [emitMetrics, isDragging, pathsProp, syncComputation, workerPayload]);
-
-  useEffect(() => {
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-    };
-  }, []);
+  const contrastFillBoundary = useMemo(
+    () => withDomainBaselinePoints(contrastGamutBoundary),
+    [contrastGamutBoundary],
+  );
 
   const resolvedThreshold = useMemo(
     () => resolveContrastThresholdValue(threshold, level, metric, apcaPreset),
@@ -1685,13 +1432,7 @@ export function ContrastRegionLayer({
       interactive={props.interactive ?? false}
       data-color-area-contrast-region-layer=""
       data-quality={resolvedQuality}
-      data-worker={
-        pathsProp
-          ? 'external'
-          : isDragging && canUseWorkerOffload()
-            ? 'async'
-            : 'sync'
-      }
+      data-worker={pathsProp ? 'external' : usingWorkerPath ? 'async' : 'sync'}
     >
       <ContrastRegionPathContext.Provider value={pathContextValue}>
         {children}
