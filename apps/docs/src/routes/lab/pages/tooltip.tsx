@@ -1,15 +1,16 @@
 import { useState } from 'react';
+import { Separator } from '@/components/ui/separator';
 import {
   NumberConfigField,
+  ToggleField,
+} from '../components/panel/config-fields.js';
+import {
   PANEL_TWO_COLUMN_GRID_CLASS,
   PanelSection,
-  PlacementGridField,
-  Separator,
-  ToggleField,
-  TooltipPlaygroundStage,
-  type PlacementAlign,
-  type TooltipSide,
-} from '../shared.js';
+} from '../components/panel/panel-section.js';
+import { PlacementGridField } from '../components/panel/placement-grid-field.js';
+import { TooltipPlaygroundStage } from '../components/playgrounds/tooltip.js';
+import type { PlacementAlign, TooltipSide } from '../types.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 

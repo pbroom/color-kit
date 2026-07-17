@@ -9,22 +9,26 @@ import {
   Option,
   RotateCw,
 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import {
   BoundsConfigInput,
+  PrecisionConfigInput,
+  StepConfigInput,
+  ToggleField,
+} from '../components/panel/config-fields.js';
+import {
+  PANEL_TWO_COLUMN_GRID_CLASS,
+  PanelSection,
+} from '../components/panel/panel-section.js';
+import { SegmentedField } from '../components/panel/segmented-field.js';
+import { MultiInputPlaygroundStage } from '../components/playgrounds/multi-input.js';
+import {
   DEFAULT_MULTI_INPUT_CONFIG,
   MULTI_INPUT_FIELD_BY_ID,
   MULTI_INPUT_FIELDS,
-  MultiInputPlaygroundStage,
-  PANEL_TWO_COLUMN_GRID_CLASS,
-  PanelSection,
-  PrecisionConfigInput,
-  SegmentedField,
-  Separator,
-  StepConfigInput,
-  ToggleField,
   type MultiInputConfig,
   type MultiInputFieldId,
-} from '../shared.js';
+} from '../fixtures/multi-input-fields.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 

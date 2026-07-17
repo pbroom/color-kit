@@ -1,6 +1,5 @@
 import { type ComponentType } from 'react';
-import type { LabPageKey } from './shared.js';
-import type { LabPageDescriptor } from './types.js';
+import type { LabPageDescriptor, LabPageKey } from './types.js';
 import type { LabPageRuntimeOutput } from './lab-page-runtime.js';
 import {
   LabPanelTooltipPropsSlot,

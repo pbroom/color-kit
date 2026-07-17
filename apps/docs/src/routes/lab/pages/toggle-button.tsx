@@ -1,16 +1,18 @@
 import { useState } from 'react';
+import type { PrimitiveDensity } from '@color-kit/control-kit';
+import { Separator } from '@/components/ui/separator';
 import {
-  PanelSection,
-  SegmentedField,
-  Separator,
   TextConfigField,
-  ToggleButtonPlaygroundStage,
   ToggleField,
-  type PrimitiveDensity,
-  type ToggleButtonContent,
-  type ToggleButtonInteractionState,
-  type ToggleButtonSelectionState,
-} from '../shared.js';
+} from '../components/panel/config-fields.js';
+import { PanelSection } from '../components/panel/panel-section.js';
+import { SegmentedField } from '../components/panel/segmented-field.js';
+import { ToggleButtonPlaygroundStage } from '../components/playgrounds/toggle-button.js';
+import type {
+  ToggleButtonContent,
+  ToggleButtonInteractionState,
+  ToggleButtonSelectionState,
+} from '../types.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 

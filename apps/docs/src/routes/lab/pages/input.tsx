@@ -10,30 +10,36 @@ import {
   RotateCw,
 } from 'lucide-react';
 import {
-  BoundsConfigInput,
-  DragStepConfigInput,
-  DragThresholdConfigInput,
-  DynamicLucideIcon,
-  LucideIconPicker,
-  PANEL_TWO_COLUMN_GRID_CLASS,
-  PanelSection,
-  PrecisionConfigInput,
   PrimitiveValueInput,
-  PropertyFieldTooltip,
-  SegmentedField,
-  Separator,
-  StepConfigInput,
-  TextConfigField,
-  ToggleField,
-  parsePrimitiveExpression,
   type PrimitiveDensity,
-  type PrimitiveHandleContent,
   type PrimitiveHandleSide,
   type PrimitivePrecision,
   type PrimitiveSize,
   type PrimitiveVisualState,
   type PrimitiveWrapMode,
-} from '../shared.js';
+} from '@color-kit/control-kit';
+import {
+  DynamicLucideIcon,
+  LucideIconPicker,
+} from '@/components/lucide-icon-picker';
+import { Separator } from '@/components/ui/separator';
+import { parsePrimitiveExpression } from '../color/parse-expression.js';
+import {
+  BoundsConfigInput,
+  DragStepConfigInput,
+  DragThresholdConfigInput,
+  PrecisionConfigInput,
+  StepConfigInput,
+  TextConfigField,
+  ToggleField,
+} from '../components/panel/config-fields.js';
+import {
+  PANEL_TWO_COLUMN_GRID_CLASS,
+  PanelSection,
+  PropertyFieldTooltip,
+} from '../components/panel/panel-section.js';
+import { SegmentedField } from '../components/panel/segmented-field.js';
+import type { PrimitiveHandleContent } from '../types.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 

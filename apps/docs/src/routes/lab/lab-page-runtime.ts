@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
-import type { LabPageKey, LabPanelTooltipProviderProps } from './shared.js';
+import type {
+  LabPageNavigationItem,
+  LabPanelTooltipProviderProps,
+} from './types.js';
+
+export type { LabPageNavigationItem } from './types.js';
 
 export type LabPageRuntimeOutput = {
   preview: ReactNode;
@@ -10,11 +15,6 @@ export type LabPageRuntimeOutput = {
 export const DEFAULT_LAB_PANEL_TOOLTIP_PROPS: LabPanelTooltipProviderProps = {
   delayDuration: 1000,
   skipDelayDuration: 300,
-};
-
-export type LabPageNavigationItem = {
-  value: LabPageKey;
-  label: string;
 };
 
 export const LAB_PAGE_NAVIGATION: readonly LabPageNavigationItem[] = [

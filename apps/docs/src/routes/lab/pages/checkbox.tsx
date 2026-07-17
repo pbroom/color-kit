@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import { CheckboxPlaygroundStage } from '../components/playgrounds/checkbox.js';
+import { PanelSection } from '../components/panel/panel-section.js';
 import {
-  CheckboxPlaygroundStage,
-  PanelSection,
   TextConfigField,
   ToggleField,
-} from '../shared.js';
+} from '../components/panel/config-fields.js';
 import { createActiveLabPage } from '../create-active-lab-page.js';
 import type { LabPageDescriptor } from '../types.js';
 
