@@ -37,7 +37,10 @@ export {
   toSvgCompoundPath,
   toSvgPath,
 } from './compile.js';
-export type { SvgPathCompileOptions } from './compile.js';
+export type {
+  PlaneQueryCacheOptions,
+  SvgPathCompileOptions,
+} from './compile.js';
 
 export {
   containsPoint,
