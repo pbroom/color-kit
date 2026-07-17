@@ -1,0 +1,31 @@
+name: Publish Cursor draft PRs
+
+# Cursor cloud agents open PRs as drafts via the Cursor GitHub app, which
+# bypasses the local pr:stack/hook path that normally publishes them.
+# Greptile skips draft PRs, so auto-publish Cursor-created drafts to keep
+# CI, Greptile review, and PR babysitting flowing without manual action.
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  publish:
+    name: Mark Cursor draft PR ready for review
+    runs-on: ubuntu-latest
+    permissions:
+      # GitHub's ready-for-review GraphQL mutation currently requires this scope.
+      contents: write
+      pull-requests: write
+    if: >-
+      github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.pull_request.user.login == 'cursor[bot]' ||
+       (github.event.pull_request.user.login == github.repository_owner &&
+        startsWith(github.event.pull_request.head.ref, 'cursor/')))
+    steps:
+      - name: Publish draft PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: gh pr ready "$PR_NUMBER" --repo "$REPO"
