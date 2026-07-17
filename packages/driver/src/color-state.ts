@@ -97,3 +97,26 @@ export function getActiveDisplayedColor(state: ColorState): Color {
     ? state.displayed.p3
     : state.displayed.srgb;
 }
+
+/**
+ * Resolves the state source for an interaction. Explicit `source` wins;
+ * otherwise programmatic interactions stay programmatic and everything else
+ * counts as user intent.
+ */
+export function resolveColorSource(
+  interaction: ColorInteraction,
+  source?: ColorSource,
+): ColorSource {
+  if (source) return source;
+  return interaction === 'programmatic' ? 'programmatic' : 'user';
+}
+
+/** Channel-wise equality on OKLCH colors with an optional tolerance. */
+export function colorsEqual(a: Color, b: Color, epsilon: number = 0): boolean {
+  return (
+    Math.abs(a.l - b.l) <= epsilon &&
+    Math.abs(a.c - b.c) <= epsilon &&
+    Math.abs(a.h - b.h) <= epsilon &&
+    Math.abs(a.alpha - b.alpha) <= epsilon
+  );
+}

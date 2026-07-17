@@ -15,8 +15,10 @@ import {
   toRgb,
 } from '@color-kit/core';
 import {
+  colorsEqual,
   createColorState,
   getActiveDisplayedColor,
+  resolveColorSource,
   type ColorChannel,
   type ColorInteraction,
   type ColorSource,
@@ -85,23 +87,6 @@ function resolveInitialColor(defaultColor?: string | Color): Color {
   return defaultColor;
 }
 
-function resolveSource(
-  interaction: ColorInteraction,
-  source?: ColorSource,
-): ColorSource {
-  if (source) return source;
-  return interaction === 'programmatic' ? 'programmatic' : 'user';
-}
-
-function colorsEqual(a: Color, b: Color, epsilon: number = 0): boolean {
-  return (
-    Math.abs(a.l - b.l) <= epsilon &&
-    Math.abs(a.c - b.c) <= epsilon &&
-    Math.abs(a.h - b.h) <= epsilon &&
-    Math.abs(a.alpha - b.alpha) <= epsilon
-  );
-}
-
 export function useColor(options: UseColorOptions = {}): UseColorReturn {
   const {
     defaultColor,
@@ -160,7 +145,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
   const setRequested = useCallback(
     (requested: Color, options: SetRequestedOptions = {}) => {
       const interaction = options.interaction ?? 'programmatic';
-      const source = resolveSource(interaction, options.source);
+      const source = resolveColorSource(interaction, options.source);
       const currentState = getCurrentState();
 
       if (
