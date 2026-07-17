@@ -1,3 +1,34 @@
+/*
+ * LEGACY STYLESHEET — do not add new rules here.
+ *
+ * This file predates the current docs styling (styles/docs.css + Tailwind
+ * utilities) but is still load-bearing. As of 2026-07 the following are in
+ * active use (verified by grepping apps/docs/src + index.html):
+ *
+ *   - Theme foundation: the `:root` / `[data-theme]` color variables below
+ *     are consumed by ~75 var(--color-*) references within this file, and the
+ *     `.dark` / `data-theme` rules drive light/dark theming for these rules.
+ *   - MDX content chrome: `docs-kicker`, `docs-lede`, `docs-api-table`,
+ *     `docs-shiki-block`, `prose` / `prose-api` overrides (every API page).
+ *   - Layout/shell: `docs-brand`, `docs-brand-dot`, `docs-right-rail`,
+ *     `docs-outline-nav` / `docs-outline-link`, `theme-switcher`.
+ *   - Demo components: `ck-slider`, `ck-slider-v2`, `ck-input`,
+ *     `ck-color-display`, `ck-color-area`, `ck-checker`, `ck-demo-stack`,
+ *     `docs-properties-*`, `docs-format-*`, `docs-select-*`, `docs-segmented`.
+ *   - Stroke style icons: `docs-style-solid` / `docs-style-dashed` /
+ *     `docs-style-dots` are generated dynamically by the right-rail stroke
+ *     style control (`docs-style-${value.style}` in docs-right-rail-panels).
+ *
+ * Known-dead sections (no references outside this file): all `landing-*`
+ * rules, `docs-header*`, `docs-nav-section`, `docs-left-rail`,
+ * `docs-top-link`, `docs-side-link`, `docs-right-tabs`, `docs-install-grid`,
+ * `docs-body`, `docs-style-pills` / `docs-style-pill-group`, and the
+ * `ck-overlay-*` / `ck-color-area-overlay` rules.
+ *
+ * New styling belongs in styles/docs.css or component-level Tailwind classes.
+ * Rules here should only shrink: when a consumer migrates, delete its rules.
+ */
+
 @theme {
   --font-sans: 'Inter', 'Avenir Next', 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', 'Menlo', monospace;
