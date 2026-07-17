@@ -134,11 +134,10 @@ export type {
 export { ChromaMarkers } from './chroma-markers.js';
 export type { ChromaMarkersProps } from './chroma-markers.js';
 
-export { ColorInput } from './color-input.js';
-export type { ColorInputProps } from './color-input.js';
+// ColorInput lives on the './color-input' subpath so the root entry stays
+// free of the optional @color-kit/control-kit peer dependency.
 export { ColorStringInput } from './color-string-input.js';
 export type { ColorStringInputProps } from './color-string-input.js';
-export * as ControlKit from './control-kit.js';
 
 // Worker observability helpers
 export { evaluateWasmParityGate } from './workers/wasm-parity-gate.js';

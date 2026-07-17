@@ -1,4 +1,5 @@
-import { ColorInput, ColorStringInput, useColor } from 'color-kit/react';
+import { ColorStringInput, useColor } from 'color-kit/react';
+import { ColorInput } from 'color-kit/react/color-input';
 import { useEffect } from 'react';
 import { useOptionalDocsInspector } from '../docs-inspector-context.js';
 import { DemoDisplaySwatch } from './shared.js';

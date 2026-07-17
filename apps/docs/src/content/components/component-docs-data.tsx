@@ -78,7 +78,8 @@ const docs: ComponentDocRegistry = {
       'Use Color to coordinate ColorArea, sliders, and input fields around one canonical requested color state.',
     registryName: 'color',
     demo: ColorProviderDemo,
-    usage: `import { Color, ColorArea, ColorSlider, ColorInput } from 'color-kit/react';
+    usage: `import { Color, ColorArea, ColorSlider } from 'color-kit/react';
+import { ColorInput } from 'color-kit/react/color-input';
 
 export function Picker() {
   return (
@@ -201,7 +202,7 @@ export function Picker() {
       'ColorInput edits a single channel in oklch/rgb/hsl using typed math expressions, keyboard stepping, and left-edge scrubbing.',
     registryName: 'color-input',
     demo: ColorInputDemo,
-    usage: `import { ColorInput } from 'color-kit/react';
+    usage: `import { ColorInput } from 'color-kit/react/color-input';
 
 <ColorInput model="oklch" channel="h" />;`,
     helperApis: [
