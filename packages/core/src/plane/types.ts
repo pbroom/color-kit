@@ -2,9 +2,10 @@ import type {
   ContrastApcaPolarity,
   ContrastApcaPreset,
   ContrastApcaRole,
+  ContrastHybridFallbackReason,
   ContrastMetric,
   ContrastRegionLevel,
-} from '../contrast/index.js';
+} from '../contrast/types.js';
 import type { ChromaBandMode, GamutTarget } from '../gamut/index.js';
 import type { Color } from '../types.js';
 
@@ -239,6 +240,7 @@ export interface PlaneQueryTraceSummary {
     | 'contrast-hybrid'
     | 'contrast-legacy-uniform'
     | 'contrast-legacy-adaptive';
+  fallbackReason?: ContrastHybridFallbackReason;
   samplingMode?: 'analytic' | 'uniform' | 'adaptive' | 'hybrid';
   viewportRelation?: PlaneViewportRelation;
   backend?: 'js' | 'webgpu';
