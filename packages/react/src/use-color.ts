@@ -1,6 +1,4 @@
-import { useCallback, useEffect } from 'react';
-import type { Observable } from '@legendapp/state';
-import { useObservable, useSelector } from '@legendapp/state/react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Color, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
 import {
   fromHsl,
@@ -27,6 +25,11 @@ import {
   type GamutTarget,
   type ViewModel,
 } from '@color-kit/driver';
+import {
+  createColorStore,
+  useColorStoreSelector,
+  type ColorStore,
+} from './color-store.js';
 
 export interface UseColorOptions {
   /** Initial color value (CSS string, hex, or Color object) */
@@ -48,7 +51,8 @@ export interface SetRequestedOptions {
 }
 
 export interface UseColorReturn {
-  state$: Observable<ColorState>;
+  /** Subscribable store backing this hook; child components subscribe to slices. */
+  store: ColorStore;
   state: ColorState;
   requested: Color;
   displayed: Color;
@@ -97,32 +101,45 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
     reactive = true,
   } = options as UseColorOptions & { reactive?: boolean };
 
-  const state$ = useObservable<ColorState>(() =>
-    createColorState(resolveInitialColor(defaultColor), {
-      activeGamut: defaultGamut,
-      activeView: defaultView,
-      source: 'programmatic',
-    }),
+  const [baseStore] = useState<ColorStore>(() =>
+    createColorStore(
+      controlledState ??
+        createColorState(resolveInitialColor(defaultColor), {
+          activeGamut: defaultGamut,
+          activeView: defaultView,
+          source: 'programmatic',
+        }),
+    ),
   );
 
   const isControlled = controlledState !== undefined;
-  const subscribedState = useSelector(() => (reactive ? state$.get() : null));
+  const store = useMemo<ColorStore>(() => {
+    if (controlledState === undefined) {
+      return baseStore;
+    }
+    return {
+      get: () => controlledState,
+      set: baseStore.set,
+      subscribe: baseStore.subscribe,
+    };
+  }, [baseStore, controlledState]);
+  const subscribedState = useColorStoreSelector(
+    reactive ? store : null,
+    (state) => state,
+  );
 
   useEffect(() => {
     if (isControlled && controlledState) {
-      state$.set(controlledState);
+      baseStore.set(controlledState);
     }
-  }, [controlledState, isControlled, state$]);
-
+  }, [baseStore, controlledState, isControlled]);
   const state = isControlled
     ? (controlledState as ColorState)
-    : reactive
-      ? (subscribedState as ColorState)
-      : state$.peek();
+    : (subscribedState ?? store.get());
 
   const getCurrentState = useCallback((): ColorState => {
-    return isControlled && controlledState ? controlledState : state$.peek();
-  }, [isControlled, controlledState, state$]);
+    return isControlled && controlledState ? controlledState : store.get();
+  }, [isControlled, controlledState, store]);
 
   const commitState = useCallback(
     (
@@ -131,7 +148,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
       interaction: ColorInteraction,
     ) => {
       if (!isControlled) {
-        state$.set(nextState);
+        store.set(nextState);
       }
       onChange?.({
         next: nextState,
@@ -139,7 +156,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
         interaction,
       });
     },
-    [isControlled, onChange, state$],
+    [isControlled, onChange, store],
   );
 
   const setRequested = useCallback(
@@ -299,7 +316,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
   );
 
   return {
-    state$,
+    store,
     state,
     requested,
     displayed,

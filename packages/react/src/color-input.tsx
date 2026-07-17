@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useMemo, type HTMLAttributes } from 'react';
-import { useSelector } from '@legendapp/state/react';
+import { useColorStoreSelector } from './color-store.js';
 import type { Color } from '@color-kit/core';
 import {
   usePrimitiveValueInput,
@@ -114,8 +114,9 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
     ref,
   ) {
     const context = useOptionalColorContext();
-    const contextRequested = useSelector(
-      () => context?.state$.requested.get() ?? null,
+    const contextRequested = useColorStoreSelector(
+      context?.store ?? null,
+      (state) => state?.requested ?? null,
     );
 
     const requested = requestedProp ?? contextRequested;

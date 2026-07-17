@@ -13,7 +13,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import { useSelector } from '@legendapp/state/react';
+import { useColorStoreSelector } from './color-store.js';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import {
@@ -239,8 +239,9 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     ref,
   ) {
     const context = useOptionalColorContext();
-    const contextRequested = useSelector(
-      () => context?.state$.requested.get() ?? null,
+    const contextRequested = useColorStoreSelector(
+      context?.store ?? null,
+      (state) => state?.requested ?? null,
     );
 
     const requested = requestedProp ?? contextRequested;

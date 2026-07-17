@@ -17,6 +17,8 @@ export type {
   UseColorOptions,
   UseColorReturn,
 } from './use-color.js';
+export { createColorStore, useColorStoreSelector } from './color-store.js';
+export type { ColorStore } from './color-store.js';
 export type {
   MultiColorEntryInput,
   MultiColorInput,

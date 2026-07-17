@@ -3,7 +3,7 @@ import {
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { useSelector } from '@legendapp/state/react';
+import { useColorStoreSelector } from './color-store.js';
 import type { ColorAreaChannel } from '@color-kit/driver';
 import { getColorDisplayStyles } from '@color-kit/driver';
 import {
@@ -59,7 +59,10 @@ export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
 ) {
   const { requested, setRequested, axes } = useColorAreaContext();
   const colorContext = useOptionalColorContext();
-  const contextState = useSelector(() => colorContext?.state$.get() ?? null);
+  const contextState = useColorStoreSelector(
+    colorContext?.store ?? null,
+    (state) => state,
+  );
 
   const { x: xNorm, y: yNorm } = getColorAreaThumbPosition(requested, axes);
   const state =
