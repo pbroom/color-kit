@@ -16,7 +16,10 @@
  *
  * Spaces: `linearSrgb`, `srgb` (gamma-encoded, 0–1), `linearP3`, `p3`
  * (gamma-encoded, 0–1), `oklab`, `oklch`. Writers emit unclamped floats by
- * default; `clamp` and `gamutMap` opt in to clipping or chroma reduction.
+ * default; `clamp` opts in to clipping. For chroma reduction, compose with
+ * the gamut mappers instead of passing an option, so the writers stay small:
+ * `toLinearSrgbArray(toSrgbGamut(c), out)` or
+ * `packColors(colors.map(toSrgbGamut), 'linearSrgb')`.
  *
  * three.js recipe: `THREE.Color` stores linear sRGB (its default
  * `ColorManagement.workingColorSpace` is `'srgb-linear'`), so use

@@ -31,8 +31,8 @@ const wrong: ColorTuple4 = toLinearSrgbArray(color);
 // @ts-expect-error: unknown space.
 packColors([color], 'rgb');
 
-// @ts-expect-error: gamutMap only accepts gamut targets.
-toLinearSrgbArray(color, undefined, 0, { gamutMap: 'rec2020' });
+// @ts-expect-error: gamut mapping is composed (toSrgbGamut), not an option.
+toLinearSrgbArray(color, undefined, 0, { gamutMap: 'srgb' });
 
 export const typecheck = [
   tuple,

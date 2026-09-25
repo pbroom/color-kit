@@ -212,7 +212,7 @@ Also available as `color-kit/interop`.
 
 `to<Space>Array()` `to<Space>Array4()` `from<Space>Array()` `from<Space>Array4()` `packColors()` `unpackColors()`, where `<Space>` is `LinearSrgb`, `Srgb`, `LinearP3`, `P3`, `Oklab`, or `Oklch`.
 
-Writers take `(color, out?, offset = 0, { clamp?, gamutMap? })`, write into any `number[]` or typed array without allocating, and emit unclamped floats by default. `*Array4` variants append alpha.
+Writers take `(color, out?, offset = 0, { clamp? })`, write into any `number[]` or typed array without allocating, and emit unclamped floats by default. `*Array4` variants append alpha. To gamut-map instead of clip, compose: `toLinearSrgbArray(toSrgbGamut(color), out)` or `packColors(colors.map(toSrgbGamut), 'linearSrgb')`.
 
 ```ts
 import { toLinearSrgbArray, packColors } from 'color-kit/interop';
