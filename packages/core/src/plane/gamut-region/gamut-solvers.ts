@@ -4,6 +4,7 @@ import {
   oklchToOklab,
 } from '../../conversion/index.js';
 import { gamutBoundaryPath, maxChromaAt } from '../../gamut/index.js';
+import { linearChannelGamutMargin } from '../../gamut/linear-bounds.js';
 import { maxHctChromaAtTone } from '../../hct/index.js';
 import type { Color } from '../../types.js';
 import { normalizeHue } from '../../utils/index.js';
@@ -75,14 +76,7 @@ function gamutMargin(color: Color, gamut: 'srgb' | 'display-p3'): number {
   const linearSrgb = oklabToLinearRgb(lab);
   const linear =
     gamut === 'display-p3' ? linearSrgbToLinearP3(linearSrgb) : linearSrgb;
-  return Math.min(
-    linear.r,
-    linear.g,
-    linear.b,
-    1 - linear.r,
-    1 - linear.g,
-    1 - linear.b,
-  );
+  return linearChannelGamutMargin(linear.r, linear.g, linear.b);
 }
 
 export function createFieldEvaluator(

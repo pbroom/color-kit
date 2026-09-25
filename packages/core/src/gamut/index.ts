@@ -7,18 +7,13 @@ import {
   LMS_TO_LINEAR_SRGB,
   OKLAB_TO_LMS,
 } from '../conversion/matrices.js';
-import {
-  clamp,
-  normalizeHue,
-  simplifyPolyline,
-  srgbToLinearChannel,
-} from '../utils/index.js';
+import { clamp, normalizeHue, simplifyPolyline } from '../utils/index.js';
 import {
   adaptiveMaxErrorProbe,
   buildAxisAnchors,
   MIN_SEGMENT_LENGTH,
 } from '../sampling/adaptive1d.js';
-import { GAMUT_EPSILON } from './constants.js';
+import { linearChannelsInGamut } from './linear-bounds.js';
 
 export { GAMUT_EPSILON } from './constants.js';
 
@@ -885,30 +880,6 @@ export function chromaBand(
   }
 
   return band;
-}
-
-/**
- * Linear-light bounds equivalent to allowing GAMUT_EPSILON of slack on the
- * gamma-encoded channels (the CSS Color 4 / colorjs.io convention). Both sRGB
- * and Display P3 share the sRGB transfer function.
- *
- * Applying the epsilon directly in linear light (as earlier versions did)
- * is far too permissive near black: -7.5e-5 linear is -9.7e-4 encoded, which
- * let e.g. `oklch(0.028 0.066 131)` pass as in gamut when the true boundary
- * chroma is ~0.008.
- */
-const GAMUT_LINEAR_MIN = -GAMUT_EPSILON / 12.92;
-const GAMUT_LINEAR_MAX = srgbToLinearChannel(1 + GAMUT_EPSILON);
-
-function linearChannelsInGamut(r: number, g: number, b: number): boolean {
-  return (
-    r >= GAMUT_LINEAR_MIN &&
-    r <= GAMUT_LINEAR_MAX &&
-    g >= GAMUT_LINEAR_MIN &&
-    g <= GAMUT_LINEAR_MAX &&
-    b >= GAMUT_LINEAR_MIN &&
-    b <= GAMUT_LINEAR_MAX
-  );
 }
 
 /**

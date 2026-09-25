@@ -22,7 +22,7 @@ color-kit is a queryable color engine: `@color-kit/core` (published via the `col
 
 ## Engineering Rules
 
-- Gamut checks (`inSrgbGamut`/`inP3Gamut`) must read unclamped linear channel values and allow a small epsilon (~0.000075) for floating-point noise.
+- Gamut checks (`inSrgbGamut`/`inP3Gamut`, and the plane gamut-region field) must read unclamped linear channel values. `GAMUT_EPSILON` (~0.000075) applies to the gamma-encoded channels (CSS Color 4 / colorjs.io), i.e. linear bounds `[-ε/12.92, linearize(1+ε)]`; share `gamut/linear-bounds.ts` rather than re-deriving them.
 - Multi-entry hooks (`useMultiColor`) compute next state from the latest snapshot (`setState(prev => ...)`).
 - Components with a `color?: Color` prop must `Omit<HTMLAttributes, 'color'>`.
 - Keep `eslint` and `@eslint/js` on the same major version.

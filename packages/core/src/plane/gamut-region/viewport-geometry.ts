@@ -313,14 +313,17 @@ export function classifyAdaptiveContourResult(
       maxValue: result.maxValue,
     };
   }
-  if (result.minValue >= -GAMUT_EPSILON) {
+  // Fields already encode the shared gamut tolerance (see
+  // gamut/linear-bounds.ts), so classify at zero; adding slack here would
+  // call viewports "inside" that inSrgbGamut/inP3Gamut reject.
+  if (result.minValue >= 0) {
     return {
       relation: 'inside',
       minValue: result.minValue,
       maxValue: result.maxValue,
     };
   }
-  if (result.maxValue < -GAMUT_EPSILON) {
+  if (result.maxValue < 0) {
     return {
       relation: 'outside',
       minValue: result.minValue,
