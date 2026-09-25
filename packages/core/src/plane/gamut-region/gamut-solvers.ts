@@ -6,6 +6,8 @@ import {
 import {
   GAMUT_EPSILON,
   gamutBoundaryPath,
+  inP3Gamut,
+  inSrgbGamut,
   maxChromaAt,
 } from '../../gamut/index.js';
 import { MAX_CHROMA_SEARCH_TOLERANCE } from '../../gamut/constants.js';
@@ -88,9 +90,9 @@ function gamutMargin(color: Color, gamut: 'srgb' | 'display-p3'): number {
  * How far below zero a `createFieldEvaluator()` value may be while the point
  * is still in gamut. Keep the branches in sync with `createFieldEvaluator()`.
  *
- * - OKLCH fields are `maxChromaAt() - c`. `maxChromaAt()` returns the in-gamut
- *   end of its bisection interval, so colors up to MAX_CHROMA_SEARCH_TOLERANCE
- *   above it can still pass `inSrgbGamut` / `inP3Gamut`.
+ * - OKLCH fields resolve `maxChromaAt()`'s search gap per sample (see
+ *   `oklchChromaField()`), so their sign already matches `inSrgbGamut` /
+ *   `inP3Gamut` and zero is exact.
  * - HCT fields are `maxHctChromaAtTone() - c`. HCT has no finer membership
  *   test than that function (every HCT color maps into sRGB), so keep the
  *   GAMUT_EPSILON slack this classification has always used.
@@ -101,9 +103,39 @@ export function fieldInsideTolerance(
   resolvedPlane: Plane,
   gamut: 'srgb' | 'display-p3',
 ): number {
-  if (resolvedPlane.model === 'oklch') return MAX_CHROMA_SEARCH_TOLERANCE;
   if (resolvedPlane.model === 'hct' && gamut === 'srgb') return GAMUT_EPSILON;
   return 0;
+}
+
+/**
+ * Field value reported for a color that lies in `maxChromaAt()`'s search gap
+ * but passes the exact membership test: positive (inside) and small enough
+ * not to move interpolated contour crossings measurably.
+ */
+const IN_SEARCH_GAP_FIELD_VALUE = 1e-12;
+
+/**
+ * Signed OKLCH chroma field whose sign matches `inSrgbGamut` / `inP3Gamut`.
+ *
+ * `maxChromaAt()` returns the in-gamut end of a bisection interval up to
+ * MAX_CHROMA_SEARCH_TOLERANCE wide, so a sample with
+ * `maxChromaAt() - c` in (-MAX_CHROMA_SEARCH_TOLERANCE, 0) is ambiguous: the
+ * true boundary may sit above or below `c`. Only those samples pay for one
+ * extra exact membership check, which decides their sign.
+ */
+function oklchChromaField(
+  l: number,
+  c: number,
+  h: number,
+  alpha: number,
+  gamut: 'srgb' | 'display-p3',
+): number {
+  const value = maxChromaAt(l, h, { gamut, alpha }) - c;
+  if (value >= 0 || value <= -MAX_CHROMA_SEARCH_TOLERANCE) return value;
+  const color: Color = { l, c, h, alpha };
+  const inGamut =
+    gamut === 'display-p3' ? inP3Gamut(color) : inSrgbGamut(color);
+  return inGamut ? IN_SEARCH_GAP_FIELD_VALUE : value;
 }
 
 export function createFieldEvaluator(
@@ -123,7 +155,7 @@ export function createFieldEvaluator(
       const h = normalizeHue(
         readModelChannel(modelColor, 'h', planeHue(resolvedPlane)),
       );
-      return maxChromaAt(l, h, { gamut, alpha: resolvedPlane.fixed.alpha }) - c;
+      return oklchChromaField(l, c, h, resolvedPlane.fixed.alpha, gamut);
     };
   }
 

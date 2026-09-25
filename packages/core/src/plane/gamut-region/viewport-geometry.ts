@@ -309,8 +309,8 @@ function shouldRefineUniformAdaptiveCell(
  * `insideTolerance` is how far below zero a field value may fall while the
  * color can still be in gamut. It depends on the field kind (see
  * `fieldInsideTolerance()` in gamut-solvers.ts): zero for linear-margin
- * fields, which already encode GAMUT_EPSILON, and the solver precision for
- * chroma-difference fields.
+ * fields, which already encode GAMUT_EPSILON, and for OKLCH chroma fields,
+ * which resolve `maxChromaAt()`'s search gap with an exact membership check.
  */
 export function classifyAdaptiveContourResult(
   result: AdaptiveContourResult,
