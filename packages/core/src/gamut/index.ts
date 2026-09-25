@@ -2,6 +2,11 @@ import type { Color } from '../types.js';
 import { oklchToOklab } from '../conversion/oklch.js';
 import { oklabToLinearRgb } from '../conversion/oklab.js';
 import { linearSrgbToLinearP3 } from '../conversion/p3.js';
+import {
+  LMS_TO_LINEAR_P3,
+  LMS_TO_LINEAR_SRGB,
+  OKLAB_TO_LMS,
+} from '../conversion/matrices.js';
 import { clamp, normalizeHue, simplifyPolyline } from '../utils/index.js';
 import {
   adaptiveMaxErrorProbe,
@@ -19,23 +24,15 @@ const DEFAULT_HUE_CUSP_LUT_SIZE = 4096;
 const LIGHTNESS_ENDPOINT_EPSILON = 1e-9;
 
 const OKLAB_LMS_PRIME_COEFFICIENTS = {
-  l: { a: 0.3963377774, b: 0.2158037573 },
-  m: { a: -0.1055613458, b: -0.0638541728 },
-  s: { a: -0.0894841775, b: -1.291485548 },
+  l: { a: OKLAB_TO_LMS[0][1], b: OKLAB_TO_LMS[0][2] },
+  m: { a: OKLAB_TO_LMS[1][1], b: OKLAB_TO_LMS[1][2] },
+  s: { a: OKLAB_TO_LMS[2][1], b: OKLAB_TO_LMS[2][2] },
 } as const;
 
-const OKLAB_TO_LINEAR_SRGB_ROWS = [
-  [4.0767416621, -3.3077115913, 0.2309699292],
-  [-1.2684380046, 2.6097574011, -0.3413193965],
-  [-0.0041960863, -0.7034186147, 1.707614701],
-] as const;
+const OKLAB_TO_LINEAR_SRGB_ROWS = LMS_TO_LINEAR_SRGB;
 
 // Composed matrix: linear-sRGB -> linear-P3 multiplied by OKLab(l,m,s) -> linear-sRGB.
-const OKLAB_TO_LINEAR_P3_ROWS = [
-  [3.1277700759423896, -2.2571370014989434, 0.12936692555655316],
-  [-1.091009052397986, 2.4133317637074136, -0.3223227113094277],
-  [-0.026010813144971768, -0.5080413257213188, 1.5340521388662907],
-] as const;
+const OKLAB_TO_LINEAR_P3_ROWS = LMS_TO_LINEAR_P3;
 
 const HUE_CUSP_CHANNEL_EPSILON = 1e-7;
 const MAX_SATURATION_SEARCH = 16;
