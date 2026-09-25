@@ -26,7 +26,7 @@ export const PLANE_QUERY_SPECS: PlaneQuerySpecRegistry = {
   gradient: gradientSpec,
 };
 
-export const PLANE_QUERY_KINDS = Object.keys(
+export const PLANE_QUERY_KINDS = /* @__PURE__ */ Object.keys(
   PLANE_QUERY_SPECS,
 ) as PlaneQueryKind[];
 

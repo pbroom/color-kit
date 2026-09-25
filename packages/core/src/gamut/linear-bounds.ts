@@ -16,7 +16,9 @@ import { GAMUT_EPSILON } from './constants.js';
  * APIs classify boundary colors identically.
  */
 export const GAMUT_LINEAR_MIN = -GAMUT_EPSILON / 12.92;
-export const GAMUT_LINEAR_MAX = srgbToLinearChannel(1 + GAMUT_EPSILON);
+export const GAMUT_LINEAR_MAX = /* @__PURE__ */ srgbToLinearChannel(
+  1 + GAMUT_EPSILON,
+);
 
 /**
  * Signed distance (in linear light) from unclamped linear RGB channels to the
