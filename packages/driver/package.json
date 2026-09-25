@@ -1,6 +1,6 @@
 {
   "name": "@color-kit/driver",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Framework-agnostic interaction drivers for color UI: area/slider/input math, gradients, parsing, and dual-state color model",
   "type": "module",

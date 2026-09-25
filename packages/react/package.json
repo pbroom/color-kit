@@ -1,6 +1,6 @@
 {
   "name": "@color-kit/react",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Headless React primitives for building color interfaces",
   "type": "module",

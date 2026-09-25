@@ -1,6 +1,6 @@
 {
   "name": "@color-kit/core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Color space conversions, manipulation, contrast, harmony, and scale generation",
   "type": "module",
