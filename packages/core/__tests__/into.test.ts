@@ -273,3 +273,134 @@ describe('mixInto / interpolateInto', () => {
     expectBitIdentical(mixInto(newColor(), a, b), mix(a, b));
   });
 });
+
+describe('re-entrant accessors', () => {
+  // Inputs whose getters run other conversions (which rewrite the shared
+  // module scratch) mid-call must still produce the plain-object result.
+  const OTHER: Color = { l: 0.31, c: 0.37, h: 301, alpha: 0.2 };
+  const OTHER_2: Color = { l: 0.83, c: 0.05, h: 12, alpha: 1 };
+  let nestedCalls = 0;
+
+  function runNestedConversions(): void {
+    nestedCalls += 1;
+    toRgb(OTHER);
+    toP3(OTHER);
+    fromRgb({ r: 3, g: 250, b: 90, alpha: 0.5 });
+    fromP3({ r: 0.1, g: 0.9, b: 0.4, alpha: 0.5 });
+    toSrgbGamut(OTHER);
+    toP3Gamut(OTHER);
+    mix(OTHER, OTHER_2, 0.3, { space: 'p3' });
+    mix(OTHER, OTHER_2, 0.6, { space: 'oklch', hue: 'longer' });
+  }
+
+  /**
+   * Same fields as `plain`, but reading `alpha` (or, with `allFields`, any
+   * field) first runs other conversions.
+   */
+  function reentrant<T extends object>(plain: T, allFields = false): T {
+    const target = {} as T;
+    for (const key of Object.keys(plain) as (keyof T)[]) {
+      if (key === 'alpha' || allFields) {
+        Object.defineProperty(target, key, {
+          enumerable: true,
+          get() {
+            runNestedConversions();
+            return plain[key];
+          },
+        });
+      } else {
+        target[key] = plain[key];
+      }
+    }
+    return target;
+  }
+
+  const colors = COLORS.slice(0, 200);
+
+  for (const allFields of [false, true]) {
+    const label = allFields ? 'every field' : 'alpha';
+
+    it(`conversions ignore nested calls from a re-entrant ${label} getter`, () => {
+      nestedCalls = 0;
+      for (const color of colors) {
+        const input = reentrant(color, allFields);
+        expectBitIdentical(toOklabInto(newLab(), input), toOklab(color));
+        expectBitIdentical(
+          toLinearSrgbInto(newRgb(), input),
+          oklabToLinearRgb(toOklab(color)),
+        );
+        expectBitIdentical(toRgbInto(newRgb(), input), toRgb(color));
+        expectBitIdentical(toP3Into(newRgb(), input), toP3(color));
+        expectBitIdentical(toRgb(input), toRgb(color));
+
+        const rgb = toRgb(color);
+        expectBitIdentical(
+          fromRgbInto(newColor(), reentrant(rgb, allFields)),
+          fromRgb(rgb),
+        );
+        const p3 = toP3(color);
+        expectBitIdentical(
+          fromP3Into(newColor(), reentrant(p3, allFields)),
+          fromP3(p3),
+        );
+        const linear = oklabToLinearRgb(toOklab(color));
+        expectBitIdentical(
+          fromLinearSrgbInto(newColor(), reentrant(linear, allFields)),
+          oklabToOklch(linearRgbToOklab(linear)),
+        );
+      }
+      expect(nestedCalls).toBeGreaterThan(0);
+    });
+
+    it(`gamut mapping ignores nested calls from a re-entrant ${label} getter`, () => {
+      nestedCalls = 0;
+      for (const color of colors) {
+        const input = reentrant(color, allFields);
+        expectBitIdentical(
+          toSrgbGamutInto(newColor(), input),
+          toSrgbGamut(color),
+        );
+        expectBitIdentical(toP3GamutInto(newColor(), input), toP3Gamut(color));
+      }
+      expect(nestedCalls).toBeGreaterThan(0);
+    });
+
+    it(`mixInto / interpolateInto ignore nested calls from a re-entrant ${label} getter`, () => {
+      nestedCalls = 0;
+      const optionSets: (InterpolationOptions | undefined)[] = [
+        undefined,
+        { space: 'oklch', hue: 'longer', premultiplied: true },
+        { space: 'oklab' },
+        { space: 'srgb' },
+        { space: 'linear-p3' },
+      ];
+      for (let i = 0; i < colors.length; i += 1) {
+        const a = colors[i];
+        const b = colors[(i * 7 + 3) % colors.length];
+        const options = optionSets[i % optionSets.length];
+        const t = 0.35;
+        expectBitIdentical(
+          mixInto(
+            newColor(),
+            reentrant(a, allFields),
+            reentrant(b),
+            t,
+            options,
+          ),
+          mix(a, b, t, options),
+        );
+        expectBitIdentical(
+          interpolateInto(
+            newColor(),
+            reentrant(a),
+            reentrant(b, allFields),
+            t,
+            options,
+          ),
+          interpolate(a, b, t, options),
+        );
+      }
+      expect(nestedCalls).toBeGreaterThan(0);
+    });
+  }
+});

@@ -25,10 +25,16 @@ const [RL, GL, BL] = LMS_TO_LINEAR_SRGB;
  * ```
  */
 export function linearRgbToOklabInto(out: Oklab, rgb: LinearRgb): Oklab {
-  // Linear sRGB to LMS. Every input is read before `out` is written.
-  const l = M1R[0] * rgb.r + M1R[1] * rgb.g + M1R[2] * rgb.b;
-  const m = M1G[0] * rgb.r + M1G[1] * rgb.g + M1G[2] * rgb.b;
-  const s = M1B[0] * rgb.r + M1B[1] * rgb.g + M1B[2] * rgb.b;
+  // Read every input field before writing `out` (see conversion/into.ts).
+  const r = rgb.r;
+  const g = rgb.g;
+  const b = rgb.b;
+  const alpha = rgb.alpha;
+
+  // Linear sRGB to LMS
+  const l = M1R[0] * r + M1R[1] * g + M1R[2] * b;
+  const m = M1G[0] * r + M1G[1] * g + M1G[2] * b;
+  const s = M1B[0] * r + M1B[1] * g + M1B[2] * b;
 
   // Cube root (non-linear response)
   const l_ = Math.cbrt(l);
@@ -38,7 +44,7 @@ export function linearRgbToOklabInto(out: Oklab, rgb: LinearRgb): Oklab {
   out.L = M2L[0] * l_ + M2L[1] * m_ + M2L[2] * s_;
   out.a = M2A[0] * l_ + M2A[1] * m_ + M2A[2] * s_;
   out.b = M2B[0] * l_ + M2B[1] * m_ + M2B[2] * s_;
-  out.alpha = rgb.alpha;
+  out.alpha = alpha;
   return out;
 }
 
@@ -63,10 +69,16 @@ export function linearRgbToOklab(rgb: LinearRgb): Oklab {
  * ```
  */
 export function oklabToLinearRgbInto(out: LinearRgb, lab: Oklab): LinearRgb {
+  // Read every input field before writing `out` (see conversion/into.ts).
+  const L = lab.L;
+  const a = lab.a;
+  const b = lab.b;
+  const alpha = lab.alpha;
+
   // OKLAB to LMS (cube roots)
-  const l_ = lab.L + LA * lab.a + LB * lab.b;
-  const m_ = lab.L + MA * lab.a + MB * lab.b;
-  const s_ = lab.L + SA * lab.a + SB * lab.b;
+  const l_ = L + LA * a + LB * b;
+  const m_ = L + MA * a + MB * b;
+  const s_ = L + SA * a + SB * b;
 
   // Cube (undo non-linearity)
   const l = l_ * l_ * l_;
@@ -77,7 +89,7 @@ export function oklabToLinearRgbInto(out: LinearRgb, lab: Oklab): LinearRgb {
   out.r = RL[0] * l + RL[1] * m + RL[2] * s;
   out.g = GL[0] * l + GL[1] * m + GL[2] * s;
   out.b = BL[0] * l + BL[1] * m + BL[2] * s;
-  out.alpha = lab.alpha;
+  out.alpha = alpha;
   return out;
 }
 

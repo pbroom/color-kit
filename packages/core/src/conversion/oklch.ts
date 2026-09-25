@@ -11,8 +11,14 @@ import { degToRad, radToDeg, normalizeHue } from '../utils/index.js';
  * ```
  */
 export function oklabToOklchInto(out: Oklch, lab: Oklab): Oklch {
-  const c = Math.sqrt(lab.a * lab.a + lab.b * lab.b);
-  let h = radToDeg(Math.atan2(lab.b, lab.a));
+  // Read every input field before writing `out` (see conversion/into.ts).
+  const L = lab.L;
+  const a = lab.a;
+  const b = lab.b;
+  const alpha = lab.alpha;
+
+  const c = Math.sqrt(a * a + b * b);
+  let h = radToDeg(Math.atan2(b, a));
   h = normalizeHue(h);
 
   // For near-zero chroma, hue is undefined; default to 0
@@ -20,10 +26,10 @@ export function oklabToOklchInto(out: Oklch, lab: Oklab): Oklch {
     h = 0;
   }
 
-  out.l = lab.L;
+  out.l = L;
   out.c = c;
   out.h = h;
-  out.alpha = lab.alpha;
+  out.alpha = alpha;
   return out;
 }
 
@@ -42,11 +48,17 @@ export function oklabToOklch(lab: Oklab): Oklch {
  * ```
  */
 export function oklchToOklabInto(out: Oklab, oklch: Oklch): Oklab {
-  const hRad = degToRad(oklch.h);
-  out.L = oklch.l;
-  out.a = oklch.c * Math.cos(hRad);
-  out.b = oklch.c * Math.sin(hRad);
-  out.alpha = oklch.alpha;
+  // Read every input field before writing `out` (see conversion/into.ts).
+  const l = oklch.l;
+  const c = oklch.c;
+  const h = oklch.h;
+  const alpha = oklch.alpha;
+
+  const hRad = degToRad(h);
+  out.L = l;
+  out.a = c * Math.cos(hRad);
+  out.b = c * Math.sin(hRad);
+  out.alpha = alpha;
   return out;
 }
 
