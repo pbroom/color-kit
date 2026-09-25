@@ -35,22 +35,26 @@ function lazyDemo<TProps extends object>(
   return lazy(load);
 }
 
-const ColorAreaDemo = lazyDemo(() =>
+interface InspectorDrivenDemoProps {
+  inspectorDriven?: boolean;
+}
+
+const ColorAreaDemo = lazyDemo<InspectorDrivenDemoProps>(() =>
   import('../components/component-demos.js').then((module) => ({
-    default: module.ColorAreaDemo as ComponentType,
+    default: module.ColorAreaDemo,
   })),
 );
-const ColorProviderDemo = lazyDemo(() =>
+const ColorProviderDemo = lazyDemo<object>(() =>
   import('../components/demos/color-provider-demo.js').then((module) => ({
     default: module.ColorProviderDemo,
   })),
 );
-const ColorSliderDemo = lazyDemo(() =>
+const ColorSliderDemo = lazyDemo<InspectorDrivenDemoProps>(() =>
   import('../components/demos/color-slider-demo.js').then((module) => ({
     default: module.ColorSliderDemo,
   })),
 );
-const ColorInputDemo = lazyDemo(() =>
+const ColorInputDemo = lazyDemo<InspectorDrivenDemoProps>(() =>
   import('../components/demos/color-input-demo.js').then((module) => ({
     default: module.ColorInputDemo,
   })),
