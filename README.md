@@ -186,7 +186,7 @@ palette.setActiveGamut('srgb');
 
 ### Allocation-free variants
 
-For per-pixel and per-frame loops, the hot-path functions have `*Into` twins that write into a caller-supplied `out` object (passed first) and return it. They allocate nothing and return bit-identical results to the allocating functions, which are thin wrappers over them. The object-returning API stays the default; reach for `*Into` only where a profiler shows allocation or GC pressure.
+For per-pixel and per-frame loops, the hot-path functions have `*Into` twins that write into a caller-supplied `out` object (passed first) and return it. They create no result or intermediate objects and return bit-identical results to the allocating functions, which are thin wrappers over them. That is not a guarantee of zero heap allocation: JavaScript engines may still box the numbers written into object fields (V8 does in loops it does not fully inline and optimize), and V8 often optimizes away the allocating functions' short-lived objects anyway. The object-returning API stays the default; reach for `*Into` only where a profiler shows allocation or GC pressure, and benchmark the change at your call site.
 
 `toOklabInto()` `fromOklabInto()` `toLinearSrgbInto()` `fromLinearSrgbInto()` `toRgbInto()` `fromRgbInto()` `toP3Into()` `fromP3Into()` `mixInto()` `interpolateInto()` `toSrgbGamutInto()` `toP3GamutInto()`
 
