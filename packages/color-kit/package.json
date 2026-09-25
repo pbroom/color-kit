@@ -1,6 +1,6 @@
 {
   "name": "color-kit",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A queryable color-space engine for building color tooling: OKLCH-canonical conversion, contrast, gamut geometry, and plane queries, with React bindings as one consumer",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -91,7 +91,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "sideEffects": false,
   "engines": {
