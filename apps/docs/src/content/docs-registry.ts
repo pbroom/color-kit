@@ -100,6 +100,16 @@ export const docsNavigation: DocsNavSection[] = [
     })),
   },
   {
+    title: 'Guides',
+    items: [
+      {
+        title: 'Graphics & Performance',
+        path: 'guides/graphics-and-performance',
+        href: toDocsHref('guides/graphics-and-performance'),
+      },
+    ],
+  },
+  {
     title: 'API Reference',
     items: [
       {
