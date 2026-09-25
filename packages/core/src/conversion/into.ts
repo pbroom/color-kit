@@ -3,8 +3,10 @@
  * (OKLCH) and OKLab, linear sRGB, sRGB and Display P3.
  *
  * Every function writes its result into the caller-supplied `out` object and
- * returns it. No objects are allocated, not even temporaries: intermediate
- * stages go through module-level scratch objects that never escape. Results
+ * returns it. No result or intermediate objects are created: intermediate
+ * stages go through module-level scratch objects that never escape. (Engines
+ * may still box the numbers written into object fields in code they do not
+ * fully optimize, so measure at the call site.) Results
  * are bit-identical to the allocating counterparts (`toRgb`, `fromRgb`, ...),
  * which are thin wrappers over these kernels.
  *
