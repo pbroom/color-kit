@@ -29,6 +29,37 @@ export function contrastRatio(color1: Color, color2: Color): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+// APCA-W3 0.0.98G-4g constants (https://github.com/Myndex/apca-w3).
+const APCA_MAIN_TRC = 2.4;
+const APCA_SR_COEFF = 0.2126729;
+const APCA_SG_COEFF = 0.7151522;
+const APCA_SB_COEFF = 0.072175;
+const APCA_NORM_BG = 0.56;
+const APCA_NORM_TXT = 0.57;
+const APCA_REV_TXT = 0.62;
+const APCA_REV_BG = 0.65;
+const APCA_BLK_THRS = 0.022;
+const APCA_BLK_CLMP = 1.414;
+const APCA_SCALE_BOW = 1.14;
+const APCA_SCALE_WOB = 1.14;
+const APCA_LO_BOW_OFFSET = 0.027;
+const APCA_LO_WOB_OFFSET = 0.027;
+const APCA_DELTA_Y_MIN = 0.0005;
+const APCA_LO_CLIP = 0.1;
+
+/**
+ * APCA "screen luminance" of an 8-bit sRGB color. APCA intentionally uses a
+ * simple 2.4 power curve here rather than the piecewise sRGB EOTF.
+ */
+function apcaScreenLuminance(color: Color): number {
+  const rgb = toRgb(color);
+  return (
+    APCA_SR_COEFF * (rgb.r / 255) ** APCA_MAIN_TRC +
+    APCA_SG_COEFF * (rgb.g / 255) ** APCA_MAIN_TRC +
+    APCA_SB_COEFF * (rgb.b / 255) ** APCA_MAIN_TRC
+  );
+}
+
 /**
  * Calculate APCA (Advanced Perceptual Contrast Algorithm) contrast.
  * Returns a normalized Lc value roughly between -1.08 and 1.06
@@ -36,55 +67,35 @@ export function contrastRatio(color1: Color, color2: Color): number {
  * Positive values = dark text on light background (normal polarity).
  * Negative values = light text on dark background (reverse polarity).
  *
- * Based on APCA-W3 0.0.98G-4g.
- * https://github.com/Myndex/SAPC-APCA
+ * Implements APCA-W3 0.0.98G-4g (`APCAcontrast(sRGBtoY(text), sRGBtoY(bg))`).
+ * https://github.com/Myndex/apca-w3
  */
 export function contrastAPCA(textColor: Color, bgColor: Color): number {
-  const txtRgb = toRgb(textColor);
-  const bgRgb = toRgb(bgColor);
+  let txtY = apcaScreenLuminance(textColor);
+  let bgY = apcaScreenLuminance(bgColor);
 
-  // Linearize with sRGB TRC
-  const txtR = srgbToLinearChannel(txtRgb.r / 255);
-  const txtG = srgbToLinearChannel(txtRgb.g / 255);
-  const txtB = srgbToLinearChannel(txtRgb.b / 255);
-
-  const bgR = srgbToLinearChannel(bgRgb.r / 255);
-  const bgG = srgbToLinearChannel(bgRgb.g / 255);
-  const bgB = srgbToLinearChannel(bgRgb.b / 255);
-
-  // APCA luminance coefficients
-  const txtY = 0.2126729 * txtR + 0.7151522 * txtG + 0.072175 * txtB;
-  const bgY = 0.2126729 * bgR + 0.7151522 * bgG + 0.072175 * bgB;
-
-  // APCA contrast calculation (simplified)
-  const normBg = 0.56;
-  const normTxt = 0.57;
-  const revTxt = 0.62;
-  const revBg = 0.65;
-
-  const scale = 1.25;
-  const threshold = 0.022;
-  const loClip = 0.1;
-
-  // Soft clamp
-  const txtYc = txtY > threshold ? txtY : txtY + (threshold - txtY) ** 1.414;
-  const bgYc = bgY > threshold ? bgY : bgY + (threshold - bgY) ** 1.414;
-
-  let contrast: number;
-
-  if (bgYc > txtYc) {
-    // Dark text on light bg (normal polarity)
-    contrast = (bgYc ** normBg - txtYc ** normTxt) * scale;
-  } else {
-    // Light text on dark bg (reverse polarity)
-    contrast = (bgYc ** revBg - txtYc ** revTxt) * scale;
+  // Soft clamp of near-black luminance (flare compensation)
+  if (txtY <= APCA_BLK_THRS) {
+    txtY += (APCA_BLK_THRS - txtY) ** APCA_BLK_CLMP;
+  }
+  if (bgY <= APCA_BLK_THRS) {
+    bgY += (APCA_BLK_THRS - bgY) ** APCA_BLK_CLMP;
   }
 
-  if (Math.abs(contrast) < loClip) {
+  // Noise gate for (near-)identical luminances
+  if (Math.abs(bgY - txtY) < APCA_DELTA_Y_MIN) {
     return 0;
   }
 
-  return contrast > 0 ? contrast - loClip : contrast + loClip;
+  if (bgY > txtY) {
+    // Dark text on light bg (normal polarity)
+    const sapc = (bgY ** APCA_NORM_BG - txtY ** APCA_NORM_TXT) * APCA_SCALE_BOW;
+    return sapc < APCA_LO_CLIP ? 0 : sapc - APCA_LO_BOW_OFFSET;
+  }
+
+  // Light text on dark bg (reverse polarity)
+  const sapc = (bgY ** APCA_REV_BG - txtY ** APCA_REV_TXT) * APCA_SCALE_WOB;
+  return sapc > -APCA_LO_CLIP ? 0 : sapc + APCA_LO_WOB_OFFSET;
 }
 
 /** Check if contrast ratio meets WCAG AA for normal text (>= 4.5:1) */
