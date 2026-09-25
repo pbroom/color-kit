@@ -38,7 +38,7 @@ color-kit keeps its own strengths: OKLCH as the working model, CSS Color 4 gamut
 | Arithmetic               | `add`, `sub`, `multiply`, `multiplyScalar`                | Not provided; write to arrays and do the math there                                        |
 | Out-of-gamut handling    | `color.clamp` (per-channel clip)                          | `toSrgbGamut` / `toP3Gamut` (CSS Color 4 chroma reduction), `inSrgbGamut` / `inP3Gamut`    |
 | Contrast / accessibility | `color.luminance` (Rec. 709)                              | `relativeLuminance`, WCAG 2.1 `contrastRatio`, `contrastAPCA`                              |
-| Parsing / output         | Hex strings, numbers, tuples; `toCSS` as `rgb()`, `toHex` | CSS Color 4 `parse`; `toCss` as hex, `rgb`, `hsl`, `oklch`, `p3`                           |
+| Parsing / output         | Hex strings, numbers, tuples; `toCSS` as `rgb()`, `toHex` | CSS Color 4 `parse`; `toCss` as `hex`, `rgb`, `hsl`, `oklch`, `oklab`, `p3`                |
 | Geometry                 | None                                                      | Plane API: gamut boundaries and contrast regions as SVG paths                              |
 
 ## 1. Linear-light mixing
@@ -49,7 +49,7 @@ color-kit keeps its own strengths: OKLCH as the working model, CSS Color 4 gamut
 
 <LinearMixDemo />
 
-The strips and midpoint stats above come from this file:
+The first row calls `generateScale(a, b, steps)` and `mix(a, b)` with no options, which is the legacy OKLCH default. The `{ space: 'oklch' }` row takes the CSS `color-mix()` path instead. The two agree for colors with a clear hue but can differ near gray, where the CSS path uses a smaller powerless-hue threshold. The strips and midpoint stats above come from this file:
 
 <DemoSource file="linear-mix.ts" />
 
@@ -129,7 +129,7 @@ function tick(t: number) {
 }
 ```
 
-The demo below runs that loop with `requestAnimationFrame` and writes straight to the DOM, so React does not re-render each frame. The CSS hex string still allocates. In a real renderer you would write `out` into a uniform instead.
+The demo below runs that loop with `requestAnimationFrame` and writes straight to the DOM, so React does not re-render each frame. The CSS hex string still allocates. In a real renderer you would write `out` into a uniform instead. The demo pauses while it is scrolled offscreen, and it starts paused when the OS reduced-motion setting is on, following changes to that setting live.
 
 <MixIntoDemo />
 
@@ -165,7 +165,7 @@ From `pnpm --filter @color-kit/core bench:into`: 1e6 operations on Node 24. "Bef
 
 We tried switching the React `ColorPlane` CPU pixel loop to `*Into` and then dropped the change. GC counts fell (103 → 61, 103 → 31, 216 → 93, 313 → 140), but frame time did not improve: about 24 → 25 ms and 17 → 18 ms on the plain paths. The clamp paths got 8–10% slower (137 → 151 ms and 154 → 166 ms).
 
-The cause is V8 double boxing. When V8 cannot fully optimize a large loop, it boxes each double stored into an object field such as `out.l`, which costs about as much as the allocation it replaced. For real zero-allocation per-pixel work, write into typed arrays instead (section 3). Typed arrays store raw doubles and never box them.
+The cause is V8 double boxing. When V8 cannot fully optimize a large loop, it boxes each double stored into an object field such as `out.l`, which costs about as much as the allocation it replaced. For real zero-allocation per-pixel work, write into typed arrays instead (section 3). Typed-array elements are stored unboxed: a `Float32Array`, which `packColors` returns by default, holds 32-bit floats, so writes never box but values round to float32 precision (under 1e-5 ΔE_OK inside the P3 gamut). Pass a `Float64Array` as `out` when you need full double precision.
 
 <Recommendation verdict="adopt in addition; the object API stays primary">
 
@@ -184,7 +184,7 @@ The cause is V8 double boxing. When V8 cannot fully optimize a large loop, it bo
 
 Output is unclamped floats by default, which is what HDR and linear-light pipelines expect. There is no gamut-mapping option; compose it instead, for example `toLinearSrgbArray(toSrgbGamut(color), out)`. Values match colorjs.io to within 7e-15, and Float32 precision stays under 1e-5 ΔE_OK inside the P3 gamut. `toLinearSrgbArray` costs 617 B gzipped and `packColors` + `unpackColors` 2.3 kB. The everyday import does not grow.
 
-The demo packs four corner colors with `packColors` into one reused `Float32Array` and uploads it as WebGL2 vertex colors. With `'linearSrgb'`, the GPU interpolates light and the fragment shader encodes to sRGB at the end. With `'srgb'`, the GPU interpolates gamma-encoded values, as a CSS gradient does. Compare the red-to-lime top edge in both modes.
+The demo packs four corner colors with `packColors` into one reused `Float32Array` and uploads it as WebGL2 vertex colors. With `'linearSrgb'`, the GPU interpolates light and the fragment shader encodes to sRGB at the end. With `'srgb'`, the GPU interpolates gamma-encoded values, as a CSS gradient does. Compare the red-to-lime top edge in both modes. If the browser drops the WebGL context, the demo rebuilds the renderer and redraws when the context is restored (`watchContextLoss` below).
 
 <WebglGradientDemo />
 
@@ -244,15 +244,15 @@ device.queue.writeBuffer(buffer, 0, data);
 
 ### Object and string output vs array writers
 
-| API                                  | Output                                      | Range and precision                              | Allocation                | Use for                                   |
-| ------------------------------------ | ------------------------------------------- | ------------------------------------------------ | ------------------------- | ----------------------------------------- |
-| `toRgb(c)`                           | `{ r, g, b, alpha }`                        | 0–255 integers, clipped to sRGB                  | New object                | Canvas 2D, UI readouts                    |
-| `toP3(c)`                            | `{ r, g, b, alpha }`                        | 0–1 gamma-encoded, clipped to P3                 | New object                | UI readouts, P3 CSS                       |
-| `toCss(c, format)`                   | String (`hex`, `rgb`, `hsl`, `oklch`, `p3`) | Rounded; hex is 8-bit and clipped                | New string                | CSS, serialization                        |
-| `toLinearSrgbArray(c, out?)`         | `[r, g, b]` or your typed array             | Unclamped float, linear light                    | None when `out` is passed | three.js `Color`, GL uniforms, lighting   |
-| `toSrgbArray` / `toP3Array(c, out?)` | `[r, g, b]` gamma-encoded 0–1               | Unclamped float (sign mirrored, like colorjs.io) | None when `out` is passed | Shaders that output to an encoded surface |
-| `toOklabArray` / `toOklchArray`      | `[L, a, b]` / `[l, c, h]`                   | Float                                            | None when `out` is passed | Shader-side OKLab math                    |
-| `packColors(colors, space, out?)`    | `Float32Array` (or your array)              | Float32, optional alpha, stride, and offset      | One buffer for all colors | Vertex attributes, storage buffers        |
+| API                                  | Output                                                                                   | Range and precision                                                                                                | Allocation                | Use for                                   |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------- | ----------------------------------------- |
+| `toRgb(c)`                           | `{ r, g, b, alpha }`                                                                     | 0–255 integers, clipped to sRGB                                                                                    | New object                | Canvas 2D, UI readouts                    |
+| `toP3(c)`                            | `{ r, g, b, alpha }`                                                                     | 0–1 gamma-encoded, clipped to P3                                                                                   | New object                | UI readouts, P3 CSS                       |
+| `toCss(c, format)`                   | String (`hex`, `rgb`, `hsl`, `oklch`, `oklab`, `p3`; unknown formats fall back to `hex`) | `hex`/`rgb`/`hsl` are 8-bit or rounded and clipped to sRGB; `p3` clipped to P3; `oklch`/`oklab` rounded, unclamped | New string                | CSS, serialization                        |
+| `toLinearSrgbArray(c, out?)`         | `[r, g, b]` or your typed array                                                          | Unclamped float, linear light                                                                                      | None when `out` is passed | three.js `Color`, GL uniforms, lighting   |
+| `toSrgbArray` / `toP3Array(c, out?)` | `[r, g, b]` gamma-encoded 0–1                                                            | Unclamped float (sign mirrored, like colorjs.io)                                                                   | None when `out` is passed | Shaders that output to an encoded surface |
+| `toOklabArray` / `toOklchArray`      | `[L, a, b]` / `[l, c, h]`                                                                | Float                                                                                                              | None when `out` is passed | Shader-side OKLab math                    |
+| `packColors(colors, space, out?)`    | `Float32Array` (or your array)                                                           | Float32, optional alpha, stride, and offset                                                                        | One buffer for all colors | Vertex attributes, storage buffers        |
 
 <Recommendation verdict="adopt in addition">
 
@@ -266,7 +266,7 @@ device.queue.writeBuffer(buffer, 0, data);
 | ------------------- | ------------------------------------------------------- | -------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Linear-light mixing | Compositing, blur, lighting, matching GPU blending      | `mix` / `generateScale` in OKLCH       | Add alongside; OKLCH stays default | Physically correct for light, but perceptually uneven for UI ramps. Changing the default would change every existing result. |
 | `*Into` variants    | Per-frame animation and pointer-drag loops              | Object-returning conversions and `mix` | Add alongside; object API primary  | Cuts GC count to zero at similar ns/op. V8 double boxing limits wins in large loops.                                         |
-| Array & GPU interop | three.js, WebGL uniforms, WebGPU buffers, vertex colors | `toRgb`, `toP3`, `toCss`               | Add alongside                      | Exact unclamped floats in the renderer's space, instead of 8-bit clipped strings. Typed arrays avoid boxing.                 |
+| Array & GPU interop | three.js, WebGL uniforms, WebGPU buffers, vertex colors | `toRgb`, `toP3`, `toCss`               | Add alongside                      | Exact unclamped floats in the renderer's space, instead of 8-bit clipped strings. Typed arrays store unboxed float32 values. |
 
 None of the three replaces an existing API.
 
