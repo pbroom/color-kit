@@ -20,7 +20,6 @@ Do not green-light large features on these surfaces without a decomposition plan
 
 - No god-file growth past 1k lines without a split plan (eight production files already exceed it)
 - No feature logic in shared paths without a dedicated abstraction
-- No manual registry forks diverging from `@color-kit/react` + `@color-kit/control-kit`
 - No inverted package layering (e.g. contrast ↔ plane type cycles)
 - No compute backend should report a backend it did not truly execute
 - No worker/backend ABI should silently manufacture geometry from missing payload fields
@@ -33,7 +32,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-001 — Stop registry drift: thin wrappers + CI parity gate
 
 - **Priority:** P0
-- **Status:** Completed 2026-05-25
+- **Status:** Completed 2026-05-25; **Obsolete (2026-09-25)** — the shadcn `registry/` directory and `scripts/check-registry-sync.mjs` were removed in the aggressive cleanup, so there is no registry surface left to drift.
 - **Evidence:**
   - `registry/components/color-input.tsx` now mirrors the canonical `packages/react/src/color-input.tsx` adapter and delegates parsing/scrubbing to `color-kit/react` + `color-kit/control-kit`.
   - `scripts/check-registry-sync.mjs` runs through `pnpm check:preprod` so CI rejects color-input registry drift, missing registry dependencies, or a reintroduced local parser/scrub fork.
@@ -107,7 +106,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-004 — Split lab `shared.tsx` god file
 
 - **Priority:** P1
-- **Status:** Done (2026-07-14) — `shared.tsx` deleted; modules extracted to `components/`, `fixtures/`, `color/`, `hooks/`; `LabPageKey` moved to `types.ts`.
+- **Status:** Done (2026-07-14) — `shared.tsx` deleted; modules extracted to `components/`, `fixtures/`, `color/`, `hooks/`; `LabPageKey` moved to `types.ts`. **Removed (2026-09-25)** — the entire docs Lab (`apps/docs/src/routes/lab/**`) was deleted, so this surface no longer exists.
 - **Evidence:**
   - `apps/docs/src/routes/lab/shared.tsx` — 2,927 lines.
   - Mega barrel: pages import primitives, react components, Lucide icons, fixtures, menu demos, color-plane helpers, panel wrappers, and 10 playground stages from one module.
@@ -239,7 +238,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-009 — Collapse lab config field wrappers
 
 - **Priority:** P2
-- **Status:** Open
+- **Status:** Obsolete (2026-09-25) — the docs Lab was deleted; the config field wrappers went with it.
 - **Evidence:**
   - `apps/docs/src/routes/lab/shared.tsx` (lines ~1477–1821): `NumberConfigField`, `PrecisionConfigInput`, `StepConfigInput`, `DragStepConfigInput`, `BoundsConfigInput`, `DragThresholdConfigInput` each duplicate the same scrub/commit/pointer-lock defaults.
   - `apps/docs/src/routes/lab/pages/input.tsx` (525 lines) repeats the full props block for the preview.
@@ -277,7 +276,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-011 — Continue decomposing docs right-rail panels
 
 - **Priority:** P2
-- **Status:** Open
+- **Status:** Open (surface retained). Note 2026-09-25: the `components/panels/*-properties-panel.tsx` modules and `docs-properties-panel-controls.tsx` were never wired in (`component-docs-data.tsx` still lazy-loads all panels from `docs-right-rail-panels.tsx`); those unreferenced duplicates were deleted, so slice 4 must be redone if pursued.
 - **Evidence:**
   - CQ-009 moved panels from `docs-right-rail.tsx` (now 106-line shell) to `docs-right-rail-panels.tsx` (1,404 lines).
   - CQ-010 added `color-area-contrast-tiers.ts` descriptor table shared by demos and panels.
@@ -377,7 +376,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-016 — Split Sandpack file generation from playground UI
 
 - **Priority:** P2
-- **Status:** Open
+- **Status:** Open (narrowed 2026-09-25) — the Lab validation playground (`plane-api-playground-lab.demo.tsx`) was removed; only the Plane API quick-start Sandpack remains.
 - **Evidence:**
   - `apps/docs/src/components/plane-api-playground.sandpack.tsx` raw-globs selected `packages/core/src` files, rewrites imports with regexes, builds hidden support files, and renders the Sandpack UI.
   - `apps/docs/scripts/check-plane-quick-start-sync.mjs` validates broad text patterns rather than structured sandbox file resolution.
@@ -419,11 +418,11 @@ Do not green-light large features on these surfaces without a decomposition plan
 
 ## Suggested execution order
 
-1. **IB-001** — Stop registry drift (blocks consumer bug-fix flow).
+1. ~~**IB-001** — Stop registry drift~~ (obsolete: registry removed).
 2. **IB-013 + IB-014** — Make compute backend telemetry honest and harden the packed query ABI.
 3. **IB-002 + IB-007** — Shared plane query layer + delete legacy worker (biggest react LOC + perf win).
 4. **IB-003** — Decompose contrast-region god module.
-5. **IB-004 + IB-009** — Split lab shared + lab numeric field wrappers.
+5. ~~**IB-004 + IB-009** — Split lab shared + lab numeric field wrappers~~ (obsolete: Lab removed).
 6. **IB-015 + IB-011** — Collapse component-doc and properties-panel ownership to descriptors.
 7. **IB-005 + IB-006** — Core type cycle + solver decomposition.
 8. **IB-008, IB-010, IB-012, IB-016, IB-017** — Control-kit scrub split, parser split, color-area slot/interaction, Sandpack generation, multi-color state.
@@ -452,7 +451,6 @@ All items from `CODE_QUALITY_BACKLOG.md` (reviewed 2026-05-24) are complete:
 ## Healthy patterns to preserve
 
 - **`packages/react/src/api/color-area.ts`** — thin, testable facade over `@color-kit/core`; extend this pattern to worker payloads (IB-002).
-- **`packages/react/src/color-input.tsx`** — domain API + primitive hook; registry should mirror this (IB-001).
+- **`packages/react/src/color-input.tsx`** — domain API + primitive hook.
 - **`packages/control-kit` tests** — broad scrub/keyboard/commit coverage; use as guard during IB-008.
-- **`apps/docs/src/routes/lab/page-registry.tsx`** — clean descriptor pattern; extend decomposition into IB-004.
 - **`packages/core/src/contour/index.ts`** — shared marching-squares; keep growing shared libs here, not in feature modules (CQ-003).

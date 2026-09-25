@@ -89,11 +89,6 @@ export const docsNavigation: DocsNavSection[] = [
         path: 'react-primitives',
         href: toDocsHref('react-primitives'),
       },
-      {
-        title: 'shadcn Registry',
-        path: 'shadcn-registry',
-        href: toDocsHref('shadcn-registry'),
-      },
     ],
   },
   {

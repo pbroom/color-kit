@@ -45,13 +45,9 @@ export function ComponentDocPage({ doc }: { doc: ComponentDocData }) {
 
       <section id="installation" className="scroll-mt-24 space-y-4">
         <h2>Installation</h2>
-        <p>Install from npm or pull the source via the shadcn registry.</p>
+        <p>Install from npm.</p>
         <div className="not-prose grid gap-4 md:grid-cols-2">
           <CommandCard label="npm / pnpm" command="pnpm add color-kit@next" />
-          <CommandCard
-            label="shadcn registry"
-            command={`npx shadcn add ${doc.registryName} --registry color-kit`}
-          />
         </div>
       </section>
 

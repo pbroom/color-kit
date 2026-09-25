@@ -10,11 +10,11 @@ function NotFound() {
       status="404"
       eyebrow="Missing document"
       title="That docs page does not exist"
-      description="The documentation page you opened is not in the registry yet. Start from the introduction or browse the Lab."
+      description="The documentation page you opened is not in the registry yet. Start from the introduction or browse the components."
       primaryAction="Open docs"
       primaryLink="/docs/introduction"
-      secondaryAction="Open Lab"
-      secondaryLink="/lab"
+      secondaryAction="Browse components"
+      secondaryLink="/docs/components/color-area"
     />
   );
 }

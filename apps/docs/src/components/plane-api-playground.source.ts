@@ -40,9 +40,3 @@ export function loadPlaneApiPlaygroundSource(): Promise<string> {
     ({ default: source }) => trimBlankEdges(source.replace(/\r\n/g, '\n')),
   );
 }
-
-export function loadPlaneApiPlaygroundLabSource(): Promise<string> {
-  return import('./plane-api-playground-lab.demo.tsx?raw').then(
-    ({ default: source }) => trimBlankEdges(source.replace(/\r\n/g, '\n')),
-  );
-}

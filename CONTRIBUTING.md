@@ -15,8 +15,6 @@ color-kit is an API-first, UI-agnostic color engine: conversion, contrast, harmo
 | `packages/react`     | React bindings and components                                                                 |
 | `packages/color-kit` | The published umbrella package (`color-kit` on npm)                                           |
 | `apps/docs`          | Docs site (Vite + MDX)                                                                        |
-| `registry`           | shadcn registry items                                                                         |
-| `archive/`           | Historical planning notes, kept for reference                                                 |
 
 ## Getting started
 

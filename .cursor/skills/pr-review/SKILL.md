@@ -111,7 +111,3 @@ If the API for a single review with comments is awkward in your environment:
 - **Inline:** Only for line-specific, actionable findings. One issue per comment; include [SEV-x], short title, Risk, Fix, and optionally Test in the comment body.
 - **Body:** All non-line-specific findings, open questions, and change summary. No need to duplicate full text of inline findings in the body if you list them in "Inline comments" with file:line and title.
 - Do not ask the user to approve before posting; publish as part of the review workflow.
-
-## Automation note
-
-For automatic reviews on PR open/synchronize events (using this same format), follow `automation.md`.

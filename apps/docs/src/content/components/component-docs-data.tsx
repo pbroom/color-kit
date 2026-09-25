@@ -56,7 +56,6 @@ export interface ComponentDocData {
   title: string;
   summary: string;
   description: string;
-  registryName: string;
   demo: ComponentDocDemo;
   usage: string;
   helperApis: string[];
@@ -76,7 +75,6 @@ const docs: ComponentDocRegistry = {
     summary: 'Shared state host for requested/displayed color workflows.',
     description:
       'Use Color to coordinate ColorArea, sliders, and input fields around one canonical requested color state.',
-    registryName: 'color',
     demo: ColorProviderDemo,
     usage: `import { Color, ColorArea, ColorSlider } from 'color-kit/react';
 import { ColorInput } from 'color-kit/react/color-input';
@@ -109,7 +107,6 @@ export function Picker() {
     summary: 'Two-dimensional channel plane for advanced color selection.',
     description:
       'ColorArea defines a composable 2D plane where pointer interactions map to requested color intent and child primitives render layers, paths, and markers.',
-    registryName: 'color-area',
     demo: ColorAreaDemo,
     usage: `import {
   Background,
@@ -160,7 +157,6 @@ export function Picker() {
     summary: 'Single-axis channel control for `l`, `c`, `h`, and `alpha`.',
     description:
       'ColorSlider is the generic primitive for horizontal or vertical channel manipulation across models.',
-    registryName: 'color-slider',
     demo: ColorSliderDemo,
     usage: `import { ColorSlider } from 'color-kit/react';
 
@@ -200,7 +196,6 @@ export function Picker() {
     summary: 'Channel-aware value input with scrub and expression support.',
     description:
       'ColorInput edits a single channel in oklch/rgb/hsl using typed math expressions, keyboard stepping, and left-edge scrubbing.',
-    registryName: 'color-input',
     demo: ColorInputDemo,
     usage: `import { ColorInput } from 'color-kit/react/color-input';
 
@@ -230,7 +225,6 @@ export function Picker() {
     summary: 'Legacy free-form string entry for full color values.',
     description:
       'ColorStringInput preserves the original hex/rgb/hsl/oklch text parsing workflow while ColorInput focuses on channel editing.',
-    registryName: 'color-string-input',
     demo: ColorStringInputDemo,
     usage: `import { ColorStringInput } from 'color-kit/react';
 
