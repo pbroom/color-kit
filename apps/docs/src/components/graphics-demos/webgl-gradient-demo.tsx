@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { packColors, parse } from 'color-kit';
 import {
   createGradientRenderer,
+  watchContextLoss,
   type GradientRenderer,
   type VertexColorSpace,
 } from './webgl-gradient.js';
@@ -24,15 +25,34 @@ export default function WebglGradientDemo() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<GradientRenderer | null>(null);
 
+  // Bumped on webglcontextrestored so the renderer is rebuilt and redrawn.
+  const [contextVersion, setContextVersion] = useState(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    return watchContextLoss(
+      canvas,
+      () => {
+        // The old GL objects are gone; stop drawing until restore.
+        rendererRef.current = null;
+      },
+      () => setContextVersion((version) => version + 1),
+    );
+  }, []);
+
   useEffect(() => {
     const gl = canvasRef.current?.getContext('webgl2');
-    if (!gl) return;
-    rendererRef.current = createGradientRenderer(gl);
+    if (!gl || gl.isContextLost()) return;
+    const renderer = createGradientRenderer(gl);
+    rendererRef.current = renderer;
     return () => {
-      rendererRef.current?.dispose();
+      // A renderer from a lost context owns nothing; only free live ones.
+      if (rendererRef.current !== renderer) return;
+      renderer.dispose();
       rendererRef.current = null;
     };
-  }, []);
+  }, [contextVersion]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -41,7 +61,7 @@ export default function WebglGradientDemo() {
       corners.map((hex) => parse(hex)),
       space,
     );
-  }, [corners, space]);
+  }, [corners, space, contextVersion]);
 
   // Same call the renderer makes, rendered here so the floats are visible.
   const packed = packColors(
