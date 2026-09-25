@@ -1,4 +1,9 @@
 import type { InternalPlaneTraceContext } from '../trace/context.js';
+import type {
+  PackedPlaneQueryDescriptorOf,
+  PackedReader,
+  PackedWriter,
+} from './packed-abi.js';
 import type { PlaneQueryKind } from '../trace/types.js';
 import type {
   Plane,
@@ -57,6 +62,31 @@ export interface PlaneQuerySpec<K extends PlaneQueryKind> {
   budget(query: PlaneQueryOf<K>): number;
   telemetryGroup?: PlaneQueryTelemetryGroup;
   telemetrySignature?(query: PlaneQueryOf<K>, plane: Plane): string;
+  /** Set when every packed path of this kind holds exactly one point. */
+  fixedPointCount?: 1;
+  /**
+   * Appends the result's paths to the writer and returns its descriptor.
+   * `pathStart` must be the writer's path count before appending.
+   */
+  pack(
+    result: PlaneQueryResultOf<K>,
+    writer: PackedWriter,
+    label: string,
+  ): PackedPlaneQueryDescriptorOf<K>;
+  /**
+   * Checks kind-specific descriptor fields (presence, enums, finite hue,
+   * secondary path ranges). Base fields are validated by the decoder.
+   */
+  validateDescriptor(
+    descriptor: object,
+    label: string,
+  ): asserts descriptor is PackedPlaneQueryDescriptorOf<K>;
+  /** Total number of consecutive paths the descriptor owns from pathStart. */
+  pathSpan?(descriptor: PackedPlaneQueryDescriptorOf<K>): number;
+  unpack(
+    descriptor: PackedPlaneQueryDescriptorOf<K>,
+    reader: PackedReader,
+  ): PlaneQueryResultOf<K>;
 }
 
 export type PlaneQuerySpecRegistry = {

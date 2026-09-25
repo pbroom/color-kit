@@ -1,5 +1,6 @@
 import { chromaBand } from '../../gamut/index.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
+import { requireHueField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
 import { resolvePlaneDefinition } from '../resolve.js';
 import type {
@@ -70,4 +71,22 @@ export const chromaBandSpec: PlaneQuerySpec<'chromaBand'> = {
   fixedPathCount: 1,
   countGeometry: (result) => countSinglePath(result.points),
   budget: (query) => query.steps ?? 48,
+  pack(result, writer, label) {
+    const pathStart = writer.pathCount;
+    writer.appendLCPath(result.points, label);
+    return {
+      kind: 'chromaBand',
+      pathStart,
+      pathCount: 1,
+      hue: result.hue,
+    };
+  },
+  validateDescriptor(descriptor, label) {
+    requireHueField(descriptor, label);
+  },
+  unpack: (descriptor, reader) => ({
+    kind: 'chromaBand',
+    hue: descriptor.hue,
+    points: reader.readLCPath(descriptor.pathStart),
+  }),
 };

@@ -47,4 +47,20 @@ export const gradientSpec: PlaneQuerySpec<'gradient'> = {
   fixedPathCount: 1,
   countGeometry: (result) => countSinglePath(result.points),
   budget: (query) => query.steps ?? 48,
+  pack(result, writer, label) {
+    const pathStart = writer.pathCount;
+    writer.appendColorPath(result.points, label);
+    return {
+      kind: 'gradient',
+      pathStart,
+      pathCount: 1,
+    };
+  },
+  validateDescriptor() {
+    // Gradient descriptors carry no kind-specific fields.
+  },
+  unpack: (descriptor, reader) => ({
+    kind: 'gradient',
+    points: reader.readColorPath(descriptor.pathStart),
+  }),
 };

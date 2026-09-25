@@ -1,5 +1,6 @@
 import { gamutBoundaryPath } from '../../gamut/index.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
+import { requireGamutField, requireHueField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
 import { resolvePlaneDefinition } from '../resolve.js';
 import type {
@@ -65,4 +66,25 @@ export const gamutBoundarySpec: PlaneQuerySpec<'gamutBoundary'> = {
   fixedPathCount: 1,
   countGeometry: (result) => countSinglePath(result.points),
   budget: (query) => query.steps ?? 48,
+  pack(result, writer, label) {
+    const pathStart = writer.pathCount;
+    writer.appendLCPath(result.points, label);
+    return {
+      kind: 'gamutBoundary',
+      pathStart,
+      pathCount: 1,
+      gamut: result.gamut,
+      hue: result.hue,
+    };
+  },
+  validateDescriptor(descriptor, label) {
+    requireGamutField(descriptor, label);
+    requireHueField(descriptor, label);
+  },
+  unpack: (descriptor, reader) => ({
+    kind: 'gamutBoundary',
+    gamut: descriptor.gamut,
+    hue: descriptor.hue,
+    points: reader.readLCPath(descriptor.pathStart),
+  }),
 };

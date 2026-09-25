@@ -1,5 +1,6 @@
 import { toP3Gamut, toSrgbGamut } from '../../gamut/index.js';
 import { colorToPlane } from '../mapping.js';
+import { requireGamutField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
 import { resolvePlaneDefinition } from '../resolve.js';
 import type {
@@ -45,4 +46,23 @@ export const fallbackPointSpec: PlaneQuerySpec<'fallbackPoint'> = {
   fixedPathCount: 1,
   countGeometry: () => ({ pathCount: 1, pointCount: 1 }),
   budget: () => 1,
+  fixedPointCount: 1,
+  pack(result, writer, label) {
+    const pathStart = writer.pathCount;
+    writer.appendColorPath([result.point], label);
+    return {
+      kind: 'fallbackPoint',
+      pathStart,
+      pathCount: 1,
+      gamut: result.gamut,
+    };
+  },
+  validateDescriptor(descriptor, label) {
+    requireGamutField(descriptor, label);
+  },
+  unpack: (descriptor, reader) => ({
+    kind: 'fallbackPoint',
+    gamut: descriptor.gamut,
+    point: reader.readColorPath(descriptor.pathStart)[0],
+  }),
 };

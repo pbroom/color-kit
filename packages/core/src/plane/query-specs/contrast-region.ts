@@ -1,6 +1,7 @@
 import { contrastRegionPaths } from '../../contrast/index.js';
 import type { InternalPlaneTraceContext } from '../../trace/context.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
+import { requireHueField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
 import { resolvePlaneDefinition } from '../resolve.js';
 import type {
@@ -68,4 +69,24 @@ export const contrastRegionSpec: PlaneQuerySpec<'contrastRegion'> = {
   budget: contrastQueryBudget,
   telemetryGroup: 'contrast',
   telemetrySignature: contrastTelemetrySignature,
+  pack(result, writer, label) {
+    const pathStart = writer.pathCount;
+    result.paths.forEach((path, index) => {
+      writer.appendLCPath(path, `${label} path ${index}`);
+    });
+    return {
+      kind: 'contrastRegion',
+      pathStart,
+      pathCount: result.paths.length,
+      hue: result.hue,
+    };
+  },
+  validateDescriptor(descriptor, label) {
+    requireHueField(descriptor, label);
+  },
+  unpack: (descriptor, reader) => ({
+    kind: 'contrastRegion',
+    hue: descriptor.hue,
+    paths: reader.readLCPaths(descriptor.pathStart, descriptor.pathCount),
+  }),
 };
