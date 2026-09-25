@@ -86,11 +86,13 @@ export interface InterpolationOptions {
 }
 
 /**
- * Chroma below which an OKLCH hue is treated as powerless (CSS Color 4 §12.4:
- * the achromatic endpoint takes the other endpoint's hue). Matches the
- * threshold `oklabToOklch` uses to report an undefined hue as `0`.
+ * OKLCH chroma at or below which the hue is powerless: the CSS Color 4 OKLCH
+ * epsilon (`OKLab_to_OKLCH` in the spec's sample code uses
+ * `chroma <= 0.000004`). A powerless endpoint takes the other endpoint's hue.
+ * Only the option-driven (CSS) path uses this; the option-less legacy
+ * `interpolate()` keeps its own `0.001` cutoff.
  */
-export const ACHROMATIC_CHROMA_THRESHOLD = 1e-4;
+export const ACHROMATIC_CHROMA_THRESHOLD = 0.000004;
 
 type Vec3 = [number, number, number];
 
@@ -104,7 +106,7 @@ function decodeChannel(value: number): number {
 }
 
 function isPowerless(color: Color): boolean {
-  return !(color.c >= ACHROMATIC_CHROMA_THRESHOLD) || !Number.isFinite(color.h);
+  return !(color.c > ACHROMATIC_CHROMA_THRESHOLD) || !Number.isFinite(color.h);
 }
 
 /**

@@ -1244,9 +1244,39 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
     { ...IN_GAMUT[(i * 7 + 3) % IN_GAMUT.length], alpha: mixAlpha() },
   ]);
 
+  /**
+   * OKLCH-only pairs around the powerless-hue epsilon, e.g.
+   * oklch(0.5 0.00005 0), whose hue must still drive the mix. (Kept out of
+   * the rectangular comparisons: colorjs.io's range() drops such tiny hues
+   * when converting its inputs.)
+   */
+  const FAINT: Color[] = [
+    { l: 0.5, c: 0.00005, h: 0, alpha: 1 },
+    { l: 0.4, c: 0.00002, h: 200, alpha: 0.6 },
+    { l: 0.7, c: 0.000004, h: 90, alpha: 1 },
+    { l: 0.3, c: 0.000003, h: 300, alpha: 1 },
+  ];
+  const OKLCH_PAIRS: [Color, Color][] = [
+    ...PAIRS,
+    ...FAINT.flatMap((faint, i): [Color, Color][] => [
+      [faint, PAIRS[i * 11][1]],
+      [PAIRS[i * 17 + 1][0], faint],
+      [faint, FAINT[(i + 1) % FAINT.length]],
+    ]),
+  ];
+
+  /**
+   * CSS Color 4 OKLCH epsilon (spec sample code `OKLab_to_OKLCH`:
+   * `chroma <= 0.000004` makes the hue `none`). colorjs.io only treats an
+   * OKLCH hue as powerless when it is `none`, so the reference marks exactly
+   * those hues, and nothing above the epsilon.
+   */
+  const CSS_OKLCH_EPSILON = 0.000004;
+
   /** colorjs.io input; a powerless OKLCH hue becomes `none` (NaN). */
   function refInput(color: Color, powerlessHue: boolean): ColorJs {
-    const hue = powerlessHue && color.c < 1e-4 ? Number.NaN : color.h;
+    const hue =
+      powerlessHue && color.c <= CSS_OKLCH_EPSILON ? Number.NaN : color.h;
     return ref('oklch', [color.l, color.c, hue], color.alpha);
   }
 
@@ -1290,7 +1320,7 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
         const label = `mix in oklch ${hue}${premultiplied ? ' premult' : ''}`;
         const lc = new Tracker(`${label} (L, C)`, FLOAT_TOL);
         const h = new Tracker(`${label} (h, deg)`, HUE_TOL);
-        for (const [a, b] of PAIRS) {
+        for (const [a, b] of OKLCH_PAIRS) {
           for (const t of T_VALUES) {
             const kit = mix(a, b, t, { space: 'oklch', hue, premultiplied });
             const reference = refInput(a, true).mix(refInput(b, true), t, {

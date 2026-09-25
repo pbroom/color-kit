@@ -164,6 +164,15 @@ describe('hue interpolation methods (oklch)', () => {
     expect(result.h).toBeCloseTo(30, 10);
     const bothGrey = mix(grey, { ...grey, h: 90 }, 0.5, { space: 'oklch' });
     expect(bothGrey.h).toBe(0);
+    // Tiny but non-zero chroma above the CSS epsilon (0.000004) keeps its hue,
+    // e.g. oklch(0.5 0.00005 0).
+    const faint: Color = { l: 0.5, c: 0.00005, h: 0, alpha: 1 };
+    expect(mix(faint, at(90), 0.5, { space: 'oklch' }).h).toBeCloseTo(45, 9);
+    const belowEpsilon: Color = { l: 0.5, c: 0.000004, h: 0, alpha: 1 };
+    expect(mix(belowEpsilon, at(90), 0.5, { space: 'oklch' }).h).toBeCloseTo(
+      90,
+      9,
+    );
     // No arc is added for a powerless endpoint, even with 'longer'.
     for (const t of [0.25, 0.5, 0.75]) {
       const longer = mix(grey, at(30), t, { space: 'oklch', hue: 'longer' });
