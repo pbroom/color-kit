@@ -33,6 +33,9 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+      - name: Typecheck docs app
+        run: pnpm --filter @color-kit/docs typecheck
+
       - name: Check bundle size budgets
         run: pnpm size
 
