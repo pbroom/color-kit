@@ -48,16 +48,7 @@ function formatEntry(entry) {
   return `- **${entry.date} — ${entry.title}**: ${entry.lesson}`;
 }
 
-function parseEntries(text) {
-  const entries = [];
-  for (const line of text.split(/\r?\n/)) {
-    const parsed = parseEntryLine(line);
-    if (parsed) {
-      entries.push(parsed);
-    }
-  }
-  return entries;
-}
+const ENTRIES_HEADING = '## Entries';
 
 function renderArchive(entries) {
   return [
@@ -72,11 +63,54 @@ function renderArchive(entries) {
     '',
     '- `- **YYYY-MM-DD — Short title**: One or two sentence actionable lesson.`',
     '',
-    '## Entries',
+    ENTRIES_HEADING,
     '',
     ...entries.map(formatEntry),
     '',
   ].join('\n');
+}
+
+// Update the archive in place so undated entries, subsections, and any other
+// non-entry content survive. An existing dated entry with the same title is
+// replaced where it sits; otherwise the new entry is appended to the end of the
+// primary `## Entries` list (before any nested `###` subsection).
+function upsertArchiveEntry(archiveText, entry) {
+  const lines = archiveText.split(/\r?\n/);
+  const existingIndex = lines.findIndex(
+    (line) => parseEntryLine(line)?.title === entry.title,
+  );
+  if (existingIndex >= 0) {
+    lines[existingIndex] = formatEntry(entry);
+    return `${lines.join('\n').replace(/\s+$/u, '')}\n`;
+  }
+
+  const headingIndex = lines.findIndex(
+    (line) => line.trim() === ENTRIES_HEADING,
+  );
+  if (headingIndex === -1) {
+    if (archiveText.trim() === '') {
+      return renderArchive([entry]);
+    }
+    return `${archiveText.replace(/\s+$/u, '')}\n\n${ENTRIES_HEADING}\n\n${formatEntry(entry)}\n`;
+  }
+
+  let insertAt = lines.length;
+  for (let i = headingIndex + 1; i < lines.length; i += 1) {
+    if (lines[i].startsWith('## ') || lines[i].startsWith('### ')) {
+      insertAt = i;
+      break;
+    }
+  }
+  while (insertAt > headingIndex + 1 && lines[insertAt - 1].trim() === '') {
+    insertAt -= 1;
+  }
+
+  const inserted =
+    insertAt === headingIndex + 1
+      ? ['', formatEntry(entry)]
+      : [formatEntry(entry)];
+  lines.splice(insertAt, 0, ...inserted);
+  return `${lines.join('\n').replace(/\s+$/u, '')}\n`;
 }
 
 function readFileOrFail(filePath) {
@@ -200,22 +234,13 @@ function main() {
   const { title, lesson, active } = parseArgs(process.argv);
 
   const archiveText = readFileOrFail(archivePath);
-  const archiveEntries = parseEntries(archiveText);
   const newEntry = {
     date: localDateString(new Date()),
     title,
     lesson,
   };
 
-  const existingArchiveIndex = archiveEntries.findIndex(
-    (entry) => entry.title === title,
-  );
-  if (existingArchiveIndex >= 0) {
-    archiveEntries[existingArchiveIndex] = newEntry;
-  } else {
-    archiveEntries.push(newEntry);
-  }
-  writeFileOrFail(archivePath, renderArchive(archiveEntries));
+  writeFileOrFail(archivePath, upsertArchiveEntry(archiveText, newEntry));
 
   if (active) {
     const agentsText = readFileOrFail(agentsPath);
