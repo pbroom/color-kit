@@ -131,6 +131,12 @@ export function packColors<T extends WritableArrayLike>(
   out: T,
   options?: PackColorsOptions,
 ): T;
+export function packColors<T extends WritableArrayLike>(
+  colors: readonly Color[],
+  space: ArraySpace,
+  out: T | undefined,
+  options?: PackColorsOptions,
+): T | Float32Array;
 export function packColors(
   colors: readonly Color[],
   space: ArraySpace,
