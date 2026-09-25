@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Routes, Route } from 'react-router';
+import { Routes, Route } from 'react-router';
 import {
   ErrorPageContent,
   RouteErrorBoundary,
@@ -27,11 +27,6 @@ const ComponentDocRoute = lazy(() =>
     default: module.ComponentDocRoute,
   })),
 );
-const LabPage = lazy(() =>
-  import('./routes/lab.js').then((module) => ({
-    default: module.LabPage,
-  })),
-);
 
 function RouteFallback() {
   return <div className="ck-shell-bg min-h-screen" />;
@@ -50,15 +45,6 @@ export function App() {
               </Suspense>
             }
           />
-          <Route
-            path="lab"
-            element={
-              <Suspense fallback={<RouteFallback />}>
-                <LabPage />
-              </Suspense>
-            }
-          />
-          <Route path="playground" element={<Navigate to="/lab" replace />} />
           <Route
             path="docs"
             element={

@@ -261,12 +261,6 @@ function DocsLayoutInner() {
                 </PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <PrefetchLink to="/docs/shadcn-registry">Registry</PrefetchLink>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <PrefetchLink to="/lab">Lab</PrefetchLink>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
                 <a
                   href="https://github.com/pbroom/color-kit"
                   target="_blank"

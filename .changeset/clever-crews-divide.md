@@ -10,7 +10,7 @@ Remove deprecated `HueSlider` and `AlphaSlider` wrapper components in favor of `
 - Replace `AlphaSlider` with `ColorSlider channel="alpha"`.
 - Update imports to remove `HueSlider`/`AlphaSlider` from `@color-kit/react`.
 
-## Registry changes
+## Registry distribution removed
 
-- Removed `hue-slider` and `alpha-slider` component entries from `registry/registry.json`.
-- Use `color-slider` and set `channel` to `h` or `alpha` as needed.
+- The shadcn-style `registry/` (including the former `hue-slider`, `alpha-slider`, and `color-slider` entries) is no longer published.
+- Install the components from npm instead (`@color-kit/react` or the `color-kit` umbrella package) and use `ColorSlider` with `channel` set to `h` or `alpha` as needed.

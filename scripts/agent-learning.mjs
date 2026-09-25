@@ -48,16 +48,7 @@ function formatEntry(entry) {
   return `- **${entry.date} — ${entry.title}**: ${entry.lesson}`;
 }
 
-function parseEntries(text) {
-  const entries = [];
-  for (const line of text.split(/\r?\n/)) {
-    const parsed = parseEntryLine(line);
-    if (parsed) {
-      entries.push(parsed);
-    }
-  }
-  return entries;
-}
+const ENTRIES_HEADING = '## Entries';
 
 function renderArchive(entries) {
   return [
@@ -72,11 +63,67 @@ function renderArchive(entries) {
     '',
     '- `- **YYYY-MM-DD — Short title**: One or two sentence actionable lesson.`',
     '',
-    '## Entries',
+    ENTRIES_HEADING,
     '',
     ...entries.map(formatEntry),
     '',
   ].join('\n');
+}
+
+// Update the archive in place so undated entries, subsections, and any other
+// non-entry content survive. Only the primary `## Entries` list (up to the
+// first nested `###` subsection) holds live learnings: an entry there with the
+// same title is replaced where it sits, otherwise the new entry is appended to
+// that list. A same-titled dated entry in a retired subsection (for example
+// "Moved from AGENTS.md") is superseded and removed, so the learning becomes
+// live again without leaving a duplicate title behind.
+function upsertArchiveEntry(archiveText, entry) {
+  const lines = archiveText.split(/\r?\n/);
+  const headingIndex = lines.findIndex(
+    (line) => line.trim() === ENTRIES_HEADING,
+  );
+  if (headingIndex === -1) {
+    if (archiveText.trim() === '') {
+      return renderArchive([entry]);
+    }
+    return `${archiveText.replace(/\s+$/u, '')}\n\n${ENTRIES_HEADING}\n\n${formatEntry(entry)}\n`;
+  }
+
+  let primaryEnd = lines.length;
+  for (let i = headingIndex + 1; i < lines.length; i += 1) {
+    if (lines[i].startsWith('## ') || lines[i].startsWith('### ')) {
+      primaryEnd = i;
+      break;
+    }
+  }
+
+  const isSameTitle = (line) => parseEntryLine(line)?.title === entry.title;
+  const retained = lines.filter(
+    (line, index) =>
+      (index > headingIndex && index < primaryEnd) || !isSameTitle(line),
+  );
+  const removedBefore = lines
+    .slice(0, headingIndex)
+    .filter((line) => isSameTitle(line)).length;
+  const start = headingIndex - removedBefore;
+  const end = primaryEnd - removedBefore;
+
+  const existingIndex = retained.findIndex(
+    (line, index) => index > start && index < end && isSameTitle(line),
+  );
+  if (existingIndex >= 0) {
+    retained[existingIndex] = formatEntry(entry);
+    return `${retained.join('\n').replace(/\s+$/u, '')}\n`;
+  }
+
+  let insertAt = end;
+  while (insertAt > start + 1 && retained[insertAt - 1].trim() === '') {
+    insertAt -= 1;
+  }
+  const inserted =
+    insertAt === start + 1 ? ['', formatEntry(entry)] : [formatEntry(entry)];
+  retained.splice(insertAt, 0, ...inserted);
+  return `${retained.join('\n').replace(/\s+$/u, '')}\n`;
 }
 
 function readFileOrFail(filePath) {
@@ -200,22 +247,13 @@ function main() {
   const { title, lesson, active } = parseArgs(process.argv);
 
   const archiveText = readFileOrFail(archivePath);
-  const archiveEntries = parseEntries(archiveText);
   const newEntry = {
     date: localDateString(new Date()),
     title,
     lesson,
   };
 
-  const existingArchiveIndex = archiveEntries.findIndex(
-    (entry) => entry.title === title,
-  );
-  if (existingArchiveIndex >= 0) {
-    archiveEntries[existingArchiveIndex] = newEntry;
-  } else {
-    archiveEntries.push(newEntry);
-  }
-  writeFileOrFail(archivePath, renderArchive(archiveEntries));
+  writeFileOrFail(archivePath, upsertArchiveEntry(archiveText, newEntry));
 
   if (active) {
     const agentsText = readFileOrFail(agentsPath);

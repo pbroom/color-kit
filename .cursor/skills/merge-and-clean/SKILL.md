@@ -20,7 +20,7 @@ Confirm all of the following before acting:
 - the target PR is known, the current branch maps to a PR, or the merged branch to clean up is otherwise identifiable
 - `gh auth status` succeeds
 - you are not bypassing branch protection or approvals unless the user explicitly asked
-- if `greptile.json` enables a Greptile status check, it is either already green or you are explicitly waiting for it before merge
+- Greptile has reviewed the head commit (its status check is green when posted), or you are explicitly waiting for it before merge
 
 ## Step 1: Dry-Run Merge Readiness
 
@@ -43,7 +43,7 @@ Expected outcome:
 - required checks are green
 - approvals are satisfied
 - review threads are resolved
-- Greptile status is green when configured
+- Greptile has reviewed the head commit (status check green when posted)
 
 If any gate fails, stop and report the failed gates plus the smallest next action.
 

@@ -11,7 +11,6 @@ const routeLoaders = {
   docsLayout: () => import('../components/docs-layout.js'),
   docsPage: () => import('../routes/docs.js'),
   componentDoc: () => import('../routes/component-doc.js'),
-  lab: () => import('../routes/lab.js'),
 } as const;
 
 const prefetched = new Set<string>();
@@ -51,11 +50,6 @@ export function prefetchHref(href: string): void {
 
   if (path === '/' || path === '') {
     runLoader('home', routeLoaders.home);
-    return;
-  }
-
-  if (path.startsWith('/lab') || path.startsWith('/playground')) {
-    runLoader('lab', routeLoaders.lab);
     return;
   }
 

@@ -43,7 +43,7 @@ Rules:
 - Capture the starting `HEAD` SHA before making any fixes so rollback is straightforward.
 - If `.agent-context` exists, respect its branch/worktree scope.
 - Prefer isolated worktrees for long-lived PR babysitting.
-- If `greptile.json` is present, treat Greptile as a first-class review signal instead of an optional extra.
+- Treat Greptile as a first-class review signal instead of an optional extra.
 
 ## Step 1: Submit The PR
 
@@ -108,7 +108,7 @@ Collect all review sources before fixing anything:
 
 ### Greptile status and review
 
-If the repo has `greptile.json`, check for Greptile's status check and review comments:
+Check for Greptile's status check (if posted) and review comments:
 
 ```bash
 gh pr checks {PR_NUMBER}
@@ -247,4 +247,4 @@ Return one of:
 - Prefer `pnpm pr:stack` over raw `gt submit`.
 - Prefer the repo validator over ad hoc build/test command selection.
 - Use `gh run view --log-failed` as the source of truth for failing GitHub Actions jobs.
-- Treat Greptile status/comments as part of review readiness when `greptile.json` enables them.
+- Treat Greptile status/comments as part of review readiness.

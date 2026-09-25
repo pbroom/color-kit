@@ -2,8 +2,6 @@
 
 A searchable reference for design decisions, considerations, and requirements across color-kit. Use this document when you need to recall **why** something works the way it does. It is structured for lookup (headings, search) rather than sequential reading.
 
-**Related documents:** [notes.md](archive/notes.md) (roadmap, milestones), [notes.execution-gap.md](archive/notes.execution-gap.md) (intent-to-implementation status), [notes.color-area.shift.md](archive/notes.color-area.shift.md) (component model discussion), [notes.color-area.baseline.md](archive/notes.color-area.baseline.md) (ColorArea analysis).
-
 ---
 
 ## 1. Foundations
@@ -238,7 +236,7 @@ During pointer drag, **pointer move** updates a high-frequency preview (requeste
 
 React primitives are **unstyled** and use **data attributes** (`data-color-area`, `data-color-slider-thumb`, etc.) for styling and testing. No built-in theme or visual design is imposed.
 
-> **Why:** Consumers bring their own design system. Headless components own semantics and behavior; styling is consumer-owned. This also fits the shadcn distribution model (copy components into the app and style them).
+> **Why:** Consumers bring their own design system. Headless components own semantics and behavior; styling is consumer-owned.
 
 ### Color context provider model
 
@@ -269,7 +267,7 @@ Each primitive has a focused role. Summary:
 
 ColorArea is built from **primitives** (ColorPlane, Layer, Line, Point, Thumb, Background) rather than one monolithic component. The host provides the bounded 2D space, coordinate systems (UV ↔ color), and interaction; children provide rendering and overlays.
 
-> **Why:** Composability allows consumers to choose which layers (gamut boundary, contrast regions, fallback points, chroma band) to show and in what order. It keeps responsibilities separated: ColorArea owns space and interaction; ColorPlane owns raster; Layer/Line/Point own overlays; Thumb owns input. See [notes.color-area.shift.md](archive/notes.color-area.shift.md) for the full contract discussion.
+> **Why:** Composability allows consumers to choose which layers (gamut boundary, contrast regions, fallback points, chroma band) to show and in what order. It keeps responsibilities separated: ColorArea owns space and interaction; ColorPlane owns raster; Layer/Line/Point own overlays; Thumb owns input.
 
 **Contract summary:**
 
@@ -290,7 +288,7 @@ The 2D area is a **UI plane**: normalized (0–1) X and Y map to two color chann
 
 The main gradient surface (ColorPlane / ColorAreaGradient) is rendered with **WebGL** (GPU fragment shader), not Canvas 2D pixel loops.
 
-> **Why:** At pointer-move frequency, canvas 2D with per-pixel sampling cannot keep up on typical 2D sizes. WebGL generates pixels from uniforms and UV in the shader, avoiding CPU-side color conversion per pixel. See [notes.color-area.baseline.md](archive/notes.color-area.baseline.md) and agent learnings on keeping WebGL paths shader-native.
+> **Why:** At pointer-move frequency, canvas 2D with per-pixel sampling cannot keep up on typical 2D sizes. WebGL generates pixels from uniforms and UV in the shader, avoiding CPU-side color conversion per pixel. See agent learnings on keeping WebGL paths shader-native.
 
 ### Overlay invalidation boundaries
 
@@ -319,11 +317,11 @@ The public API favors **fewer, stable entry points** and **composition** over la
 
 > **Why:** Reduces API churn and keeps the mental model simple. Escape hatches (e.g. custom sampler, custom conversions) are designed in where needed so advanced users don’t have to fork.
 
-### Dual-track distribution: npm + shadcn
+### Distribution: npm
 
-The public package is published to **npm** as `color-kit`, with `color-kit/react` as the React subpath. React components are also available via a **shadcn-style registry** so consumers can copy source into their app.
+The public package is published to **npm** as `color-kit`, with `color-kit/react` as the React subpath and `color-kit/driver` for framework-agnostic interaction state.
 
-> **Why:** Library consumers get versioned dependencies and tree-shaking; copy-paste consumers get full control over the code and styling. Both tracks are first-class.
+> **Why:** Consumers get versioned dependencies and tree-shaking from a single package. (An earlier shadcn-style copy-source registry was removed to keep the surface focused on the engine.)
 
 ### Multi-color state
 
@@ -349,7 +347,7 @@ React state for high-frequency updates (e.g. during drag) uses **Legend State** 
 
 ### Performance budgets as release gates
 
-Targets are defined as **release gates** (see [notes.md](archive/notes.md)):
+Targets are defined as **release gates**:
 
 - Slider drag: p95 update ≤ 8 ms.
 - Area drag: p95 update ≤ 10 ms.
@@ -399,7 +397,7 @@ Focus indicators must remain **visible** on dynamic color surfaces. Thumbs and c
 
 Gamut and contrast states (out-of-gamut, failing contrast) must not be communicated **only** by color. Use icons, labels, or text (e.g. “Out of sRGB gamut”, contrast ratio readout) in addition to any color coding.
 
-> **Why:** Accessibility for low vision and color blindness. See [notes.md](archive/notes.md) Accessibility Contract.
+> **Why:** Accessibility for low vision and color blindness.
 
 ---
 
@@ -433,7 +431,7 @@ it('preserves hue and chroma when setting L to 0', () => {
 
 ### Test gates per milestone
 
-Test gates are defined in [notes.md](archive/notes.md) (Test Gates by Milestone). Each milestone (M1–M6) has associated test files that must pass before the milestone is considered done. Release gate: `pnpm build`, `pnpm test`, `pnpm format:check`, and (when implemented) a11y suite.
+Each feature area has associated test files that must pass before it is considered done. Release gate: `pnpm build`, `pnpm test`, `pnpm format:check`, and (when implemented) a11y suite.
 
 > **Why:** Ensures that delivered features are guarded by regression tests and that the build stays green before merging.
 
@@ -452,4 +450,4 @@ Test gates are defined in [notes.md](archive/notes.md) (Test Gates by Milestone)
 
 ---
 
-_This document is the canonical reference for design rationale. For roadmap and execution status, see [notes.md](archive/notes.md) and [notes.execution-gap.md](archive/notes.execution-gap.md)._
+_This document is the canonical reference for design rationale. For open work, see [implementation-backlog.md](implementation-backlog.md)._

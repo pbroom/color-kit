@@ -167,12 +167,6 @@ export function HomePage() {
                 </PrefetchLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <PrefetchLink to="/docs/shadcn-registry">Registry</PrefetchLink>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <PrefetchLink to="/lab">Lab</PrefetchLink>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
                 <a
                   href="https://github.com/pbroom/color-kit"
                   target="_blank"
@@ -217,11 +211,10 @@ export function HomePage() {
         <section className="space-y-4">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              Interactive Lab Grid
+              Component Showcase
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              This surface doubles as product showcase, performance testbed, and
-              visual consistency harness for docs development.
+              Live React primitives built on the color-kit engine.
             </p>
           </div>
 

@@ -33,12 +33,6 @@ This project is intentionally in a pre-production phase:
 pnpm add color-kit@next
 ```
 
-### shadcn Registry
-
-```bash
-npx shadcn add color-area --registry color-kit
-```
-
 ## Quick Start
 
 ### Plane queries (the engine)
@@ -216,18 +210,6 @@ pnpm publish:next
 
 # Same flow without publishing artifacts
 pnpm publish:next:dry
-```
-
-## Codex Guidance Template
-
-Use the reusable Codex `AGENTS.md` template in this repo to bootstrap other repositories.
-
-```bash
-# From this repo
-scripts/install-codex-agents.sh /path/to/other-repo
-
-# Overwrite existing AGENTS.md (creates backup first)
-scripts/install-codex-agents.sh /path/to/other-repo --force
 ```
 
 ## Agent Learnings Workflow

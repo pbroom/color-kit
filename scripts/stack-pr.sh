@@ -220,14 +220,6 @@ if [[ "${#key_files[@]}" -eq 0 ]]; then
   key_files=("(no file changes detected relative to ${base_ref})")
 fi
 
-milestones=()
-while IFS= read -r line; do
-  milestones+=("$line")
-done < <(git diff -U0 "${diff_base}...HEAD" -- archive/notes.md 2>/dev/null | rg -o 'M[0-9]+' | sort -u)
-if [[ "${#milestones[@]}" -eq 0 ]]; then
-  milestones=("Not specified in this branch")
-fi
-
 tmp_body="$(mktemp)"
 trap 'rm -f "$tmp_body"' EXIT
 
@@ -254,12 +246,6 @@ trap 'rm -f "$tmp_body"' EXIT
   echo "- pnpm test"
   echo "- pnpm format:check"
   echo "- [ ] Agent learnings updated (or N/A with reason)"
-  echo
-
-  echo "## Milestones"
-  for milestone in "${milestones[@]}"; do
-    echo "- ${milestone}"
-  done
 } > "$tmp_body"
 
 title="${summary_items[0]}"

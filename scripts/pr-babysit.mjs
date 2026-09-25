@@ -207,7 +207,9 @@ function summarizeReview(review) {
     id: String(review.id ?? ''),
     url: review.html_url ?? '',
     author: review.user?.login ?? '',
+    authorType: review.user?.type ?? '',
     state: review.state ?? '',
+    commitId: review.commit_id ?? '',
     submittedAt: review.submitted_at ?? '',
   };
 }
@@ -442,14 +444,34 @@ function isSuccessfulCheck(check) {
   );
 }
 
+// The Greptile GitHub App reviews as `greptile-apps[bot]` in the REST API
+// (GraphQL drops the `[bot]` suffix). `[bot]` logins cannot be registered by
+// users, so require the exact app account rather than a login prefix.
+const GREPTILE_APP_LOGIN = 'greptile-apps';
+
+function isGreptileReview(review) {
+  const login = review.author ?? '';
+  if (login === `${GREPTILE_APP_LOGIN}[bot]`) return true;
+  return login === GREPTILE_APP_LOGIN && review.authorType === 'Bot';
+}
+
+// Greptile reviews every PR via its GitHub App, but only posts a
+// `Greptile Review` status check when repo config opts in. Without that check,
+// require a Greptile PR review on the current head commit instead of treating
+// the review as complete.
 function hasCompletedGreptileReview(snapshot) {
   const greptileCheck = findCheck(snapshot, 'Greptile Review');
 
-  if (!greptileCheck) {
-    return true;
+  if (greptileCheck) {
+    return isSuccessfulCheck(greptileCheck);
   }
 
-  return isSuccessfulCheck(greptileCheck);
+  const headRefOid = snapshot.pr.headRefOid;
+  return snapshot.reviews.some(
+    (review) =>
+      isGreptileReview(review) &&
+      (!headRefOid || review.commitId === headRefOid),
+  );
 }
 
 function isReadyForUserMergeReview(snapshot) {
