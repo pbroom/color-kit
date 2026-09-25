@@ -3,11 +3,12 @@ import { lerp } from '../utils/index.js';
 import {
   hasInterpolationOptions,
   interpolateInSpace,
+  interpolateInSpaceInto,
   type InterpolationOptions,
 } from '../interpolation/index.js';
 import {
   generateOklchDefaultScale,
-  interpolateOklchDefault,
+  interpolateOklchDefaultInto,
   sampleScale,
 } from './legacy.js';
 
@@ -47,11 +48,53 @@ export function interpolate(
   t: number,
   options?: InterpolationOptions,
 ): Color {
+  return interpolateInto(
+    { l: 0, c: 0, h: 0, alpha: 1 },
+    color1,
+    color2,
+    t,
+    options,
+  );
+}
+
+/**
+ * Allocation-free `interpolate()`: writes the result into `out` and returns
+ * it. Same semantics and bit-identical results as `interpolate()`, including
+ * the option-less OKLCH default. `out` may be the same object as either input.
+ *
+ * @param out - Color to write the result into
+ * @param color1 - Start color
+ * @param color2 - End color
+ * @param t - Interpolation position; values outside `[0, 1]` extrapolate
+ * @param options - Interpolation space, hue method, and alpha handling (see
+ *   `interpolate()`)
+ *
+ * @example
+ * ```ts
+ * import { interpolateInto, parse, toRgbInto } from 'color-kit';
+ *
+ * const a = parse('#3b82f6');
+ * const b = parse('#ef4444');
+ * const color = { l: 0, c: 0, h: 0, alpha: 1 };
+ * const rgb = { r: 0, g: 0, b: 0, alpha: 1 };
+ * for (let x = 0; x < 256; x++) {
+ *   toRgbInto(rgb, interpolateInto(color, a, b, x / 255));
+ *   // write rgb.r / rgb.g / rgb.b into an ImageData row
+ * }
+ * ```
+ */
+export function interpolateInto(
+  out: Color,
+  color1: Color,
+  color2: Color,
+  t: number,
+  options?: InterpolationOptions,
+): Color {
   if (hasInterpolationOptions(options)) {
-    return interpolateInSpace(color1, color2, t, options);
+    return interpolateInSpaceInto(out, color1, color2, t, options);
   }
 
-  return interpolateOklchDefault(color1, color2, t);
+  return interpolateOklchDefaultInto(out, color1, color2, t);
 }
 
 /**

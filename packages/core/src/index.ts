@@ -55,6 +55,30 @@ export {
   p3ToLinearP3,
 } from './conversion/index.js';
 
+// Allocation-free (`out`-first) conversions for per-pixel / per-frame loops.
+// Each writes into `out`, returns it, and matches the allocating function
+// bit for bit.
+export {
+  toOklabInto,
+  fromOklabInto,
+  toLinearSrgbInto,
+  fromLinearSrgbInto,
+  toRgbInto,
+  fromRgbInto,
+  toP3Into,
+  fromP3Into,
+  srgbToLinearInto,
+  linearToSrgbInto,
+  linearRgbToOklabInto,
+  oklabToLinearRgbInto,
+  oklabToOklchInto,
+  oklchToOklabInto,
+  linearSrgbToLinearP3Into,
+  linearP3ToLinearSrgbInto,
+  linearP3ToP3Into,
+  p3ToLinearP3Into,
+} from './conversion/index.js';
+
 // Contrast
 export {
   relativeLuminance,
@@ -86,7 +110,12 @@ export {
 } from './harmony/index.js';
 
 // Scale
-export { interpolate, generateScale, lightnessScale } from './scale/index.js';
+export {
+  interpolate,
+  interpolateInto,
+  generateScale,
+  lightnessScale,
+} from './scale/index.js';
 export type {
   HueInterpolationMethod,
   InterpolationOptions,
@@ -102,6 +131,7 @@ export {
   adjustHue,
   setAlpha,
   mix,
+  mixInto,
   invert,
   grayscale,
 } from './manipulation/index.js';
@@ -124,7 +154,9 @@ export {
   isLinearRgbInGamut,
   inP3Gamut,
   toSrgbGamut,
+  toSrgbGamutInto,
   toP3Gamut,
+  toP3GamutInto,
   maxChromaForHue,
   maxChromaAt,
   gamutBoundaryPath,

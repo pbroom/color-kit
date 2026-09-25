@@ -1,8 +1,16 @@
 import type { Color, Oklab, Oklch } from '../types.js';
 import { degToRad, radToDeg, normalizeHue } from '../utils/index.js';
 
-/** Convert OKLAB to OKLCH */
-export function oklabToOklch(lab: Oklab): Oklch {
+/**
+ * Convert OKLAB to OKLCH, writing into `out` (allocation-free).
+ *
+ * @example
+ * ```ts
+ * const lch = { l: 0, c: 0, h: 0, alpha: 1 };
+ * oklabToOklchInto(lch, { L: 0.7, a: 0.1, b: 0.1, alpha: 1 });
+ * ```
+ */
+export function oklabToOklchInto(out: Oklch, lab: Oklab): Oklch {
   const c = Math.sqrt(lab.a * lab.a + lab.b * lab.b);
   let h = radToDeg(Math.atan2(lab.b, lab.a));
   h = normalizeHue(h);
@@ -12,18 +20,39 @@ export function oklabToOklch(lab: Oklab): Oklch {
     h = 0;
   }
 
-  return { l: lab.L, c, h, alpha: lab.alpha };
+  out.l = lab.L;
+  out.c = c;
+  out.h = h;
+  out.alpha = lab.alpha;
+  return out;
+}
+
+/** Convert OKLAB to OKLCH */
+export function oklabToOklch(lab: Oklab): Oklch {
+  return oklabToOklchInto({ l: 0, c: 0, h: 0, alpha: 1 }, lab);
+}
+
+/**
+ * Convert OKLCH to OKLAB, writing into `out` (allocation-free).
+ *
+ * @example
+ * ```ts
+ * const lab = { L: 0, a: 0, b: 0, alpha: 1 };
+ * oklchToOklabInto(lab, { l: 0.7, c: 0.15, h: 30, alpha: 1 });
+ * ```
+ */
+export function oklchToOklabInto(out: Oklab, oklch: Oklch): Oklab {
+  const hRad = degToRad(oklch.h);
+  out.L = oklch.l;
+  out.a = oklch.c * Math.cos(hRad);
+  out.b = oklch.c * Math.sin(hRad);
+  out.alpha = oklch.alpha;
+  return out;
 }
 
 /** Convert OKLCH to OKLAB */
 export function oklchToOklab(oklch: Oklch): Oklab {
-  const hRad = degToRad(oklch.h);
-  return {
-    L: oklch.l,
-    a: oklch.c * Math.cos(hRad),
-    b: oklch.c * Math.sin(hRad),
-    alpha: oklch.alpha,
-  };
+  return oklchToOklabInto({ L: 0, a: 0, b: 0, alpha: 1 }, oklch);
 }
 
 /**

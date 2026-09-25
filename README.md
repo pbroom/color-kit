@@ -184,6 +184,27 @@ palette.setActiveGamut('srgb');
 
 `inSrgbGamut()` `inP3Gamut()` `toSrgbGamut()` `toP3Gamut()`
 
+### Allocation-free variants
+
+For per-pixel and per-frame loops, the hot-path functions have `*Into` twins that write into a caller-supplied `out` object (passed first) and return it. They allocate nothing and return bit-identical results to the allocating functions, which are thin wrappers over them. The object-returning API stays the default; reach for `*Into` only where a profiler shows allocation or GC pressure.
+
+`toOklabInto()` `fromOklabInto()` `toLinearSrgbInto()` `fromLinearSrgbInto()` `toRgbInto()` `fromRgbInto()` `toP3Into()` `fromP3Into()` `mixInto()` `interpolateInto()` `toSrgbGamutInto()` `toP3GamutInto()`
+
+Low-level converters: `srgbToLinearInto()` `linearToSrgbInto()` `linearRgbToOklabInto()` `oklabToLinearRgbInto()` `oklabToOklchInto()` `oklchToOklabInto()` `linearSrgbToLinearP3Into()` `linearP3ToLinearSrgbInto()` `linearP3ToP3Into()` `p3ToLinearP3Into()`
+
+```ts
+import { interpolateInto, parse, toRgbInto } from 'color-kit';
+
+const from = parse('#3b82f6');
+const to = parse('#ef4444');
+const color = { l: 0, c: 0, h: 0, alpha: 1 };
+const rgb = { r: 0, g: 0, b: 0, alpha: 1 };
+for (let x = 0; x < width; x++) {
+  toRgbInto(rgb, interpolateInto(color, from, to, x / (width - 1)));
+  // write rgb.r / rgb.g / rgb.b into ImageData
+}
+```
+
 ## Development
 
 ```bash
