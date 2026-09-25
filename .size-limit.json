@@ -14,6 +14,27 @@
     "limit": "2.7 kB"
   },
   {
+    "name": "color-kit: toLinearSrgbArray (three.js / WebGL uniform)",
+    "path": "packages/color-kit/dist/index.js",
+    "import": "{ toLinearSrgbArray }",
+    "gzip": true,
+    "limit": "710 B"
+  },
+  {
+    "name": "color-kit/interop: toLinearSrgbArray",
+    "path": "packages/color-kit/dist/interop/index.js",
+    "import": "{ toLinearSrgbArray }",
+    "gzip": true,
+    "limit": "710 B"
+  },
+  {
+    "name": "color-kit/interop: packColors + unpackColors",
+    "path": "packages/color-kit/dist/interop/index.js",
+    "import": "{ packColors, unpackColors }",
+    "gzip": true,
+    "limit": "2.6 kB"
+  },
+  {
     "name": "color-kit: definePlane + sense + toSvgPath",
     "path": "packages/color-kit/dist/index.js",
     "import": "{ definePlane, sense, toSvgPath }",

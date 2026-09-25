@@ -67,6 +67,16 @@
         "default": "./dist/hct/index.cjs"
       }
     },
+    "./interop": {
+      "import": {
+        "types": "./dist/interop/index.d.ts",
+        "default": "./dist/interop/index.js"
+      },
+      "require": {
+        "types": "./dist/interop/index.d.cts",
+        "default": "./dist/interop/index.cjs"
+      }
+    },
     "./react": {
       "import": {
         "types": "./dist/react/index.d.ts",

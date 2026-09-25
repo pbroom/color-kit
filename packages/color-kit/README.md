@@ -26,6 +26,7 @@ Focused subpaths are available when you only need one part of the engine:
 import { definePlane, sense, toSvgPath } from 'color-kit/plane';
 import { createPlaneComputeScheduler } from 'color-kit/compute';
 import { maxHctChromaForHue } from 'color-kit/hct'; // isolates the bundled Material dependency
+import { toLinearSrgbArray, packColors } from 'color-kit/interop'; // tuples and typed arrays for GPU / three.js
 ```
 
 ## Bundle size

@@ -72,6 +72,17 @@ import {
   toRgbInto,
   toSrgbGamut,
   toSrgbGamutInto,
+  fromLinearP3Array,
+  fromLinearSrgbArray,
+  fromOklabArray,
+  fromP3Array,
+  fromSrgbArray,
+  toLinearP3Array,
+  toLinearSrgbArray,
+  toOklabArray,
+  toOklchArray,
+  toP3Array,
+  toSrgbArray,
 } from '../src/index.js';
 import type {
   Color,
@@ -1627,5 +1638,87 @@ describe('reference accuracy: allocation-free Into variants vs colorjs.io', () =
       }
     }
     tracker.assert();
+  });
+});
+
+// ─── Array interop ──────────────────────────────────────────────────
+
+describe('reference accuracy: array interop vs colorjs.io', () => {
+  // Writers emit unclamped floats, so the wide OKLCH samples (in-gamut,
+  // P3-only, and outside P3) must match colorjs.io's unclamped coordinates,
+  // including the sign-mirrored transfer function for negative channels.
+  const writers = [
+    ['toLinearSrgbArray', toLinearSrgbArray, 'srgb-linear'],
+    ['toSrgbArray', toSrgbArray, 'srgb'],
+    ['toLinearP3Array', toLinearP3Array, 'p3-linear'],
+    ['toP3Array', toP3Array, 'p3'],
+    ['toOklabArray', toOklabArray, 'oklab'],
+  ] as const;
+
+  for (const [label, write, space] of writers) {
+    it(`${label} matches colorjs.io "${space}" coords (unclamped)`, () => {
+      const tracker = new Tracker(`${label} (unclamped)`, FLOAT_TOL);
+      const out = new Float64Array(3);
+      for (const color of OKLCH_SAMPLES) {
+        write(color, out);
+        const expected = refCoords(refFromColor(color), space);
+        tracker.observe(vecError([out[0], out[1], out[2]], expected), () =>
+          fmt([color.l, color.c, color.h]),
+        );
+      }
+      tracker.assert();
+    });
+  }
+
+  it('toOklchArray matches colorjs.io "oklch" coords', () => {
+    const lc = new Tracker('toOklchArray (L, C)', FLOAT_TOL);
+    const hue = new Tracker('toOklchArray (h, deg)', HUE_TOL);
+    for (const color of OKLCH_SAMPLES) {
+      const [l, c, h] = toOklchArray(color);
+      const err = lchError(
+        { l, c, h },
+        refCoords(refFromColor(color), 'oklch'),
+      );
+      lc.observe(err.lc, () => fmt([color.l, color.c, color.h]));
+      hue.observe(err.h, () => fmt([color.l, color.c, color.h]));
+    }
+    lc.assert();
+    hue.assert();
+  });
+
+  const readers = [
+    ['fromLinearSrgbArray', fromLinearSrgbArray, 'srgb-linear', SRGB_SAMPLES],
+    ['fromSrgbArray', fromSrgbArray, 'srgb', SRGB_SAMPLES],
+    ['fromLinearP3Array', fromLinearP3Array, 'p3-linear', P3_SAMPLES],
+    ['fromP3Array', fromP3Array, 'p3', P3_SAMPLES],
+  ] as const;
+
+  for (const [label, read, space, samples] of readers) {
+    it(`${label} matches colorjs.io "${space}" -> oklch`, () => {
+      const lc = new Tracker(`${label} (L, C)`, FLOAT_TOL);
+      const hue = new Tracker(`${label} (h, deg)`, HUE_TOL);
+      for (const coords of samples) {
+        const kit = read(coords);
+        const err = lchError(kit, refCoords(ref(space, coords), 'oklch'));
+        lc.observe(err.lc, () => fmt(coords));
+        hue.observe(err.h, () => fmt(coords));
+      }
+      lc.assert();
+      hue.assert();
+    });
+  }
+
+  it('fromOklabArray matches colorjs.io "oklab" -> oklch', () => {
+    const lc = new Tracker('fromOklabArray (L, C)', FLOAT_TOL);
+    const hue = new Tracker('fromOklabArray (h, deg)', HUE_TOL);
+    for (const color of OKLCH_SAMPLES) {
+      const lab = refCoords(refFromColor(color), 'oklab');
+      const kit = fromOklabArray(lab);
+      const err = lchError(kit, refCoords(ref('oklab', lab), 'oklch'));
+      lc.observe(err.lc, () => fmt(lab));
+      hue.observe(err.h, () => fmt(lab));
+    }
+    lc.assert();
+    hue.assert();
   });
 });
