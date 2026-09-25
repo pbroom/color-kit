@@ -7,7 +7,7 @@ import type {
   PlaneGradientQuery,
   PlaneGradientResult,
 } from '../types.js';
-import { countSinglePath } from './shared.js';
+import { countSinglePath, withFiniteHue } from './shared.js';
 
 /**
  * Samples evenly spaced gradient points and projects each color to the plane.
@@ -24,7 +24,11 @@ export function samplePlaneGradient(
 ): PlaneGradientResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const steps = query.steps ?? 16;
-  const colors = generateScale(query.from, query.to, Math.max(2, steps));
+  const colors = generateScale(
+    withFiniteHue(query.from),
+    withFiniteHue(query.to),
+    Math.max(2, steps),
+  );
   const points = colors.map((color) => {
     const point = colorToPlane(resolvedPlane, color);
     return {

@@ -30,6 +30,17 @@ export function toPlaneBoundaryPoint(
   };
 }
 
+/**
+ * Treats a non-finite hue as the achromatic hue `0`.
+ *
+ * Callers may pass CSS-style "powerless" hues (`NaN`) for grays. Query
+ * results carry concrete colors, and the packed ABI requires finite values,
+ * so input colors are normalized before they reach a result.
+ */
+export function withFiniteHue(color: Color): Color {
+  return Number.isFinite(color.h) ? color : { ...color, h: 0 };
+}
+
 export function countSinglePath(points: PlanePoint[]): PlaneQueryGeometryCount {
   return {
     pathCount: points.length > 0 ? 1 : 0,

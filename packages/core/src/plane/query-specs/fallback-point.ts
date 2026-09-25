@@ -8,6 +8,7 @@ import type {
   PlaneFallbackPointQuery,
   PlaneFallbackPointResult,
 } from '../types.js';
+import { withFiniteHue } from './shared.js';
 
 /**
  * Maps a color into the requested gamut and returns its projected plane point.
@@ -22,10 +23,9 @@ export function getPlaneFallbackPoint(
   query: Omit<PlaneFallbackPointQuery, 'kind'>,
 ): PlaneFallbackPointResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
+  const color = withFiniteHue(query.color);
   const mapped =
-    query.gamut === 'display-p3'
-      ? toP3Gamut(query.color)
-      : toSrgbGamut(query.color);
+    query.gamut === 'display-p3' ? toP3Gamut(color) : toSrgbGamut(color);
   const point = colorToPlane(resolvedPlane, mapped);
 
   return {

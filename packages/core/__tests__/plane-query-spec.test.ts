@@ -289,3 +289,37 @@ describe('scheduler golden telemetry keys', () => {
     },
   );
 });
+
+describe('achromatic NaN hue inputs', () => {
+  const gray = { l: 0.5, c: 0, h: Number.NaN, alpha: 1 };
+  const red = { l: 0.6, c: 0.2, h: 30, alpha: 1 };
+
+  it.each(ROUND_TRIP_PLANES)(
+    'packs fallbackPoint and gradient results on %s',
+    (_name, plane) => {
+      const results = runPlaneQueries(plane, [
+        { kind: 'fallbackPoint', color: gray, gamut: 'srgb' },
+        {
+          kind: 'fallbackPoint',
+          color: { ...red, h: Number.NaN },
+          gamut: 'display-p3',
+        },
+        { kind: 'gradient', from: gray, to: red, steps: 5 },
+        { kind: 'gradient', from: red, to: gray, steps: 5 },
+      ]);
+      const [fallback, , gradient, reversed] = results;
+      if (fallback.kind !== 'fallbackPoint') throw new Error('kind');
+      expect(fallback.point.color.h).toBe(0);
+      if (gradient.kind !== 'gradient' || reversed.kind !== 'gradient') {
+        throw new Error('kind');
+      }
+      // The achromatic end adopts the chromatic end's hue, as before.
+      expect(gradient.points[0].color.h).toBeCloseTo(30, 10);
+      expect(gradient.points[2].color.h).toBeCloseTo(30, 10);
+      expect(reversed.points[2].color.h).toBeCloseTo(30, 10);
+
+      const unpacked = unpackPlaneQueryResults(packPlaneQueryResults(results));
+      expect(unpacked).toEqual(float32Geometry(results));
+    },
+  );
+});
