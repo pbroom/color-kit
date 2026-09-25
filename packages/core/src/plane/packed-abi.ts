@@ -211,9 +211,11 @@ function nonFinitePackValue(
 }
 
 /**
- * Asserts a value survives the Float32 point buffers. Finite float64 values
- * beyond the Float32 range (e.g. `1e40`, `Number.MAX_VALUE`) would become
- * `Infinity` when packed and fail decoding, so reject them at the producer.
+ * Asserts a value is a number that survives the Float32 point buffers.
+ * Non-number inputs (e.g. `"0.5"`, `null` from untyped callers) are rejected
+ * rather than coerced. Finite float64 values beyond the Float32 range (e.g.
+ * `1e40`, `Number.MAX_VALUE`) would become `Infinity` when packed and fail
+ * decoding, so reject them at the producer.
  */
 function requirePackable(
   value: number,
@@ -221,6 +223,12 @@ function requirePackable(
   pointIndex: number,
   channel: string,
 ): void {
+  // `Math.fround` coerces strings and null, so require a real number first.
+  if (typeof value !== 'number') {
+    throw new Error(
+      `Cannot pack plane query result: ${label} point ${pointIndex} ${channel} must be a number (received ${value === null ? 'null' : typeof value}).`,
+    );
+  }
   if (Number.isFinite(Math.fround(value))) return;
   if (!Number.isFinite(value)) {
     nonFinitePackValue(label, pointIndex, channel, value);

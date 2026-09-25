@@ -813,6 +813,46 @@ describe('packPlaneQueryResults() producer checks', () => {
     );
   });
 
+  it.each([
+    ['a numeric string', '0.5', 'string'],
+    ['null', null, 'null'],
+    ['a boolean', true, 'boolean'],
+  ])('rejects %s coordinate instead of coercing it', (_, value, received) => {
+    const [boundary] = runPlaneQueries(plane, [
+      { kind: 'gamutBoundary', gamut: 'srgb', steps: 4 },
+    ]);
+    if (boundary.kind !== 'gamutBoundary') throw new Error('unexpected kind');
+    boundary.points[1] = {
+      ...boundary.points[1],
+      y: value as unknown as number,
+    };
+    expect(() => packPlaneQueryResults([boundary])).toThrow(
+      `Cannot pack plane query result: query 0 (gamutBoundary) point 1 y must be a number (received ${received}).`,
+    );
+  });
+
+  it('rejects non-number color channels', () => {
+    const [gradient] = runPlaneQueries(plane, [
+      {
+        kind: 'gradient',
+        from: parse('#000000'),
+        to: parse('#ffffff'),
+        steps: 3,
+      },
+    ]);
+    if (gradient.kind !== 'gradient') throw new Error('unexpected kind');
+    gradient.points[1] = {
+      ...gradient.points[1],
+      color: {
+        ...gradient.points[1].color,
+        alpha: '1' as unknown as number,
+      },
+    };
+    expect(() => packPlaneQueryResults([gradient])).toThrow(
+      /point 1 color\.alpha must be a number \(received string\)/,
+    );
+  });
+
   it('packs values at the Float32 limit', () => {
     const [boundary] = runPlaneQueries(plane, [
       { kind: 'gamutBoundary', gamut: 'srgb', steps: 4 },
