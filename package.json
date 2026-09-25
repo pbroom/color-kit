@@ -10,6 +10,7 @@
     "dev": "pnpm --filter @color-kit/docs dev",
     "dev:full": "pnpm dev:prepare && pnpm --parallel --filter @color-kit/core --filter @color-kit/driver --filter @color-kit/react --filter color-kit --filter @color-kit/docs dev",
     "test": "pnpm -r test",
+    "typecheck": "pnpm -r --if-present typecheck",
     "release:verify": "pnpm check:preprod && pnpm build && pnpm check:artifacts && pnpm test && pnpm lint",
     "check:artifacts": "node packages/color-kit/scripts/check-artifacts.mjs && pnpm check:artifacts:metadata",
     "check:artifacts:metadata": "publint packages/color-kit && attw --pack packages/color-kit --profile node16",

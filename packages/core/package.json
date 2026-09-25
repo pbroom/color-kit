@@ -69,6 +69,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:watch": "vitest",
     "bench:into": "node --expose-gc --min-semi-space-size=256 --max-semi-space-size=256 bench/into-bench.mjs",
     "bench:max-chroma-for-hue": "node bench/max-chroma-for-hue-bench.mjs",
