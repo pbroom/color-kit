@@ -6,6 +6,7 @@ export { maxChromaAt } from './max-chroma.js';
 export {
   inP3Gamut,
   inSrgbGamut,
+  isLinearRgbInGamut,
   toP3Gamut,
   toSrgbGamut,
 } from './membership.js';

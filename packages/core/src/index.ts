@@ -105,6 +105,7 @@ export {
 export {
   GAMUT_EPSILON,
   inSrgbGamut,
+  isLinearRgbInGamut,
   inP3Gamut,
   toSrgbGamut,
   toP3Gamut,

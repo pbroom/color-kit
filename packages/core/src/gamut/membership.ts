@@ -42,6 +42,21 @@ export function getTargetRows(gamut: GamutTarget): TargetRows {
 }
 
 /**
+ * Checks linear-light RGB channels (linear sRGB or linear Display P3, which
+ * share the sRGB transfer function) against the unit cube, allowing
+ * `GAMUT_EPSILON` of slack on the gamma-encoded channels (linear bounds
+ * `[-GAMUT_EPSILON / 12.92, linearize(1 + GAMUT_EPSILON)]`, shared with the
+ * plane gamut-region solver via `linear-bounds.ts`).
+ *
+ * This is the membership rule behind `inSrgbGamut` / `inP3Gamut`, exposed for
+ * hot loops (e.g. per-pixel canvas rendering) that already hold linear
+ * channels and want to avoid re-converting from OKLCH.
+ */
+export function isLinearRgbInGamut(r: number, g: number, b: number): boolean {
+  return linearChannelsInGamut(r, g, b);
+}
+
+/**
  * Check if a Color is within the sRGB gamut.
  *
  * Uses unclamped linear sRGB values to avoid the false-positive
@@ -55,7 +70,7 @@ export function inSrgbGamut(color: Color): boolean {
     alpha: color.alpha,
   });
   const linear = oklabToLinearRgb(lab);
-  return linearChannelsInGamut(linear.r, linear.g, linear.b);
+  return isLinearRgbInGamut(linear.r, linear.g, linear.b);
 }
 
 /**
@@ -73,7 +88,7 @@ export function inP3Gamut(color: Color): boolean {
   });
   const linearSrgb = oklabToLinearRgb(lab);
   const linearP3 = linearSrgbToLinearP3(linearSrgb);
-  return linearChannelsInGamut(linearP3.r, linearP3.g, linearP3.b);
+  return isLinearRgbInGamut(linearP3.r, linearP3.g, linearP3.b);
 }
 
 function strictlyInTargetGamut(color: Color, gamut: GamutTarget): boolean {
