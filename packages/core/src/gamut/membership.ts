@@ -1,7 +1,7 @@
-import type { Color } from '../types.js';
-import { oklchToOklab } from '../conversion/oklch.js';
-import { oklabToLinearRgb } from '../conversion/oklab.js';
-import { linearSrgbToLinearP3 } from '../conversion/p3.js';
+import type { Color, LinearRgb, Oklab, P3 } from '../types.js';
+import { oklchToOklabInto } from '../conversion/oklch.js';
+import { oklabToLinearRgbInto } from '../conversion/oklab.js';
+import { linearSrgbToLinearP3Into } from '../conversion/p3.js';
 import {
   LMS_TO_LINEAR_P3,
   LMS_TO_LINEAR_SRGB,
@@ -21,16 +21,24 @@ export const OKLAB_TO_LINEAR_P3_ROWS = LMS_TO_LINEAR_P3;
 export type TargetRow = readonly [number, number, number];
 export type TargetRows = readonly [TargetRow, TargetRow, TargetRow];
 
-function mapLightnessEndpoint(color: Color): Color | null {
-  if (color.l <= LIGHTNESS_ENDPOINT_EPSILON) {
-    return { ...color, l: 0, c: 0 };
-  }
+// Scratch objects so membership checks and gamut mapping allocate nothing.
+// JS is single-threaded and nothing here calls back into user code.
+const LAB: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
+const LINEAR: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
+const LINEAR_P3: P3 = { r: 0, g: 0, b: 0, alpha: 1 };
+const TRIAL: Color = { l: 0, c: 0, h: 0, alpha: 1 };
 
-  if (color.l >= 1 - LIGHTNESS_ENDPOINT_EPSILON) {
-    return { ...color, l: 1, c: 0 };
-  }
+/** Unclamped linear sRGB of `color`, written into the shared scratch. */
+function scratchLinearSrgb(color: Color): LinearRgb {
+  return oklabToLinearRgbInto(LINEAR, oklchToOklabInto(LAB, color));
+}
 
-  return null;
+/** Unclamped linear sRGB (or linear P3) of `color`, in shared scratch. */
+function scratchLinearTarget(color: Color, gamut: GamutTarget): LinearRgb {
+  const linear = scratchLinearSrgb(color);
+  return gamut === 'display-p3'
+    ? linearSrgbToLinearP3Into(LINEAR_P3, linear)
+    : linear;
 }
 
 export function isInTargetGamut(color: Color, gamut: GamutTarget): boolean {
@@ -65,13 +73,7 @@ export function isLinearRgbInGamut(r: number, g: number, b: number): boolean {
  * caused by the clamping in `linearToSrgb` / `toRgb`.
  */
 export function inSrgbGamut(color: Color): boolean {
-  const lab = oklchToOklab({
-    l: color.l,
-    c: color.c,
-    h: color.h,
-    alpha: color.alpha,
-  });
-  const linear = oklabToLinearRgb(lab);
+  const linear = scratchLinearSrgb(color);
   return isLinearRgbInGamut(linear.r, linear.g, linear.b);
 }
 
@@ -82,26 +84,12 @@ export function inSrgbGamut(color: Color): boolean {
  * caused by the clamping in `linearP3ToP3` / `toP3`.
  */
 export function inP3Gamut(color: Color): boolean {
-  const lab = oklchToOklab({
-    l: color.l,
-    c: color.c,
-    h: color.h,
-    alpha: color.alpha,
-  });
-  const linearSrgb = oklabToLinearRgb(lab);
-  const linearP3 = linearSrgbToLinearP3(linearSrgb);
+  const linearP3 = scratchLinearTarget(color, 'display-p3');
   return isLinearRgbInGamut(linearP3.r, linearP3.g, linearP3.b);
 }
 
 function strictlyInTargetGamut(color: Color, gamut: GamutTarget): boolean {
-  const lab = oklchToOklab({
-    l: color.l,
-    c: color.c,
-    h: color.h,
-    alpha: color.alpha,
-  });
-  const linear = oklabToLinearRgb(lab);
-  const target = gamut === 'display-p3' ? linearSrgbToLinearP3(linear) : linear;
+  const target = scratchLinearTarget(color, gamut);
   return (
     target.r >= 0 &&
     target.r <= 1 &&
@@ -113,35 +101,94 @@ function strictlyInTargetGamut(color: Color, gamut: GamutTarget): boolean {
 }
 
 /**
- * Bisect OKLCH chroma (at fixed L and h) down to the target gamut boundary.
+ * Map `color` into `gamut`, writing l/c/h/alpha into `out`. `out` may be the
+ * same object as `color`.
  *
- * Candidates are accepted only when *strictly* inside the gamut. The
- * GAMUT_EPSILON slack used by membership checks is meant to absorb float
- * noise on colors that are already in gamut; letting the search settle
- * inside that slack would return out-of-gamut colors, and near black the
- * slack spans a large chroma range.
+ * Out-of-gamut colors bisect OKLCH chroma (at fixed L and h) down to the
+ * target gamut boundary. Candidates are accepted only when *strictly* inside
+ * the gamut. The GAMUT_EPSILON slack used by membership checks is meant to
+ * absorb float noise on colors that are already in gamut; letting the search
+ * settle inside that slack would return out-of-gamut colors, and near black
+ * the slack spans a large chroma range.
  */
-function reduceChromaToGamut(color: Color, gamut: GamutTarget): Color {
-  let lo = 0;
-  let hi = color.c;
-  const achromatic = { ...color, c: 0 };
-  let mapped = strictlyInTargetGamut(achromatic, gamut)
-    ? achromatic
-    : { ...color };
+function mapToGamutInto(out: Color, color: Color, gamut: GamutTarget): Color {
+  const l = color.l;
+  const c = color.c;
+  const h = color.h;
+  const alpha = color.alpha;
 
-  const epsilon = 0.0001;
-  while (hi - lo > epsilon) {
-    const mid = (lo + hi) / 2;
-    const test: Color = { ...color, c: mid };
-    if (strictlyInTargetGamut(test, gamut)) {
-      lo = mid;
-      mapped = test;
-    } else {
-      hi = mid;
+  if (l <= LIGHTNESS_ENDPOINT_EPSILON || l >= 1 - LIGHTNESS_ENDPOINT_EPSILON) {
+    out.l = l <= LIGHTNESS_ENDPOINT_EPSILON ? 0 : 1;
+    out.c = 0;
+    out.h = h;
+    out.alpha = alpha;
+    return out;
+  }
+
+  let mappedC = c;
+  if (!isInTargetGamut(color, gamut)) {
+    const trial = TRIAL;
+    trial.l = l;
+    trial.c = 0;
+    trial.h = h;
+    trial.alpha = alpha;
+
+    let lo = 0;
+    let hi = c;
+    mappedC = strictlyInTargetGamut(trial, gamut) ? 0 : c;
+
+    const epsilon = 0.0001;
+    while (hi - lo > epsilon) {
+      const mid = (lo + hi) / 2;
+      trial.c = mid;
+      if (strictlyInTargetGamut(trial, gamut)) {
+        lo = mid;
+        mappedC = mid;
+      } else {
+        hi = mid;
+      }
     }
   }
 
-  return mapped;
+  out.l = l;
+  out.c = mappedC;
+  out.h = h;
+  out.alpha = alpha;
+  return out;
+}
+
+/**
+ * Map a Color to the sRGB gamut, writing the result into `out`
+ * (allocation-free). Same algorithm and bit-identical result as
+ * `toSrgbGamut`; `out` may be the same object as `color`.
+ *
+ * @example
+ * ```ts
+ * import { toSrgbGamutInto } from 'color-kit';
+ *
+ * const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
+ * toSrgbGamutInto(mapped, { l: 0.7, c: 0.35, h: 150, alpha: 1 });
+ * ```
+ */
+export function toSrgbGamutInto(out: Color, color: Color): Color {
+  return mapToGamutInto(out, color, 'srgb');
+}
+
+/**
+ * Map a Color to the Display P3 gamut, writing the result into `out`
+ * (allocation-free). Same algorithm and bit-identical result as
+ * `toP3Gamut`; `out` may be the same object as `color`.
+ *
+ * @example
+ * ```ts
+ * import { toP3GamutInto } from 'color-kit';
+ *
+ * const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
+ * toP3GamutInto(mapped, { l: 0.7, c: 0.4, h: 150, alpha: 1 });
+ * ```
+ */
+export function toP3GamutInto(out: Color, color: Color): Color {
+  return mapToGamutInto(out, color, 'display-p3');
 }
 
 /**
@@ -152,18 +199,12 @@ function reduceChromaToGamut(color: Color, gamut: GamutTarget): Color {
  * which produces the most visually similar in-gamut color.
  */
 export function toSrgbGamut(color: Color): Color {
-  const endpoint = mapLightnessEndpoint(color);
-  if (endpoint) return endpoint;
-  if (inSrgbGamut(color)) return { ...color };
-  return reduceChromaToGamut(color, 'srgb');
+  return toSrgbGamutInto({ ...color }, color);
 }
 
 /**
  * Map a Color to the Display P3 gamut by progressively reducing chroma.
  */
 export function toP3Gamut(color: Color): Color {
-  const endpoint = mapLightnessEndpoint(color);
-  if (endpoint) return endpoint;
-  if (inP3Gamut(color)) return { ...color };
-  return reduceChromaToGamut(color, 'display-p3');
+  return toP3GamutInto({ ...color }, color);
 }

@@ -34,8 +34,11 @@ import {
   fromHsl,
   fromHsv,
   fromOklab,
+  fromLinearSrgbInto,
   fromP3,
+  fromP3Into,
   fromRgb,
+  fromRgbInto,
   generateScale,
   hslToRgb,
   hsvToRgb,
@@ -46,6 +49,7 @@ import {
   linearSrgbToLinearP3,
   linearToSrgb,
   mix,
+  mixInto,
   oklabToLinearRgb,
   p3ToLinearP3,
   parse,
@@ -57,11 +61,17 @@ import {
   toHex,
   toHsl,
   toHsv,
+  toLinearSrgbInto,
   toOklab,
+  toOklabInto,
   toP3,
   toP3Gamut,
+  toP3GamutInto,
+  toP3Into,
   toRgb,
+  toRgbInto,
   toSrgbGamut,
+  toSrgbGamutInto,
 } from '../src/index.js';
 import type {
   Color,
@@ -1441,5 +1451,181 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
       }
       tracker.assert();
     }
+  });
+});
+
+// ─── Allocation-free `*Into` variants ───────────────────────────────
+
+describe('reference accuracy: allocation-free Into variants vs colorjs.io', () => {
+  // Each check reuses a single `out` object across every sample, so stale
+  // fields from a previous call would show up as reference mismatches.
+  it('Color -> OKLab / linear sRGB / sRGB / Display P3 (to*Into) match', () => {
+    const lab = { L: 0, a: 0, b: 0, alpha: 1 };
+    const linear = { r: 0, g: 0, b: 0, alpha: 1 };
+    const rgb = { r: 0, g: 0, b: 0, alpha: 1 };
+    const p3 = { r: 0, g: 0, b: 0, alpha: 1 };
+    const labTracker = new Tracker('toOklabInto', FLOAT_TOL);
+    const linearTracker = new Tracker('toLinearSrgbInto', FLOAT_TOL);
+    const rgbTracker = new Tracker('toRgbInto (8-bit, LSB)', 0);
+    const p3Tracker = new Tracker('toP3Into', FLOAT_TOL);
+    // Strictly in gamut, so the clamping in toRgb / toP3 is a no-op.
+    const inSrgb = OKLCH_SAMPLES.filter((color) =>
+      refFromColor(color).inGamut('srgb', { epsilon: 0 }),
+    );
+    const inP3 = OKLCH_SAMPLES.filter((color) =>
+      refFromColor(color).inGamut('p3', { epsilon: 0 }),
+    );
+
+    for (const color of OKLCH_SAMPLES) {
+      const reference = refFromColor(color);
+      expect(toOklabInto(lab, color)).toBe(lab);
+      labTracker.observe(
+        vecError([lab.L, lab.a, lab.b], refCoords(reference, 'oklab')),
+        () => fmt([color.l, color.c, color.h]),
+      );
+      expect(toLinearSrgbInto(linear, color)).toBe(linear);
+      linearTracker.observe(
+        vecError(
+          [linear.r, linear.g, linear.b],
+          refCoords(reference, 'srgb-linear'),
+        ),
+        () => fmt([color.l, color.c, color.h]),
+      );
+      expect(lab.alpha).toBe(color.alpha);
+      expect(linear.alpha).toBe(color.alpha);
+    }
+    for (const color of inSrgb) {
+      toRgbInto(rgb, color);
+      const expected = refCoords(refFromColor(color), 'srgb');
+      rgbTracker.observe(
+        Math.max(
+          byteError(rgb.r, expected[0] * 255),
+          byteError(rgb.g, expected[1] * 255),
+          byteError(rgb.b, expected[2] * 255),
+        ),
+        () => fmt([color.l, color.c, color.h]),
+      );
+    }
+    for (const color of inP3) {
+      toP3Into(p3, color);
+      p3Tracker.observe(
+        vecError([p3.r, p3.g, p3.b], refCoords(refFromColor(color), 'p3')),
+        () => fmt([color.l, color.c, color.h]),
+      );
+    }
+    labTracker.assert();
+    linearTracker.assert();
+    rgbTracker.assert();
+    p3Tracker.assert();
+  });
+
+  it('sRGB / linear sRGB / Display P3 -> Color (from*Into) match', () => {
+    const color = { l: 0, c: 0, h: 0, alpha: 1 };
+    const fromRgbLc = new Tracker('fromRgbInto (L, C)', FLOAT_TOL);
+    const fromLinearLc = new Tracker('fromLinearSrgbInto (L, C)', FLOAT_TOL);
+    const fromP3Lc = new Tracker('fromP3Into (L, C)', FLOAT_TOL);
+    const hue = new Tracker('from*Into (h, deg)', HUE_TOL);
+
+    for (const sample of P3_SAMPLES) {
+      const srgbRef = refCoords(ref('srgb', sample), 'oklch');
+      expect(
+        fromRgbInto(color, {
+          r: sample[0] * 255,
+          g: sample[1] * 255,
+          b: sample[2] * 255,
+          alpha: 1,
+        }),
+      ).toBe(color);
+      let err = lchError(color, srgbRef);
+      fromRgbLc.observe(err.lc, () => fmt(sample));
+      hue.observe(err.h, () => fmt(sample));
+
+      const linearRef = refCoords(ref('srgb-linear', sample), 'oklch');
+      fromLinearSrgbInto(color, {
+        r: sample[0],
+        g: sample[1],
+        b: sample[2],
+        alpha: 1,
+      });
+      err = lchError(color, linearRef);
+      fromLinearLc.observe(err.lc, () => fmt(sample));
+      hue.observe(err.h, () => fmt(sample));
+
+      const p3Ref = refCoords(ref('p3', sample), 'oklch');
+      fromP3Into(color, { r: sample[0], g: sample[1], b: sample[2], alpha: 1 });
+      err = lchError(color, p3Ref);
+      fromP3Lc.observe(err.lc, () => fmt(sample));
+      hue.observe(err.h, () => fmt(sample));
+    }
+    fromRgbLc.assert();
+    fromLinearLc.assert();
+    fromP3Lc.assert();
+    hue.assert();
+  });
+
+  it('toSrgbGamutInto / toP3GamutInto match colorjs.io "oklch.c"', () => {
+    const outOfGamut = OKLCH_SAMPLES.filter(
+      (color) => color.l > 0.02 && color.l < 0.98 && color.c > 0.01,
+    ).slice(0, 300);
+    const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
+    for (const [target, kitInto, kitIn] of [
+      ['srgb', toSrgbGamutInto, inSrgbGamut],
+      ['p3', toP3GamutInto, inP3Gamut],
+    ] as const) {
+      const chroma = new Tracker(`${target} gamut Into (dC)`, 1.01e-4);
+      for (const color of outOfGamut) {
+        const reference = refFromColor(color);
+        if (reference.inGamut(target, { epsilon: 0 }) || kitIn(color)) continue;
+        const expected = refCoords(
+          reference.clone().toGamut({
+            space: target,
+            method: 'oklch.c',
+            deltaEMethod: 'OK',
+            jnd: 0,
+          }),
+          'oklch',
+        );
+        expect(kitInto(mapped, color)).toBe(mapped);
+        expect(refFromColor(mapped).inGamut(target, { epsilon: 0 })).toBe(true);
+        chroma.observe(Math.abs(mapped.c - expected[1]), () =>
+          fmt([color.l, color.c, color.h]),
+        );
+      }
+      chroma.assert();
+    }
+  });
+
+  it('mixInto in linear sRGB matches colorjs.io mix', () => {
+    const tracker = new Tracker('mixInto linear-srgb (OKLab)', FLOAT_TOL);
+    const out = { l: 0, c: 0, h: 0, alpha: 1 };
+    // Opaque, chromatic and strictly in gamut, so colorjs.io neither
+    // gamut-maps the inputs nor drops a near-zero chroma. (Alpha and
+    // achromatic handling are covered by the interpolation suite above;
+    // mixInto matches mix() bit for bit, see into.test.ts.)
+    const samples = OKLCH_SAMPLES.filter(
+      (color) =>
+        color.c > 1e-3 && refFromColor(color).inGamut('srgb', { epsilon: 0 }),
+    )
+      .slice(0, 300)
+      .map((color) => ({ ...color, alpha: 1 }));
+    for (let i = 0; i < samples.length; i += 1) {
+      const a = samples[i];
+      const b = samples[(i * 7 + 3) % samples.length];
+      for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+        mixInto(out, a, b, t, { space: 'linear-srgb' });
+        const expected = refCoords(
+          refFromColor(a).mix(refFromColor(b), t, {
+            space: 'srgb-linear',
+            premultiplied: true,
+          }),
+          'oklab',
+        );
+        const lab = toOklab(out);
+        tracker.observe(vecError([lab.L, lab.a, lab.b], expected), () =>
+          fmt([a.l, a.c, a.h, b.l, b.c, b.h, t]),
+        );
+      }
+    }
+    tracker.assert();
   });
 });

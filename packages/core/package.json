@@ -60,6 +60,7 @@
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
+    "bench:into": "node --expose-gc --min-semi-space-size=256 --max-semi-space-size=256 bench/into-bench.mjs",
     "bench:max-chroma-for-hue": "node bench/max-chroma-for-hue-bench.mjs",
     "bench:mix-space": "node bench/mix-space-bench.mjs",
     "bench:overlay": "node bench/overlay-interpolation-bench.mjs",

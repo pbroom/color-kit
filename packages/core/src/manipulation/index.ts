@@ -2,7 +2,7 @@ import type { Color } from '../types.js';
 import { clamp, normalizeHue, lerp } from '../utils/index.js';
 import {
   hasInterpolationOptions,
-  interpolateInSpace,
+  interpolateInSpaceInto,
   type InterpolationOptions,
 } from '../interpolation/index.js';
 
@@ -101,8 +101,44 @@ export function mix(
   t: number = 0.5,
   options?: InterpolationOptions,
 ): Color {
+  return mixInto({ l: 0, c: 0, h: 0, alpha: 1 }, color1, color2, t, options);
+}
+
+/**
+ * Allocation-free `mix()`: writes the mix of `color1` and `color2` into `out`
+ * and returns it. Same semantics and bit-identical results as `mix()`,
+ * including the option-less legacy OKLCH path. `out` may be the same object
+ * as either input, so `mixInto(a, a, b, t)` blends `b` into `a` in place.
+ *
+ * @param out - Color to write the result into
+ * @param color1 - First color; returned when `t = 0`
+ * @param color2 - Second color; returned when `t = 1`
+ * @param t - Mix position (default `0.5`)
+ * @param options - Interpolation space, hue method, and alpha handling (see
+ *   `mix()`)
+ *
+ * @example
+ * ```ts
+ * import { mixInto, parse } from 'color-kit';
+ *
+ * const red = parse('#ff0000');
+ * const lime = parse('#00ff00');
+ * const out = { l: 0, c: 0, h: 0, alpha: 1 };
+ * for (let i = 0; i <= 100; i++) {
+ *   mixInto(out, red, lime, i / 100, { space: 'linear-srgb' });
+ *   // ...use out without allocating per step
+ * }
+ * ```
+ */
+export function mixInto(
+  out: Color,
+  color1: Color,
+  color2: Color,
+  t: number = 0.5,
+  options?: InterpolationOptions,
+): Color {
   if (hasInterpolationOptions(options)) {
-    return interpolateInSpace(color1, color2, t, options);
+    return interpolateInSpaceInto(out, color1, color2, t, options);
   }
 
   // Handle hue interpolation via shortest path
@@ -116,12 +152,14 @@ export function mix(
     h2 += 360;
   }
 
-  return {
-    l: lerp(color1.l, color2.l, t),
-    c: lerp(color1.c, color2.c, t),
-    h: normalizeHue(lerp(h1, h2, t)),
-    alpha: lerp(color1.alpha, color2.alpha, t),
-  };
+  const l = lerp(color1.l, color2.l, t);
+  const c = lerp(color1.c, color2.c, t);
+  const alpha = lerp(color1.alpha, color2.alpha, t);
+  out.l = l;
+  out.c = c;
+  out.h = normalizeHue(lerp(h1, h2, t));
+  out.alpha = alpha;
+  return out;
 }
 
 /** Invert a color (complement lightness and hue) */

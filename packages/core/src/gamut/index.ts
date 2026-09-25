@@ -10,7 +10,9 @@ export {
   inSrgbGamut,
   isLinearRgbInGamut,
   toP3Gamut,
+  toP3GamutInto,
   toSrgbGamut,
+  toSrgbGamutInto,
 } from './membership.js';
 export type {
   ChromaBandMode,
