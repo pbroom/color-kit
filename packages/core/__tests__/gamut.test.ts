@@ -10,9 +10,14 @@ import type { Color } from '../src/index.js';
 
 describe('inSrgbGamut()', () => {
   it('should return true for colors within sRGB', () => {
-    // Pure red in OKLCH
-    const red: Color = { l: 0.6279, c: 0.2577, h: 29.23, alpha: 1 };
+    // Pure red in OKLCH. Note the 4-decimal rounding oklch(0.6279 0.2577
+    // 29.23) is *not* in sRGB: its green channel encodes to -6.4e-4, beyond
+    // the 7.5e-5 encoded-channel epsilon used by CSS Color 4 / colorjs.io.
+    const red: Color = { l: 0.627955, c: 0.257683, h: 29.2339, alpha: 1 };
     expect(inSrgbGamut(red)).toBe(true);
+    expect(inSrgbGamut({ l: 0.6279, c: 0.2577, h: 29.23, alpha: 1 })).toBe(
+      false,
+    );
   });
 
   it('should return true for black', () => {

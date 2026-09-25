@@ -85,6 +85,7 @@
     "tag": "next"
   },
   "devDependencies": {
+    "colorjs.io": "^0.7.1",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

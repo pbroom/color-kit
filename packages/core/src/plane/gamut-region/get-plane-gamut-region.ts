@@ -21,6 +21,7 @@ import {
   DEFAULT_VIEWPORT_BASE_RESOLUTION,
   DEFAULT_VIEWPORT_FILL_RESOLUTION,
   DEFAULT_VIEWPORT_RESOLUTION,
+  fieldInsideTolerance,
   resolveGamutSolver,
 } from './gamut-solvers.js';
 import {
@@ -122,7 +123,10 @@ export function getPlaneGamutRegion(
     trace,
     'viewport-boundary',
   );
-  const viewportClassification = classifyAdaptiveContourResult(viewportContour);
+  const viewportClassification = classifyAdaptiveContourResult(
+    viewportContour,
+    fieldInsideTolerance(resolvedPlane, gamut),
+  );
   const viewportRelation = viewportClassification.relation;
   setTraceSummaryField(trace, 'viewportRelation', viewportRelation);
   recordTraceStage(trace, {

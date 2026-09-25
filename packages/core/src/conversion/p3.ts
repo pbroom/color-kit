@@ -1,17 +1,22 @@
 import type { P3, LinearRgb } from '../types.js';
 import { clamp } from '../utils/index.js';
+import {
+  LINEAR_P3_TO_LINEAR_SRGB,
+  LINEAR_SRGB_TO_LINEAR_P3,
+} from './matrices.js';
+
+const [SP3R, SP3G, SP3B] = LINEAR_SRGB_TO_LINEAR_P3;
+const [P3SR, P3SG, P3SB] = LINEAR_P3_TO_LINEAR_SRGB;
 
 /**
  * Convert linear sRGB to linear Display P3.
- * Uses the matrix from CSS Color Level 4 spec.
+ * Combined `P3fromXYZ · sRGBtoXYZ` matrix from CSS Color Level 4.
  */
 export function linearSrgbToLinearP3(rgb: LinearRgb): P3 {
-  // sRGB linear -> XYZ D65 -> P3 linear
-  // Combined matrix:
   return {
-    r: 0.8224621724 * rgb.r + 0.1775378276 * rgb.g + 0.0 * rgb.b,
-    g: 0.033194198 * rgb.r + 0.966805802 * rgb.g + 0.0 * rgb.b,
-    b: 0.0170826307 * rgb.r + 0.0723974407 * rgb.g + 0.9105199286 * rgb.b,
+    r: SP3R[0] * rgb.r + SP3R[1] * rgb.g + SP3R[2] * rgb.b,
+    g: SP3G[0] * rgb.r + SP3G[1] * rgb.g + SP3G[2] * rgb.b,
+    b: SP3B[0] * rgb.r + SP3B[1] * rgb.g + SP3B[2] * rgb.b,
     alpha: rgb.alpha,
   };
 }
@@ -21,9 +26,9 @@ export function linearSrgbToLinearP3(rgb: LinearRgb): P3 {
  */
 export function linearP3ToLinearSrgb(p3: P3): LinearRgb {
   return {
-    r: 1.2249401764 * p3.r - 0.2249401764 * p3.g + 0.0 * p3.b,
-    g: -0.0420569549 * p3.r + 1.0420569549 * p3.g + 0.0 * p3.b,
-    b: -0.0196375546 * p3.r - 0.0786360236 * p3.g + 1.0982735782 * p3.b,
+    r: P3SR[0] * p3.r + P3SR[1] * p3.g + P3SR[2] * p3.b,
+    g: P3SG[0] * p3.r + P3SG[1] * p3.g + P3SG[2] * p3.b,
+    b: P3SB[0] * p3.r + P3SB[1] * p3.g + P3SB[2] * p3.b,
     alpha: p3.alpha,
   };
 }

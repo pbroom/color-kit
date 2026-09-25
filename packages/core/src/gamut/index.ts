@@ -2,40 +2,38 @@ import type { Color } from '../types.js';
 import { oklchToOklab } from '../conversion/oklch.js';
 import { oklabToLinearRgb } from '../conversion/oklab.js';
 import { linearSrgbToLinearP3 } from '../conversion/p3.js';
+import {
+  LMS_TO_LINEAR_P3,
+  LMS_TO_LINEAR_SRGB,
+  OKLAB_TO_LMS,
+} from '../conversion/matrices.js';
 import { clamp, normalizeHue, simplifyPolyline } from '../utils/index.js';
 import {
   adaptiveMaxErrorProbe,
   buildAxisAnchors,
   MIN_SEGMENT_LENGTH,
 } from '../sampling/adaptive1d.js';
-import { GAMUT_EPSILON } from './constants.js';
+import { MAX_CHROMA_SEARCH_TOLERANCE } from './constants.js';
+import { linearChannelsInGamut } from './linear-bounds.js';
 
 export { GAMUT_EPSILON } from './constants.js';
 
 const DEFAULT_MAX_CHROMA = 0.4;
-const DEFAULT_TOLERANCE = 0.0001;
+const DEFAULT_TOLERANCE = MAX_CHROMA_SEARCH_TOLERANCE;
 const DEFAULT_MAX_ITERATIONS = 30;
 const DEFAULT_HUE_CUSP_LUT_SIZE = 4096;
 const LIGHTNESS_ENDPOINT_EPSILON = 1e-9;
 
 const OKLAB_LMS_PRIME_COEFFICIENTS = {
-  l: { a: 0.3963377774, b: 0.2158037573 },
-  m: { a: -0.1055613458, b: -0.0638541728 },
-  s: { a: -0.0894841775, b: -1.291485548 },
+  l: { a: OKLAB_TO_LMS[0][1], b: OKLAB_TO_LMS[0][2] },
+  m: { a: OKLAB_TO_LMS[1][1], b: OKLAB_TO_LMS[1][2] },
+  s: { a: OKLAB_TO_LMS[2][1], b: OKLAB_TO_LMS[2][2] },
 } as const;
 
-const OKLAB_TO_LINEAR_SRGB_ROWS = [
-  [4.0767416621, -3.3077115913, 0.2309699292],
-  [-1.2684380046, 2.6097574011, -0.3413193965],
-  [-0.0041960863, -0.7034186147, 1.707614701],
-] as const;
+const OKLAB_TO_LINEAR_SRGB_ROWS = LMS_TO_LINEAR_SRGB;
 
 // Composed matrix: linear-sRGB -> linear-P3 multiplied by OKLab(l,m,s) -> linear-sRGB.
-const OKLAB_TO_LINEAR_P3_ROWS = [
-  [3.1277700759423896, -2.2571370014989434, 0.12936692555655316],
-  [-1.091009052397986, 2.4133317637074136, -0.3223227113094277],
-  [-0.026010813144971768, -0.5080413257213188, 1.5340521388662907],
-] as const;
+const OKLAB_TO_LINEAR_P3_ROWS = LMS_TO_LINEAR_P3;
 
 const HUE_CUSP_CHANNEL_EPSILON = 1e-7;
 const MAX_SATURATION_SEARCH = 16;
@@ -899,14 +897,7 @@ export function inSrgbGamut(color: Color): boolean {
     alpha: color.alpha,
   });
   const linear = oklabToLinearRgb(lab);
-  return (
-    linear.r >= -GAMUT_EPSILON &&
-    linear.r <= 1 + GAMUT_EPSILON &&
-    linear.g >= -GAMUT_EPSILON &&
-    linear.g <= 1 + GAMUT_EPSILON &&
-    linear.b >= -GAMUT_EPSILON &&
-    linear.b <= 1 + GAMUT_EPSILON
-  );
+  return linearChannelsInGamut(linear.r, linear.g, linear.b);
 }
 
 /**
@@ -924,14 +915,58 @@ export function inP3Gamut(color: Color): boolean {
   });
   const linearSrgb = oklabToLinearRgb(lab);
   const linearP3 = linearSrgbToLinearP3(linearSrgb);
+  return linearChannelsInGamut(linearP3.r, linearP3.g, linearP3.b);
+}
+
+function strictlyInTargetGamut(color: Color, gamut: GamutTarget): boolean {
+  const lab = oklchToOklab({
+    l: color.l,
+    c: color.c,
+    h: color.h,
+    alpha: color.alpha,
+  });
+  const linear = oklabToLinearRgb(lab);
+  const target = gamut === 'display-p3' ? linearSrgbToLinearP3(linear) : linear;
   return (
-    linearP3.r >= -GAMUT_EPSILON &&
-    linearP3.r <= 1 + GAMUT_EPSILON &&
-    linearP3.g >= -GAMUT_EPSILON &&
-    linearP3.g <= 1 + GAMUT_EPSILON &&
-    linearP3.b >= -GAMUT_EPSILON &&
-    linearP3.b <= 1 + GAMUT_EPSILON
+    target.r >= 0 &&
+    target.r <= 1 &&
+    target.g >= 0 &&
+    target.g <= 1 &&
+    target.b >= 0 &&
+    target.b <= 1
   );
+}
+
+/**
+ * Bisect OKLCH chroma (at fixed L and h) down to the target gamut boundary.
+ *
+ * Candidates are accepted only when *strictly* inside the gamut. The
+ * GAMUT_EPSILON slack used by membership checks is meant to absorb float
+ * noise on colors that are already in gamut; letting the search settle
+ * inside that slack would return out-of-gamut colors, and near black the
+ * slack spans a large chroma range.
+ */
+function reduceChromaToGamut(color: Color, gamut: GamutTarget): Color {
+  let lo = 0;
+  let hi = color.c;
+  const achromatic = { ...color, c: 0 };
+  let mapped = strictlyInTargetGamut(achromatic, gamut)
+    ? achromatic
+    : { ...color };
+
+  const epsilon = 0.0001;
+  while (hi - lo > epsilon) {
+    const mid = (lo + hi) / 2;
+    const test: Color = { ...color, c: mid };
+    if (strictlyInTargetGamut(test, gamut)) {
+      lo = mid;
+      mapped = test;
+    } else {
+      hi = mid;
+    }
+  }
+
+  return mapped;
 }
 
 /**
@@ -945,26 +980,7 @@ export function toSrgbGamut(color: Color): Color {
   const endpoint = mapLightnessEndpoint(color);
   if (endpoint) return endpoint;
   if (inSrgbGamut(color)) return { ...color };
-
-  let lo = 0;
-  let hi = color.c;
-  const achromatic = { ...color, c: 0 };
-  let mapped = inSrgbGamut(achromatic) ? achromatic : { ...color };
-
-  // Binary search for max chroma in gamut (within epsilon)
-  const epsilon = 0.0001;
-  while (hi - lo > epsilon) {
-    const mid = (lo + hi) / 2;
-    const test: Color = { ...color, c: mid };
-    if (inSrgbGamut(test)) {
-      lo = mid;
-      mapped = test;
-    } else {
-      hi = mid;
-    }
-  }
-
-  return mapped;
+  return reduceChromaToGamut(color, 'srgb');
 }
 
 /**
@@ -974,23 +990,5 @@ export function toP3Gamut(color: Color): Color {
   const endpoint = mapLightnessEndpoint(color);
   if (endpoint) return endpoint;
   if (inP3Gamut(color)) return { ...color };
-
-  let lo = 0;
-  let hi = color.c;
-  const achromatic = { ...color, c: 0 };
-  let mapped = inP3Gamut(achromatic) ? achromatic : { ...color };
-
-  const epsilon = 0.0001;
-  while (hi - lo > epsilon) {
-    const mid = (lo + hi) / 2;
-    const test: Color = { ...color, c: mid };
-    if (inP3Gamut(test)) {
-      lo = mid;
-      mapped = test;
-    } else {
-      hi = mid;
-    }
-  }
-
-  return mapped;
+  return reduceChromaToGamut(color, 'display-p3');
 }

@@ -35,14 +35,16 @@ export function rgbToHsl(rgb: Rgb): Hsl {
   };
 }
 
-/** Convert HSL to sRGB (0-255) */
-export function hslToRgb(hsl: Hsl): Rgb {
-  const h = hsl.h;
+/**
+ * Convert HSL to unrounded sRGB (0-255 floats). Hue is periodic, so any
+ * finite hue (negative or >= 360) is accepted.
+ */
+export function hslToRgbUnrounded(hsl: Hsl): Rgb {
   const s = hsl.s / 100;
   const l = hsl.l / 100;
 
   if (s === 0) {
-    const val = Math.round(l * 255);
+    const val = l * 255;
     return { r: val, g: val, b: val, alpha: hsl.alpha };
   }
 
@@ -57,12 +59,23 @@ export function hslToRgb(hsl: Hsl): Rgb {
 
   const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
   const p = 2 * l - q;
-  const hNorm = h / 360;
+  const hNorm = normalizeHue(hsl.h) / 360;
 
   return {
-    r: Math.round(hueToRgb(p, q, hNorm + 1 / 3) * 255),
-    g: Math.round(hueToRgb(p, q, hNorm) * 255),
-    b: Math.round(hueToRgb(p, q, hNorm - 1 / 3) * 255),
+    r: hueToRgb(p, q, hNorm + 1 / 3) * 255,
+    g: hueToRgb(p, q, hNorm) * 255,
+    b: hueToRgb(p, q, hNorm - 1 / 3) * 255,
     alpha: hsl.alpha,
+  };
+}
+
+/** Convert HSL to sRGB (0-255, rounded to 8-bit channels) */
+export function hslToRgb(hsl: Hsl): Rgb {
+  const rgb = hslToRgbUnrounded(hsl);
+  return {
+    r: Math.round(rgb.r),
+    g: Math.round(rgb.g),
+    b: Math.round(rgb.b),
+    alpha: rgb.alpha,
   };
 }

@@ -1,15 +1,28 @@
 import type { Oklab, LinearRgb } from '../types.js';
+import {
+  LINEAR_SRGB_TO_LMS,
+  LMS_TO_LINEAR_SRGB,
+  LMS_TO_OKLAB,
+  OKLAB_TO_LMS,
+} from './matrices.js';
+
+const [M1R, M1G, M1B] = LINEAR_SRGB_TO_LMS;
+const [M2L, M2A, M2B] = LMS_TO_OKLAB;
+// OKLAB_TO_LMS has an all-ones first column, so only the a/b terms are needed.
+const [[, LA, LB], [, MA, MB], [, SA, SB]] = OKLAB_TO_LMS;
+const [RL, GL, BL] = LMS_TO_LINEAR_SRGB;
 
 /**
  * Convert linear sRGB to OKLAB.
- * Based on Björn Ottosson's reference implementation.
+ * Based on Björn Ottosson's OKLab model, using the CSS Color 4 matrices
+ * recalculated in float64 for a consistent D65 reference white.
  * https://bottosson.github.io/posts/oklab/
  */
 export function linearRgbToOklab(rgb: LinearRgb): Oklab {
-  // Linear sRGB to LMS (using Ottosson's matrix)
-  const l = 0.4122214708 * rgb.r + 0.5363325363 * rgb.g + 0.0514459929 * rgb.b;
-  const m = 0.2119034982 * rgb.r + 0.6806995451 * rgb.g + 0.1073969566 * rgb.b;
-  const s = 0.0883024619 * rgb.r + 0.2817188376 * rgb.g + 0.6299787005 * rgb.b;
+  // Linear sRGB to LMS
+  const l = M1R[0] * rgb.r + M1R[1] * rgb.g + M1R[2] * rgb.b;
+  const m = M1G[0] * rgb.r + M1G[1] * rgb.g + M1G[2] * rgb.b;
+  const s = M1B[0] * rgb.r + M1B[1] * rgb.g + M1B[2] * rgb.b;
 
   // Cube root (non-linear response)
   const l_ = Math.cbrt(l);
@@ -17,9 +30,9 @@ export function linearRgbToOklab(rgb: LinearRgb): Oklab {
   const s_ = Math.cbrt(s);
 
   return {
-    L: 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_,
-    a: 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_,
-    b: 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_,
+    L: M2L[0] * l_ + M2L[1] * m_ + M2L[2] * s_,
+    a: M2A[0] * l_ + M2A[1] * m_ + M2A[2] * s_,
+    b: M2B[0] * l_ + M2B[1] * m_ + M2B[2] * s_,
     alpha: rgb.alpha,
   };
 }
@@ -29,9 +42,9 @@ export function linearRgbToOklab(rgb: LinearRgb): Oklab {
  */
 export function oklabToLinearRgb(lab: Oklab): LinearRgb {
   // OKLAB to LMS (cube roots)
-  const l_ = lab.L + 0.3963377774 * lab.a + 0.2158037573 * lab.b;
-  const m_ = lab.L - 0.1055613458 * lab.a - 0.0638541728 * lab.b;
-  const s_ = lab.L - 0.0894841775 * lab.a - 1.291485548 * lab.b;
+  const l_ = lab.L + LA * lab.a + LB * lab.b;
+  const m_ = lab.L + MA * lab.a + MB * lab.b;
+  const s_ = lab.L + SA * lab.a + SB * lab.b;
 
   // Cube (undo non-linearity)
   const l = l_ * l_ * l_;
@@ -40,9 +53,9 @@ export function oklabToLinearRgb(lab: Oklab): LinearRgb {
 
   // LMS to linear sRGB
   return {
-    r: +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    b: -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+    r: RL[0] * l + RL[1] * m + RL[2] * s,
+    g: GL[0] * l + GL[1] * m + GL[2] * s,
+    b: BL[0] * l + BL[1] * m + BL[2] * s,
     alpha: lab.alpha,
   };
 }
