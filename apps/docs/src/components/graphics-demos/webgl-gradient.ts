@@ -42,7 +42,9 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string) {
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw new Error(gl.getShaderInfoLog(shader) ?? 'shader compile failed');
+    const log = gl.getShaderInfoLog(shader);
+    gl.deleteShader(shader);
+    throw new Error(log ?? 'shader compile failed');
   }
   return shader;
 }
@@ -51,9 +53,19 @@ export function createGradientRenderer(
   gl: WebGL2RenderingContext,
 ): GradientRenderer {
   const program = gl.createProgram()!;
-  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX_SHADER));
-  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER));
+  const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
+  const fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+  gl.attachShader(program, vertex);
+  gl.attachShader(program, fragment);
   gl.linkProgram(program);
+  // The linked program keeps what it needs; free the shader objects.
+  gl.detachShader(program, vertex);
+  gl.detachShader(program, fragment);
+  gl.deleteShader(vertex);
+  gl.deleteShader(fragment);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw new Error(gl.getProgramInfoLog(program) ?? 'program link failed');
+  }
   gl.useProgram(program);
 
   const positionBuffer = gl.createBuffer();
@@ -89,5 +101,29 @@ export function createGradientRenderer(
       gl.deleteBuffer(colorBuffer);
       gl.deleteProgram(program);
     },
+  };
+}
+
+/**
+ * GPU resources vanish when the browser drops the WebGL context (GPU reset,
+ * too many contexts, tab backgrounding on mobile). Calling preventDefault on
+ * `webglcontextlost` lets the context come back; on `webglcontextrestored`,
+ * create a new renderer and draw again. Returns a function that stops
+ * listening.
+ */
+export function watchContextLoss(
+  canvas: HTMLCanvasElement,
+  onLost: () => void,
+  onRestored: () => void,
+): () => void {
+  const handleLost = (event: Event) => {
+    event.preventDefault();
+    onLost();
+  };
+  canvas.addEventListener('webglcontextlost', handleLost);
+  canvas.addEventListener('webglcontextrestored', onRestored);
+  return () => {
+    canvas.removeEventListener('webglcontextlost', handleLost);
+    canvas.removeEventListener('webglcontextrestored', onRestored);
   };
 }
