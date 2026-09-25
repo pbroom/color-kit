@@ -72,6 +72,12 @@ export function toLinearSrgbArray<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toLinearSrgbArray<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple;
 export function toLinearSrgbArray(
   color: Color,
   out?: WritableArrayLike,
@@ -119,6 +125,12 @@ export function toLinearSrgbArray4<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toLinearSrgbArray4<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple4;
 export function toLinearSrgbArray4(
   color: Color,
   out?: WritableArrayLike,
@@ -165,6 +177,12 @@ export function toSrgbArray<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toSrgbArray<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple;
 export function toSrgbArray(
   color: Color,
   out?: WritableArrayLike,
@@ -212,6 +230,12 @@ export function toSrgbArray4<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toSrgbArray4<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple4;
 export function toSrgbArray4(
   color: Color,
   out?: WritableArrayLike,
@@ -256,6 +280,12 @@ export function toLinearP3Array<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toLinearP3Array<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple;
 export function toLinearP3Array(
   color: Color,
   out?: WritableArrayLike,
@@ -301,6 +331,12 @@ export function toLinearP3Array4<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toLinearP3Array4<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple4;
 export function toLinearP3Array4(
   color: Color,
   out?: WritableArrayLike,
@@ -347,6 +383,12 @@ export function toP3Array<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toP3Array<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple;
 export function toP3Array(
   color: Color,
   out?: WritableArrayLike,
@@ -394,6 +436,12 @@ export function toP3Array4<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toP3Array4<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple4;
 export function toP3Array4(
   color: Color,
   out?: WritableArrayLike,
@@ -435,6 +483,12 @@ export function toOklabArray<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toOklabArray<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple;
 export function toOklabArray(
   color: Color,
   out?: WritableArrayLike,
@@ -477,6 +531,12 @@ export function toOklabArray4<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toOklabArray4<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple4;
 export function toOklabArray4(
   color: Color,
   out?: WritableArrayLike,
@@ -519,6 +579,12 @@ export function toOklchArray<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toOklchArray<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple;
 export function toOklchArray(
   color: Color,
   out?: WritableArrayLike,
@@ -562,6 +628,12 @@ export function toOklchArray4<T extends WritableArrayLike>(
   offset?: number,
   options?: ArrayWriteOptions,
 ): T;
+export function toOklchArray4<T extends WritableArrayLike>(
+  color: Color,
+  out: T | undefined,
+  offset?: number,
+  options?: ArrayWriteOptions,
+): T | ColorTuple4;
 export function toOklchArray4(
   color: Color,
   out?: WritableArrayLike,

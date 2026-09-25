@@ -31,6 +31,38 @@ const packed64: Float64Array = packColors(
   { stride: 4 },
 );
 
+// Optional reusable buffers (`T | undefined`) are accepted, and the result
+// is exactly "the buffer or a fresh default", not a widened array-like.
+type Equal<A, B> =
+  (<G>() => G extends A ? 1 : 2) extends <G>() => G extends B ? 1 : 2
+    ? true
+    : false;
+declare const maybeF32: Float32Array | undefined;
+declare const maybeF64: Float64Array | undefined;
+declare const maybeNumbers: number[] | undefined;
+
+const maybeTuple = toLinearSrgbArray(color, maybeF32);
+const maybeTupleIsExact: Equal<typeof maybeTuple, Float32Array | ColorTuple> =
+  true;
+const maybeTuple4 = toOklchArray4(color, maybeNumbers, 0, { clamp: true });
+const maybeTuple4IsExact: Equal<typeof maybeTuple4, number[] | ColorTuple4> =
+  true;
+const maybePacked = packColors([color], 'srgb', maybeF64, { alpha: true });
+const maybePackedIsExact: Equal<
+  typeof maybePacked,
+  Float64Array | Float32Array
+> = true;
+const maybePackedF32 = packColors([color], 'srgb', maybeF32).subarray(0, 3);
+// The overloads still resolve precisely when `out` is definitely absent or
+// definitely present.
+declare const definiteF64: Float64Array;
+const absent = packColors([color], 'srgb', undefined, { stride: 4 });
+const absentIsExact: Equal<typeof absent, Float32Array> = true;
+const present = toLinearSrgbArray(color, definiteF64, 3);
+const presentIsExact: Equal<typeof present, Float64Array> = true;
+const absentTuple = toLinearSrgbArray(color, undefined, 0, { clamp: true });
+const absentTupleIsExact: Equal<typeof absentTuple, ColorTuple> = true;
+
 // @ts-expect-error: a 3-tuple is not a ColorTuple4.
 const wrong: ColorTuple4 = toLinearSrgbArray(color);
 
@@ -50,5 +82,18 @@ export const typecheck = [
   packedWithOptions,
   packedNumbers,
   packed64,
+  maybeTuple,
+  maybeTuple4,
+  maybePacked,
+  absent,
+  present,
+  absentTuple,
+  maybeTupleIsExact,
+  maybeTuple4IsExact,
+  maybePackedIsExact,
+  maybePackedF32,
+  absentIsExact,
+  presentIsExact,
+  absentTupleIsExact,
   wrong,
 ];
