@@ -15,8 +15,8 @@ import type { Color, Rgb, Hsl, Hsv, Hct, Oklab, Oklch, P3 } from '../types.js';
 import { round, clamp } from '../utils/index.js';
 
 import { srgbToLinear, linearToSrgb, rgbToHex, hexToRgb } from './srgb.js';
-import { rgbToHsl, hslToRgb } from './hsl.js';
-import { rgbToHsv, hsvToRgb } from './hsv.js';
+import { rgbToHsl, hslToRgbUnrounded } from './hsl.js';
+import { rgbToHsv, hsvToRgbUnrounded } from './hsv.js';
 import { linearRgbToOklab, oklabToLinearRgb } from './oklab.js';
 import { oklabToOklch, oklchToOklab } from './oklch.js';
 import {
@@ -81,9 +81,12 @@ export function toHsl(color: Color): Hsl {
   return rgbToHsl(toRgb(color));
 }
 
-/** Convert HSL to a Color */
+/**
+ * Convert HSL to a Color. The intermediate sRGB value is not quantized to
+ * 8-bit, so fractional HSL inputs keep full precision.
+ */
 export function fromHsl(hsl: Hsl): Color {
-  return fromRgb(hslToRgb(hsl));
+  return fromRgb(hslToRgbUnrounded(hsl));
 }
 
 /** Convert a Color to HSV */
@@ -120,9 +123,12 @@ export function fromHct(hct: Hct): Color {
   };
 }
 
-/** Convert HSV to a Color */
+/**
+ * Convert HSV to a Color. The intermediate sRGB value is not quantized to
+ * 8-bit, so fractional HSV inputs keep full precision.
+ */
 export function fromHsv(hsv: Hsv): Color {
-  return fromRgb(hsvToRgb(hsv));
+  return fromRgb(hsvToRgbUnrounded(hsv));
 }
 
 /** Convert a Color to OKLAB */

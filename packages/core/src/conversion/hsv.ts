@@ -33,9 +33,12 @@ export function rgbToHsv(rgb: Rgb): Hsv {
   };
 }
 
-/** Convert HSV to sRGB (0-255) */
-export function hsvToRgb(hsv: Hsv): Rgb {
-  const h = hsv.h;
+/**
+ * Convert HSV to unrounded sRGB (0-255 floats). Hue is periodic, so any
+ * finite hue (negative or >= 360) is accepted.
+ */
+export function hsvToRgbUnrounded(hsv: Hsv): Rgb {
+  const h = normalizeHue(hsv.h);
   const s = hsv.s / 100;
   const v = hsv.v / 100;
 
@@ -81,9 +84,20 @@ export function hsvToRgb(hsv: Hsv): Rgb {
   }
 
   return {
-    r: Math.round(r * 255),
-    g: Math.round(g * 255),
-    b: Math.round(b * 255),
+    r: r * 255,
+    g: g * 255,
+    b: b * 255,
     alpha: hsv.alpha,
+  };
+}
+
+/** Convert HSV to sRGB (0-255, rounded to 8-bit channels) */
+export function hsvToRgb(hsv: Hsv): Rgb {
+  const rgb = hsvToRgbUnrounded(hsv);
+  return {
+    r: Math.round(rgb.r),
+    g: Math.round(rgb.g),
+    b: Math.round(rgb.b),
+    alpha: rgb.alpha,
   };
 }
