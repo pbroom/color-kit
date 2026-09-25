@@ -211,8 +211,28 @@ function nonFinitePackValue(
 }
 
 /**
+ * Asserts a value survives the Float32 point buffers. Finite float64 values
+ * beyond the Float32 range (e.g. `1e40`, `Number.MAX_VALUE`) would become
+ * `Infinity` when packed and fail decoding, so reject them at the producer.
+ */
+function requirePackable(
+  value: number,
+  label: string,
+  pointIndex: number,
+  channel: string,
+): void {
+  if (Number.isFinite(Math.fround(value))) return;
+  if (!Number.isFinite(value)) {
+    nonFinitePackValue(label, pointIndex, channel, value);
+  }
+  throw new Error(
+    `Cannot pack plane query result: ${label} point ${pointIndex} ${channel} is outside the Float32 range (${value}).`,
+  );
+}
+
+/**
  * Accumulates path geometry for a packed result. Every appended value is
- * asserted finite so malformed solver output fails at the producer.
+ * asserted finite in Float32 so malformed solver output fails at the producer.
  */
 export class PackedWriter {
   private readonly pathRanges: number[] = [];
@@ -227,8 +247,8 @@ export class PackedWriter {
 
   private pushXY(point: PlanePoint, label: string, index: number): void {
     const { x, y } = point;
-    if (!Number.isFinite(x)) nonFinitePackValue(label, index, 'x', x);
-    if (!Number.isFinite(y)) nonFinitePackValue(label, index, 'y', y);
+    requirePackable(x, label, index, 'x');
+    requirePackable(y, label, index, 'y');
     this.pointXY.push(x, y);
   }
 
@@ -248,8 +268,8 @@ export class PackedWriter {
       const point = points[index];
       this.pushXY(point, label, index);
       const { l, c } = point;
-      if (!Number.isFinite(l)) nonFinitePackValue(label, index, 'l', l);
-      if (!Number.isFinite(c)) nonFinitePackValue(label, index, 'c', c);
+      requirePackable(l, label, index, 'l');
+      requirePackable(c, label, index, 'c');
       this.pointLC.push(l, c);
       this.pointColorLcha.push(Number.NaN, Number.NaN, Number.NaN, Number.NaN);
     }
@@ -262,12 +282,10 @@ export class PackedWriter {
       const point = points[index];
       this.pushXY(point, label, index);
       const { l, c, h, alpha } = point.color;
-      if (!Number.isFinite(l)) nonFinitePackValue(label, index, 'color.l', l);
-      if (!Number.isFinite(c)) nonFinitePackValue(label, index, 'color.c', c);
-      if (!Number.isFinite(h)) nonFinitePackValue(label, index, 'color.h', h);
-      if (!Number.isFinite(alpha)) {
-        nonFinitePackValue(label, index, 'color.alpha', alpha);
-      }
+      requirePackable(l, label, index, 'color.l');
+      requirePackable(c, label, index, 'color.c');
+      requirePackable(h, label, index, 'color.h');
+      requirePackable(alpha, label, index, 'color.alpha');
       this.pointLC.push(Number.NaN, Number.NaN);
       this.pointColorLcha.push(l, c, h, alpha);
     }
