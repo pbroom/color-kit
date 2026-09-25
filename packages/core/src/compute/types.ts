@@ -9,8 +9,15 @@ import type {
   PlaneQueryTraceOptions,
   PlaneViewportRelation,
 } from '../plane/types.js';
+import type {
+  PlaneComputeBackendKind,
+  PlaneComputeScheduleReason,
+} from '../trace/types.js';
 
-export type PlaneComputeBackendKind = 'js' | 'webgpu';
+export type {
+  PlaneComputeBackendKind,
+  PlaneComputeScheduleReason,
+} from '../trace/types.js';
 export type PlaneComputePriority = 'drag' | 'idle';
 export type PlaneComputeQuality = 'high' | 'medium' | 'low';
 export type PlaneComputePerformanceProfile =
@@ -60,15 +67,7 @@ export interface PlaneComputeRequest {
 export interface PlaneComputeScheduleTrace {
   bucketKey: string;
   selectedBackend: PlaneComputeBackendKind;
-  reason:
-    | 'default-js'
-    | 'baseline-probe'
-    | 'warmup'
-    | 'telemetry-win'
-    | 'circuit-open'
-    | 'unsupported-backend'
-    | 'telemetry-regression'
-    | 'backend-error';
+  reason: PlaneComputeScheduleReason;
 }
 
 export interface PlaneComputeResponse {

@@ -2,7 +2,7 @@ import type { Color } from '../types.js';
 import {
   setTraceSummaryField,
   type InternalPlaneTraceContext,
-} from '../plane/trace.js';
+} from '../trace/context.js';
 import { contrastRegionPathsHybrid } from './region-hybrid.js';
 import { contrastRegionPathsLegacy } from './region-legacy.js';
 import { validateSteps } from './region-shared.js';

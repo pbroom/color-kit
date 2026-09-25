@@ -20,8 +20,8 @@ import {
   shouldTraceFull,
   shouldTraceScalarGrid,
   type InternalPlaneTraceContext,
-} from '../plane/trace.js';
-import type { PlanePoint } from '../plane/types.js';
+} from '../trace/context.js';
+import type { PlanePoint } from '../geometry/types.js';
 import { buildAxisAnchors } from '../sampling/adaptive1d.js';
 import { simplifyPolyline } from '../utils/index.js';
 import { contrastRatioUnclamped } from './metrics.js';

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ContrastHybridFallbackReason } from '../src/contrast/types.js';
-import type { InternalPlaneTraceContext } from '../src/plane/trace.js';
+import type { InternalPlaneTraceContext } from '../src/trace/context.js';
 
 afterEach(() => {
   vi.doUnmock('../src/gamut/index.js');

@@ -8,11 +8,8 @@ import { contrastRegionPath, contrastRegionPaths } from '../contrast/index.js';
 import { generateScale } from '../scale/index.js';
 import type { Color } from '../types.js';
 import { getPlaneGamutRegion } from './gamut-region/index.js';
-import {
-  createPlaneTraceContext,
-  finalizePlaneTrace,
-  type InternalPlaneTraceContext,
-} from './trace.js';
+import type { InternalPlaneTraceContext } from '../trace/context.js';
+import { createPlaneTraceContext, finalizePlaneTrace } from './trace.js';
 import type {
   Plane,
   PlaneChromaBandQuery,

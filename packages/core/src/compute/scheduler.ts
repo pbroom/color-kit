@@ -1,6 +1,5 @@
 import { createJsPlaneComputeBackend } from './backends/js-backend.js';
 import { resolvePlaneDefinition } from '../plane/plane.js';
-import { applyComputeTraceMetadata } from '../plane/trace.js';
 import type {
   PlaneComputeBackend,
   PlaneComputeBackendKind,
@@ -14,6 +13,7 @@ import type {
   PlaneComputeTelemetryBucket,
   PlaneComputeTelemetrySnapshot,
 } from './types.js';
+import { applyComputeTraceMetadata } from './trace-metadata.js';
 
 interface MutableTelemetryBackendStats extends PlaneComputeTelemetryBackendStats {
   lastUpdatedMs: number;

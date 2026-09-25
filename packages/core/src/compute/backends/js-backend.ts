@@ -1,7 +1,7 @@
 import { resolvePlaneDefinition } from '../../plane/plane.js';
 import { inspectPlaneQueries, runPlaneQueries } from '../../plane/query.js';
-import { applyComputeTraceMetadata } from '../../plane/trace.js';
 import { packPlaneQueryResults } from '../pack.js';
+import { applyComputeTraceMetadata } from '../trace-metadata.js';
 import type { PlaneComputeBackend } from '../types.js';
 
 function nowMs(): number {

@@ -4,7 +4,7 @@ import {
   recordTraceStage,
   setTraceSummaryField,
   type InternalPlaneTraceContext,
-} from '../trace.js';
+} from '../../trace/context.js';
 import type {
   PlaneDefinition,
   PlaneGamutRegionQuery,
