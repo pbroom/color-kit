@@ -137,6 +137,33 @@ describe('interpolation space option', () => {
     });
     expect(straight.l).not.toBeCloseTo(blue.l, 3);
   });
+
+  it('returns transparent endpoints exactly, without losing their color', () => {
+    const transparentRed: Color = { ...red, alpha: 0 };
+    for (const space of SPACES) {
+      expect(mix(transparentRed, blue, 0, { space })).toEqual(transparentRed);
+      expect(mix(blue, transparentRed, 1, { space })).toEqual(transparentRed);
+      const scale = generateScale(transparentRed, blue, 3, { space });
+      expect(scale[0]).toEqual(transparentRed);
+      expect(scale[2]).toEqual(blue);
+    }
+  });
+
+  it('uses straight alpha where the interpolated alpha is 0', () => {
+    const transparentRed: Color = { ...red, alpha: 0 };
+    const transparentBlue: Color = { ...blue, alpha: 0 };
+    for (const space of SPACES) {
+      const result = mix(transparentRed, transparentBlue, 0.5, {
+        space,
+        premultiplied: true,
+      });
+      const straight = mix(red, blue, 0.5, { space, premultiplied: false });
+      expect(result.alpha).toBe(0);
+      // Not collapsed to (transparent) black.
+      expect(result.l).toBeCloseTo(straight.l, 12);
+      expect(result.c).toBeCloseTo(straight.c, 12);
+    }
+  });
 });
 
 describe('hue interpolation methods (oklch)', () => {

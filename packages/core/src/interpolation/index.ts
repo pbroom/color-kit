@@ -81,6 +81,14 @@ export interface InterpolationOptions {
    * `'oklch'`, so `{ space: 'oklch' }` keeps the straight-alpha channel
    * interpolation of the option-less call. Pass `true` with `'oklch'` for
    * full CSS parity when the endpoints have different alphas.
+   *
+   * Where the interpolated alpha is exactly 0 (both endpoints transparent,
+   * or extrapolation), there is nothing to un-premultiply by, so that result
+   * uses straight-alpha interpolation of the channels. CSS Color 4 (and
+   * colorjs.io) instead keep the premultiplied values there, which collapses
+   * every fully transparent result to transparent black. The two agree on
+   * everything visible; color-kit keeps the hue and lightness so a
+   * transparent stop is not silently turned into black.
    */
   premultiplied?: boolean;
 }
@@ -219,7 +227,7 @@ function mixPolar(
   }
 
   const alpha = lerp(color1.alpha, color2.alpha, t);
-  if (!premultiplied) {
+  if (!premultiplied || alpha === 0) {
     return {
       l: lerp(color1.l, color2.l, t),
       c: lerp(color1.c, color2.c, t),
@@ -230,7 +238,7 @@ function mixPolar(
 
   const a1 = color1.alpha;
   const a2 = color2.alpha;
-  const scale = alpha === 0 ? 1 : 1 / alpha;
+  const scale = 1 / alpha;
   return {
     l: lerp(color1.l * a1, color2.l * a2, t) * scale,
     c: lerp(color1.c * a1, color2.c * a2, t) * scale,
@@ -248,10 +256,12 @@ function mixRectangular(
 ): Color {
   const p = toSpaceCoords(color1, space);
   const q = toSpaceCoords(color2, space);
-  const a1 = premultiplied ? color1.alpha : 1;
-  const a2 = premultiplied ? color2.alpha : 1;
   const alpha = lerp(color1.alpha, color2.alpha, t);
-  const scale = !premultiplied || alpha === 0 ? 1 : 1 / alpha;
+  // Nothing to un-premultiply by at alpha 0: fall back to straight alpha.
+  const premultiply = premultiplied && alpha !== 0;
+  const a1 = premultiply ? color1.alpha : 1;
+  const a2 = premultiply ? color2.alpha : 1;
+  const scale = premultiply ? 1 / alpha : 1;
   // Only a true in-between mix (0 <= t <= 1) is a convex combination.
   const clampNoise = space !== 'oklab' && t >= 0 && t <= 1;
 
@@ -271,7 +281,8 @@ function mixRectangular(
 
 /**
  * Interpolate two colors in the given space with CSS Color 4 semantics.
- * `t = 0` returns (a round trip of) `color1`, `t = 1` returns `color2`;
+ * `t = 0` returns a copy of `color1` and `t = 1` a copy of `color2`, exactly
+ * (no conversion round trip, and a transparent endpoint keeps its color);
  * values outside `[0, 1]` extrapolate.
  *
  * Results are not gamut mapped. Interpolating two in-gamut colors in
@@ -296,6 +307,15 @@ export function interpolateInSpace(
   t: number,
   options: InterpolationOptions = {},
 ): Color {
+  if (t === 0 || t === 1) {
+    const endpoint = t === 0 ? color1 : color2;
+    return {
+      l: endpoint.l,
+      c: endpoint.c,
+      h: endpoint.h,
+      alpha: endpoint.alpha,
+    };
+  }
   const space = options.space ?? 'oklch';
   if (space === 'oklch') {
     return mixPolar(

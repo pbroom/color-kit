@@ -1213,7 +1213,10 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
     'increasing',
     'decreasing',
   ];
-  const T_VALUES = [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1];
+  // Interior positions only: t = 0 and t = 1 return the inputs exactly (see
+  // the endpoint test below), whereas colorjs.io returns a round trip of its
+  // gamut-mapped inputs.
+  const T_VALUES = [0.1, 0.25, 0.5, 0.75, 0.9];
 
   function mixAlpha(): number {
     const roll = mixRandom();
@@ -1285,9 +1288,37 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
     return [lab.L, lab.a, lab.b];
   }
 
+  /**
+   * CSS / colorjs.io keep the premultiplied (all-zero) channels when the
+   * interpolated alpha is exactly 0; color-kit interpolates with straight
+   * alpha there instead (documented deviation). Compare those samples against
+   * colorjs.io's straight-alpha mix.
+   */
+  function premultipliedAt(
+    a: Color,
+    b: Color,
+    t: number,
+    premultiplied: boolean,
+  ): boolean {
+    return premultiplied && a.alpha + (b.alpha - a.alpha) * t !== 0;
+  }
+
   function describePair(a: Color, b: Color, t: number): string {
     return fmt([a.l, a.c, a.h, a.alpha, b.l, b.c, b.h, b.alpha, t]);
   }
+
+  it('t = 0 and t = 1 return the endpoints exactly in every space', () => {
+    const spaces: InterpolationSpace[] = [...RECTANGULAR, 'oklch'];
+    for (const space of spaces) {
+      for (const [a, b] of OKLCH_PAIRS) {
+        expect(mix(a, b, 0, { space })).toEqual(a);
+        expect(mix(a, b, 1, { space })).toEqual(b);
+        const scale = generateScale(a, b, 9, { space });
+        expect(scale[0]).toEqual(a);
+        expect(scale[8]).toEqual(b);
+      }
+    }
+  });
 
   for (const space of RECTANGULAR) {
     it(`mix in ${space} matches colorjs.io mix (premultiplied)`, () => {
@@ -1298,7 +1329,7 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
           const kit = mix(a, b, t, { space });
           const reference = refInput(a, false).mix(refInput(b, false), t, {
             space: COLORJS_SPACE[space],
-            premultiplied: true,
+            premultiplied: premultipliedAt(a, b, t, true),
           });
           const expected = refCoords(reference, 'oklab');
           tracker.observe(vecError(oklabOf(kit), expected), () =>
@@ -1326,7 +1357,7 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
             const reference = refInput(a, true).mix(refInput(b, true), t, {
               space: 'oklch',
               hue,
-              premultiplied,
+              premultiplied: premultipliedAt(a, b, t, premultiplied),
             });
             const [l, c, refHue] = reference.coords;
             const err = lchError(kit, [
@@ -1356,8 +1387,17 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
           premultiplied: space !== 'oklch',
         });
         kit.forEach((color, i) => {
+          // Endpoints are exact; covered by the endpoint test.
+          if (i === 0 || i === 8) return;
+          const t = i / 8;
+          const stop = premultipliedAt(a, b, t, space !== 'oklch')
+            ? reference[i]
+            : refInput(a, true).mix(refInput(b, true), t, {
+                space: COLORJS_SPACE[space],
+                premultiplied: false,
+              });
           tracker.observe(
-            vecError(oklabOf(color), refCoords(reference[i], 'oklab')),
+            vecError(oklabOf(color), refCoords(stop, 'oklab')),
             () => `${space} ${describePair(a, b, i / 8)}`,
           );
         });
@@ -1385,11 +1425,12 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
         const pb = refFromColor(b).to(id).coords;
         for (const t of [0.25, 0.5, 0.8]) {
           const alpha = a.alpha + (b.alpha - a.alpha) * t;
+          const premult = alpha !== 0;
           const coords = [0, 1, 2].map((k) => {
-            const start = (pa[k] ?? 0) * a.alpha;
-            const end = (pb[k] ?? 0) * b.alpha;
+            const start = (pa[k] ?? 0) * (premult ? a.alpha : 1);
+            const end = (pb[k] ?? 0) * (premult ? b.alpha : 1);
             const value = start + (end - start) * t;
-            return alpha === 0 ? value : value / alpha;
+            return premult ? value / alpha : value;
           }) as Vec3;
           const expected = refCoords(ref(id, coords, alpha), 'oklab');
           const kit = mix(a, b, t, { space });
