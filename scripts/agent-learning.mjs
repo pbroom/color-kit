@@ -71,19 +71,14 @@ function renderArchive(entries) {
 }
 
 // Update the archive in place so undated entries, subsections, and any other
-// non-entry content survive. An existing dated entry with the same title is
-// replaced where it sits; otherwise the new entry is appended to the end of the
-// primary `## Entries` list (before any nested `###` subsection).
+// non-entry content survive. Only the primary `## Entries` list (up to the
+// first nested `###` subsection) holds live learnings: an entry there with the
+// same title is replaced where it sits, otherwise the new entry is appended to
+// that list. A same-titled dated entry in a retired subsection (for example
+// "Moved from AGENTS.md") is superseded and removed, so the learning becomes
+// live again without leaving a duplicate title behind.
 function upsertArchiveEntry(archiveText, entry) {
   const lines = archiveText.split(/\r?\n/);
-  const existingIndex = lines.findIndex(
-    (line) => parseEntryLine(line)?.title === entry.title,
-  );
-  if (existingIndex >= 0) {
-    lines[existingIndex] = formatEntry(entry);
-    return `${lines.join('\n').replace(/\s+$/u, '')}\n`;
-  }
-
   const headingIndex = lines.findIndex(
     (line) => line.trim() === ENTRIES_HEADING,
   );
@@ -94,23 +89,41 @@ function upsertArchiveEntry(archiveText, entry) {
     return `${archiveText.replace(/\s+$/u, '')}\n\n${ENTRIES_HEADING}\n\n${formatEntry(entry)}\n`;
   }
 
-  let insertAt = lines.length;
+  let primaryEnd = lines.length;
   for (let i = headingIndex + 1; i < lines.length; i += 1) {
     if (lines[i].startsWith('## ') || lines[i].startsWith('### ')) {
-      insertAt = i;
+      primaryEnd = i;
       break;
     }
   }
-  while (insertAt > headingIndex + 1 && lines[insertAt - 1].trim() === '') {
-    insertAt -= 1;
+
+  const isSameTitle = (line) => parseEntryLine(line)?.title === entry.title;
+  const retained = lines.filter(
+    (line, index) =>
+      (index > headingIndex && index < primaryEnd) || !isSameTitle(line),
+  );
+  const removedBefore = lines
+    .slice(0, headingIndex)
+    .filter((line) => isSameTitle(line)).length;
+  const start = headingIndex - removedBefore;
+  const end = primaryEnd - removedBefore;
+
+  const existingIndex = retained.findIndex(
+    (line, index) => index > start && index < end && isSameTitle(line),
+  );
+  if (existingIndex >= 0) {
+    retained[existingIndex] = formatEntry(entry);
+    return `${retained.join('\n').replace(/\s+$/u, '')}\n`;
   }
 
+  let insertAt = end;
+  while (insertAt > start + 1 && retained[insertAt - 1].trim() === '') {
+    insertAt -= 1;
+  }
   const inserted =
-    insertAt === headingIndex + 1
-      ? ['', formatEntry(entry)]
-      : [formatEntry(entry)];
-  lines.splice(insertAt, 0, ...inserted);
-  return `${lines.join('\n').replace(/\s+$/u, '')}\n`;
+    insertAt === start + 1 ? ['', formatEntry(entry)] : [formatEntry(entry)];
+  retained.splice(insertAt, 0, ...inserted);
+  return `${retained.join('\n').replace(/\s+$/u, '')}\n`;
 }
 
 function readFileOrFail(filePath) {
