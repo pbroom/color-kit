@@ -1,0 +1,30 @@
+[
+  {
+    "name": "color-kit: parse + toHex + contrastRatio",
+    "path": "packages/color-kit/dist/index.js",
+    "import": "{ parse, toHex, contrastRatio }",
+    "gzip": true,
+    "limit": "2.5 kB"
+  },
+  {
+    "name": "color-kit: everyday toolkit (+ lighten, complementary)",
+    "path": "packages/color-kit/dist/index.js",
+    "import": "{ parse, toHex, contrastRatio, lighten, complementary }",
+    "gzip": true,
+    "limit": "2.5 kB"
+  },
+  {
+    "name": "color-kit: definePlane + sense + toSvgPath",
+    "path": "packages/color-kit/dist/index.js",
+    "import": "{ definePlane, sense, toSvgPath }",
+    "gzip": true,
+    "limit": "28.5 kB"
+  },
+  {
+    "name": "color-kit/plane: definePlane + sense + toSvgPath",
+    "path": "packages/color-kit/dist/plane/index.js",
+    "import": "{ definePlane, sense, toSvgPath }",
+    "gzip": true,
+    "limit": "28.5 kB"
+  }
+]

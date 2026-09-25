@@ -25,6 +25,7 @@
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "size": "size-limit",
     "clean": "pnpm -r exec rm -rf dist node_modules"
   },
   "keywords": [
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.4",
     "@eslint/js": "^9.39.2",
+    "@size-limit/preset-small-lib": "^14.0.0",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-compiler": "19.1.0-rc.2",
@@ -55,6 +57,7 @@
     "playwright": "^1.58.2",
     "prettier": "^3.6.2",
     "publint": "^0.3.21",
+    "size-limit": "^14.0.0",
     "typescript-eslint": "^8.54.0"
   },
   "pnpm": {
