@@ -129,14 +129,28 @@ export function usePlaneQueryLayer<T>(
     }
 
     const handle = postPlaneQueryRequest(workerPayload, (response) => {
-      const data = extractResult(response);
+      let data: T | undefined;
+      let observed = response;
+      try {
+        data = extractResult(response);
+      } catch (error) {
+        // A payload that fails to decode (e.g. an ABI mismatch between the
+        // worker and main-thread builds) is handled like a worker error: keep
+        // the previous data and report the failure to observers.
+        data = undefined;
+        observed = {
+          ...response,
+          result: undefined,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
       if (data !== undefined) {
         setWorkerData({
           requestId: response.id,
           data,
         });
       }
-      onWorkerResponse?.(response, data);
+      onWorkerResponse?.(observed, data);
     });
 
     if (!handle) {

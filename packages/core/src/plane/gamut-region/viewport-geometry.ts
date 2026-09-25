@@ -15,7 +15,7 @@ import {
   shouldTraceFull,
   shouldTraceScalarGrid,
   type InternalPlaneTraceContext,
-} from '../trace.js';
+} from '../../trace/context.js';
 import type {
   PlanePoint,
   PlaneRegion,

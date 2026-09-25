@@ -26,7 +26,7 @@ import {
   limitTracePaths,
   recordTraceStage,
   type InternalPlaneTraceContext,
-} from '../trace.js';
+} from '../../trace/context.js';
 import type {
   Plane,
   PlaneChannel,

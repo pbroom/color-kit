@@ -101,10 +101,22 @@ export {
   grayscale,
 } from './manipulation/index.js';
 
+// Full-precision OKLab / sRGB / Display P3 matrices (CSS Color 4), for
+// renderers such as shaders that re-implement the conversion math.
+export {
+  LINEAR_SRGB_TO_LINEAR_P3,
+  LMS_TO_LINEAR_SRGB,
+  OKLAB_TO_LMS,
+} from './conversion/matrices.js';
+export type { Matrix3 } from './conversion/matrices.js';
+
 // Gamut
 export {
   GAMUT_EPSILON,
+  GAMUT_LINEAR_MAX,
+  GAMUT_LINEAR_MIN,
   inSrgbGamut,
+  isLinearRgbInGamut,
   inP3Gamut,
   toSrgbGamut,
   toP3Gamut,

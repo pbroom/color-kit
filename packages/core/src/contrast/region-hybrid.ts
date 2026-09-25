@@ -8,7 +8,7 @@ import {
   setTraceSummaryField,
   shouldTraceFull,
   type InternalPlaneTraceContext,
-} from '../plane/trace.js';
+} from '../trace/context.js';
 import { buildAxisAnchors } from '../sampling/adaptive1d.js';
 import { simplifyPolyline } from '../utils/index.js';
 import {

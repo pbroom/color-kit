@@ -1,16 +1,24 @@
-import type { GamutTarget } from '../gamut/index.js';
+import type { PackedPlaneQueryResult } from '../plane/packed-abi.js';
 import type {
   PlaneDefinition,
-  PlaneGamutRegionScope,
-  PlaneGamutSolver,
   PlaneQuery,
   PlaneQueryResult,
   PlaneQueryTrace,
   PlaneQueryTraceOptions,
-  PlaneViewportRelation,
 } from '../plane/types.js';
+import type {
+  PlaneComputeBackendKind,
+  PlaneComputeScheduleReason,
+} from '../trace/types.js';
 
-export type PlaneComputeBackendKind = 'js' | 'webgpu';
+export type {
+  PlaneComputeBackendKind,
+  PlaneComputeScheduleReason,
+} from '../trace/types.js';
+export type {
+  PackedPlaneQueryDescriptor,
+  PackedPlaneQueryResult,
+} from '../plane/packed-abi.js';
 export type PlaneComputePriority = 'drag' | 'idle';
 export type PlaneComputeQuality = 'high' | 'medium' | 'low';
 export type PlaneComputePerformanceProfile =
@@ -18,35 +26,6 @@ export type PlaneComputePerformanceProfile =
   | 'quality'
   | 'balanced'
   | 'performance';
-
-export interface PackedPlaneQueryDescriptor {
-  kind: PlaneQuery['kind'];
-  pathStart: number;
-  pathCount: number;
-  regionPathStart?: number;
-  regionPathCount?: number;
-  hue?: number;
-  gamut?: GamutTarget;
-  scope?: PlaneGamutRegionScope;
-  solver?: PlaneGamutSolver;
-  viewportRelation?: PlaneViewportRelation;
-}
-
-/**
- * Transfer-friendly packed representation of batched plane query output.
- *
- * `pathRanges` contains `[startPoint, pointCount]` tuples.
- * `pointXY` contains `[x0, y0, x1, y1, ...]`.
- * `pointLC` contains `[l0, c0, l1, c1, ...]` (NaN when unavailable).
- * `pointColorLcha` contains `[l0, c0, h0, a0, ...]` (NaN when unavailable).
- */
-export interface PackedPlaneQueryResult {
-  queryDescriptors: PackedPlaneQueryDescriptor[];
-  pathRanges: Uint32Array;
-  pointXY: Float32Array;
-  pointLC: Float32Array;
-  pointColorLcha: Float32Array;
-}
 
 export interface PlaneComputeRequest {
   plane: PlaneDefinition;
@@ -60,15 +39,7 @@ export interface PlaneComputeRequest {
 export interface PlaneComputeScheduleTrace {
   bucketKey: string;
   selectedBackend: PlaneComputeBackendKind;
-  reason:
-    | 'default-js'
-    | 'baseline-probe'
-    | 'warmup'
-    | 'telemetry-win'
-    | 'circuit-open'
-    | 'unsupported-backend'
-    | 'telemetry-regression'
-    | 'backend-error';
+  reason: PlaneComputeScheduleReason;
 }
 
 export interface PlaneComputeResponse {

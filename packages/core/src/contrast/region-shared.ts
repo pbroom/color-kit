@@ -1,6 +1,6 @@
 import type { Color } from '../types.js';
 import { toP3Gamut, toSrgbGamut, type GamutTarget } from '../gamut/index.js';
-import type { PlanePoint } from '../plane/types.js';
+import type { PlanePoint } from '../geometry/types.js';
 import { contrastAPCA, contrastRatioUnclamped } from './metrics.js';
 import type {
   ContrastApcaPreset,

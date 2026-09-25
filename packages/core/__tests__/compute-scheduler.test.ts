@@ -6,7 +6,7 @@ import {
   type PlaneComputeBackend,
   type PlaneComputeRequest,
 } from '../src/index.js';
-import { applyComputeTraceMetadata } from '../src/plane/trace.js';
+import { applyComputeTraceMetadata } from '../src/compute/trace-metadata.js';
 
 const schedulerRequest: PlaneComputeRequest = {
   plane: {

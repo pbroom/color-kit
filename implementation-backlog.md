@@ -140,7 +140,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-005 — Break plane ↔ contrast type cycle in core
 
 - **Priority:** P1
-- **Status:** Open
+- **Status:** Completed 2026-09-25
 - **Evidence:**
   - `packages/core/src/contrast/index.ts` imports `InternalPlaneTraceContext` from `../plane/trace.js` and `PlanePoint` from `../plane/types.js`.
   - `packages/core/src/plane/types.ts` imports contrast types from `../contrast/index.js`.
@@ -155,13 +155,14 @@ Do not green-light large features on these surfaces without a decomposition plan
   - No import cycle between `contrast/` and `plane/`.
   - Contrast module usable without plane trace internals.
   - Existing plane/contrast tests pass.
+- **Completed:** Moved `PlanePoint` to `core/src/geometry/types.ts` and the trace types plus mutable trace-context helpers to `core/src/trace/`, so contrast solvers import neither `plane/` nor `compute/`. `PlaneContrastQueryOptions` now extends `ContrastRegionPathOptions`, `applyComputeTraceMetadata` lives in `compute/trace-metadata.ts`, and `__tests__/import-layers.test.ts` enforces contrast ↛ plane/compute, trace ↛ plane/compute and plane ↛ compute.
 
 ---
 
 ### IB-006 — Split core multi-solver god modules
 
 - **Priority:** P1
-- **Status:** Open
+- **Status:** Completed 2026-09-25
 - **Evidence:**
   - `packages/core/src/contrast/index.ts` (1,526 lines) — legacy marching squares, adaptive LC, hybrid root-tracing, and public router in one file.
   - `packages/core/src/plane/gamut-region.ts` (1,397 lines) — viewport geometry, `resolveGamutSolver` policy matrix, implicit contour, and orchestration tangled together.
@@ -184,6 +185,7 @@ Do not green-light large features on these surfaces without a decomposition plan
   - No core production file exceeds 1k lines without documented justification.
   - Adaptive sampling logic defined once.
   - Existing core tests pass without snapshot churn.
+- **Completed:** Contrast, gamut-region and adaptive sampling were split earlier; the remaining god modules are now split too: `gamut/index.ts` is a barrel over `types`, `membership`, `cubic`, `hue-cusp`, `max-chroma`, `boundary-path` and `chroma-band`; `plane/plane.ts` is a barrel over `model-specs`, `resolve` and `mapping`; and the scheduler shrank below 600 lines by moving per-kind budgets and telemetry signatures into query specs. No core source file exceeds 600 lines except `contour/index.ts`.
 
 ---
 
@@ -332,7 +334,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-014 — Introduce `PlaneQuerySpec` and strict packed ABI
 
 - **Priority:** P0
-- **Status:** Open
+- **Status:** Completed 2026-09-25
 - **Evidence:**
   - Query execution dispatch lives in `packages/core/src/plane/query.ts`.
   - Packing lives in `packages/core/src/compute/pack.ts`, unpacking in `packages/core/src/compute/unpack.ts`, trace geometry in `packages/core/src/plane/trace.ts`, and scheduler budget/keying in `packages/core/src/compute/scheduler.ts`.
@@ -349,6 +351,7 @@ Do not green-light large features on these surfaces without a decomposition plan
   - New query kinds are registered once instead of patched through several switches.
   - Worker boundaries fail closed on malformed packed payloads.
   - Existing worker protocol tests pass with no public result-shape changes.
+- **Completed:** `plane/query-spec.ts` plus one spec per kind under `plane/query-specs/` own `run`, point channels, geometry counting, scheduler budget/telemetry signature, and `pack`/`validateDescriptor`/`unpack`; execution, trace geometry, scheduler bucket keys and packing all look kinds up in `PLANE_QUERY_SPECS`. `plane/packed-abi.ts` defines `PACKED_PLANE_QUERY_ABI_VERSION = 2`, a per-kind discriminated `PackedPlaneQueryDescriptor` union with required fields, a required `abiVersion`, and `PackedWriter`/`PackedReader`. `unpackPlaneQueryResults()` validates the entire payload (version, kinds, fields, enums, finite hue and channels, single-path/single-point kinds, contiguous ranges) before rebuilding geometry and never invents defaults; packing rejects non-finite values at the producer; React plane-query layers treat a decode failure as a worker error. `backendCapabilities` was intentionally left out while JS is the only backend. The packed result shape changed (required `abiVersion`, per-kind descriptors); decoded `PlaneQueryResult` shapes did not.
 
 ---
 
@@ -419,12 +422,12 @@ Do not green-light large features on these surfaces without a decomposition plan
 ## Suggested execution order
 
 1. ~~**IB-001** — Stop registry drift~~ (obsolete: registry removed).
-2. **IB-013 + IB-014** — Make compute backend telemetry honest and harden the packed query ABI.
+2. ~~**IB-013 + IB-014** — Make compute backend telemetry honest and harden the packed query ABI~~ (IB-013 resolved; IB-014 completed 2026-09-25).
 3. **IB-002 + IB-007** — Shared plane query layer + delete legacy worker (biggest react LOC + perf win).
 4. **IB-003** — Decompose contrast-region god module.
 5. ~~**IB-004 + IB-009** — Split lab shared + lab numeric field wrappers~~ (obsolete: Lab removed).
 6. **IB-015 + IB-011** — Collapse component-doc and properties-panel ownership to descriptors.
-7. **IB-005 + IB-006** — Core type cycle + solver decomposition.
+7. ~~**IB-005 + IB-006** — Core type cycle + solver decomposition~~ (completed 2026-09-25).
 8. **IB-008, IB-010, IB-012, IB-016, IB-017** — Control-kit scrub split, parser split, color-area slot/interaction, Sandpack generation, multi-color state.
 
 ---
