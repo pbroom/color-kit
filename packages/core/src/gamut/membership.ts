@@ -9,6 +9,8 @@ import {
 import { linearChannelsInGamut } from './linear-bounds.js';
 import type { GamutTarget } from './types.js';
 
+export { GAMUT_LINEAR_MAX, GAMUT_LINEAR_MIN } from './linear-bounds.js';
+
 const LIGHTNESS_ENDPOINT_EPSILON = 1e-9;
 
 export const OKLAB_TO_LINEAR_SRGB_ROWS = LMS_TO_LINEAR_SRGB;

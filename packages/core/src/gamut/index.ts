@@ -4,6 +4,8 @@ export { chromaBand } from './chroma-band.js';
 export { maxChromaForHue } from './hue-cusp.js';
 export { maxChromaAt } from './max-chroma.js';
 export {
+  GAMUT_LINEAR_MAX,
+  GAMUT_LINEAR_MIN,
   inP3Gamut,
   inSrgbGamut,
   isLinearRgbInGamut,

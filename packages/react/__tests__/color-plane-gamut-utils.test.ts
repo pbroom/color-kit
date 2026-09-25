@@ -31,7 +31,17 @@ describe('color-plane gamut utils', () => {
   });
 
   it('maps out-of-gamut colors into the target gamut', () => {
-    const mapped = mapToGamutLinear(0.7, 0.35, 150, 'srgb');
-    expect(inSrgbLinear(mapped)).toBe(true);
+    for (const [l, c, h] of [
+      [0.7, 0.35, 150],
+      [0.03, 0.2, 131],
+      [0.95, 0.3, 260],
+    ]) {
+      const mapped = mapToGamutLinear(l, c, h, 'srgb');
+      // Like core toSrgbGamut, the bisection settles strictly inside.
+      for (const channel of [mapped.r, mapped.g, mapped.b]) {
+        expect(channel).toBeGreaterThanOrEqual(0);
+        expect(channel).toBeLessThanOrEqual(1);
+      }
+    }
   });
 });

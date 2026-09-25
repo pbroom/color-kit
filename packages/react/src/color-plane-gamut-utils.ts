@@ -53,6 +53,26 @@ export function inP3Linear(linearSrgb: LinearSrgb): boolean {
   return isLinearRgbInGamut(linearP3.r, linearP3.g, linearP3.b);
 }
 
+function inUnitCube(r: number, g: number, b: number): boolean {
+  return r >= 0 && r <= 1 && g >= 0 && g <= 1 && b >= 0 && b <= 1;
+}
+
+/**
+ * Strict (no epsilon) membership used while bisecting chroma, matching core
+ * `toSrgbGamut`/`toP3Gamut`: the epsilon only absorbs float noise on colors
+ * that are already in gamut and must not let the search settle outside it.
+ */
+function strictlyInTargetGamut(
+  linearSrgb: LinearSrgb,
+  gamut: GamutTarget,
+): boolean {
+  if (gamut === 'display-p3') {
+    const p3 = linearSrgbToLinearP3({ ...linearSrgb, alpha: 1 });
+    return inUnitCube(p3.r, p3.g, p3.b);
+  }
+  return inUnitCube(linearSrgb.r, linearSrgb.g, linearSrgb.b);
+}
+
 function inTargetGamut(linearSrgb: LinearSrgb, gamut: GamutTarget): boolean {
   return gamut === 'display-p3'
     ? inP3Linear(linearSrgb)
@@ -77,7 +97,7 @@ export function mapToGamutLinear(
   for (let index = 0; index < GAMUT_ITERS; index += 1) {
     const mid = (lo + hi) * 0.5;
     const testLinear = oklchToLinearSrgb(lightness, mid, hue);
-    if (inTargetGamut(testLinear, gamut)) {
+    if (strictlyInTargetGamut(testLinear, gamut)) {
       lo = mid;
       mapped = mid;
     } else {

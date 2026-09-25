@@ -1,3 +1,33 @@
+import {
+  GAMUT_LINEAR_MAX,
+  GAMUT_LINEAR_MIN,
+  LINEAR_SRGB_TO_LINEAR_P3,
+  LMS_TO_LINEAR_SRGB,
+  OKLAB_TO_LMS,
+  type Matrix3,
+} from '@color-kit/core';
+
+/**
+ * Formats a number as a GLSL ES 1.00 float literal at full double precision
+ * (the GPU rounds to its own float precision).
+ */
+export function glslFloat(value: number): string {
+  if (!Number.isFinite(value)) {
+    throw new Error(`Cannot embed non-finite GLSL constant: ${value}`);
+  }
+  const text = String(value);
+  return /[.e]/.test(text) ? text : `${text}.0`;
+}
+
+function glslMatrixRows(name: string, matrix: Matrix3): string {
+  return matrix
+    .map(
+      (row, index) =>
+        `  const vec3 ${name}_${index} = vec3(${row.map(glslFloat).join(', ')});`,
+    )
+    .join('\n');
+}
+
 export const COLOR_PLANE_VERTEX_SHADER_SOURCE = `
   attribute vec2 a_position;
   varying vec2 v_uv;
@@ -21,8 +51,12 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
   uniform float u_edge_behavior;
 
   const float PI = 3.14159265359;
-  const float EPSILON = 0.000075;
+  const float GAMUT_LINEAR_MIN = ${glslFloat(GAMUT_LINEAR_MIN)};
+  const float GAMUT_LINEAR_MAX = ${glslFloat(GAMUT_LINEAR_MAX)};
   const int GAMUT_ITERS = 14;
+${glslMatrixRows('OKLAB_TO_LMS', OKLAB_TO_LMS)}
+${glslMatrixRows('LMS_TO_LINEAR_SRGB', LMS_TO_LINEAR_SRGB)}
+${glslMatrixRows('LINEAR_SRGB_TO_LINEAR_P3', LINEAR_SRGB_TO_LINEAR_P3)}
 
   float transferLinearToSrgb(float value) {
     float absValue = abs(value);
@@ -34,47 +68,52 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
 
   vec3 oklchToLinearSrgb(float lightness, float chroma, float hueDeg) {
     float hueRad = radians(mod(hueDeg, 360.0));
-    float a = chroma * cos(hueRad);
-    float b = chroma * sin(hueRad);
-
-    float l_ = lightness + 0.3963377774 * a + 0.2158037573 * b;
-    float m_ = lightness - 0.1055613458 * a - 0.0638541728 * b;
-    float s_ = lightness - 0.0894841775 * a - 1.2914855480 * b;
-
-    float l = l_ * l_ * l_;
-    float m = m_ * m_ * m_;
-    float s = s_ * s_ * s_;
-
+    vec3 lab = vec3(lightness, chroma * cos(hueRad), chroma * sin(hueRad));
+    vec3 lmsPrime = vec3(
+      dot(OKLAB_TO_LMS_0, lab),
+      dot(OKLAB_TO_LMS_1, lab),
+      dot(OKLAB_TO_LMS_2, lab)
+    );
+    vec3 lms = lmsPrime * lmsPrime * lmsPrime;
     return vec3(
-      +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-      -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+      dot(LMS_TO_LINEAR_SRGB_0, lms),
+      dot(LMS_TO_LINEAR_SRGB_1, lms),
+      dot(LMS_TO_LINEAR_SRGB_2, lms)
     );
   }
 
   vec3 linearSrgbToLinearP3(vec3 linearSrgb) {
     return vec3(
-      0.8224621724 * linearSrgb.r + 0.1775378276 * linearSrgb.g,
-      0.0331941980 * linearSrgb.r + 0.9668058020 * linearSrgb.g,
-      0.0170826307 * linearSrgb.r + 0.0723974407 * linearSrgb.g + 0.9105199286 * linearSrgb.b
+      dot(LINEAR_SRGB_TO_LINEAR_P3_0, linearSrgb),
+      dot(LINEAR_SRGB_TO_LINEAR_P3_1, linearSrgb),
+      dot(LINEAR_SRGB_TO_LINEAR_P3_2, linearSrgb)
     );
+  }
+
+  // Same rule as core isLinearRgbInGamut: GAMUT_EPSILON of slack on the
+  // gamma-encoded channels, expressed as linear-light bounds.
+  bool inGamutLinear(vec3 linear) {
+    return all(greaterThanEqual(linear, vec3(GAMUT_LINEAR_MIN))) &&
+      all(lessThanEqual(linear, vec3(GAMUT_LINEAR_MAX)));
+  }
+
+  bool inUnitCube(vec3 linear) {
+    return all(greaterThanEqual(linear, vec3(0.0))) &&
+      all(lessThanEqual(linear, vec3(1.0)));
   }
 
   bool inSrgbGamut(vec3 linearSrgb) {
-    return (
-      linearSrgb.r >= -EPSILON && linearSrgb.r <= 1.0 + EPSILON &&
-      linearSrgb.g >= -EPSILON && linearSrgb.g <= 1.0 + EPSILON &&
-      linearSrgb.b >= -EPSILON && linearSrgb.b <= 1.0 + EPSILON
-    );
+    return inGamutLinear(linearSrgb);
   }
 
   bool inP3Gamut(vec3 linearSrgb) {
-    vec3 linearP3 = linearSrgbToLinearP3(linearSrgb);
-    return (
-      linearP3.r >= -EPSILON && linearP3.r <= 1.0 + EPSILON &&
-      linearP3.g >= -EPSILON && linearP3.g <= 1.0 + EPSILON &&
-      linearP3.b >= -EPSILON && linearP3.b <= 1.0 + EPSILON
-    );
+    return inGamutLinear(linearSrgbToLinearP3(linearSrgb));
+  }
+
+  bool strictlyInTargetGamut(vec3 linearSrgb) {
+    return u_gamut < 0.5
+      ? inUnitCube(linearSrgb)
+      : inUnitCube(linearSrgbToLinearP3(linearSrgb));
   }
 
   vec3 mapToGamut(float lightness, float chroma, float hueDeg) {
@@ -84,14 +123,14 @@ export const COLOR_PLANE_FRAGMENT_SHADER_SOURCE = `
       return rawLinear;
     }
 
+    // Bisect strictly inside the gamut, like core toSrgbGamut/toP3Gamut.
     float lo = 0.0;
     float hi = max(chroma, 0.0);
     float mapped = 0.0;
     for (int i = 0; i < GAMUT_ITERS; i += 1) {
       float mid = (lo + hi) * 0.5;
       vec3 testLinear = oklchToLinearSrgb(lightness, mid, hueDeg);
-      bool inside = u_gamut < 0.5 ? inSrgbGamut(testLinear) : inP3Gamut(testLinear);
-      if (inside) {
+      if (strictlyInTargetGamut(testLinear)) {
         lo = mid;
         mapped = mid;
       } else {
