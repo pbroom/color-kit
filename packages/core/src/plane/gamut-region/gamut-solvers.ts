@@ -3,7 +3,12 @@ import {
   oklabToLinearRgb,
   oklchToOklab,
 } from '../../conversion/index.js';
-import { gamutBoundaryPath, maxChromaAt } from '../../gamut/index.js';
+import {
+  GAMUT_EPSILON,
+  gamutBoundaryPath,
+  maxChromaAt,
+} from '../../gamut/index.js';
+import { MAX_CHROMA_SEARCH_TOLERANCE } from '../../gamut/constants.js';
 import { linearChannelGamutMargin } from '../../gamut/linear-bounds.js';
 import { maxHctChromaAtTone } from '../../hct/index.js';
 import type { Color } from '../../types.js';
@@ -77,6 +82,28 @@ function gamutMargin(color: Color, gamut: 'srgb' | 'display-p3'): number {
   const linear =
     gamut === 'display-p3' ? linearSrgbToLinearP3(linearSrgb) : linearSrgb;
   return linearChannelGamutMargin(linear.r, linear.g, linear.b);
+}
+
+/**
+ * How far below zero a `createFieldEvaluator()` value may be while the point
+ * is still in gamut. Keep the branches in sync with `createFieldEvaluator()`.
+ *
+ * - OKLCH fields are `maxChromaAt() - c`. `maxChromaAt()` returns the in-gamut
+ *   end of its bisection interval, so colors up to MAX_CHROMA_SEARCH_TOLERANCE
+ *   above it can still pass `inSrgbGamut` / `inP3Gamut`.
+ * - HCT fields are `maxHctChromaAtTone() - c`. HCT has no finer membership
+ *   test than that function (every HCT color maps into sRGB), so keep the
+ *   GAMUT_EPSILON slack this classification has always used.
+ * - Linear-margin fields already include GAMUT_EPSILON via
+ *   `linearChannelGamutMargin()`, so zero is exact.
+ */
+export function fieldInsideTolerance(
+  resolvedPlane: Plane,
+  gamut: 'srgb' | 'display-p3',
+): number {
+  if (resolvedPlane.model === 'oklch') return MAX_CHROMA_SEARCH_TOLERANCE;
+  if (resolvedPlane.model === 'hct' && gamut === 'srgb') return GAMUT_EPSILON;
+  return 0;
 }
 
 export function createFieldEvaluator(

@@ -13,12 +13,13 @@ import {
   buildAxisAnchors,
   MIN_SEGMENT_LENGTH,
 } from '../sampling/adaptive1d.js';
+import { MAX_CHROMA_SEARCH_TOLERANCE } from './constants.js';
 import { linearChannelsInGamut } from './linear-bounds.js';
 
 export { GAMUT_EPSILON } from './constants.js';
 
 const DEFAULT_MAX_CHROMA = 0.4;
-const DEFAULT_TOLERANCE = 0.0001;
+const DEFAULT_TOLERANCE = MAX_CHROMA_SEARCH_TOLERANCE;
 const DEFAULT_MAX_ITERATIONS = 30;
 const DEFAULT_HUE_CUSP_LUT_SIZE = 4096;
 const LIGHTNESS_ENDPOINT_EPSILON = 1e-9;

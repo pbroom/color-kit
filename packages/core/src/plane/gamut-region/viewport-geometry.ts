@@ -303,8 +303,18 @@ function shouldRefineUniformAdaptiveCell(
   );
 }
 
+/**
+ * Classifies a whole viewport from its sampled field extremes.
+ *
+ * `insideTolerance` is how far below zero a field value may fall while the
+ * color can still be in gamut. It depends on the field kind (see
+ * `fieldInsideTolerance()` in gamut-solvers.ts): zero for linear-margin
+ * fields, which already encode GAMUT_EPSILON, and the solver precision for
+ * chroma-difference fields.
+ */
 export function classifyAdaptiveContourResult(
   result: AdaptiveContourResult,
+  insideTolerance = 0,
 ): ScalarGridClassification {
   if (result.segments.length > 0) {
     return {
@@ -313,17 +323,14 @@ export function classifyAdaptiveContourResult(
       maxValue: result.maxValue,
     };
   }
-  // Fields already encode the shared gamut tolerance (see
-  // gamut/linear-bounds.ts), so classify at zero; adding slack here would
-  // call viewports "inside" that inSrgbGamut/inP3Gamut reject.
-  if (result.minValue >= 0) {
+  if (result.minValue >= -insideTolerance) {
     return {
       relation: 'inside',
       minValue: result.minValue,
       maxValue: result.maxValue,
     };
   }
-  if (result.maxValue < 0) {
+  if (result.maxValue < -insideTolerance) {
     return {
       relation: 'outside',
       minValue: result.minValue,
