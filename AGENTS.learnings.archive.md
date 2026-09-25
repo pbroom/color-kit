@@ -260,6 +260,8 @@ Learnings below were retired from `AGENTS.md` during the 2026-09 cleanup. The do
 - **2026-04-09 — Route-split docs demos before deeper tuning**: On the docs app, the biggest load-time win came from lazy route entrypoints plus viewport-gated demo mounting. Move consumers off eager demo imports first, then trim heavy Sandpack inputs once the main route chunk is already smaller.
 - **2026-04-19 — Gamut-region telemetry buckets need plane signatures**: For `PlaneComputeScheduler`, bucket `gamutRegion` workloads by gamut plus resolved plane model and x/y channels, not just `scope`, or cheap domain-edge requests can skew backend decisions for heavier implicit-contour planes.
 - **2026-04-19 — Default-branch required checks are ruleset-backed**: This repo enforces merge-blocking checks through GitHub repository rulesets, not legacy branch protection. When a new job like `lint` must become mandatory, update the active ruleset’s `required_status_checks` instead of looking for branch protection settings.
+- **2026-09-25 — colorjs.io `mix`/`range` is not a drop-in CSS `color-mix()` oracle**: It gamut-maps inputs into the interpolation space and defaults to straight alpha, so compare with `premultiplied: true` on in-gamut inputs only and build extended-range references from colorjs conversions plus a hand-written lerp. It also keeps a powerless hue constant (no `longer` arc).
+- **2026-09-25 — Keep option-less defaults on a separate module path**: When adding an options engine to a function that plane code also calls (for example `generateScale` in the gradient query spec), route internal callers to a legacy-only helper module so the plane size-limit bundle does not pick up the new engine.
 
 #### Former learned user preferences (Lab-era)
 

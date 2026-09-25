@@ -1,5 +1,10 @@
 import type { Color } from '../types.js';
 import { clamp, normalizeHue, lerp } from '../utils/index.js';
+import {
+  hasInterpolationOptions,
+  interpolateInSpace,
+  type InterpolationOptions,
+} from '../interpolation/index.js';
 
 /** Increase lightness by a relative amount (0-1) */
 export function lighten(color: Color, amount: number): Color {
@@ -54,11 +59,52 @@ export function setAlpha(color: Color, alpha: number): Color {
 }
 
 /**
- * Mix two colors together in OKLCH space.
+ * Mix two colors together.
  * t = 0 returns color1, t = 1 returns color2.
  * Default t = 0.5 (equal mix).
+ *
+ * Without `options` this interpolates L, C, hue (shortest path, with no
+ * achromatic special-casing) and alpha as plain OKLCH channels, exactly as
+ * before `options` existed. Passing `options` switches to CSS Color 4
+ * `color-mix()` semantics in the chosen space: powerless (achromatic) hues
+ * take the other color's hue, `options.hue` picks the hue arc, and
+ * rectangular spaces interpolate with premultiplied alpha. Results are not
+ * gamut mapped.
+ *
+ * @param color1 - First color; returned when `t = 0`
+ * @param color2 - Second color; returned when `t = 1`
+ * @param t - Mix position (default `0.5`)
+ * @param options - Interpolation space, hue method, and alpha handling
+ * @param options.space - `'oklch'` (default), `'oklab'`, `'srgb'`,
+ *   `'linear-srgb'`, `'p3'`, or `'linear-p3'`
+ * @param options.hue - Hue arc for polar spaces: `'shorter'` (default),
+ *   `'longer'`, `'increasing'`, or `'decreasing'`
+ * @param options.premultiplied - Premultiply alpha (default `true` for
+ *   rectangular spaces, `false` for `'oklch'`)
+ *
+ * @example
+ * ```ts
+ * import { mix, parse, toHex } from 'color-kit';
+ *
+ * const red = parse('#ff0000');
+ * const lime = parse('#00ff00');
+ * toHex(mix(red, lime)); // OKLCH midpoint (legacy default)
+ * // Physically correct (linear-light) blend, like mixing light:
+ * toHex(mix(red, lime, 0.5, { space: 'linear-srgb' })); // '#bcbc00'
+ * // Gamma-encoded blend, like color-mix(in srgb, red, lime):
+ * mix(red, lime, 0.5, { space: 'srgb' }); // ≈ rgb(127.5 127.5 0)
+ * ```
  */
-export function mix(color1: Color, color2: Color, t: number = 0.5): Color {
+export function mix(
+  color1: Color,
+  color2: Color,
+  t: number = 0.5,
+  options?: InterpolationOptions,
+): Color {
+  if (hasInterpolationOptions(options)) {
+    return interpolateInSpace(color1, color2, t, options);
+  }
+
   // Handle hue interpolation via shortest path
   let h1 = color1.h;
   let h2 = color2.h;

@@ -1,4 +1,4 @@
-import { generateScale } from '../../scale/index.js';
+import { generateOklchDefaultScale } from '../../scale/legacy.js';
 import { colorToPlane } from '../mapping.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
 import { resolvePlaneDefinition } from '../resolve.js';
@@ -24,7 +24,7 @@ export function samplePlaneGradient(
 ): PlaneGradientResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const steps = query.steps ?? 16;
-  const colors = generateScale(
+  const colors = generateOklchDefaultScale(
     withFiniteHue(query.from),
     withFiniteHue(query.to),
     Math.max(2, steps),
