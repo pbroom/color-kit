@@ -20,7 +20,7 @@ Use the repo-local PR lifecycle skills as the default path for PR submission, me
 - Use `pnpm pr:babysit -- status|pause|resume` to inspect or control the hook-backed PR babysitter.
 - Prefer `pnpm pr:validate` over ad hoc lint/build/test command selection.
 - Use `gh pr checks` for current status and `gh run view --log-failed` for the failing GitHub Actions step.
-- Treat Greptile as a first-class review signal when `greptile.json` is present.
+- Treat Greptile as a first-class review signal. Without a `Greptile Review` status check, the babysitter waits for a Greptile review on the head commit.
 
 ## Auto Continuation
 

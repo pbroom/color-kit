@@ -208,6 +208,7 @@ function summarizeReview(review) {
     url: review.html_url ?? '',
     author: review.user?.login ?? '',
     state: review.state ?? '',
+    commitId: review.commit_id ?? '',
     submittedAt: review.submitted_at ?? '',
   };
 }
@@ -442,14 +443,27 @@ function isSuccessfulCheck(check) {
   );
 }
 
+function isGreptileAuthor(login) {
+  return /^greptile/i.test(login ?? '');
+}
+
+// Greptile reviews every PR via its GitHub App, but only posts a
+// `Greptile Review` status check when repo config opts in. Without that check,
+// require a Greptile PR review on the current head commit instead of treating
+// the review as complete.
 function hasCompletedGreptileReview(snapshot) {
   const greptileCheck = findCheck(snapshot, 'Greptile Review');
 
-  if (!greptileCheck) {
-    return true;
+  if (greptileCheck) {
+    return isSuccessfulCheck(greptileCheck);
   }
 
-  return isSuccessfulCheck(greptileCheck);
+  const headRefOid = snapshot.pr.headRefOid;
+  return snapshot.reviews.some(
+    (review) =>
+      isGreptileAuthor(review.author) &&
+      (!headRefOid || review.commitId === headRefOid),
+  );
 }
 
 function isReadyForUserMergeReview(snapshot) {
