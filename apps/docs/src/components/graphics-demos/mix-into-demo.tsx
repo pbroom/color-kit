@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { parse, toHex, type InterpolationSpace } from 'color-kit';
 import { startMixIntoLoop } from './mix-into-loop.js';
 import { DemoFrame } from './demo-frame.js';
@@ -7,23 +7,62 @@ const FROM = parse('#2563eb');
 const TO = parse('#f97316');
 const SPACES: InterpolationSpace[] = ['oklch', 'linear-srgb'];
 
-function prefersReducedMotion(): boolean {
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+function subscribeReducedMotion(onChange: () => void): () => void {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const query = window.matchMedia(REDUCED_MOTION);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+function getReducedMotion(): boolean {
   return (
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.matchMedia(REDUCED_MOTION).matches
   );
 }
 
 export default function MixIntoDemo() {
   const [space, setSpace] = useState<InterpolationSpace>('oklch');
-  const [playing, setPlaying] = useState(() => !prefersReducedMotion());
+  // Live OS setting: updates when the user toggles reduced motion.
+  const reducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotion,
+    () => false,
+  );
+  // A Play/Pause click only applies under the reduced-motion setting it was
+  // made in; changing the setting falls back to its default.
+  const [choice, setChoice] = useState<{
+    playing: boolean;
+    reducedMotion: boolean;
+  } | null>(null);
+  const playing =
+    choice && choice.reducedMotion === reducedMotion
+      ? choice.playing
+      : !reducedMotion;
+  // Without IntersectionObserver, assume visible.
+  const [onScreen, setOnScreen] = useState(
+    () => typeof IntersectionObserver !== 'function',
+  );
   const swatchRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<HTMLSpanElement | null>(null);
   const hexRef = useRef<HTMLSpanElement | null>(null);
 
+  // Pause while scrolled offscreen.
   useEffect(() => {
-    if (!playing) {
+    const node = swatchRef.current;
+    if (!node || typeof IntersectionObserver !== 'function') return;
+    const observer = new IntersectionObserver((entries) => {
+      setOnScreen(entries.some((entry) => entry.isIntersecting));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!playing || !onScreen) {
       return;
     }
     // Per-frame work writes straight to the DOM; React does not re-render.
@@ -33,7 +72,7 @@ export default function MixIntoDemo() {
       if (hexRef.current) hexRef.current.textContent = hex;
       if (frameRef.current) frameRef.current.textContent = String(frame);
     });
-  }, [playing, space]);
+  }, [playing, onScreen, space]);
 
   return (
     <DemoFrame label="Live demo: mixInto(out, a, b, t) every frame">
@@ -79,7 +118,7 @@ export default function MixIntoDemo() {
           ))}
           <button
             type="button"
-            onClick={() => setPlaying((value) => !value)}
+            onClick={() => setChoice({ playing: !playing, reducedMotion })}
             className="rounded-md border border-border px-2 py-1 hover:bg-accent"
           >
             {playing ? 'Pause' : 'Play'}
