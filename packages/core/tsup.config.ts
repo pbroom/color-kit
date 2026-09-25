@@ -44,6 +44,7 @@ const publicEntries = {
   'plane/index': 'src/plane/index.ts',
   'compute/index': 'src/compute/index.ts',
   'hct/index': 'src/hct/index.ts',
+  'interop/index': 'src/interop/index.ts',
 };
 
 /**

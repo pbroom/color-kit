@@ -48,6 +48,16 @@
         "default": "./dist/hct/index.cjs"
       }
     },
+    "./interop": {
+      "import": {
+        "types": "./dist/interop/index.d.ts",
+        "default": "./dist/interop/index.js"
+      },
+      "require": {
+        "types": "./dist/interop/index.d.cts",
+        "default": "./dist/interop/index.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -88,6 +98,7 @@
   },
   "devDependencies": {
     "colorjs.io": "^0.7.1",
+    "three": "^0.186.1",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
