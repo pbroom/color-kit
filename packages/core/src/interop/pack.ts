@@ -119,12 +119,24 @@ function resolveKernel<K>(table: Record<ArraySpace, K>, space: string): K {
  * );
  * ```
  */
-export function packColors<T extends WritableArrayLike = Float32Array>(
+export function packColors(
   colors: readonly Color[],
   space: ArraySpace,
-  out?: T,
+  out?: undefined,
   options?: PackColorsOptions,
-): T {
+): Float32Array;
+export function packColors<T extends WritableArrayLike>(
+  colors: readonly Color[],
+  space: ArraySpace,
+  out: T,
+  options?: PackColorsOptions,
+): T;
+export function packColors(
+  colors: readonly Color[],
+  space: ArraySpace,
+  out?: WritableArrayLike,
+  options?: PackColorsOptions,
+): WritableArrayLike {
   const { alpha, stride, offset, components } = resolveLayout(
     options,
     'packColors',
@@ -133,8 +145,8 @@ export function packColors<T extends WritableArrayLike = Float32Array>(
   const rgb = space !== 'oklab' && space !== 'oklch';
   const count = colors.length;
   const required = count === 0 ? 0 : offset + (count - 1) * stride + components;
-  const target = (out ??
-    new Float32Array(offset + count * stride)) as unknown as T;
+  const target: WritableArrayLike =
+    out ?? new Float32Array(offset + count * stride);
   if (target.length < required) {
     throw new RangeError(
       `packColors: output has length ${target.length}, needs at least ${required}`,
