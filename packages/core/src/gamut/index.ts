@@ -7,7 +7,12 @@ import {
   LMS_TO_LINEAR_SRGB,
   OKLAB_TO_LMS,
 } from '../conversion/matrices.js';
-import { clamp, normalizeHue, simplifyPolyline } from '../utils/index.js';
+import {
+  clamp,
+  normalizeHue,
+  simplifyPolyline,
+  srgbToLinearChannel,
+} from '../utils/index.js';
 import {
   adaptiveMaxErrorProbe,
   buildAxisAnchors,
@@ -883,6 +888,30 @@ export function chromaBand(
 }
 
 /**
+ * Linear-light bounds equivalent to allowing GAMUT_EPSILON of slack on the
+ * gamma-encoded channels (the CSS Color 4 / colorjs.io convention). Both sRGB
+ * and Display P3 share the sRGB transfer function.
+ *
+ * Applying the epsilon directly in linear light (as earlier versions did)
+ * is far too permissive near black: -7.5e-5 linear is -9.7e-4 encoded, which
+ * let e.g. `oklch(0.028 0.066 131)` pass as in gamut when the true boundary
+ * chroma is ~0.008.
+ */
+const GAMUT_LINEAR_MIN = -GAMUT_EPSILON / 12.92;
+const GAMUT_LINEAR_MAX = srgbToLinearChannel(1 + GAMUT_EPSILON);
+
+function linearChannelsInGamut(r: number, g: number, b: number): boolean {
+  return (
+    r >= GAMUT_LINEAR_MIN &&
+    r <= GAMUT_LINEAR_MAX &&
+    g >= GAMUT_LINEAR_MIN &&
+    g <= GAMUT_LINEAR_MAX &&
+    b >= GAMUT_LINEAR_MIN &&
+    b <= GAMUT_LINEAR_MAX
+  );
+}
+
+/**
  * Check if a Color is within the sRGB gamut.
  *
  * Uses unclamped linear sRGB values to avoid the false-positive
@@ -896,14 +925,7 @@ export function inSrgbGamut(color: Color): boolean {
     alpha: color.alpha,
   });
   const linear = oklabToLinearRgb(lab);
-  return (
-    linear.r >= -GAMUT_EPSILON &&
-    linear.r <= 1 + GAMUT_EPSILON &&
-    linear.g >= -GAMUT_EPSILON &&
-    linear.g <= 1 + GAMUT_EPSILON &&
-    linear.b >= -GAMUT_EPSILON &&
-    linear.b <= 1 + GAMUT_EPSILON
-  );
+  return linearChannelsInGamut(linear.r, linear.g, linear.b);
 }
 
 /**
@@ -921,14 +943,7 @@ export function inP3Gamut(color: Color): boolean {
   });
   const linearSrgb = oklabToLinearRgb(lab);
   const linearP3 = linearSrgbToLinearP3(linearSrgb);
-  return (
-    linearP3.r >= -GAMUT_EPSILON &&
-    linearP3.r <= 1 + GAMUT_EPSILON &&
-    linearP3.g >= -GAMUT_EPSILON &&
-    linearP3.g <= 1 + GAMUT_EPSILON &&
-    linearP3.b >= -GAMUT_EPSILON &&
-    linearP3.b <= 1 + GAMUT_EPSILON
-  );
+  return linearChannelsInGamut(linearP3.r, linearP3.g, linearP3.b);
 }
 
 /**
