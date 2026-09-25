@@ -6,25 +6,41 @@ import {
   toLinearSrgbArray,
   toOklab,
   type Color,
-  type InterpolationSpace,
+  type InterpolationOptions,
 } from 'color-kit';
 
-export const DEMO_SPACES: InterpolationSpace[] = [
-  'oklch',
-  'oklab',
-  'srgb',
-  'linear-srgb',
-  'p3',
+export interface DemoRow {
+  id: string;
+  /** The options argument as written at the call site. */
+  label: string;
+  /** `undefined` means the option-less call: the legacy OKLCH default. */
+  options: InterpolationOptions | undefined;
+}
+
+export const DEMO_ROWS: DemoRow[] = [
+  { id: 'default', label: '(no options)', options: undefined },
+  { id: 'oklch', label: "{ space: 'oklch' }", options: { space: 'oklch' } },
+  { id: 'oklab', label: "{ space: 'oklab' }", options: { space: 'oklab' } },
+  { id: 'srgb', label: "{ space: 'srgb' }", options: { space: 'srgb' } },
+  {
+    id: 'linear-srgb',
+    label: "{ space: 'linear-srgb' }",
+    options: { space: 'linear-srgb' },
+  },
+  { id: 'p3', label: "{ space: 'p3' }", options: { space: 'p3' } },
 ];
 
-/** A stepped ramp from `a` to `b`, interpolated in `space`. */
+/** A stepped ramp from `a` to `b`. */
 export function mixStrip(
   a: Color,
   b: Color,
-  space: InterpolationSpace,
+  options: InterpolationOptions | undefined,
   steps = 13,
 ): string[] {
-  return generateScale(a, b, steps, { space }).map((color) => toHex(color));
+  const scale = options
+    ? generateScale(a, b, steps, options)
+    : generateScale(a, b, steps); // legacy default, no options
+  return scale.map((color) => toHex(color));
 }
 
 export interface MidpointStats {
@@ -39,13 +55,13 @@ export interface MidpointStats {
 // Reused scratch tuple: toLinearSrgbArray writes into it, no allocation.
 const linear: [number, number, number] = [0, 0, 0];
 
-/** The t = 0.5 mix of `a` and `b` in `space`, with its lightness numbers. */
+/** The t = 0.5 mix of `a` and `b`, with its lightness numbers. */
 export function midpointStats(
   a: Color,
   b: Color,
-  space: InterpolationSpace,
+  options: InterpolationOptions | undefined,
 ): MidpointStats {
-  const midpoint = mix(a, b, 0.5, { space });
+  const midpoint = options ? mix(a, b, 0.5, options) : mix(a, b); // default
   const [r, g, bl] = toLinearSrgbArray(midpoint, linear);
   return {
     hex: toHex(midpoint),
