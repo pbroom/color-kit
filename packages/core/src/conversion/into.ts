@@ -23,8 +23,12 @@ import {
 } from './p3.js';
 import { linearToSrgbInto, srgbToLinearInto } from './srgb.js';
 
-// Scratch objects for intermediate pipeline stages. JS is single-threaded and
-// none of the kernels call back into user code, so sharing them is safe.
+// Scratch objects for intermediate pipeline stages, shared by every function
+// here. Re-entrancy: a caller's input may be an object with accessors whose
+// getters run another conversion (which rewrites this scratch). Every kernel
+// therefore reads all of its input fields into locals before it writes any
+// output, and only the first stage of a pipeline reads caller input, so a
+// nested call can only run before this call's scratch is written.
 const LAB: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
 const LINEAR: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
 const LINEAR_P3: P3 = { r: 0, g: 0, b: 0, alpha: 1 };

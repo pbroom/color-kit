@@ -22,7 +22,9 @@ export type TargetRow = readonly [number, number, number];
 export type TargetRows = readonly [TargetRow, TargetRow, TargetRow];
 
 // Scratch objects so membership checks and gamut mapping allocate nothing.
-// JS is single-threaded and nothing here calls back into user code.
+// Caller input is read (into locals, or by a kernel that reads all fields
+// before writing) before any scratch is written, so an accessor on the input
+// that re-enters these functions cannot corrupt an in-flight result.
 const LAB: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
 const LINEAR: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
 const LINEAR_P3: P3 = { r: 0, g: 0, b: 0, alpha: 1 };
@@ -125,13 +127,16 @@ function mapToGamutInto(out: Color, color: Color, gamut: GamutTarget): Color {
     return out;
   }
 
+  // From here on work only from the snapshot above, never `color` again.
+  const trial = TRIAL;
+  trial.l = l;
+  trial.c = c;
+  trial.h = h;
+  trial.alpha = alpha;
+
   let mappedC = c;
-  if (!isInTargetGamut(color, gamut)) {
-    const trial = TRIAL;
-    trial.l = l;
+  if (!isInTargetGamut(trial, gamut)) {
     trial.c = 0;
-    trial.h = h;
-    trial.alpha = alpha;
 
     let lo = 0;
     let hi = c;

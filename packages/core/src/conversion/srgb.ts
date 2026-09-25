@@ -16,10 +16,15 @@ import {
  * ```
  */
 export function srgbToLinearInto(out: LinearRgb, rgb: Rgb): LinearRgb {
-  out.r = srgbToLinearChannel(rgb.r / 255);
-  out.g = srgbToLinearChannel(rgb.g / 255);
-  out.b = srgbToLinearChannel(rgb.b / 255);
-  out.alpha = rgb.alpha;
+  // Read every input field before writing `out` (see conversion/into.ts).
+  const r = rgb.r;
+  const g = rgb.g;
+  const b = rgb.b;
+  const alpha = rgb.alpha;
+  out.r = srgbToLinearChannel(r / 255);
+  out.g = srgbToLinearChannel(g / 255);
+  out.b = srgbToLinearChannel(b / 255);
+  out.alpha = alpha;
   return out;
 }
 
@@ -39,10 +44,15 @@ export function srgbToLinear(rgb: Rgb): LinearRgb {
  * ```
  */
 export function linearToSrgbInto(out: Rgb, linear: LinearRgb): Rgb {
-  out.r = clamp(Math.round(linearToSrgbChannel(linear.r) * 255), 0, 255);
-  out.g = clamp(Math.round(linearToSrgbChannel(linear.g) * 255), 0, 255);
-  out.b = clamp(Math.round(linearToSrgbChannel(linear.b) * 255), 0, 255);
-  out.alpha = linear.alpha;
+  // Read every input field before writing `out` (see conversion/into.ts).
+  const r = linear.r;
+  const g = linear.g;
+  const b = linear.b;
+  const alpha = linear.alpha;
+  out.r = clamp(Math.round(linearToSrgbChannel(r) * 255), 0, 255);
+  out.g = clamp(Math.round(linearToSrgbChannel(g) * 255), 0, 255);
+  out.b = clamp(Math.round(linearToSrgbChannel(b) * 255), 0, 255);
+  out.alpha = alpha;
   return out;
 }
 

@@ -175,8 +175,12 @@ function lerpHue(
   return lerp(h1 + hueFixup1(diff, method), h2 + hueFixup2(diff, method), t);
 }
 
-// Scratch storage so interpolation allocates nothing. JS is single-threaded
-// and nothing here calls back into user code, so sharing it is safe.
+// Scratch storage so interpolation allocates nothing. The endpoints are
+// snapshotted into START / END (all fields read first) before any scratch is
+// written, so an accessor on an input that re-enters interpolation or a
+// conversion cannot corrupt an in-flight mix.
+const START: Color = { l: 0, c: 0, h: 0, alpha: 1 };
+const END: Color = { l: 0, c: 0, h: 0, alpha: 1 };
 const LAB: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
 const LINEAR: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
 const P: Vec3 = [0, 0, 0];
@@ -357,24 +361,33 @@ export function interpolateInSpaceInto(
     return out;
   }
   const space = options.space ?? 'oklch';
+  const hue = options.hue ?? 'shorter';
+  const premultiplied = options.premultiplied;
+
+  // Snapshot every endpoint field before any shared scratch is written.
+  const l1 = color1.l;
+  const c1 = color1.c;
+  const h1 = color1.h;
+  const alpha1 = color1.alpha;
+  const l2 = color2.l;
+  const c2 = color2.c;
+  const h2 = color2.h;
+  const alpha2 = color2.alpha;
+  const start = START;
+  start.l = l1;
+  start.c = c1;
+  start.h = h1;
+  start.alpha = alpha1;
+  const end = END;
+  end.l = l2;
+  end.c = c2;
+  end.h = h2;
+  end.alpha = alpha2;
+
   if (space === 'oklch') {
-    return mixPolarInto(
-      out,
-      color1,
-      color2,
-      t,
-      options.hue ?? 'shorter',
-      options.premultiplied ?? false,
-    );
+    return mixPolarInto(out, start, end, t, hue, premultiplied ?? false);
   }
-  return mixRectangularInto(
-    out,
-    color1,
-    color2,
-    t,
-    space,
-    options.premultiplied ?? true,
-  );
+  return mixRectangularInto(out, start, end, t, space, premultiplied ?? true);
 }
 
 /**
