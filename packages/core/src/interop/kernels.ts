@@ -17,7 +17,6 @@ import {
   OKLAB_TO_LMS,
   type Matrix3,
 } from '../conversion/matrices.js';
-import { toP3Gamut, toSrgbGamut } from '../gamut/membership.js';
 import {
   degToRad,
   linearToSrgbChannel,
@@ -101,8 +100,8 @@ export const writeOklch: WriteKernel = (color, out, offset) => {
 };
 
 /**
- * Shared driver for every writer: applies `gamutMap`, runs the kernel,
- * applies `clamp` (RGB kernels only) and optionally writes alpha.
+ * Shared driver for every writer: runs the kernel, applies `clamp` (RGB
+ * kernels only) and optionally writes alpha.
  */
 export function writeColor(
   kernel: WriteKernel,
@@ -113,15 +112,7 @@ export function writeColor(
   offset: number,
   options: ArrayWriteOptions | undefined,
 ): void {
-  const gamutMap = options?.gamutMap;
-  const source =
-    gamutMap === undefined
-      ? color
-      : gamutMap === 'display-p3'
-        ? toP3Gamut(color)
-        : toSrgbGamut(color);
-
-  kernel(source, out, offset);
+  kernel(color, out, offset);
 
   if (rgb && options?.clamp) {
     for (let i = offset; i < offset + 3; i += 1) {
@@ -131,6 +122,6 @@ export function writeColor(
   }
 
   if (withAlpha) {
-    out[offset + 3] = source.alpha;
+    out[offset + 3] = color.alpha;
   }
 }

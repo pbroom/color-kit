@@ -18,21 +18,21 @@
     "path": "packages/color-kit/dist/index.js",
     "import": "{ toLinearSrgbArray }",
     "gzip": true,
-    "limit": "1.8 kB"
+    "limit": "710 B"
   },
   {
     "name": "color-kit/interop: toLinearSrgbArray",
     "path": "packages/color-kit/dist/interop/index.js",
     "import": "{ toLinearSrgbArray }",
     "gzip": true,
-    "limit": "1.8 kB"
+    "limit": "710 B"
   },
   {
     "name": "color-kit/interop: packColors + unpackColors",
     "path": "packages/color-kit/dist/interop/index.js",
     "import": "{ packColors, unpackColors }",
     "gzip": true,
-    "limit": "3 kB"
+    "limit": "2.6 kB"
   },
   {
     "name": "color-kit: definePlane + sense + toSvgPath",

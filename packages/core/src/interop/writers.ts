@@ -40,14 +40,14 @@ function write(
  *
  * Values are unclamped floats by default, so out-of-gamut colors produce
  * channels outside 0–1 (correct for HDR/linear pipelines, and what three.js
- * does). Pass `{ clamp: true }` to clip, or `{ gamutMap: 'srgb' }` /
- * `{ gamutMap: 'display-p3' }` to reduce chroma first.
+ * does). Pass `{ clamp: true }` to clip, or gamut-map first to reduce
+ * chroma instead: `toLinearSrgbArray(toSrgbGamut(color), out)` (or `toP3Gamut`).
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -91,14 +91,14 @@ export function toLinearSrgbArray(
  *
  * Values are unclamped floats by default, so out-of-gamut colors produce
  * channels outside 0–1 (correct for HDR/linear pipelines, and what three.js
- * does). Pass `{ clamp: true }` to clip, or `{ gamutMap: 'srgb' }` /
- * `{ gamutMap: 'display-p3' }` to reduce chroma first.
+ * does). Pass `{ clamp: true }` to clip, or gamut-map first to reduce
+ * chroma instead: `toLinearSrgbArray4(toSrgbGamut(color), out)` (or `toP3Gamut`).
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple4` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -136,14 +136,14 @@ export function toLinearSrgbArray4(
  *
  * Values are unclamped floats by default, so out-of-gamut colors produce
  * channels outside 0–1 (correct for HDR/linear pipelines, and what three.js
- * does). Pass `{ clamp: true }` to clip, or `{ gamutMap: 'srgb' }` /
- * `{ gamutMap: 'display-p3' }` to reduce chroma first.
+ * does). Pass `{ clamp: true }` to clip, or gamut-map first to reduce
+ * chroma instead: `toSrgbArray(toSrgbGamut(color), out)` (or `toP3Gamut`).
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -184,14 +184,14 @@ export function toSrgbArray(
  *
  * Values are unclamped floats by default, so out-of-gamut colors produce
  * channels outside 0–1 (correct for HDR/linear pipelines, and what three.js
- * does). Pass `{ clamp: true }` to clip, or `{ gamutMap: 'srgb' }` /
- * `{ gamutMap: 'display-p3' }` to reduce chroma first.
+ * does). Pass `{ clamp: true }` to clip, or gamut-map first to reduce
+ * chroma instead: `toSrgbArray4(toSrgbGamut(color), out)` (or `toP3Gamut`).
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple4` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -227,14 +227,14 @@ export function toSrgbArray4(
  *
  * Values are unclamped floats by default, so out-of-gamut colors produce
  * channels outside 0–1 (correct for HDR/linear pipelines, and what three.js
- * does). Pass `{ clamp: true }` to clip, or `{ gamutMap: 'srgb' }` /
- * `{ gamutMap: 'display-p3' }` to reduce chroma first.
+ * does). Pass `{ clamp: true }` to clip, or gamut-map first to reduce
+ * chroma instead: `toLinearP3Array(toSrgbGamut(color), out)` (or `toP3Gamut`).
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -273,14 +273,14 @@ export function toLinearP3Array(
  *
  * Values are unclamped floats by default, so out-of-gamut colors produce
  * channels outside 0–1 (correct for HDR/linear pipelines, and what three.js
- * does). Pass `{ clamp: true }` to clip, or `{ gamutMap: 'srgb' }` /
- * `{ gamutMap: 'display-p3' }` to reduce chroma first.
+ * does). Pass `{ clamp: true }` to clip, or gamut-map first to reduce
+ * chroma instead: `toLinearP3Array4(toSrgbGamut(color), out)` (or `toP3Gamut`).
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple4` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -318,14 +318,14 @@ export function toLinearP3Array4(
  *
  * Values are unclamped floats by default, so out-of-gamut colors produce
  * channels outside 0–1 (correct for HDR/linear pipelines, and what three.js
- * does). Pass `{ clamp: true }` to clip, or `{ gamutMap: 'srgb' }` /
- * `{ gamutMap: 'display-p3' }` to reduce chroma first.
+ * does). Pass `{ clamp: true }` to clip, or gamut-map first to reduce
+ * chroma instead: `toP3Array(toSrgbGamut(color), out)` (or `toP3Gamut`).
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -366,14 +366,14 @@ export function toP3Array(
  *
  * Values are unclamped floats by default, so out-of-gamut colors produce
  * channels outside 0–1 (correct for HDR/linear pipelines, and what three.js
- * does). Pass `{ clamp: true }` to clip, or `{ gamutMap: 'srgb' }` /
- * `{ gamutMap: 'display-p3' }` to reduce chroma first.
+ * does). Pass `{ clamp: true }` to clip, or gamut-map first to reduce
+ * chroma instead: `toP3Array4(toSrgbGamut(color), out)` (or `toP3Gamut`).
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple4` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -407,13 +407,13 @@ export function toP3Array4(
  * Write a color as OKLab
  * `[L, a, b]`.
  *
- * `gamutMap` is honored; `clamp` is a no-op for this space.
+ * `clamp` is a no-op for this space.
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -450,13 +450,13 @@ export function toOklabArray(
  *
  * Alpha is written as the fourth component: `[c0, c1, c2, alpha]`.
  *
- * `gamutMap` is honored; `clamp` is a no-op for this space.
+ * `clamp` is a no-op for this space.
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple4` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -491,13 +491,13 @@ export function toOklabArray4(
  * `[l, c, h]`, with hue in degrees
  * copied from the color as-is.
  *
- * `gamutMap` is honored; `clamp` is a no-op for this space.
+ * `clamp` is a no-op for this space.
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts
@@ -535,13 +535,13 @@ export function toOklchArray(
  *
  * Alpha is written as the fourth component: `[c0, c1, c2, alpha]`.
  *
- * `gamutMap` is honored; `clamp` is a no-op for this space.
+ * `clamp` is a no-op for this space.
  *
  * @param color - Color to convert.
  * @param out - Destination (`number[]`, `Float32Array`, ...). When omitted a
  * new `ColorTuple4` is returned.
  * @param offset - Index in `out` of the first component to write.
- * @param options - Out-of-gamut handling (`clamp`, `gamutMap`).
+ * @param options - Out-of-gamut handling (`clamp`).
  * @returns `out`, or a new tuple when `out` is omitted.
  * @example
  * ```ts

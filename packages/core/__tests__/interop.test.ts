@@ -306,7 +306,7 @@ describe('Float32Array precision', () => {
   });
 });
 
-describe('clamp and gamutMap options', () => {
+describe('clamp option and gamut-mapping composition', () => {
   const wide = { l: 0.6, c: 0.35, h: 145, alpha: 0.5 };
 
   it('clamp clips RGB channels to [0, 1] and leaves alpha alone', () => {
@@ -346,21 +346,10 @@ describe('clamp and gamutMap options', () => {
     );
   });
 
-  it('gamutMap reuses toSrgbGamut / toP3Gamut', () => {
-    for (const { write4 } of SPACES) {
-      expect(write4(wide, [0, 0, 0, 0], 0, { gamutMap: 'srgb' })).toEqual(
-        write4(toSrgbGamut(wide), [0, 0, 0, 0]),
-      );
-      expect(write4(wide, [0, 0, 0, 0], 0, { gamutMap: 'display-p3' })).toEqual(
-        write4(toP3Gamut(wide), [0, 0, 0, 0]),
-      );
-    }
-  });
-
-  it('gamutMap lands inside the target gamut', () => {
+  it('composes with toSrgbGamut / toP3Gamut to land inside the gamut', () => {
     for (const color of COLORS) {
-      const srgb = toSrgbArray(color, [0, 0, 0], 0, { gamutMap: 'srgb' });
-      const p3 = toP3Array(color, [0, 0, 0], 0, { gamutMap: 'display-p3' });
+      const srgb = toSrgbArray(toSrgbGamut(color));
+      const p3 = toP3Array(toP3Gamut(color));
       for (let i = 0; i < 3; i += 1) {
         expect(srgb[i]).toBeGreaterThanOrEqual(-1e-9);
         expect(srgb[i]).toBeLessThanOrEqual(1 + 1e-9);
@@ -437,14 +426,14 @@ describe('packColors / unpackColors', () => {
     expect(packed).toHaveLength(2 + colors.length * 4);
   });
 
-  it('forwards clamp and gamutMap', () => {
+  it('forwards clamp and composes with gamut mapping', () => {
     const wide = [{ l: 0.6, c: 0.35, h: 145, alpha: 1 }];
     const clamped = packColors(wide, 'linearSrgb', undefined, {
       clamp: true,
     });
     expect(Math.min(...clamped)).toBeGreaterThanOrEqual(0);
     expect(
-      Array.from(packColors(wide, 'srgb', [0, 0, 0], { gamutMap: 'srgb' })),
+      Array.from(packColors(wide.map(toSrgbGamut), 'srgb', [0, 0, 0])),
     ).toEqual(toSrgbArray(toSrgbGamut(wide[0])));
   });
 

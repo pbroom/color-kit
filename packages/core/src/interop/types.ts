@@ -1,5 +1,3 @@
-import type { GamutTarget } from '../gamut/types.js';
-
 /**
  * A three-component color tuple, such as linear-sRGB `[r, g, b]` or OKLab
  * `[L, a, b]`. Matches the `[r, g, b]` layout used by three.js
@@ -43,19 +41,22 @@ export type ArraySpace =
   | 'oklab'
   | 'oklch';
 
-/** Out-of-gamut handling for the array writers. */
+/**
+ * Out-of-gamut handling for the array writers.
+ *
+ * Gamut mapping is deliberately not an option: compose it instead, e.g.
+ * `toLinearSrgbArray(toSrgbGamut(color), out)` or
+ * `packColors(colors.map(toSrgbGamut), 'linearSrgb')`. This keeps the
+ * writers free of the gamut-mapping solver (~1 kB gzip) for callers that
+ * do not need it.
+ */
 export interface ArrayWriteOptions {
-  /**
-   * Map the color into a gamut (chroma reduction in OKLCH, via
-   * `toSrgbGamut` / `toP3Gamut`) before converting. Applies to every space,
-   * including `oklab` / `oklch`. Allocates one intermediate `Color`.
-   * @default undefined (no gamut mapping)
-   */
-  gamutMap?: GamutTarget;
   /**
    * Clip RGB channels to `[0, 1]` after conversion. Only affects the RGB
    * spaces (`linearSrgb`, `srgb`, `linearP3`, `p3`); it is a no-op for
-   * `oklab` / `oklch` (use `gamutMap` there). Alpha is written unchanged.
+   * `oklab` / `oklch`. Alpha is written unchanged. Clipping shifts hue and
+   * lightness; map with `toSrgbGamut` / `toP3Gamut` first to reduce chroma
+   * instead.
    *
    * The default (`false`) writes unclamped floats, which is what HDR and
    * linear-light GPU pipelines expect and matches three.js, which never

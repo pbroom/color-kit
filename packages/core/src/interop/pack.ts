@@ -81,7 +81,8 @@ function resolveKernel<K>(table: Record<ArraySpace, K>, space: string): K {
  * `alpha: true`. Elements between colors (padding or other interleaved
  * attributes) are left untouched.
  *
- * Values are unclamped floats by default; see `clamp` and `gamutMap`.
+ * Values are unclamped floats by default; see `clamp`. To gamut-map, map
+ * the colors before packing: `packColors(colors.map(toSrgbGamut), space)`.
  *
  * @param colors - Colors to write, in order.
  * @param space - Channel layout: `'linearSrgb'`, `'srgb'`, `'linearP3'`,
@@ -96,7 +97,6 @@ function resolveKernel<K>(table: Record<ArraySpace, K>, space: string): K {
  * @param options.offset - Index of the first color's first component.
  * Default `0`.
  * @param options.clamp - Clip RGB channels to `[0, 1]`. Default `false`.
- * @param options.gamutMap - Map into `'srgb'` or `'display-p3'` first.
  * @returns `out`, or the newly allocated `Float32Array`.
  * @example
  * ```ts
@@ -108,6 +108,9 @@ function resolveKernel<K>(table: Record<ArraySpace, K>, space: string): K {
  *   usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
  * });
  * device.queue.writeBuffer(buffer, 0, data);
+ *
+ * // Gamut-map first when the target cannot show wide colors.
+ * packColors(colors.map(toSrgbGamut), 'srgb', data, { alpha: true });
  *
  * // three.js: per-vertex colors (BufferAttribute expects linear sRGB).
  * geometry.setAttribute(
