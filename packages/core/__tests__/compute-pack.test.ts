@@ -697,6 +697,54 @@ describe('strict packed plane query ABI', () => {
   });
 });
 
+describe('unpackPlaneQueryResults() buffer checks', () => {
+  const BUFFER_FIELDS = [
+    ['pathRanges', 'Uint32Array'],
+    ['pointXY', 'Float32Array'],
+    ['pointLC', 'Float32Array'],
+    ['pointColorLcha', 'Float32Array'],
+  ] as const;
+
+  it.each(BUFFER_FIELDS)('rejects a missing %s buffer', (field) => {
+    const packed = makePackedBoundaryResult() as unknown as Record<
+      string,
+      unknown
+    >;
+    delete packed[field];
+    expectDecodeError(
+      packed as unknown as PackedPlaneQueryResult,
+      new RegExp(`${field} is required`),
+    );
+  });
+
+  it.each(BUFFER_FIELDS)(
+    'rejects a %s buffer of the wrong typed-array type',
+    (field, typeName) => {
+      const packed = makePackedBoundaryResult() as unknown as Record<
+        string,
+        unknown
+      >;
+      packed[field] = Float64Array.from(packed[field] as ArrayLike<number>);
+      expectDecodeError(
+        packed as unknown as PackedPlaneQueryResult,
+        new RegExp(`${field} must be a ${typeName}`),
+      );
+    },
+  );
+
+  it('rejects plain arrays in place of typed arrays', () => {
+    const packed = makePackedBoundaryResult() as unknown as Record<
+      string,
+      unknown
+    >;
+    packed.pointXY = [0, 0, 1, 1];
+    expectDecodeError(
+      packed as unknown as PackedPlaneQueryResult,
+      /pointXY must be a Float32Array/,
+    );
+  });
+});
+
 describe('packPlaneQueryResults() producer checks', () => {
   const plane = definePlane({
     model: 'oklch',
@@ -733,5 +781,47 @@ describe('packPlaneQueryResults() producer checks', () => {
     expect(() => packPlaneQueryResults([gradient])).toThrow(
       /point 2 color\.h is not finite/,
     );
+  });
+
+  it('rejects finite coordinates that overflow Float32', () => {
+    const [boundary] = runPlaneQueries(plane, [
+      { kind: 'gamutBoundary', gamut: 'srgb', steps: 4 },
+    ]);
+    if (boundary.kind !== 'gamutBoundary') throw new Error('unexpected kind');
+    boundary.points[1] = { ...boundary.points[1], x: 1e40 };
+    expect(() => packPlaneQueryResults([boundary])).toThrow(
+      /Cannot pack plane query result: query 0 \(gamutBoundary\) point 1 x is outside the Float32 range \(1e\+40\)/,
+    );
+  });
+
+  it('rejects finite colors that overflow Float32', () => {
+    const [gradient] = runPlaneQueries(plane, [
+      {
+        kind: 'gradient',
+        from: parse('#000000'),
+        to: parse('#ffffff'),
+        steps: 3,
+      },
+    ]);
+    if (gradient.kind !== 'gradient') throw new Error('unexpected kind');
+    gradient.points[0] = {
+      ...gradient.points[0],
+      color: { ...gradient.points[0].color, c: Number.MAX_VALUE },
+    };
+    expect(() => packPlaneQueryResults([gradient])).toThrow(
+      /point 0 color\.c is outside the Float32 range/,
+    );
+  });
+
+  it('packs values at the Float32 limit', () => {
+    const [boundary] = runPlaneQueries(plane, [
+      { kind: 'gamutBoundary', gamut: 'srgb', steps: 4 },
+    ]);
+    if (boundary.kind !== 'gamutBoundary') throw new Error('unexpected kind');
+    const float32Max = 3.4028234663852886e38;
+    boundary.points[1] = { ...boundary.points[1], l: float32Max };
+    const packed = packPlaneQueryResults([boundary]);
+    expect(Number.isFinite(packed.pointLC[2])).toBe(true);
+    expect(() => unpackPlaneQueryResults(packed)).not.toThrow();
   });
 });

@@ -17,10 +17,35 @@ import {
 import type { PlaneQueryResult } from '../plane/types.js';
 import type { PlaneQueryKind } from '../trace/types.js';
 
+const PACKED_BUFFER_TYPES = {
+  pathRanges: 'Uint32Array',
+  pointXY: 'Float32Array',
+  pointLC: 'Float32Array',
+  pointColorLcha: 'Float32Array',
+} as const;
+
+/**
+ * Requires every buffer to be present and of its documented typed-array type
+ * before any `.length` or element reads. The tag check stays valid for
+ * buffers that crossed a realm (e.g. structured-cloned from a worker).
+ */
+function validateBufferTypes(packed: PackedPlaneQueryResult): void {
+  for (const [field, typeName] of Object.entries(PACKED_BUFFER_TYPES)) {
+    const buffer = (packed as unknown as Record<string, unknown>)[field];
+    if (buffer == null) {
+      invalidPackedResult(`${field} is required.`);
+    }
+    if (Object.prototype.toString.call(buffer) !== `[object ${typeName}]`) {
+      invalidPackedResult(`${field} must be a ${typeName}.`);
+    }
+  }
+}
+
 function validateBufferShapes(packed: PackedPlaneQueryResult): {
   pathRangeCount: number;
   pointCount: number;
 } {
+  validateBufferTypes(packed);
   if (packed.pathRanges.length % 2 !== 0) {
     invalidPackedResult(
       'pathRanges must contain [startPoint, pointCount] pairs.',
@@ -166,8 +191,9 @@ function validatePackedPlaneQueryResult(
  * Decodes a packed plane query payload back into query results.
  *
  * Throws `Invalid packed plane query result: …` when the payload has the
- * wrong ABI version, unknown kinds, missing or invalid descriptor fields,
- * non-contiguous ranges, or non-finite point data. Nothing is defaulted.
+ * wrong ABI version, missing or mistyped buffers, unknown kinds, missing or
+ * invalid descriptor fields, non-contiguous ranges, or non-finite point data.
+ * Nothing is defaulted.
  */
 export function unpackPlaneQueryResults(
   packed: PackedPlaneQueryResult,
