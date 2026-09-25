@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { parse } from 'color-kit';
-import { DEMO_SPACES, midpointStats, mixStrip } from './linear-mix.js';
+import { DEMO_ROWS, midpointStats, mixStrip } from './linear-mix.js';
 import { DemoFrame } from './demo-frame.js';
 
 const PRESETS = [
@@ -20,7 +20,7 @@ export default function LinearMixDemo() {
   const to = parse(toHex);
 
   return (
-    <DemoFrame label="Live demo: mix(a, b, t, { space })">
+    <DemoFrame label="Live demo: mix(a, b, t, options?)">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2">
           <span className="text-muted-foreground">From</span>
@@ -65,7 +65,7 @@ export default function LinearMixDemo() {
         <table className="w-full min-w-[560px] border-separate border-spacing-y-1.5 text-xs">
           <thead>
             <tr className="text-left text-muted-foreground">
-              <th className="w-[11ch] font-medium">space</th>
+              <th className="w-[19ch] font-medium">options</th>
               <th className="font-medium">13-step ramp (generateScale)</th>
               <th className="w-[8rem] font-medium">t = 0.5</th>
               <th className="w-[7ch] font-medium">OKLab L</th>
@@ -73,16 +73,20 @@ export default function LinearMixDemo() {
             </tr>
           </thead>
           <tbody>
-            {DEMO_SPACES.map((space) => {
-              const strip = mixStrip(from, to, space);
-              const stats = midpointStats(from, to, space);
+            {DEMO_ROWS.map((row) => {
+              const strip = mixStrip(from, to, row.options);
+              const stats = midpointStats(from, to, row.options);
               return (
-                <tr key={space} data-space={space}>
+                <tr key={row.id} data-space={row.id}>
                   <td>
-                    <code>{space}</code>
-                    {space === 'oklch' ? (
+                    <code className="whitespace-nowrap">{row.label}</code>
+                    {row.options === undefined ? (
                       <span className="block text-[10px] text-muted-foreground">
-                        default
+                        legacy OKLCH default
+                      </span>
+                    ) : row.id === 'oklch' ? (
+                      <span className="block text-[10px] text-muted-foreground">
+                        CSS color-mix() path
                       </span>
                     ) : null}
                   </td>
