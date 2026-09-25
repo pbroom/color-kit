@@ -20,7 +20,7 @@ if (!existsSync(distEntry)) {
   process.exit(1);
 }
 
-const { mix, parse, toHex, toOklab, inSrgbGamut, srgbToLinear, toRgb } =
+const { mix, parse, toHex, toOklab, inSrgbGamut, oklabToLinearRgb } =
   await import(distEntry);
 
 const SPACES = [
@@ -40,10 +40,17 @@ const PAIRS = [
   ['black ↔ white', '#000000', '#ffffff'],
 ];
 
-/** Unrounded WCAG relative luminance (Y) straight from linear sRGB. */
+// CIE Y row of the CSS Color 4 linear-sRGB -> XYZ-D65 matrix.
+const Y_ROW = [0.21263900587151036, 0.7151686787677559, 0.07219231536073371];
+
+/**
+ * Relative luminance (Y) from unclamped, unquantized linear sRGB derived
+ * directly from OKLab, so out-of-gamut midpoints are not clipped and no
+ * 8-bit rounding is involved.
+ */
 function luminance(color) {
-  const lin = srgbToLinear(toRgb(color));
-  return 0.2126 * lin.r + 0.7152 * lin.g + 0.0722 * lin.b;
+  const lin = oklabToLinearRgb(toOklab(color));
+  return Y_ROW[0] * lin.r + Y_ROW[1] * lin.g + Y_ROW[2] * lin.b;
 }
 
 for (const [label, fromHex, toHexValue] of PAIRS) {
@@ -53,7 +60,8 @@ for (const [label, fromHex, toHexValue] of PAIRS) {
     const mid = mix(a, b, 0.5, options);
     return {
       space,
-      hex: toHex(mid),
+      // Display only: toHex rounds to 8 bits and clips out-of-gamut values.
+      'hex (clipped)': toHex(mid),
       'OKLab L': Number(toOklab(mid).L.toFixed(4)),
       'OKLCH C': Number(mid.c.toFixed(4)),
       'OKLCH h': Number(mid.h.toFixed(1)),
