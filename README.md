@@ -200,7 +200,8 @@ const to = parse('#ef4444');
 const color = { l: 0, c: 0, h: 0, alpha: 1 };
 const rgb = { r: 0, g: 0, b: 0, alpha: 1 };
 for (let x = 0; x < width; x++) {
-  toRgbInto(rgb, interpolateInto(color, from, to, x / (width - 1)));
+  const t = width > 1 ? x / (width - 1) : 0; // a 1px strip shows `from`
+  toRgbInto(rgb, interpolateInto(color, from, to, t));
   // write rgb.r / rgb.g / rgb.b into ImageData
 }
 ```
