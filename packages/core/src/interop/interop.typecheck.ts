@@ -17,7 +17,13 @@ const f32: Float32Array = toLinearSrgbArray(color, new Float32Array(3));
 const numbers: number[] = toLinearSrgbArray(color, [0, 0, 0], 0);
 
 // packColors defaults to Float32Array and preserves a supplied array type.
-const packed: Float32Array = packColors([color], 'linearSrgb');
+// These are inferred (not contextually typed) so the overloads are locked:
+// omitting `out` or passing `undefined` must yield Float32Array methods.
+const packed = packColors([color], 'linearSrgb').subarray(0, 3);
+const packedWithOptions = packColors([color], 'srgb', undefined, {
+  alpha: true,
+}).subarray(0, 4);
+const packedNumbers = packColors([color], 'oklch', [0, 0, 0]).slice(0, 3);
 const packed64: Float64Array = packColors(
   [color],
   'oklab',
@@ -41,6 +47,8 @@ export const typecheck = [
   f32,
   numbers,
   packed,
+  packedWithOptions,
+  packedNumbers,
   packed64,
   wrong,
 ];
