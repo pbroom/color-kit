@@ -146,6 +146,9 @@
     }
   },
   "devDependencies": {
+    "@color-kit/core": "workspace:*",
+    "@color-kit/driver": "workspace:*",
+    "@color-kit/react": "workspace:*",
     "@color-kit/control-kit": "github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289"
   }
 }

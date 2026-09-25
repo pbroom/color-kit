@@ -35,16 +35,29 @@ export type {
   PlaneComputeTelemetrySnapshot,
 } from './types.js';
 
-const defaultPlaneComputeBackend = createJsPlaneComputeBackend();
-const defaultPlaneComputeScheduler = createPlaneComputeScheduler({
-  backends: {
-    js: defaultPlaneComputeBackend,
-  },
-});
+// The default backend and scheduler are created lazily on first use so that
+// importing this module (or the root barrel) does no work at import time and
+// bundlers can drop the compute engine when it is never called.
+let defaultPlaneComputeBackend: PlaneComputeBackend | undefined;
+let defaultPlaneComputeScheduler: PlaneComputeScheduler | undefined;
+
+function getDefaultPlaneComputeBackend(): PlaneComputeBackend {
+  defaultPlaneComputeBackend ??= createJsPlaneComputeBackend();
+  return defaultPlaneComputeBackend;
+}
+
+function getDefaultPlaneComputeScheduler(): PlaneComputeScheduler {
+  defaultPlaneComputeScheduler ??= createPlaneComputeScheduler({
+    backends: {
+      js: getDefaultPlaneComputeBackend(),
+    },
+  });
+  return defaultPlaneComputeScheduler;
+}
 
 export function runPlaneCompute(
   request: PlaneComputeRequest,
-  backend: PlaneComputeBackend = defaultPlaneComputeBackend,
+  backend: PlaneComputeBackend = getDefaultPlaneComputeBackend(),
 ): PlaneComputeResponse {
   return backend.run(request);
 }
@@ -58,15 +71,15 @@ export function runPackedPlaneQueries(
 
 export function runScheduledPlaneCompute(
   request: PlaneComputeRequest,
-  scheduler: PlaneComputeScheduler = defaultPlaneComputeScheduler,
+  scheduler: PlaneComputeScheduler = getDefaultPlaneComputeScheduler(),
 ): PlaneComputeResponse {
   return scheduler.run(request);
 }
 
 export function getDefaultPlaneComputeTelemetrySnapshot() {
-  return defaultPlaneComputeScheduler.getTelemetrySnapshot();
+  return getDefaultPlaneComputeScheduler().getTelemetrySnapshot();
 }
 
 export function resetDefaultPlaneComputeTelemetry(): void {
-  defaultPlaneComputeScheduler.resetTelemetry();
+  getDefaultPlaneComputeScheduler().resetTelemetry();
 }
