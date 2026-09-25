@@ -185,6 +185,15 @@ importers:
       '@color-kit/control-kit':
         specifier: github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289
         version: https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@color-kit/core':
+        specifier: workspace:*
+        version: link:../core
+      '@color-kit/driver':
+        specifier: workspace:*
+        version: link:../driver
+      '@color-kit/react':
+        specifier: workspace:*
+        version: link:../react
 
   packages/core:
     dependencies:
