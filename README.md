@@ -174,6 +174,8 @@ palette.setActiveGamut('srgb');
 
 `generateScale()` `interpolate()` `lightnessScale()`
 
+`mix()`, `interpolate()`, and `generateScale()` take an optional `{ space, hue, premultiplied }` argument. It lets you interpolate in `oklch` (the default), `oklab`, `srgb`, `linear-srgb`, `p3`, or `linear-p3` with CSS `color-mix()` semantics. For example, `mix(red, lime, 0.5, { space: 'linear-srgb' })` gives a physically correct linear-light blend.
+
 ### Manipulation
 
 `lighten()` `darken()` `saturate()` `desaturate()` `adjustHue()` `mix()` `setAlpha()` `invert()` `grayscale()`

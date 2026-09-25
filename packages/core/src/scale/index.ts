@@ -1,45 +1,57 @@
 import type { Color } from '../types.js';
-import { normalizeHue, lerp } from '../utils/index.js';
+import { lerp } from '../utils/index.js';
+import {
+  hasInterpolationOptions,
+  interpolateInSpace,
+  type InterpolationOptions,
+} from '../interpolation/index.js';
+import {
+  generateOklchDefaultScale,
+  interpolateOklchDefault,
+  sampleScale,
+} from './legacy.js';
 
 /**
- * Interpolate between two Colors in OKLCH space.
+ * Interpolate between two Colors.
  * t = 0 returns color1, t = 1 returns color2.
  *
- * Hue interpolation takes the shortest path around the wheel.
+ * Without `options` this interpolates OKLCH channels with the hue taking the
+ * shortest path around the wheel (endpoints with chroma below `0.001` borrow
+ * the other endpoint's hue), exactly as before `options` existed. Passing
+ * `options` switches to CSS Color 4 interpolation in the chosen space; see
+ * `mix()` for the option details.
+ *
+ * @param color1 - Start color
+ * @param color2 - End color
+ * @param t - Interpolation position; values outside `[0, 1]` extrapolate
+ * @param options - Interpolation space, hue method, and alpha handling
+ * @param options.space - `'oklch'` (default), `'oklab'`, `'srgb'`,
+ *   `'linear-srgb'`, `'p3'`, or `'linear-p3'`
+ * @param options.hue - Hue arc for polar spaces (default `'shorter'`)
+ * @param options.premultiplied - Premultiply alpha (default `true` for
+ *   rectangular spaces, `false` for `'oklch'`)
+ *
+ * @example
+ * ```ts
+ * import { interpolate, parse } from 'color-kit';
+ *
+ * const a = parse('#3b82f6');
+ * const b = parse('#ef4444');
+ * interpolate(a, b, 0.25);
+ * interpolate(a, b, 0.25, { space: 'oklch', hue: 'longer' });
+ * ```
  */
-export function interpolate(color1: Color, color2: Color, t: number): Color {
-  // Handle hue interpolation via shortest path
-  let h1 = color1.h;
-  let h2 = color2.h;
-  const diff = h2 - h1;
-
-  if (diff > 180) {
-    h1 += 360;
-  } else if (diff < -180) {
-    h2 += 360;
+export function interpolate(
+  color1: Color,
+  color2: Color,
+  t: number,
+  options?: InterpolationOptions,
+): Color {
+  if (hasInterpolationOptions(options)) {
+    return interpolateInSpace(color1, color2, t, options);
   }
 
-  // If either color has near-zero chroma, use the other's hue
-  const achromatic1 = color1.c < 0.001;
-  const achromatic2 = color2.c < 0.001;
-
-  let h: number;
-  if (achromatic1 && achromatic2) {
-    h = 0;
-  } else if (achromatic1) {
-    h = h2;
-  } else if (achromatic2) {
-    h = h1;
-  } else {
-    h = lerp(h1, h2, t);
-  }
-
-  return {
-    l: lerp(color1.l, color2.l, t),
-    c: lerp(color1.c, color2.c, t),
-    h: normalizeHue(h),
-    alpha: lerp(color1.alpha, color2.alpha, t),
-  };
+  return interpolateOklchDefault(color1, color2, t);
 }
 
 /**
@@ -49,18 +61,26 @@ export function interpolate(color1: Color, color2: Color, t: number): Color {
  * @param from - Starting color
  * @param to - Ending color
  * @param steps - Number of colors in the scale (minimum 2)
+ * @param options - Interpolation options forwarded to `interpolate()`
+ *
+ * @example
+ * ```ts
+ * import { generateScale, parse } from 'color-kit';
+ *
+ * generateScale(parse('#0f172a'), parse('#f8fafc'), 7);
+ * generateScale(parse('#f00'), parse('#00f'), 5, { space: 'linear-srgb' });
+ * ```
  */
-export function generateScale(from: Color, to: Color, steps: number): Color[] {
-  if (steps < 2) {
-    throw new Error('Scale must have at least 2 steps');
+export function generateScale(
+  from: Color,
+  to: Color,
+  steps: number,
+  options?: InterpolationOptions,
+): Color[] {
+  if (!hasInterpolationOptions(options)) {
+    return generateOklchDefaultScale(from, to, steps);
   }
-
-  const colors: Color[] = [];
-  for (let i = 0; i < steps; i++) {
-    const t = i / (steps - 1);
-    colors.push(interpolate(from, to, t));
-  }
-  return colors;
+  return sampleScale(steps, (t) => interpolateInSpace(from, to, t, options));
 }
 
 /**

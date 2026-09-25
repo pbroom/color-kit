@@ -11,9 +11,31 @@
 
 ## Shared Notes
 
+These notes describe the default behavior, when no `options` are passed:
+
 - All interpolation is per-channel linear interpolation of OKLCH components (`l`, `c`, `h`, `alpha`).
 - Hue interpolation takes the shortest path around the wheel: when the raw hue difference exceeds 180 degrees, one endpoint is wrapped by 360 before interpolating, and the result is normalized back into `[0, 360)`.
 - Near-achromatic endpoints (chroma below `0.001`) do not contribute a hue: the other endpoint's hue is used as-is, and if both endpoints are achromatic the hue is `0`.
+
+## Interpolation options
+
+`interpolate`, `generateScale`, and `mix` accept an optional `InterpolationOptions` object. Passing one switches to CSS Color 4 interpolation, the same math as `color-mix(in <space>, a, b)`. The results match colorjs.io `mix` / `steps` to about 1e-15.
+
+| Option          | Type                                                                   | Default                                          | Description                                                                              |
+| --------------- | ---------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `space`         | `'oklch' \| 'oklab' \| 'srgb' \| 'linear-srgb' \| 'p3' \| 'linear-p3'` | `'oklch'`                                        | Space to interpolate in. `linear-srgb` is CSS `srgb-linear`; `p3` is CSS `display-p3`.   |
+| `hue`           | `'shorter' \| 'longer' \| 'increasing' \| 'decreasing'`                | `'shorter'`                                      | CSS hue interpolation method. Only used by `oklch`; rectangular spaces have no hue.      |
+| `premultiplied` | `boolean`                                                              | `true` for rectangular spaces, `false` for OKLCH | Interpolate with premultiplied alpha, as `color-mix()` does. Hue is never premultiplied. |
+
+How the options behave:
+
+- **Linear light.** `'linear-srgb'` and `'linear-p3'` average light, so the result matches what overlapping lights, blur, or downsampling produce. Its luminance is the average of the endpoints' luminance. Because the two spaces are linear transforms of each other, they give the same result. The red and lime midpoint is `#bcbc00`, compared with `#7f8000` in gamma-encoded `'srgb'` and `#f99500` in OKLCH (the default).
+- **Powerless hue.** In `oklch`, an endpoint with chroma at or below `0.000004` (the CSS Color 4 OKLCH epsilon) has a powerless hue and takes the other endpoint's hue. The hue then stays constant along the mix, and no arc is added even with `'longer'`. This is the same as colorjs.io.
+- **Alpha.** A fully transparent endpoint contributes no color in rectangular spaces, because alpha is premultiplied. In OKLCH, alpha defaults to straight interpolation so `{ space: 'oklch' }` matches the option-less call for colors with a hue. Pass `premultiplied: true` for full `color-mix()` parity.
+- **Endpoints are exact.** `t = 0` and `t = 1` return copies of the inputs, so a transparent endpoint keeps its color, and `generateScale` never swaps it for black.
+- **Transparent results.** When the interpolated alpha is exactly 0 (both endpoints transparent), there is nothing to un-premultiply by. color-kit then interpolates the channels with straight alpha. CSS Color 4 and colorjs.io keep the premultiplied values instead, which makes every fully transparent result transparent black. Both are invisible, but color-kit's keeps a usable color for later edits such as `setAlpha`.
+- **No gamut mapping.** Mixing in-gamut colors in `srgb` / `linear-srgb` stays in sRGB, and mixing in `p3` / `linear-p3` stays in Display P3. Floating-point noise is clamped away in those cases. Out-of-gamut inputs keep their extended (negative or >1) channel values, so the result can be out of gamut. Mixes in OKLCH (and sometimes OKLab) can leave the gamut even when both inputs are in gamut. Use `toSrgbGamut` / `toP3Gamut` when you need a displayable color.
+- **Achromatic threshold.** When `options` are passed, near-achromatic handling uses the CSS threshold (`0.000004`) rather than the `0.001` described in Shared Notes.
 
 ## `interpolate`
 
@@ -23,13 +45,17 @@ Interpolates between two colors in OKLCH space. `t = 0` returns the first color,
 import { interpolate, parse } from 'color-kit';
 
 const midpoint = interpolate(parse('#3b82f6'), parse('#ef4444'), 0.5);
+const viaLight = interpolate(parse('#3b82f6'), parse('#ef4444'), 0.5, {
+  space: 'linear-srgb',
+});
 ```
 
-| Parameter | Type     | Default  | Description                                                   |
-| --------- | -------- | -------- | ------------------------------------------------------------- |
-| `color1`  | `Color`  | required | Start color (returned when `t` is 0).                         |
-| `color2`  | `Color`  | required | End color (returned when `t` is 1).                           |
-| `t`       | `number` | required | Interpolation position. Values outside 0&ndash;1 extrapolate. |
+| Parameter | Type                   | Default  | Description                                                                |
+| --------- | ---------------------- | -------- | -------------------------------------------------------------------------- |
+| `color1`  | `Color`                | required | Start color (returned when `t` is 0).                                      |
+| `color2`  | `Color`                | required | End color (returned when `t` is 1).                                        |
+| `t`       | `number`               | required | Interpolation position. Values outside 0&ndash;1 extrapolate.              |
+| `options` | `InterpolationOptions` | —        | See [Interpolation options](#interpolation-options). Omit for the default. |
 
 <p className="api-returns">
   Returns <code>Color</code> with each channel linearly interpolated and the hue
@@ -44,13 +70,17 @@ Generates an evenly spaced color scale between two endpoints. Both endpoints are
 import { generateScale, parse } from 'color-kit';
 
 const ramp = generateScale(parse('#0f172a'), parse('#f8fafc'), 7);
+const lightRamp = generateScale(parse('#ff0000'), parse('#0000ff'), 5, {
+  space: 'linear-srgb',
+});
 ```
 
-| Parameter | Type     | Default  | Description                                                                      |
-| --------- | -------- | -------- | -------------------------------------------------------------------------------- |
-| `from`    | `Color`  | required | Starting color (first entry in the scale).                                       |
-| `to`      | `Color`  | required | Ending color (last entry in the scale).                                          |
-| `steps`   | `number` | required | Number of colors in the scale. Must be at least 2, otherwise an error is thrown. |
+| Parameter | Type                   | Default  | Description                                                                      |
+| --------- | ---------------------- | -------- | -------------------------------------------------------------------------------- |
+| `from`    | `Color`                | required | Starting color (first entry in the scale).                                       |
+| `to`      | `Color`                | required | Ending color (last entry in the scale).                                          |
+| `steps`   | `number`               | required | Number of colors in the scale. Must be at least 2, otherwise an error is thrown. |
+| `options` | `InterpolationOptions` | —        | Forwarded to `interpolate` for every stop.                                       |
 
 <p className="api-returns">
   Returns <code>Color[]</code> of length <code>steps</code>, from{' '}
