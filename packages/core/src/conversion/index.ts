@@ -14,56 +14,68 @@ import {
 import type { Color, Rgb, Hsl, Hsv, Hct, Oklab, Oklch, P3 } from '../types.js';
 import { round, clamp } from '../utils/index.js';
 
-import { srgbToLinear, linearToSrgb, rgbToHex, hexToRgb } from './srgb.js';
+import { rgbToHex, hexToRgb } from './srgb.js';
 import { rgbToHsl, hslToRgbUnrounded } from './hsl.js';
 import { rgbToHsv, hsvToRgbUnrounded } from './hsv.js';
-import { linearRgbToOklab, oklabToLinearRgb } from './oklab.js';
-import { oklabToOklch, oklchToOklab } from './oklch.js';
-import {
-  linearSrgbToLinearP3,
-  linearP3ToLinearSrgb,
-  linearP3ToP3,
-  p3ToLinearP3,
-} from './p3.js';
+import { oklabToOklchInto, oklchToOklabInto } from './oklch.js';
+import { fromP3Into, fromRgbInto, toP3Into, toRgbInto } from './into.js';
 
 // Re-export individual converters for advanced use
-export { srgbToLinear, linearToSrgb, rgbToHex, hexToRgb } from './srgb.js';
+export {
+  srgbToLinear,
+  srgbToLinearInto,
+  linearToSrgb,
+  linearToSrgbInto,
+  rgbToHex,
+  hexToRgb,
+} from './srgb.js';
 export { rgbToHsl, hslToRgb } from './hsl.js';
 export { rgbToHsv, hsvToRgb } from './hsv.js';
-export { linearRgbToOklab, oklabToLinearRgb } from './oklab.js';
+export {
+  linearRgbToOklab,
+  linearRgbToOklabInto,
+  oklabToLinearRgb,
+  oklabToLinearRgbInto,
+} from './oklab.js';
 export {
   oklabToOklch,
+  oklabToOklchInto,
   oklchToOklab,
+  oklchToOklabInto,
   oklchToColor,
   colorToOklch,
 } from './oklch.js';
 export {
   linearSrgbToLinearP3,
+  linearSrgbToLinearP3Into,
   linearP3ToLinearSrgb,
+  linearP3ToLinearSrgbInto,
   linearP3ToP3,
+  linearP3ToP3Into,
   p3ToLinearP3,
+  p3ToLinearP3Into,
 } from './p3.js';
+export {
+  fromLinearSrgbInto,
+  fromOklabInto,
+  fromP3Into,
+  fromRgbInto,
+  toLinearSrgbInto,
+  toOklabInto,
+  toP3Into,
+  toRgbInto,
+} from './into.js';
 
 // ─── High-level conversions: Color (OKLCH) ↔ other formats ─────────
 
 /** Convert a Color to sRGB (0-255) */
 export function toRgb(color: Color): Rgb {
-  const lab: Oklab = oklchToOklab({
-    l: color.l,
-    c: color.c,
-    h: color.h,
-    alpha: color.alpha,
-  });
-  const linear = oklabToLinearRgb(lab);
-  return linearToSrgb(linear);
+  return toRgbInto({ r: 0, g: 0, b: 0, alpha: 1 }, color);
 }
 
 /** Convert sRGB (0-255) to a Color */
 export function fromRgb(rgb: Rgb): Color {
-  const linear = srgbToLinear(rgb);
-  const lab = linearRgbToOklab(linear);
-  const oklch = oklabToOklch(lab);
-  return { l: oklch.l, c: oklch.c, h: oklch.h, alpha: oklch.alpha };
+  return fromRgbInto({ l: 0, c: 0, h: 0, alpha: 1 }, rgb);
 }
 
 /** Convert a Color to a hex string */
@@ -133,18 +145,12 @@ export function fromHsv(hsv: Hsv): Color {
 
 /** Convert a Color to OKLAB */
 export function toOklab(color: Color): Oklab {
-  return oklchToOklab({
-    l: color.l,
-    c: color.c,
-    h: color.h,
-    alpha: color.alpha,
-  });
+  return oklchToOklabInto({ L: 0, a: 0, b: 0, alpha: 1 }, color);
 }
 
 /** Convert OKLAB to a Color */
 export function fromOklab(lab: Oklab): Color {
-  const oklch = oklabToOklch(lab);
-  return { l: oklch.l, c: oklch.c, h: oklch.h, alpha: oklch.alpha };
+  return oklabToOklchInto({ l: 0, c: 0, h: 0, alpha: 1 }, lab);
 }
 
 /** Convert a Color to OKLCH (identity, but returns a new object) */
@@ -159,24 +165,12 @@ export function fromOklch(oklch: Oklch): Color {
 
 /** Convert a Color to Display P3 */
 export function toP3(color: Color): P3 {
-  const lab = oklchToOklab({
-    l: color.l,
-    c: color.c,
-    h: color.h,
-    alpha: color.alpha,
-  });
-  const linearSrgb = oklabToLinearRgb(lab);
-  const linearP3 = linearSrgbToLinearP3(linearSrgb);
-  return linearP3ToP3(linearP3);
+  return toP3Into({ r: 0, g: 0, b: 0, alpha: 1 }, color);
 }
 
 /** Convert Display P3 to a Color */
 export function fromP3(p3: P3): Color {
-  const linearP3 = p3ToLinearP3(p3);
-  const linearSrgb = linearP3ToLinearSrgb(linearP3);
-  const lab = linearRgbToOklab(linearSrgb);
-  const oklch = oklabToOklch(lab);
-  return { l: oklch.l, c: oklch.c, h: oklch.h, alpha: oklch.alpha };
+  return fromP3Into({ l: 0, c: 0, h: 0, alpha: 1 }, p3);
 }
 
 /** Convert a Color to a CSS color string in the given format */
@@ -238,6 +232,18 @@ export function toCss(color: Color, format: string = 'hex'): string {
 
 // ─── CSS color string parser ────────────────────────────────────────
 
+/** A number, or a percentage mapped so that `100%` equals `percentScale`. */
+function parseNumberOrPercent(value: string, percentScale: number): number {
+  return value.endsWith('%')
+    ? (parseFloat(value) / 100) * percentScale
+    : parseFloat(value);
+}
+
+/** Optional alpha component (number or percentage), clamped to `[0, 1]`. */
+function parseAlpha(value: string | undefined): number {
+  return clamp(value ? parseNumberOrPercent(value, 1) : 1, 0, 1);
+}
+
 /**
  * Parse any CSS color string into a Color.
  * Supports: hex, rgb(), hsl(), oklch(), oklab(), color(display-p3 ...)
@@ -255,16 +261,11 @@ export function parse(input: string): Color {
     /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[/,]\s*([\d.]+%?))?\s*\)$/,
   );
   if (rgbMatch) {
-    const alpha = rgbMatch[4]
-      ? rgbMatch[4].endsWith('%')
-        ? parseFloat(rgbMatch[4]) / 100
-        : parseFloat(rgbMatch[4])
-      : 1;
     return fromRgb({
       r: clamp(parseFloat(rgbMatch[1]), 0, 255),
       g: clamp(parseFloat(rgbMatch[2]), 0, 255),
       b: clamp(parseFloat(rgbMatch[3]), 0, 255),
-      alpha: clamp(alpha, 0, 1),
+      alpha: parseAlpha(rgbMatch[4]),
     });
   }
 
@@ -273,16 +274,11 @@ export function parse(input: string): Color {
     /^hsla?\(\s*([\d.]+)(?:deg)?[,\s]+([\d.]+)%[,\s]+([\d.]+)%(?:\s*[/,]\s*([\d.]+%?))?\s*\)$/,
   );
   if (hslMatch) {
-    const alpha = hslMatch[4]
-      ? hslMatch[4].endsWith('%')
-        ? parseFloat(hslMatch[4]) / 100
-        : parseFloat(hslMatch[4])
-      : 1;
     return fromHsl({
       h: parseFloat(hslMatch[1]),
       s: parseFloat(hslMatch[2]),
       l: parseFloat(hslMatch[3]),
-      alpha: clamp(alpha, 0, 1),
+      alpha: parseAlpha(hslMatch[4]),
     });
   }
 
@@ -291,19 +287,12 @@ export function parse(input: string): Color {
     /^oklch\(\s*([\d.]+%?)\s+([\d.]+%?)\s+([\d.]+)(?:deg)?(?:\s*\/\s*([\d.]+%?))?\s*\)$/,
   );
   if (oklchMatch) {
-    const l = oklchMatch[1].endsWith('%')
-      ? parseFloat(oklchMatch[1]) / 100
-      : parseFloat(oklchMatch[1]);
-    const c = oklchMatch[2].endsWith('%')
-      ? (parseFloat(oklchMatch[2]) / 100) * 0.4
-      : parseFloat(oklchMatch[2]);
-    const h = parseFloat(oklchMatch[3]);
-    const alpha = oklchMatch[4]
-      ? oklchMatch[4].endsWith('%')
-        ? parseFloat(oklchMatch[4]) / 100
-        : parseFloat(oklchMatch[4])
-      : 1;
-    return { l, c, h, alpha: clamp(alpha, 0, 1) };
+    return {
+      l: parseNumberOrPercent(oklchMatch[1], 1),
+      c: parseNumberOrPercent(oklchMatch[2], 0.4),
+      h: parseFloat(oklchMatch[3]),
+      alpha: parseAlpha(oklchMatch[4]),
+    };
   }
 
   // oklab()
@@ -311,21 +300,12 @@ export function parse(input: string): Color {
     /^oklab\(\s*([\d.]+%?)\s+([-\d.]+%?)\s+([-\d.]+%?)(?:\s*\/\s*([\d.]+%?))?\s*\)$/,
   );
   if (oklabMatch) {
-    const L = oklabMatch[1].endsWith('%')
-      ? parseFloat(oklabMatch[1]) / 100
-      : parseFloat(oklabMatch[1]);
-    const a = oklabMatch[2].endsWith('%')
-      ? (parseFloat(oklabMatch[2]) / 100) * 0.4
-      : parseFloat(oklabMatch[2]);
-    const b = oklabMatch[3].endsWith('%')
-      ? (parseFloat(oklabMatch[3]) / 100) * 0.4
-      : parseFloat(oklabMatch[3]);
-    const alpha = oklabMatch[4]
-      ? oklabMatch[4].endsWith('%')
-        ? parseFloat(oklabMatch[4]) / 100
-        : parseFloat(oklabMatch[4])
-      : 1;
-    return fromOklab({ L, a, b, alpha: clamp(alpha, 0, 1) });
+    return fromOklab({
+      L: parseNumberOrPercent(oklabMatch[1], 1),
+      a: parseNumberOrPercent(oklabMatch[2], 0.4),
+      b: parseNumberOrPercent(oklabMatch[3], 0.4),
+      alpha: parseAlpha(oklabMatch[4]),
+    });
   }
 
   // color(display-p3 ...)
@@ -333,16 +313,11 @@ export function parse(input: string): Color {
     /^color\(\s*display-p3\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/,
   );
   if (p3Match) {
-    const alpha = p3Match[4]
-      ? p3Match[4].endsWith('%')
-        ? parseFloat(p3Match[4]) / 100
-        : parseFloat(p3Match[4])
-      : 1;
     return fromP3({
       r: parseFloat(p3Match[1]),
       g: parseFloat(p3Match[2]),
       b: parseFloat(p3Match[3]),
-      alpha: clamp(alpha, 0, 1),
+      alpha: parseAlpha(p3Match[4]),
     });
   }
 
