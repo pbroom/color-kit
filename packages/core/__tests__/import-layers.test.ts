@@ -1,12 +1,39 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+// Core has no @types/node, so load the Node built-ins through non-literal
+// specifiers with the minimal shapes this test needs.
+interface NodeFs {
+  readdirSync(path: string): string[];
+  readFileSync(path: string, encoding: 'utf8'): string;
+  statSync(path: string): { isDirectory(): boolean };
+}
+interface NodePath {
+  dirname(path: string): string;
+  join(...parts: string[]): string;
+  relative(from: string, to: string): string;
+  resolve(...parts: string[]): string;
+  sep: string;
+}
+interface NodeUrl {
+  fileURLToPath(url: string): string;
+}
+const fsModule = 'node:fs';
+const pathModule = 'node:path';
+const urlModule = 'node:url';
+const { readdirSync, readFileSync, statSync } = (await import(
+  /* @vite-ignore */ fsModule
+)) as NodeFs;
+const { dirname, join, relative, resolve, sep } = (await import(
+  /* @vite-ignore */ pathModule
+)) as NodePath;
+const { fileURLToPath } = (await import(
+  /* @vite-ignore */ urlModule
+)) as NodeUrl;
 
 const SRC_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../src');
 
 function listSourceFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((entry) => {
+  return readdirSync(dir).flatMap((entry: string) => {
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) return listSourceFiles(path);
     return path.endsWith('.ts') ? [path] : [];
