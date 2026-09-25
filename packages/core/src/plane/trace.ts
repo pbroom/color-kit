@@ -4,8 +4,9 @@ import {
   traceNowMs,
   type InternalPlaneTraceContext,
 } from '../trace/context.js';
+import type { PlaneQueryGeometryCount } from './query-spec.js';
+import { getPlaneQuerySpec } from './query-specs/index.js';
 import type {
-  PlanePoint,
   PlaneQuery,
   PlaneQueryInspection,
   PlaneQueryResult,
@@ -19,52 +20,10 @@ export function createPlaneTraceContext(
   return createTraceContext(query.kind, options);
 }
 
-function countPlanePaths(paths: PlanePoint[][]): {
-  pathCount: number;
-  pointCount: number;
-} {
-  return {
-    pathCount: paths.length,
-    pointCount: paths.reduce((total, path) => total + path.length, 0),
-  };
-}
-
-export function countResultGeometry(result: PlaneQueryResult): {
-  pathCount: number;
-  pointCount: number;
-} {
-  switch (result.kind) {
-    case 'gamutBoundary':
-    case 'chromaBand':
-    case 'gradient':
-      return {
-        pathCount: result.points.length > 0 ? 1 : 0,
-        pointCount: result.points.length,
-      };
-    case 'gamutRegion': {
-      const boundary = countPlanePaths(result.boundaryPaths);
-      const visible = countPlanePaths(result.visibleRegion.paths);
-      return {
-        pathCount: boundary.pathCount + visible.pathCount,
-        pointCount: boundary.pointCount + visible.pointCount,
-      };
-    }
-    case 'contrastBoundary':
-      return {
-        pathCount: result.points.length > 0 ? 1 : 0,
-        pointCount: result.points.length,
-      };
-    case 'contrastRegion': {
-      const counts = countPlanePaths(result.paths);
-      return { pathCount: counts.pathCount, pointCount: counts.pointCount };
-    }
-    case 'fallbackPoint':
-      return { pathCount: 1, pointCount: 1 };
-    default: {
-      const exhaustiveCheck: never = result;
-      throw new Error(`Unhandled trace result kind: ${exhaustiveCheck}`);
-    }
-  }
+export function countResultGeometry(
+  result: PlaneQueryResult,
+): PlaneQueryGeometryCount {
+  return getPlaneQuerySpec(result.kind).countGeometry(result);
 }
 
 export function finalizePlaneTrace<Result extends PlaneQueryResult>(

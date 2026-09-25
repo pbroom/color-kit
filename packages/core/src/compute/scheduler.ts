@@ -1,5 +1,7 @@
 import { createJsPlaneComputeBackend } from './backends/js-backend.js';
 import { resolvePlaneDefinition } from '../plane/plane.js';
+import type { PlaneQueryTelemetryGroup } from '../plane/query-spec.js';
+import { getPlaneQuerySpec } from '../plane/query-specs/index.js';
 import type {
   PlaneComputeBackend,
   PlaneComputeBackendKind,
@@ -103,63 +105,7 @@ function withDefaults(
 function estimateQueryBudget(request: PlaneComputeRequest): number {
   let budget = 0;
   for (const query of request.queries) {
-    switch (query.kind) {
-      case 'gamutBoundary':
-      case 'chromaBand':
-      case 'gradient': {
-        budget += query.steps ?? 48;
-        break;
-      }
-      case 'gamutRegion': {
-        budget += query.scope === 'full' ? 6144 : 4096;
-        break;
-      }
-      case 'contrastBoundary':
-      case 'contrastRegion': {
-        const samplingMode = query.samplingMode ?? 'hybrid';
-        if (samplingMode === 'uniform') {
-          const lightness = query.lightnessSteps ?? 64;
-          const chroma = query.chromaSteps ?? 64;
-          budget += lightness * chroma;
-          break;
-        }
-        if (samplingMode === 'adaptive') {
-          const base = Math.max(8, query.adaptiveBaseSteps ?? 16);
-          const depth = Math.max(0, query.adaptiveMaxDepth ?? 3);
-          const refinementFactor = 1 + depth * 0.85;
-          budget += Math.round(base * base * refinementFactor);
-          break;
-        }
-        const lightness = query.lightnessSteps ?? 72;
-        const chromaBrackets = query.chromaSteps ?? 96;
-        const depth = Math.max(0, query.hybridMaxDepth ?? 7);
-        const errorTolerance =
-          query.hybridErrorTolerance != null && query.hybridErrorTolerance > 0
-            ? query.hybridErrorTolerance
-            : 0.0015;
-        const precisionFactor = Math.min(
-          3.2,
-          Math.max(1, 0.0015 / errorTolerance),
-        );
-        const metricFactor = query.metric === 'apca' ? 1.12 : 1;
-        budget += Math.round(
-          lightness *
-            Math.sqrt(chromaBrackets) *
-            (1 + depth * 0.24) *
-            precisionFactor *
-            metricFactor,
-        );
-        break;
-      }
-      case 'fallbackPoint': {
-        budget += 1;
-        break;
-      }
-      default: {
-        const exhaustiveCheck: never = query;
-        throw new Error(`Unhandled plane query kind: ${exhaustiveCheck}`);
-      }
-    }
+    budget += getPlaneQuerySpec(query.kind).budget(query);
   }
   return Math.max(1, budget);
 }
@@ -172,60 +118,36 @@ function budgetBucketLabel(budget: number): string {
   return 'xl';
 }
 
+const TELEMETRY_GROUPS: readonly PlaneQueryTelemetryGroup[] = [
+  'gamutRegion',
+  'contrast',
+];
+
 function createBucketKey(request: PlaneComputeRequest): string {
   const kinds = [...new Set(request.queries.map((query) => query.kind))]
     .sort()
     .join('+');
   const resolvedPlane = resolvePlaneDefinition(request.plane);
-  const gamutRegionSignature = [
-    ...new Set(
-      request.queries
-        .filter(
-          (
-            query,
-          ): query is Extract<
-            PlaneComputeRequest['queries'][number],
-            { kind: 'gamutRegion' }
-          > => query.kind === 'gamutRegion',
-        )
-        .map(
-          (query) =>
-            `${query.gamut ?? 'srgb'}:${query.scope ?? 'viewport'}:${resolvedPlane.model}:${resolvedPlane.x.channel}/${resolvedPlane.y.channel}`,
-        ),
-    ),
-  ]
-    .sort()
-    .join(',');
-  const contrastSignature = [
-    ...new Set(
-      request.queries
-        .filter(
-          (
-            query,
-          ): query is Extract<
-            PlaneComputeRequest['queries'][number],
-            { kind: 'contrastBoundary' | 'contrastRegion' }
-          > =>
-            query.kind === 'contrastBoundary' ||
-            query.kind === 'contrastRegion',
-        )
-        .map((query) => {
-          const metric = query.metric ?? 'wcag';
-          const samplingMode = query.samplingMode ?? 'hybrid';
-          if (metric !== 'apca') {
-            return `${metric}:${samplingMode}`;
-          }
-          return `${metric}:${samplingMode}:${query.apcaPolarity ?? 'absolute'}:${query.apcaRole ?? 'sample-text'}`;
-        }),
-    ),
-  ]
-    .sort()
-    .join(',');
+  const signatures = new Map<PlaneQueryTelemetryGroup, Set<string>>();
+  for (const query of request.queries) {
+    const spec = getPlaneQuerySpec(query.kind);
+    if (!spec.telemetryGroup || !spec.telemetrySignature) continue;
+    let group = signatures.get(spec.telemetryGroup);
+    if (!group) {
+      group = new Set();
+      signatures.set(spec.telemetryGroup, group);
+    }
+    group.add(spec.telemetrySignature(query, resolvedPlane));
+  }
+  const groupKeys = TELEMETRY_GROUPS.map((groupName) => {
+    const signature = [...(signatures.get(groupName) ?? [])].sort().join(',');
+    return `${groupName}:${signature || 'none'}`;
+  });
   const priority = request.priority ?? 'idle';
   const quality = request.quality ?? 'medium';
   const profile = request.performanceProfile ?? 'balanced';
   const budget = budgetBucketLabel(estimateQueryBudget(request));
-  return `${kinds}|gamutRegion:${gamutRegionSignature || 'none'}|contrast:${contrastSignature || 'none'}|priority:${priority}|quality:${quality}|profile:${profile}|budget:${budget}`;
+  return `${kinds}|${groupKeys.join('|')}|priority:${priority}|quality:${quality}|profile:${profile}|budget:${budget}`;
 }
 
 function totalTimeMs(response: PlaneComputeResponse): number {
