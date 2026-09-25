@@ -946,29 +946,47 @@ export function inP3Gamut(color: Color): boolean {
   return linearChannelsInGamut(linearP3.r, linearP3.g, linearP3.b);
 }
 
-/**
- * Map a Color to the sRGB gamut by progressively reducing chroma.
- * Uses a binary search to find the maximum chroma that stays in gamut.
- *
- * This preserves lightness and hue while only reducing saturation,
- * which produces the most visually similar in-gamut color.
- */
-export function toSrgbGamut(color: Color): Color {
-  const endpoint = mapLightnessEndpoint(color);
-  if (endpoint) return endpoint;
-  if (inSrgbGamut(color)) return { ...color };
+function strictlyInTargetGamut(color: Color, gamut: GamutTarget): boolean {
+  const lab = oklchToOklab({
+    l: color.l,
+    c: color.c,
+    h: color.h,
+    alpha: color.alpha,
+  });
+  const linear = oklabToLinearRgb(lab);
+  const target = gamut === 'display-p3' ? linearSrgbToLinearP3(linear) : linear;
+  return (
+    target.r >= 0 &&
+    target.r <= 1 &&
+    target.g >= 0 &&
+    target.g <= 1 &&
+    target.b >= 0 &&
+    target.b <= 1
+  );
+}
 
+/**
+ * Bisect OKLCH chroma (at fixed L and h) down to the target gamut boundary.
+ *
+ * Candidates are accepted only when *strictly* inside the gamut. The
+ * GAMUT_EPSILON slack used by membership checks is meant to absorb float
+ * noise on colors that are already in gamut; letting the search settle
+ * inside that slack would return out-of-gamut colors, and near black the
+ * slack spans a large chroma range.
+ */
+function reduceChromaToGamut(color: Color, gamut: GamutTarget): Color {
   let lo = 0;
   let hi = color.c;
   const achromatic = { ...color, c: 0 };
-  let mapped = inSrgbGamut(achromatic) ? achromatic : { ...color };
+  let mapped = strictlyInTargetGamut(achromatic, gamut)
+    ? achromatic
+    : { ...color };
 
-  // Binary search for max chroma in gamut (within epsilon)
   const epsilon = 0.0001;
   while (hi - lo > epsilon) {
     const mid = (lo + hi) / 2;
     const test: Color = { ...color, c: mid };
-    if (inSrgbGamut(test)) {
+    if (strictlyInTargetGamut(test, gamut)) {
       lo = mid;
       mapped = test;
     } else {
@@ -980,29 +998,25 @@ export function toSrgbGamut(color: Color): Color {
 }
 
 /**
+ * Map a Color to the sRGB gamut by progressively reducing chroma.
+ * Uses a binary search to find the maximum chroma that stays in gamut.
+ *
+ * This preserves lightness and hue while only reducing saturation,
+ * which produces the most visually similar in-gamut color.
+ */
+export function toSrgbGamut(color: Color): Color {
+  const endpoint = mapLightnessEndpoint(color);
+  if (endpoint) return endpoint;
+  if (inSrgbGamut(color)) return { ...color };
+  return reduceChromaToGamut(color, 'srgb');
+}
+
+/**
  * Map a Color to the Display P3 gamut by progressively reducing chroma.
  */
 export function toP3Gamut(color: Color): Color {
   const endpoint = mapLightnessEndpoint(color);
   if (endpoint) return endpoint;
   if (inP3Gamut(color)) return { ...color };
-
-  let lo = 0;
-  let hi = color.c;
-  const achromatic = { ...color, c: 0 };
-  let mapped = inP3Gamut(achromatic) ? achromatic : { ...color };
-
-  const epsilon = 0.0001;
-  while (hi - lo > epsilon) {
-    const mid = (lo + hi) / 2;
-    const test: Color = { ...color, c: mid };
-    if (inP3Gamut(test)) {
-      lo = mid;
-      mapped = test;
-    } else {
-      hi = mid;
-    }
-  }
-
-  return mapped;
+  return reduceChromaToGamut(color, 'display-p3');
 }
