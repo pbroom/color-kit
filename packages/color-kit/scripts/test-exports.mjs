@@ -49,6 +49,7 @@ const driver = await import('color-kit/driver');
 const plane = await import('color-kit/plane');
 const compute = await import('color-kit/compute');
 const hct = await import('color-kit/hct');
+const interop = await import('color-kit/interop');
 const react = await import('color-kit/react');
 const reactColorInput = await import('color-kit/react/color-input');
 
@@ -71,6 +72,10 @@ assert.equal(
 );
 assert.equal(typeof compute.resetDefaultPlaneComputeTelemetry, 'function');
 assert.equal(typeof hct.maxHctChromaForHue, 'function');
+assert.equal(typeof interop.toLinearSrgbArray, 'function');
+assert.equal(typeof interop.packColors, 'function');
+assert.equal(root.toLinearSrgbArray, interop.toLinearSrgbArray);
+assert.equal(root.packColors, interop.packColors);
 assert.equal(typeof react.Color, 'function');
 assert.equal(typeof react.useColor, 'function');
 assert.equal('ColorInput' in react, false);
@@ -97,6 +102,7 @@ const cjsDriver = require('color-kit/driver');
 const cjsPlane = require('color-kit/plane');
 const cjsCompute = require('color-kit/compute');
 const cjsHct = require('color-kit/hct');
+const cjsInterop = require('color-kit/interop');
 const cjsReact = require('color-kit/react');
 const cjsReactColorInput = require('color-kit/react/color-input');
 
@@ -112,6 +118,8 @@ assert.equal(
 );
 assert.equal(typeof cjsCompute.resetDefaultPlaneComputeTelemetry, 'function');
 assert.equal(typeof cjsHct.maxHctChromaForHue, 'function');
+assert.equal(typeof cjsInterop.toLinearSrgbArray, 'function');
+assert.equal(cjsRoot.packColors, cjsInterop.packColors);
 assert.equal(typeof cjsReact.Color, 'function');
 assert.equal('ColorInput' in cjsReact, false);
 assert.equal('ColorInput' in cjsReactColorInput, true);

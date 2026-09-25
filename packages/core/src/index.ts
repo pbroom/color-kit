@@ -136,6 +136,45 @@ export {
   grayscale,
 } from './manipulation/index.js';
 
+// Tuple / typed-array interop (GPU buffers, three.js, WebGL/WebGPU)
+export {
+  toLinearSrgbArray,
+  toLinearSrgbArray4,
+  toSrgbArray,
+  toSrgbArray4,
+  toLinearP3Array,
+  toLinearP3Array4,
+  toP3Array,
+  toP3Array4,
+  toOklabArray,
+  toOklabArray4,
+  toOklchArray,
+  toOklchArray4,
+  fromLinearSrgbArray,
+  fromLinearSrgbArray4,
+  fromSrgbArray,
+  fromSrgbArray4,
+  fromLinearP3Array,
+  fromLinearP3Array4,
+  fromP3Array,
+  fromP3Array4,
+  fromOklabArray,
+  fromOklabArray4,
+  fromOklchArray,
+  fromOklchArray4,
+  packColors,
+  unpackColors,
+} from './interop/index.js';
+export type {
+  ArraySpace,
+  ArrayWriteOptions,
+  ColorTuple,
+  ColorTuple4,
+  PackColorsOptions,
+  UnpackColorsOptions,
+  WritableArrayLike,
+} from './interop/index.js';
+
 // Full-precision OKLab / sRGB / Display P3 matrices (CSS Color 4), for
 // renderers such as shaders that re-implement the conversion math.
 export {
