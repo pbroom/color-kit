@@ -207,6 +207,7 @@ function summarizeReview(review) {
     id: String(review.id ?? ''),
     url: review.html_url ?? '',
     author: review.user?.login ?? '',
+    authorType: review.user?.type ?? '',
     state: review.state ?? '',
     commitId: review.commit_id ?? '',
     submittedAt: review.submitted_at ?? '',
@@ -443,8 +444,15 @@ function isSuccessfulCheck(check) {
   );
 }
 
-function isGreptileAuthor(login) {
-  return /^greptile/i.test(login ?? '');
+// The Greptile GitHub App reviews as `greptile-apps[bot]` in the REST API
+// (GraphQL drops the `[bot]` suffix). `[bot]` logins cannot be registered by
+// users, so require the exact app account rather than a login prefix.
+const GREPTILE_APP_LOGIN = 'greptile-apps';
+
+function isGreptileReview(review) {
+  const login = review.author ?? '';
+  if (login === `${GREPTILE_APP_LOGIN}[bot]`) return true;
+  return login === GREPTILE_APP_LOGIN && review.authorType === 'Bot';
 }
 
 // Greptile reviews every PR via its GitHub App, but only posts a
@@ -461,7 +469,7 @@ function hasCompletedGreptileReview(snapshot) {
   const headRefOid = snapshot.pr.headRefOid;
   return snapshot.reviews.some(
     (review) =>
-      isGreptileAuthor(review.author) &&
+      isGreptileReview(review) &&
       (!headRefOid || review.commitId === headRefOid),
   );
 }
