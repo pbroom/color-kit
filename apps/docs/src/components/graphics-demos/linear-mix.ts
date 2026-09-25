@@ -47,13 +47,18 @@ export interface MidpointStats {
   hex: string;
   /** OKLab lightness (perceived lightness). */
   oklabL: number;
-  /** Relative luminance Y (linear light, Rec. 709 weights, unclamped). */
+  /** Relative luminance Y (linear light, unclamped). */
   luminanceY: number;
   inSrgb: boolean;
 }
 
 // Reused scratch tuple: toLinearSrgbArray writes into it, no allocation.
 const linear: [number, number, number] = [0, 0, 0];
+
+// Y row of the CSS Color 4 linear-sRGB to XYZ (D65) matrix.
+const Y_R = 0.21263900587151027;
+const Y_G = 0.715168678767756;
+const Y_B = 0.07219231536073371;
 
 /** The t = 0.5 mix of `a` and `b`, with its lightness numbers. */
 export function midpointStats(
@@ -66,7 +71,7 @@ export function midpointStats(
   return {
     hex: toHex(midpoint),
     oklabL: toOklab(midpoint).L,
-    luminanceY: 0.2126 * r + 0.7152 * g + 0.0722 * bl,
+    luminanceY: Y_R * r + Y_G * g + Y_B * bl,
     inSrgb: inSrgbGamut(midpoint),
   };
 }

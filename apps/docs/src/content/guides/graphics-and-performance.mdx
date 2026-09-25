@@ -49,7 +49,7 @@ color-kit keeps its own strengths: OKLCH as the working model, CSS Color 4 gamut
 
 <LinearMixDemo />
 
-The first row calls `generateScale(a, b, steps)` and `mix(a, b)` with no options, which is the legacy OKLCH default. The `{ space: 'oklch' }` row takes the CSS `color-mix()` path instead. The two agree for colors with a clear hue but can differ near gray, where the CSS path uses a smaller powerless-hue threshold. The strips and midpoint stats above come from this file:
+The first row calls `generateScale(a, b, steps)` and `mix(a, b)` with no options, which is the legacy OKLCH default. The `{ space: 'oklch' }` row takes the CSS `color-mix()` path instead. The two agree for colors with a clear hue but can differ near gray: the CSS path treats an OKLCH hue as powerless only at chroma ≤ 4e-6 (the CSS Color 4 value), while the legacy default uses 0.001. The strips and midpoint stats above come from this file:
 
 <DemoSource file="linear-mix.ts" />
 
@@ -76,23 +76,25 @@ mix(red, lime, 0.5, { space: 'oklch', hue: 'longer', premultiplied: true });
 
 ### Compared with the default
 
-Midpoints at `t = 0.5`, from `pnpm --filter @color-kit/core bench:mix-space`. The bench computes Y from 8-bit, clipped sRGB, while the live demo uses unclamped floats, so the two can differ. The gap is largest for out-of-gamut midpoints: for red ↔ lime in `oklch` the bench reports 0.416 and the demo 0.402.
+Midpoints at `t = 0.5`, from `pnpm --filter @color-kit/core bench:mix-space`. Y is unclamped relative luminance from linear sRGB, computed the same way as in the live demo, so the numbers match. The option-less default and `{ space: 'oklch' }` give identical results for these pairs. Hex values are clipped for display.
 
-| Pair          | Space         | Hex       | OKLab L | Y     | In sRGB |
-| ------------- | ------------- | --------- | ------- | ----- | ------- |
-| red ↔ lime    | oklch         | `#f99500` | 0.747   | 0.416 | no      |
-| red ↔ lime    | oklab         | `#d0a800` | 0.747   | 0.414 | yes     |
-| red ↔ lime    | srgb          | `#7f8000` | 0.579   | 0.200 | yes     |
-| red ↔ lime    | linear-srgb   | `#bcbc00` | 0.768   | 0.467 | yes     |
-| black ↔ white | oklch / oklab | `#636363` | 0.50    | 0.125 | yes     |
-| black ↔ white | srgb          | `#807f80` | 0.598   | 0.213 | yes     |
-| black ↔ white | linear-srgb   | `#bcbcbc` | 0.794   | 0.503 | yes     |
+| Pair          | Space                   | Hex       | OKLab L | Y      | In sRGB |
+| ------------- | ----------------------- | --------- | ------- | ------ | ------- |
+| red ↔ lime    | default / oklch         | `#f99500` | 0.7472  | 0.4021 | no      |
+| red ↔ lime    | oklab                   | `#d0a800` | 0.7472  | 0.4159 | yes     |
+| red ↔ lime    | srgb                    | `#7f8000` | 0.5790  | 0.1986 | yes     |
+| red ↔ lime    | linear-srgb / linear-p3 | `#bcbc00` | 0.7683  | 0.4639 | yes     |
+| red ↔ lime    | p3                      | `#b4961a` | 0.6814  | 0.3164 | yes     |
+| black ↔ white | oklch / oklab           | `#636363` | 0.5000  | 0.1250 | yes     |
+| black ↔ white | srgb / p3               | `#807f80` | 0.5982  | 0.2140 | yes     |
+| black ↔ white | linear-srgb / linear-p3 | `#bcbcbc` | 0.7937  | 0.5000 | yes     |
 
 - The option-less `mix` / `generateScale` default is OKLCH, and passing no options keeps the exact old results.
-- Linear light puts the black-to-white midpoint at half the light (Y ≈ 0.5), which reads as a light gray (OKLab L ≈ 0.79). OKLCH puts it at half the perceived lightness (L = 0.5).
+- Linear light averages luminance: the red-to-lime midpoint's Y (0.4639) is exactly the mean of the endpoints', and the black-to-white midpoint sits at half the light (Y = 0.5), which reads as a light gray (OKLab L ≈ 0.79). OKLCH puts it at half the perceived lightness (L = 0.5).
 - Gamma-encoded `srgb` is what CSS gradients do by default. It darkens the red-to-lime midpoint to a muddy olive.
 - OKLCH can leave the gamut even when both ends are inside it. Mixing in-gamut colors in `srgb` or `linear-srgb` always stays in sRGB. No option does gamut mapping; use `toSrgbGamut` / `toP3Gamut` for a displayable color.
-- Results match colorjs.io to within 4e-15. Cost per call: about 21 ns for the legacy default, 29 ns for `oklch`, 66 ns for `oklab`, 116 ns for `linear-srgb`, 211 ns for `srgb`, and 228 ns for `p3`.
+- `t = 0` and `t = 1` return exact copies of the endpoints. If the interpolated alpha is exactly 0 (for example, both endpoints fully transparent), the channels fall back to straight-alpha interpolation instead of collapsing to transparent black; this is a deliberate deviation from CSS and colorjs.io.
+- Apart from that fallback, results match colorjs.io to within 4e-15. Cost per call: about 21 ns for the legacy default, 29 ns for `oklch`, 66 ns for `oklab`, 116 ns for `linear-srgb`, 211 ns for `srgb`, and 228 ns for `p3`.
 
 <Recommendation verdict="adopt in addition; keep OKLCH as the default">
 

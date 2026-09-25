@@ -10,7 +10,7 @@ const PRESETS = [
 ] as const;
 
 function formatNumber(value: number): string {
-  return value.toFixed(3);
+  return value.toFixed(4);
 }
 
 export default function LinearMixDemo() {
@@ -68,8 +68,8 @@ export default function LinearMixDemo() {
               <th className="w-[19ch] font-medium">options</th>
               <th className="font-medium">13-step ramp (generateScale)</th>
               <th className="w-[8rem] font-medium">t = 0.5</th>
-              <th className="w-[7ch] font-medium">OKLab L</th>
-              <th className="w-[7ch] font-medium">Y</th>
+              <th className="w-[8ch] font-medium">OKLab L</th>
+              <th className="w-[8ch] font-medium">Y</th>
             </tr>
           </thead>
           <tbody>
