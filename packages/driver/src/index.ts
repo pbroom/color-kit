@@ -112,6 +112,10 @@ export {
   getActiveDisplayedColor,
   mapDisplayedColors,
   resolveColorSource,
+  setColorActiveGamut,
+  setColorActiveView,
+  setColorChannel,
+  setColorRequested,
 } from './color-state.js';
 export type {
   ColorChannel,

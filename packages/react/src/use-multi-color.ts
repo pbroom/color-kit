@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { Color } from '@color-kit/core';
 import {
   addMultiColorEntry,
@@ -24,6 +24,7 @@ import {
   type MultiColorUpdateEvent,
   type ViewModel,
 } from '@color-kit/driver';
+import { useLatestSnapshot } from './color-store.js';
 import type { SetRequestedOptions } from './use-color.js';
 
 export type {
@@ -38,7 +39,18 @@ export interface UseMultiColorOptions {
   defaultSelectedId?: string;
   defaultGamut?: GamutTarget;
   defaultView?: ViewModel;
+  /** Controlled collection state. */
   state?: MultiColorState;
+  /**
+   * Called when an operation produces a new collection state. Fires
+   * synchronously inside the operation call (i.e. in your event handler,
+   * before React re-renders) in both controlled and uncontrolled modes,
+   * exactly once per effective update and never for no-op updates. Several
+   * calls in one tick compose: each `event.next` builds on the previous one,
+   * even in controlled mode before the new `state` prop arrives. Once React
+   * re-renders, later calls start from the `state` you committed, so an
+   * update you ignore is not carried into the next one.
+   */
   onChange?: (event: MultiColorUpdateEvent) => void;
 }
 
@@ -62,49 +74,23 @@ export interface UseMultiColorReturn {
   setActiveView: (view: ViewModel, source?: ColorSource) => void;
   select: (id: string, interaction?: ColorInteraction) => void;
   addColor: (id: string, color: Color | string, source?: ColorSource) => void;
-  removeColor: (id: string, source?: ColorSource) => void;
+  removeColor: (id: string) => void;
   renameColor: (id: string, nextId: string, source?: ColorSource) => void;
 }
 
-interface PendingMultiColorUpdate {
-  sequence: number;
-  nextModel: MultiColorModel;
-  interaction: ColorInteraction;
-  id?: string;
-  changedChannel?: ColorChannel;
-}
-
-function createPendingUpdate(
-  sequence: number,
+function createUpdateEvent(
   nextModel: MultiColorModel,
   interaction: ColorInteraction,
   id?: string,
   changedChannel?: ColorChannel,
-): PendingMultiColorUpdate {
-  const update: PendingMultiColorUpdate = {
-    sequence,
-    nextModel,
+): MultiColorUpdateEvent {
+  const event: MultiColorUpdateEvent = {
+    next: materializeMultiColorState(nextModel),
     interaction,
   };
 
-  if (id !== undefined) update.id = id;
-  if (changedChannel !== undefined) update.changedChannel = changedChannel;
-
-  return update;
-}
-
-function materializeUpdateEvent(
-  update: PendingMultiColorUpdate,
-): MultiColorUpdateEvent {
-  const event: MultiColorUpdateEvent = {
-    next: materializeMultiColorState(update.nextModel),
-    interaction: update.interaction,
-  };
-
-  if (update.id !== undefined) event.id = update.id;
-  if (update.changedChannel !== undefined) {
-    event.changedChannel = update.changedChannel;
-  }
+  if (id !== undefined) event.id = id;
+  if (changedChannel !== undefined) event.changedChannel = changedChannel;
 
   return event;
 }
@@ -129,30 +115,31 @@ export function useMultiColor(
       activeView: defaultView,
     }),
   );
-  const pendingUpdateSequence = useRef(0);
-  const pendingUpdates = useRef<PendingMultiColorUpdate[]>([]);
-  const [pendingUpdateVersion, setPendingUpdateVersion] = useState(0);
 
   const isControlled = controlledState !== undefined;
+  // Normalized model of whatever React last committed: the controlled prop
+  // or the internal state. Updates in one tick compose on the latest pending
+  // snapshot of this model until the next commit.
+  const committedModel = useMemo<MultiColorModel>(
+    () =>
+      controlledState
+        ? multiColorModelFromState(controlledState)
+        : internalModel,
+    [controlledState, internalModel],
+  );
+  const snapshot = useLatestSnapshot(committedModel);
   const state = useMemo<MultiColorState>(
     () => controlledState ?? materializeMultiColorState(internalModel),
     [controlledState, internalModel],
   );
 
-  useEffect(() => {
-    if (pendingUpdates.current.length === 0) return;
-
-    const updates = pendingUpdates.current;
-    pendingUpdates.current = [];
-    const flushedSequences = new Set<number>();
-
-    for (const update of updates) {
-      if (flushedSequences.has(update.sequence)) continue;
-      flushedSequences.add(update.sequence);
-      onChange?.(materializeUpdateEvent(update));
-    }
-  }, [onChange, pendingUpdateVersion]);
-
+  /**
+   * Applies a driver reducer to the latest snapshot and notifies `onChange`
+   * synchronously. Uncontrolled commits still go through
+   * `setInternalModel(prev => ...)`; `prev` equals the snapshot the update
+   * was computed from unless something bypassed this hook, in which case the
+   * reducer is re-applied to `prev`.
+   */
   const applyUpdate = useCallback(
     (
       updater: (current: MultiColorModel) => MultiColorModel,
@@ -160,40 +147,19 @@ export function useMultiColor(
       id?: string,
       changedChannel?: ColorChannel,
     ) => {
-      if (isControlled && controlledState) {
-        const current = multiColorModelFromState(controlledState);
-        const nextModel = updater(current);
-        if (nextModel === current) return;
-        onChange?.(
-          materializeUpdateEvent(
-            createPendingUpdate(0, nextModel, interaction, id, changedChannel),
-          ),
+      const current = snapshot.read();
+      const nextModel = updater(current);
+      if (nextModel === current) return;
+
+      snapshot.write(nextModel);
+      if (!isControlled) {
+        setInternalModel((prev) =>
+          prev === current ? nextModel : updater(prev),
         );
-        return;
       }
-
-      const sequence = pendingUpdateSequence.current + 1;
-      pendingUpdateSequence.current = sequence;
-
-      setInternalModel((current) => {
-        const nextModel = updater(current);
-        if (nextModel === current) return current;
-
-        pendingUpdates.current.push(
-          createPendingUpdate(
-            sequence,
-            nextModel,
-            interaction,
-            id,
-            changedChannel,
-          ),
-        );
-
-        return nextModel;
-      });
-      setPendingUpdateVersion(sequence);
+      onChange?.(createUpdateEvent(nextModel, interaction, id, changedChannel));
     },
-    [controlledState, isControlled, onChange],
+    [isControlled, onChange, snapshot],
   );
 
   const setRequested = useCallback(
@@ -278,7 +244,7 @@ export function useMultiColor(
   );
 
   const removeColor = useCallback(
-    (id: string, _source: ColorSource = 'programmatic') => {
+    (id: string) => {
       applyUpdate(
         (current) => removeMultiColorEntry(current, id),
         'programmatic',

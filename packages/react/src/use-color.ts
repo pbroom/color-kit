@@ -20,10 +20,13 @@ import {
   toRgb,
 } from '@color-kit/core';
 import {
-  colorsEqual,
   createColorState,
   getActiveDisplayedColor,
   resolveColorSource,
+  setColorActiveGamut,
+  setColorActiveView,
+  setColorChannel,
+  setColorRequested,
   type ColorChannel,
   type ColorInteraction,
   type ColorSource,
@@ -35,6 +38,7 @@ import {
 import {
   createColorStore,
   useColorStoreSelector,
+  useLatestSnapshot,
   type ColorStore,
 } from './color-store.js';
 
@@ -43,7 +47,16 @@ export interface UseColorOptions {
   defaultColor?: string | Color;
   /** Controlled full state value */
   state?: ColorState;
-  /** Callback when state changes */
+  /**
+   * Called when a setter produces a new state. Fires synchronously inside the
+   * setter call (i.e. in your event handler, before React re-renders) in both
+   * controlled and uncontrolled modes, exactly once per effective update and
+   * never for no-op updates. Several setter calls in one tick compose: each
+   * `event.next` builds on the previous one, even in controlled mode before
+   * the new `state` prop arrives. Once React re-renders, later calls start
+   * from the `state` you committed, so an update you ignore is not carried
+   * into the next one.
+   */
   onChange?: (event: ColorUpdateEvent) => void;
   /** Initial active display gamut in uncontrolled mode */
   defaultGamut?: GamutTarget;
@@ -79,6 +92,7 @@ export interface UseColorReturn {
   setFromHsv: (hsv: Hsv, options?: SetRequestedOptions) => void;
   setActiveGamut: (gamut: GamutTarget, source?: ColorSource) => void;
   setActiveView: (view: ViewModel, source?: ColorSource) => void;
+  /** Requested color conversions; computed lazily on first access and cached per requested color. */
   hex: string;
   rgb: Rgb;
   hsl: Hsl;
@@ -86,6 +100,48 @@ export interface UseColorReturn {
   oklch: Oklch;
   requestedCss: (format?: CssColorFormat) => string;
   displayedCss: (format?: CssColorFormat) => string;
+}
+
+/**
+ * Requested-color conversions computed on first access. Instances are cached
+ * per requested color object so non-reactive providers, and consumers that
+ * never read these fields, skip the conversion work entirely.
+ */
+class ColorConversions {
+  #hex?: string;
+  #rgb?: Rgb;
+  #hsl?: Hsl;
+  #hsv?: Hsv;
+  #oklch?: Oklch;
+
+  constructor(private readonly color: Color) {}
+
+  get hex(): string {
+    return (this.#hex ??= toHex(this.color));
+  }
+  get rgb(): Rgb {
+    return (this.#rgb ??= toRgb(this.color));
+  }
+  get hsl(): Hsl {
+    return (this.#hsl ??= toHsl(this.color));
+  }
+  get hsv(): Hsv {
+    return (this.#hsv ??= toHsv(this.color));
+  }
+  get oklch(): Oklch {
+    return (this.#oklch ??= toOklch(this.color));
+  }
+}
+
+const conversionCache = new WeakMap<Color, ColorConversions>();
+
+function getColorConversions(color: Color): ColorConversions {
+  let conversions = conversionCache.get(color);
+  if (!conversions) {
+    conversions = new ColorConversions(color);
+    conversionCache.set(color, conversions);
+  }
+  return conversions;
 }
 
 function resolveInitialColor(defaultColor?: string | Color): Color {
@@ -134,6 +190,9 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
     reactive ? store : null,
     (state) => state,
   );
+  // Controlled mode: updates emitted in one tick compose on this pending
+  // snapshot until the next commit, then restart from the `state` prop.
+  const controlledSnapshot = useLatestSnapshot(controlledState);
 
   useEffect(() => {
     if (isControlled && controlledState) {
@@ -144,51 +203,51 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
     ? (controlledState as ColorState)
     : (subscribedState ?? store.get());
 
-  const getCurrentState = useCallback((): ColorState => {
-    return isControlled && controlledState ? controlledState : store.get();
-  }, [isControlled, controlledState, store]);
-
-  const commitState = useCallback(
+  /**
+   * Applies a driver reducer to the latest state (not the render-time value)
+   * and notifies `onChange` synchronously. Uncontrolled updates commit to the
+   * store immediately; controlled updates are recorded as pending so later
+   * updates in the same tick build on them.
+   */
+  const applyUpdate = useCallback(
     (
-      nextState: ColorState,
+      reduce: (current: ColorState) => ColorState,
       changedChannel: ColorChannel | undefined,
       interaction: ColorInteraction,
     ) => {
-      if (!isControlled) {
-        store.set(nextState);
+      const current = isControlled
+        ? (controlledSnapshot.read() ?? baseStore.get())
+        : baseStore.get();
+      const next = reduce(current);
+      if (next === current) {
+        return;
+      }
+
+      if (isControlled) {
+        controlledSnapshot.write(next);
+      } else {
+        baseStore.set(next);
       }
       onChange?.({
-        next: nextState,
+        next,
         changedChannel,
         interaction,
       });
     },
-    [isControlled, onChange, store],
+    [baseStore, controlledSnapshot, isControlled, onChange],
   );
 
   const setRequested = useCallback(
     (requested: Color, options: SetRequestedOptions = {}) => {
       const interaction = options.interaction ?? 'programmatic';
       const source = resolveColorSource(interaction, options.source);
-      const currentState = getCurrentState();
-
-      if (
-        colorsEqual(currentState.requested, requested, 0) &&
-        currentState.meta.source === source
-      ) {
-        return;
-      }
-
-      const nextState = createColorState(requested, {
-        activeGamut: currentState.activeGamut,
-        activeView: currentState.activeView,
-        source,
-        gamutMapMethod: currentState.meta.gamutMapMethod,
-      });
-
-      commitState(nextState, options.changedChannel, interaction);
+      applyUpdate(
+        (current) => setColorRequested(current, requested, source),
+        options.changedChannel,
+        interaction,
+      );
     },
-    [commitState, getCurrentState],
+    [applyUpdate],
   );
 
   const setChannel = useCallback(
@@ -197,21 +256,15 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
       value: number,
       options: Omit<SetRequestedOptions, 'changedChannel'> = {},
     ) => {
-      const currentState = getCurrentState();
-      if (currentState.requested[channel] === value) {
-        return;
-      }
-
-      const nextRequested: Color = {
-        ...currentState.requested,
-        [channel]: value,
-      };
-      setRequested(nextRequested, {
-        ...options,
-        changedChannel: channel,
-      });
+      const interaction = options.interaction ?? 'programmatic';
+      const source = resolveColorSource(interaction, options.source);
+      applyUpdate(
+        (current) => setColorChannel(current, channel, value, source),
+        channel,
+        interaction,
+      );
     },
-    [getCurrentState, setRequested],
+    [applyUpdate],
   );
 
   const setFromString = useCallback(
@@ -248,66 +301,34 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
 
   const setActiveGamut = useCallback(
     (gamut: GamutTarget, source: ColorSource = 'user') => {
-      const currentState = getCurrentState();
-      if (
-        currentState.activeGamut === gamut &&
-        currentState.meta.source === source
-      ) {
-        return;
-      }
-
-      commitState(
-        {
-          ...currentState,
-          activeGamut: gamut,
-          meta: {
-            ...currentState.meta,
-            source,
-          },
-        },
+      applyUpdate(
+        (current) => setColorActiveGamut(current, gamut, source),
         undefined,
         'programmatic',
       );
     },
-    [commitState, getCurrentState],
+    [applyUpdate],
   );
 
   const setActiveView = useCallback(
     (view: ViewModel, source: ColorSource = 'user') => {
-      const currentState = getCurrentState();
-      if (
-        currentState.activeView === view &&
-        currentState.meta.source === source
-      ) {
-        return;
-      }
-
-      commitState(
-        {
-          ...currentState,
-          activeView: view,
-          meta: {
-            ...currentState.meta,
-            source,
-          },
-        },
+      applyUpdate(
+        (current) => setColorActiveView(current, view, source),
         undefined,
         'programmatic',
       );
     },
-    [commitState, getCurrentState],
+    [applyUpdate],
   );
 
   const requested = state.requested;
   const displayed = getActiveDisplayedColor(state);
   const displayedSrgb = state.displayed.srgb;
   const displayedP3 = state.displayed.p3;
-
-  const hex = toHex(requested);
-  const rgb = toRgb(requested);
-  const hsl = toHsl(requested);
-  const hsv = toHsv(requested);
-  const oklch = toOklch(requested);
+  const conversions = useMemo(
+    () => getColorConversions(requested),
+    [requested],
+  );
 
   const requestedCss = useCallback(
     (format?: CssColorFormat) => toCss(requested, format),
@@ -340,11 +361,21 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
     setFromHsv,
     setActiveGamut,
     setActiveView,
-    hex,
-    rgb,
-    hsl,
-    hsv,
-    oklch,
+    get hex() {
+      return conversions.hex;
+    },
+    get rgb() {
+      return conversions.rgb;
+    },
+    get hsl() {
+      return conversions.hsl;
+    },
+    get hsv() {
+      return conversions.hsv;
+    },
+    get oklch() {
+      return conversions.oklch;
+    },
     requestedCss,
     displayedCss,
   };
