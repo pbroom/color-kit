@@ -8,6 +8,8 @@
     "build:sequential": "pnpm -r build",
     "dev:prepare": "pnpm --filter @color-kit/core build && pnpm --filter @color-kit/driver build && pnpm --filter @color-kit/react build && pnpm --filter color-kit build",
     "dev": "pnpm --filter @color-kit/docs dev",
+    "docs:api": "pnpm --filter @color-kit/docs docs:api",
+    "readme:hero": "node scripts/generate-readme-hero.mjs",
     "dev:full": "pnpm dev:prepare && pnpm --parallel --filter @color-kit/core --filter @color-kit/driver --filter @color-kit/react --filter color-kit --filter @color-kit/docs dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r --if-present typecheck",

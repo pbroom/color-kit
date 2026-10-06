@@ -30,16 +30,13 @@ console.log(contrastRatio(blue, white)); // ~4.5
 ### Using React components
 
 ```tsx
-import { Color, ColorArea, useColor } from 'color-kit/react';
+import { Color, ColorArea, ColorStringInput } from 'color-kit/react';
 
 function MyPicker() {
-  const color = useColor({ defaultColor: '#3b82f6' });
-
   return (
     <Color defaultColor="#3b82f6">
       <ColorArea style={{ width: 200, height: 200 }} />
-      <p>Requested: {color.requestedCss('oklch')}</p>
-      <p>Displayed: {color.displayedCss()}</p>
+      <ColorStringInput format="oklch" />
     </Color>
   );
 }

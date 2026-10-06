@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Design rationale
+    url: https://github.com/pbroom/color-kit/blob/main/DESIGN.md
+    about: Read why the engine works the way it does before proposing a change to its contracts.
