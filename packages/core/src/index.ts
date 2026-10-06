@@ -237,7 +237,14 @@ export type {
 } from './hct/index.js';
 
 // Utilities
-export { clamp, round, normalizeHue, lerp } from './utils/index.js';
+export {
+  clamp,
+  round,
+  normalizeHue,
+  lerp,
+  linearToSrgbChannel,
+  srgbToLinearChannel,
+} from './utils/index.js';
 
 // Plane geometry
 export {

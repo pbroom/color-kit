@@ -86,7 +86,7 @@ type FakeGl = ReturnType<typeof createFakeGl>;
  * Emulates the browser rule that a canvas is locked to the first context kind
  * requested from it.
  */
-function installCanvasMocks() {
+function installCanvasMocks(configureGl?: (gl: FakeGl) => void) {
   const glByCanvas = new Map<HTMLCanvasElement, FakeGl>();
   const kindByCanvas = new Map<HTMLCanvasElement, string>();
   const putImageData = vi.fn();
@@ -107,6 +107,7 @@ function installCanvasMocks() {
             createProgram(this);
             return {};
           });
+          configureGl?.(gl);
           glByCanvas.set(this, gl);
         }
         return gl as unknown as RenderingContext;
@@ -193,6 +194,34 @@ describe('ColorPlane WebGL lifecycle', () => {
     expect(gl.drawArrays.mock.calls.length).toBeGreaterThanOrEqual(6);
     expect(container.querySelector('[data-color-area-plane]')).toBe(canvas);
     expect(planeRef.current).toBe(canvas);
+  });
+
+  it('frees partially created GL objects when shader compilation fails', async () => {
+    const { glByCanvas, putImageData } = installCanvasMocks((gl) => {
+      gl.getShaderParameter.mockReturnValue(false);
+    });
+    const requested: Color = { l: 0.5, c: 0.1, h: 120, alpha: 1 };
+
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane renderer="gpu" />
+      </ColorArea>,
+    );
+    const gpuCanvas = container.querySelector(
+      '[data-color-area-plane]',
+    ) as HTMLCanvasElement;
+
+    await waitFor(() => {
+      const plane = container.querySelector('[data-color-area-plane]');
+      expect(plane?.getAttribute('data-renderer')).toBe('cpu');
+    });
+    expect(putImageData).toHaveBeenCalled();
+
+    const gl = glByCanvas.get(gpuCanvas) as FakeGl;
+    expect(gl.deleteShader).toHaveBeenCalledTimes(2);
+    expect(gl.deleteProgram).toHaveBeenCalledTimes(1);
+    expect(gl.deleteBuffer).toHaveBeenCalledTimes(1);
+    expect(gl.linkProgram).not.toHaveBeenCalled();
   });
 
   it('falls back to the cpu path on context loss and rebuilds on restore', async () => {
