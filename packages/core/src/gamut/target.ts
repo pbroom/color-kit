@@ -16,10 +16,5 @@ export function assertGamutTarget(
   if (gamut === undefined || gamut === 'srgb' || gamut === 'display-p3') {
     return;
   }
-  throw new TypeError(
-    withP3Hint(
-      `${fn}: unknown gamut "${String(gamut)}" (expected 'srgb' or 'display-p3')`,
-      gamut,
-    ),
-  );
+  throw new TypeError(withP3Hint(`${fn}: unknown gamut "${gamut}"`, gamut));
 }
