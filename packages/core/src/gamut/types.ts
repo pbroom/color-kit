@@ -6,6 +6,23 @@ export const DEFAULT_MAX_ITERATIONS = 30;
 
 export type GamutTarget = 'srgb' | 'display-p3';
 
+/**
+ * Gamut mapping algorithm for `toSrgbGamut` / `toP3Gamut`:
+ *
+ * - `'chroma-reduction'`: reduce OKLCH chroma at fixed lightness and hue.
+ * - `'css'`: CSS Color 4 gamut mapping (chroma bisection with a 0.02
+ *   deltaE OK just-noticeable-difference clip).
+ */
+export type GamutMapMethod = 'chroma-reduction' | 'css';
+
+export interface GamutMapOptions {
+  /**
+   * Gamut mapping algorithm.
+   * @default 'chroma-reduction'
+   */
+  method?: GamutMapMethod;
+}
+
 export interface MaxChromaAtOptions {
   gamut?: GamutTarget;
   /**

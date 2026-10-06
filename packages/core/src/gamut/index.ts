@@ -19,6 +19,8 @@ export type {
   ChromaBandOptions,
   GamutBoundaryPathOptions,
   GamutBoundaryPoint,
+  GamutMapMethod,
+  GamutMapOptions,
   GamutTarget,
   HueCusp,
   MaxChromaAtOptions,

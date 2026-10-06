@@ -1320,6 +1320,36 @@ describe('reference accuracy: gamut mapping', () => {
       lh.assert();
     });
 
+    it(`${target}: method "css" matches colorjs.io toGamut({ method: "css" }) outside the GAMUT_EPSILON band`, () => {
+      // Same algorithm (CSS Color 4 binary search with local MINDE, JND 0.02,
+      // epsilon 1e-4) on matrices that agree to ~1e-15, so results agree to
+      // float noise (observed max ~1e-15 dE_OK). Colors within GAMUT_EPSILON
+      // of the gamut are skipped: color-kit returns them unchanged while
+      // colorjs.io (epsilon 0) still maps them (up to ~0.014 dE_OK apart).
+      const tracker = new Tracker(`toGamut ${target} css (dE_OK)`, FLOAT_TOL);
+      const inGamut = new Tracker(`toGamut ${target} css in gamut`, 0);
+      let mapped = 0;
+      for (const color of outOfGamut) {
+        const reference = refFromColor(color);
+        if (reference.inGamut(target, { epsilon: 0 }) || kitIn(color)) continue;
+        mapped += 1;
+        const expected = reference
+          .clone()
+          .toGamut({ space: target, method: 'css' });
+        const kit = kitMap(color, { method: 'css' });
+        const kitRef = refFromColor(kit);
+        inGamut.observe(kitRef.inGamut(target) ? 0 : 1, () =>
+          fmt([color.l, color.c, color.h]),
+        );
+        tracker.observe(deltaEOK(kitRef, expected), () =>
+          fmt([color.l, color.c, color.h]),
+        );
+      }
+      expect(mapped).toBeGreaterThan(200);
+      tracker.assert();
+      inGamut.assert();
+    });
+
     it(`${target}: result is comparable to the CSS Color 4 "css" mapping`, () => {
       // CSS Color 4 gamut mapping (colorjs.io method "css") is intentionally
       // a different algorithm: it keeps reducing OKLCH chroma only until the

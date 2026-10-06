@@ -208,6 +208,8 @@ export {
 } from './gamut/index.js';
 export type {
   GamutTarget,
+  GamutMapMethod,
+  GamutMapOptions,
   GamutBoundaryPoint,
   HueCusp,
   MaxChromaForHueMethod,

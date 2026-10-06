@@ -52,26 +52,48 @@ inP3Gamut({ l: 0.7, c: 0.23, h: 150, alpha: 1 }); // true
 
 ## `toSrgbGamut`
 
-Maps a color into the sRGB gamut by reducing chroma only. Lightness and hue
-are preserved, which produces the most visually similar in-gamut color. The
-implementation binary-searches chroma between `0` and the input chroma until
-the search interval is below `0.0001`, keeping the largest chroma that stays
-in gamut.
+Maps a color into the sRGB gamut. By default it reduces chroma only.
+Lightness and hue are preserved, which keeps plane geometry, contrast regions,
+and slider tracks consistent. The implementation binary-searches chroma between
+`0` and the input chroma until the search interval is below `0.0001`, keeping
+the largest chroma that stays in gamut.
 
-Two shortcuts run before the search: colors at the lightness endpoints snap to
-pure black or white (`l: 0` or `l: 1` with `c: 0`), and colors already in
-gamut are returned as a copy without modification.
+Pass `{ method: 'css' }` to use the
+[CSS Color 4 gamut mapping algorithm](https://www.w3.org/TR/css-color-4/#binsearch)
+instead, the one colorjs.io runs for `toGamut({ method: 'css' })`. It also
+bisects chroma, but stops as soon as clipping the color into the gamut moves it
+by less than one just-noticeable difference (0.02 deltaE OK), and returns the
+clipped color. It keeps more chroma, at the cost of small lightness and hue
+shifts. Outside the `GAMUT_EPSILON` tolerance band, results match colorjs.io
+to float precision. Colors inside the band are returned unchanged (see below),
+while colorjs.io checks membership with epsilon 0 and still maps them, so
+near-boundary results can differ slightly (up to ~0.014 deltaE OK near black).
+
+Two shortcuts run before either method: colors at the lightness endpoints snap
+to pure black or white (`l: 0` or `l: 1` with `c: 0`), and colors already in
+gamut (per `inSrgbGamut`, including its epsilon) are returned as a copy without
+modification.
 
 ```ts
 import { inSrgbGamut, toSrgbGamut } from 'color-kit';
 
-const requested = { l: 0.7, c: 0.23, h: 150, alpha: 1 };
+const requested = { l: 0.7, c: 0.35, h: 150, alpha: 1 };
 
 const mapped = toSrgbGamut(requested);
 // { l: 0.7, c: ~0.193, h: 150, alpha: 1 }
 
+const css = toSrgbGamut(requested, { method: 'css' });
+// c: ~0.210, with l and h shifted slightly
+
 inSrgbGamut(mapped); // true
 ```
+
+| Parameter        | Type                          | Default              | Description          |
+| ---------------- | ----------------------------- | -------------------- | -------------------- |
+| `color`          | `Color`                       | —                    | Color to map         |
+| `options.method` | `'chroma-reduction' \| 'css'` | `'chroma-reduction'` | Gamut mapping method |
+
+`toSrgbGamutInto(out, color, options?)` is the allocation-free variant.
 
 <p className="api-returns">
   Returns <code>Color</code>
@@ -79,8 +101,8 @@ inSrgbGamut(mapped); // true
 
 ## `toP3Gamut`
 
-Same chroma-reduction algorithm as `toSrgbGamut`, targeting the Display P3
-gamut.
+Same methods and options as `toSrgbGamut`, targeting the Display P3 gamut.
+`toP3GamutInto(out, color, options?)` is the allocation-free variant.
 
 ```ts
 import { toP3Gamut } from 'color-kit';
@@ -243,6 +265,13 @@ The two `ChromaBandMode` strategies:
 <ul className="api-field-list">
   <li>
     <code>GamutTarget</code> &mdash; <code>'srgb' | 'display-p3'</code>
+  </li>
+  <li>
+    <code>GamutMapMethod</code> &mdash; <code>'chroma-reduction' | 'css'</code>
+  </li>
+  <li>
+    <code>GamutMapOptions</code> &mdash; <code>{'{ method? }'}</code> for{' '}
+    <code>toSrgbGamut</code> / <code>toP3Gamut</code>
   </li>
   <li>
     <code>GamutBoundaryPoint</code> &mdash; <code>{'{ l, c }'}</code> boundary

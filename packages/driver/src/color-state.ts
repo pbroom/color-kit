@@ -1,4 +1,4 @@
-import type { Color } from '@color-kit/core';
+import type { Color, GamutMapMethod } from '@color-kit/core';
 import {
   inP3Gamut,
   inSrgbGamut,
@@ -30,6 +30,11 @@ export interface ColorState {
       srgb: boolean;
       p3: boolean;
     };
+    /**
+     * Gamut mapping used to derive `displayed`. Updates that re-derive the
+     * displayed colors reuse it unless they explicitly pass another method.
+     */
+    gamutMapMethod: GamutMapMethod;
   };
 }
 
@@ -43,9 +48,25 @@ export interface CreateColorStateOptions {
   activeGamut?: GamutTarget;
   activeView?: ViewModel;
   source?: ColorSource;
+  /**
+   * Gamut mapping used for the displayed sRGB / P3 colors.
+   * @default 'chroma-reduction'
+   */
+  gamutMapMethod?: GamutMapMethod;
 }
 
-export function mapDisplayedColors(requested: Color): {
+export interface MapDisplayedColorsOptions {
+  /**
+   * Gamut mapping passed to `toSrgbGamut` / `toP3Gamut`.
+   * @default 'chroma-reduction'
+   */
+  gamutMapMethod?: GamutMapMethod;
+}
+
+export function mapDisplayedColors(
+  requested: Color,
+  options: MapDisplayedColorsOptions = {},
+): {
   srgb: Color;
   p3: Color;
   outOfGamut: {
@@ -56,9 +77,11 @@ export function mapDisplayedColors(requested: Color): {
   const outOfSrgb = !inSrgbGamut(requested);
   const outOfP3 = !inP3Gamut(requested);
 
+  const mapOptions = { method: options.gamutMapMethod };
+
   return {
-    srgb: toSrgbGamut(requested),
-    p3: toP3Gamut(requested),
+    srgb: toSrgbGamut(requested, mapOptions),
+    p3: toP3Gamut(requested, mapOptions),
     outOfGamut: {
       srgb: outOfSrgb,
       p3: outOfP3,
@@ -74,8 +97,9 @@ export function createColorState(
     activeGamut = 'display-p3',
     activeView = 'oklch',
     source = 'programmatic',
+    gamutMapMethod = 'chroma-reduction',
   } = options;
-  const mapped = mapDisplayedColors(requested);
+  const mapped = mapDisplayedColors(requested, { gamutMapMethod });
 
   return {
     requested: { ...requested },
@@ -88,6 +112,7 @@ export function createColorState(
     meta: {
       source,
       outOfGamut: mapped.outOfGamut,
+      gamutMapMethod,
     },
   };
 }
