@@ -99,6 +99,7 @@
   },
   "devDependencies": {
     "colorjs.io": "^0.7.1",
+    "fast-check": "^4.10.2",
     "three": "^0.186.1",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
