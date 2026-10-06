@@ -235,9 +235,9 @@ interface ContrastMetricSample {
   computeTimeMs: number;
   pathCount: number;
   pointCount: number;
-  lightnessSteps: number;
-  chromaSteps: number;
-  hybridMaxDepth: number;
+  initialSamples: number;
+  errorTolerance: number;
+  maxDepth: number;
   contrastMetric: ContrastMetric;
   backend?: 'js';
   scheduleReason?: string;
@@ -829,7 +829,7 @@ export function ColorAreaDemo({
               <span key={metric.key} className="ck-perf-pill">
                 {contrastMetricLabel(metric.key, metric.contrastMetric)}{' '}
                 {metric.quality} · {metric.contrastMetric.toUpperCase()}/ depth{' '}
-                {metric.hybridMaxDepth} ·{' '}
+                {metric.maxDepth} ·{' '}
                 {metric.source === 'worker'
                   ? `worker/${metric.backend ?? 'unknown'}`
                   : 'sync/js'}{' '}

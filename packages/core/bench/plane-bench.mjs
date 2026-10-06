@@ -72,13 +72,11 @@ const boundary = runCase('plane.gamutBoundary adaptive', () =>
   ),
 );
 
-const contrast = runCase('plane.contrastRegion 48x48', () =>
+const contrast = runCase('plane.contrastRegion defaults', () =>
   THRESHOLDS.map((threshold) =>
     query.contrastRegion({
       reference,
       threshold,
-      lightnessSteps: 48,
-      chromaSteps: 48,
     }),
   ),
 );
@@ -89,10 +87,9 @@ const contrastInteractive = runCase('plane.contrastRegion interactive', () =>
     query.contrastRegion({
       reference,
       threshold,
-      lightnessSteps: 12,
-      chromaSteps: 16,
-      hybridMaxDepth: 3,
-      hybridErrorTolerance: 0.003,
+      initialSamples: 8,
+      errorTolerance: 0.004,
+      maxDepth: 3,
     }),
   ),
 );
@@ -106,8 +103,6 @@ const compile = runCase('plane.compile svg', () => {
   const contrastRegion = query.contrastRegion({
     reference,
     threshold: 4.5,
-    lightnessSteps: 48,
-    chromaSteps: 48,
   });
 
   const dA = toSvgPath(boundaryPath.points);

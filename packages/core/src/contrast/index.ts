@@ -11,7 +11,6 @@ export type {
   ContrastApcaPolarity,
   ContrastApcaPreset,
   ContrastApcaRole,
-  ContrastHybridDegradedReason,
   ContrastMetric,
   ContrastRegionLevel,
   ContrastRegionPathOptions,

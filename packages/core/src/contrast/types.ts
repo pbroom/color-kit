@@ -5,18 +5,6 @@ export type ContrastMetric = 'wcag' | 'apca';
 export type ContrastApcaPolarity = 'absolute' | 'positive' | 'negative';
 export type ContrastApcaRole = 'sample-text' | 'sample-background';
 export type ContrastApcaPreset = 'body' | 'large-text' | 'ui';
-/**
- * Reason the hybrid contrast solver could not fully resolve a region. The
- * solver still returns its best-effort paths (possibly none) and records
- * the reason in the query trace summary as `degradedReason`.
- */
-export type ContrastHybridDegradedReason =
-  /** More simultaneous chroma roots than the branch tracker can join reliably. */
-  | 'complex-topology'
-  /** Roots were found but no branch could be reconstructed into a path. */
-  | 'branch-reconstruction-empty'
-  /** No roots traced, yet probing detected a sign change in the field. */
-  | 'unresolved-sign-change';
 
 export interface ContrastRegionPoint {
   l: number;
@@ -24,9 +12,11 @@ export interface ContrastRegionPoint {
 }
 
 /**
- * Options for `contrastRegionPaths` and the plane contrast queries. Regions
- * are traced by direct chroma-root tracing with adaptive lightness
- * refinement.
+ * Options for `contrastRegionPaths` and the plane contrast queries. Each side
+ * of a region is traced as a luminance level curve along rays from black;
+ * where a piece starts and ends on the gamut edge is solved exactly, and
+ * `initialSamples`, `errorTolerance`, and `maxDepth` set how finely the
+ * curve in between is sampled.
  */
 export interface ContrastRegionPathOptions {
   gamut?: GamutTarget;
@@ -67,29 +57,10 @@ export interface ContrastRegionPathOptions {
    */
   apcaRole?: ContrastApcaRole;
   /**
-   * Initial lightness sampling density (integer >= 2), clamped to 12–320.
-   * Adaptive refinement adds samples where the contour bends.
-   * @default 72
-   */
-  lightnessSteps?: number;
-  /**
-   * Chroma root-bracketing density per lightness sample (integer >= 2),
-   * clamped to 16–768.
-   * @default 96
-   */
-  chromaSteps?: number;
-  /**
-   * Upper chroma bound used for sampling.
+   * Upper chroma bound of the region: paths end at this chroma.
+   * @default 0.4
    */
   maxChroma?: number;
-  /**
-   * Shared search precision forwarded to `maxChromaAt`.
-   */
-  tolerance?: number;
-  /**
-   * Shared search iteration cap forwarded to `maxChromaAt`.
-   */
-  maxIterations?: number;
   /**
    * Alpha channel used while sampling.
    */
@@ -101,16 +72,26 @@ export interface ContrastRegionPathOptions {
    */
   simplifyTolerance?: number;
   /**
-   * Maximum adaptive lightness refinement depth.
-   * @default 7
+   * Initial samples per region side (integer >= 2, clamped to 512), spread
+   * evenly over the angles where that side is visible. Refinement adds
+   * samples where the contour bends.
+   * @default 32
    */
-  hybridMaxDepth?: number;
+  initialSamples?: number;
   /**
-   * Maximum midpoint root deviation before splitting. Value is in chroma
-   * units.
+   * Largest distance, in l/c units, a sampled midpoint may lie from the
+   * chord of its interval before the interval is split (finite and > 0,
+   * clamped to at least 1e-6).
    * @default 0.0015
    */
-  hybridErrorTolerance?: number;
+  errorTolerance?: number;
+  /**
+   * Maximum halvings of an initial sample interval to meet `errorTolerance`
+   * (integer >= 0, clamped to 12). A few more are allowed while a chord
+   * leaves the gamut.
+   * @default 6
+   */
+  maxDepth?: number;
   /**
    * Removed with the legacy marching-squares engine. Passing it is a type
    * error and throws a `TypeError`.
@@ -124,4 +105,19 @@ export interface ContrastRegionPathOptions {
   adaptiveBaseSteps?: never;
   /** Removed with the legacy engine; see `engine`. */
   adaptiveMaxDepth?: never;
+  /**
+   * Removed with the hybrid solver; use `initialSamples`. Passing it is a
+   * type error and throws a `TypeError`.
+   */
+  lightnessSteps?: never;
+  /** Removed with the hybrid solver; use `initialSamples`. */
+  chromaSteps?: never;
+  /** Removed with the hybrid solver; use `maxDepth`. */
+  hybridMaxDepth?: never;
+  /** Removed with the hybrid solver; use `errorTolerance`. */
+  hybridErrorTolerance?: never;
+  /** Removed with the hybrid solver, which forwarded it to `maxChromaAt`. */
+  tolerance?: never;
+  /** Removed with the hybrid solver, which forwarded it to `maxChromaAt`. */
+  maxIterations?: never;
 }

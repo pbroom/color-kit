@@ -1,358 +1,380 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   contrastAPCA,
   contrastRatio,
   contrastRegionPaths,
-  maxChromaAt,
+  inP3Gamut,
+  inSrgbGamut,
   parse,
-  type ContrastMetric,
+  relativeLuminance,
+  type ContrastApcaPolarity,
+  type ContrastApcaRole,
   type GamutTarget,
 } from '../src/index.js';
-
-/**
- * Contrast regions checked against a brute-force grid of the public
- * `contrastRatio` / `contrastAPCA` checks. The grid runs over lightness rows
- * and gamut-relative chroma columns, so the gamut edge is a grid line.
- * Crossings are bisected along rows and columns; contour pieces are the
- * 8-connected components of grid cells the contour crosses.
- */
-
-const MAX_CHROMA = 0.4;
-/** Largest allowed distance between the solver's paths and the truth. */
-const AGREEMENT = 0.001;
-
-interface Query {
-  hex: string;
-  hue: number;
-  metric: ContrastMetric;
-  threshold: number;
-  gamut: GamutTarget;
-}
-
-interface Point {
-  l: number;
-  c: number;
-}
-
-interface Truth {
-  crossings: Point[];
-  pieces: number;
-}
-
-function marginOf(query: Query): (l: number, c: number) => number {
-  const reference = parse(query.hex);
-  const options = { gamut: query.gamut };
-  return query.metric === 'apca'
-    ? (l, c) =>
-        Math.abs(
-          contrastAPCA({ l, c, h: query.hue, alpha: 1 }, reference, options),
-        ) - query.threshold
-    : (l, c) =>
-        contrastRatio({ l, c, h: query.hue, alpha: 1 }, reference, options) -
-        query.threshold;
-}
-
-function cMaxAt(query: Query, l: number): number {
-  return Math.min(
-    MAX_CHROMA,
-    maxChromaAt(l, query.hue, { gamut: query.gamut, maxChroma: MAX_CHROMA }),
-  );
-}
-
-function bisect(
-  evaluate: (t: number) => number,
-  lo: number,
-  hi: number,
-  passLo: boolean,
-): number {
-  for (let index = 0; index < 40; index += 1) {
-    const mid = (lo + hi) / 2;
-    if (evaluate(mid) >= 0 === passLo) lo = mid;
-    else hi = mid;
-  }
-  return (lo + hi) / 2;
-}
-
-function bruteForce(query: Query, rowCount: number, columns: number): Truth {
-  const margin = marginOf(query);
-  // Uniform rows plus fine rows near both lightness ends, where regions can
-  // be thinner than a uniform row.
-  const rowSet = new Set<number>();
-  for (let index = 1; index < rowCount; index += 1) {
-    rowSet.add(index / rowCount);
-  }
-  for (let index = 1; index <= 100; index += 1) {
-    rowSet.add(0.01 * (index / 100));
-    rowSet.add(0.99 + 0.0099 * (index / 100));
-  }
-  const rows = [...rowSet].sort((a, b) => a - b);
-  const cMax = rows.map((l) => cMaxAt(query, l));
-  const width = columns + 1;
-  const pass = rows.map((l, row) =>
-    Array.from(
-      { length: width },
-      (_, column) => margin(l, (cMax[row] * column) / columns) >= 0,
-    ),
-  );
-
-  const crossings: Point[] = [];
-  rows.forEach((l, row) => {
-    for (let column = 0; column < columns; column += 1) {
-      if (pass[row][column] === pass[row][column + 1]) continue;
-      const step = cMax[row] / columns;
-      const c = bisect(
-        (chroma) => margin(l, chroma),
-        step * column,
-        step * (column + 1),
-        pass[row][column],
-      );
-      crossings.push({ l, c });
-    }
-  });
-  for (let row = 0; row < rows.length - 1; row += 1) {
-    const [l0, l1] = [rows[row], rows[row + 1]];
-    for (let column = 0; column <= columns; column += 1) {
-      if (pass[row][column] === pass[row + 1][column]) continue;
-      const t = column / columns;
-      const chromaAt = (l: number) =>
-        t * (cMax[row] + ((cMax[row + 1] - cMax[row]) * (l - l0)) / (l1 - l0));
-      const l = bisect(
-        (lightness) => margin(lightness, chromaAt(lightness)),
-        l0,
-        l1,
-        pass[row][column],
-      );
-      crossings.push({ l, c: chromaAt(l) });
-    }
-  }
-
-  const cellCount = (rows.length - 1) * columns;
-  const crossed = (cell: number): boolean => {
-    const row = Math.floor(cell / columns);
-    const column = cell % columns;
-    const first = pass[row][column];
-    return (
-      pass[row][column + 1] !== first ||
-      pass[row + 1][column] !== first ||
-      pass[row + 1][column + 1] !== first
-    );
-  };
-  const seen = new Uint8Array(cellCount);
-  let pieces = 0;
-  for (let start = 0; start < cellCount; start += 1) {
-    if (seen[start] || !crossed(start)) continue;
-    pieces += 1;
-    seen[start] = 1;
-    const stack = [start];
-    while (stack.length > 0) {
-      const cell = stack.pop()!;
-      const row = Math.floor(cell / columns);
-      const column = cell % columns;
-      for (let dr = -1; dr <= 1; dr += 1) {
-        for (let dc = -1; dc <= 1; dc += 1) {
-          const r = row + dr;
-          const k = column + dc;
-          if (r < 0 || k < 0 || r >= rows.length - 1 || k >= columns) continue;
-          const next = r * columns + k;
-          if (seen[next] || !crossed(next)) continue;
-          seen[next] = 1;
-          stack.push(next);
-        }
-      }
-    }
-  }
-  return { crossings, pieces };
-}
-
-function distanceToPaths(point: Point, paths: Point[][]): number {
-  let best = Number.POSITIVE_INFINITY;
-  for (const path of paths) {
-    for (let index = 1; index < path.length; index += 1) {
-      const a = path[index - 1];
-      const b = path[index];
-      const dl = b.l - a.l;
-      const dc = b.c - a.c;
-      const length = dl * dl + dc * dc;
-      const t =
-        length > 0
-          ? Math.max(
-              0,
-              Math.min(
-                1,
-                ((point.l - a.l) * dl + (point.c - a.c) * dc) / length,
-              ),
-            )
-          : 0;
-      best = Math.min(
-        best,
-        Math.hypot(point.l - (a.l + t * dl), point.c - (a.c + t * dc)),
-      );
-    }
-  }
-  return best;
-}
-
-/** Distance from `point` to the contour, linearized from the margin. */
-function distanceToContour(query: Query, point: Point): number {
-  const margin = marginOf(query);
-  const h = 1e-6;
-  const value = margin(point.l, point.c);
-  const gradientL =
-    (margin(point.l + h, point.c) - margin(point.l - h, point.c)) / (2 * h);
-  // One-sided in chroma, toward the inside of the gamut.
-  const gradientC =
-    point.c > h
-      ? (value - margin(point.l, point.c - h)) / h
-      : (margin(point.l, point.c + h) - value) / h;
-  return Math.abs(value) / Math.max(1e-12, Math.hypot(gradientL, gradientC));
-}
-
-function isClosed(path: Point[]): boolean {
-  const first = path[0];
-  const last = path[path.length - 1];
-  return path.length > 2 && first.l === last.l && first.c === last.c;
-}
-
-/** Where an open path may end: the chroma axis, gamut edge, or L bounds. */
-function endsOnBoundary(query: Query, point: Point): boolean {
-  return (
-    point.c <= 1e-6 ||
-    cMaxAt(query, point.l) - point.c <= 1e-4 ||
-    point.l <= 1e-4 ||
-    point.l >= 1 - 1e-4
-  );
-}
-
-function checkAgreement(
-  query: Query,
-  truth: Truth,
-  expectedPaths = truth.pieces,
-): void {
-  const paths = contrastRegionPaths(parse(query.hex), query.hue, {
-    metric: query.metric,
-    threshold: query.threshold,
-    gamut: query.gamut,
-  });
-  expect(paths).toHaveLength(expectedPaths);
-  for (const path of paths) {
-    // Closed paths have no ends to check, but their points must still lie
-    // on the contrast boundary.
-    if (!isClosed(path)) {
-      for (const end of [path[0], path[path.length - 1]]) {
-        expect(endsOnBoundary(query, end), JSON.stringify(end)).toBe(true);
-      }
-    }
-    for (const point of path) {
-      expect(distanceToContour(query, point)).toBeLessThan(AGREEMENT);
-    }
-  }
-  let gap = 0;
-  for (const crossing of truth.crossings) {
-    gap = Math.max(gap, distanceToPaths(crossing, paths));
-  }
-  expect(gap).toBeLessThan(AGREEMENT);
-}
-
-const apca = (
-  hex: string,
-  threshold: number,
-  hue: number,
-  gamut: GamutTarget,
-): Query => ({ hex, hue, metric: 'apca', threshold, gamut });
-const wcag = (
-  hex: string,
-  threshold: number,
-  hue: number,
-  gamut: GamutTarget,
-): Query => ({ hex, hue, metric: 'wcag', threshold, gamut });
+import {
+  COARSE_FOLD_REPROS,
+  EDGE_REPROS,
+  FIN_REPROS,
+  FOLD_BAND,
+  FOLDED_REPROS,
+  INTERACTIVE,
+  INTERACTIVE_AGREEMENT,
+  NOTCH_REPROS,
+  REPRESENTATIVE,
+  SPREAD,
+  bruteForce,
+  bruteForceAbsolute,
+  checkAgreement,
+  expectChordsInGamut,
+  expectVerticesPass,
+  wcag,
+} from './contrast-region-brute-force-harness.js';
 
 describe('contrast regions agree with brute force', () => {
-  // A low contour that folds back in lightness. The fold tip is narrower
-  // than a chroma bracket, and roots accepted by value tolerance there were
-  // misplaced and merged, so the contour came back split at the tip.
-  it.each([
-    apca('#949494', 0.45, 10, 'srgb'),
-    apca('#949494', 0.45, 350, 'srgb'),
-    apca('#949494', 0.45, 350, 'display-p3'),
-  ])(
+  it.each(FOLDED_REPROS)(
     'keeps the folded $metric $threshold contour on $hex at h$hue in $gamut whole',
     (query) => {
       checkAgreement(query, bruteForce(query, 1200, 160), 2);
     },
   );
 
-  // Contours that meet the gamut edge where the field is flat in chroma.
-  // A near-zero margin at the edge was taken as an extra root, so the main
-  // path stopped short of the edge or split off a stub there.
-  it.each([
-    { ...apca('#22aa55', 0.6, 130, 'srgb'), paths: 1 },
-    { ...apca('#595959', 0.75, 160, 'display-p3'), paths: 1 },
-    { ...apca('#22aa55', 0.45, 210, 'display-p3'), paths: 2 },
-    { ...apca('#767676', 0.45, 240, 'srgb'), paths: 1 },
-    { ...apca('#0000ff', 0.45, 210, 'display-p3'), paths: 1 },
-  ])(
+  it.each(EDGE_REPROS)(
     'ends the $metric $threshold contour on $hex at h$hue in $gamut on the gamut edge',
     (query) => {
       checkAgreement(query, bruteForce(query, 600, 160), query.paths);
     },
   );
 
-  // A representative subset of the full agreement sweep: folds near the
-  // axis and the gamut edge, near-vertical boundaries, APCA polarity
-  // splits, and both gamuts. Contour pieces must match brute force.
-  it.each([
-    wcag('#ffffff', 4.5, 100, 'display-p3'),
-    wcag('#000000', 4.5, 250, 'display-p3'),
-    wcag('#949494', 3, 270, 'display-p3'),
-    wcag('#ff0000', 3, 140, 'display-p3'),
-    wcag('#0000ff', 7, 130, 'srgb'),
-    wcag('#767676', 4.5, 30, 'srgb'),
-    apca('#ffffff', 0.75, 0, 'srgb'),
-    apca('#000000', 0.45, 0, 'display-p3'),
-    apca('#0000ff', 0.75, 140, 'display-p3'),
-    apca('#949494', 0.6, 110, 'display-p3'),
-    apca('#22aa55', 0.45, 280, 'srgb'),
-    apca('#22aa55', 0.6, 260, 'srgb'),
-    apca('#ff0000', 0.6, 120, 'display-p3'),
-    apca('#595959', 0.45, 200, 'srgb'),
-  ])('agrees on $metric $threshold on $hex at h$hue in $gamut', (query) => {
-    checkAgreement(query, bruteForce(query, 400, 120));
-  });
-
-  // One query per reference and criterion, spread over hues and gamuts.
-  const references = [
-    '#ffffff',
-    '#000000',
-    '#767676',
-    '#595959',
-    '#949494',
-    '#ff0000',
-    '#0000ff',
-    '#22aa55',
-  ];
-  const criteria: Array<[ContrastMetric, number]> = [
-    ['wcag', 3],
-    ['wcag', 4.5],
-    ['wcag', 7],
-    ['apca', 0.45],
-    ['apca', 0.6],
-    ['apca', 0.75],
-  ];
-  const spread = references.flatMap((hex, refIndex) =>
-    criteria.map(
-      ([metric, threshold], criterionIndex): Query => ({
-        hex,
-        metric,
-        threshold,
-        hue: (refIndex * 70 + criterionIndex * 50) % 360,
-        gamut: (refIndex + criterionIndex) % 2 === 0 ? 'srgb' : 'display-p3',
-      }),
-    ),
+  // Contour pieces must match brute force.
+  it.each(REPRESENTATIVE)(
+    'agrees on $metric $threshold on $hex at h$hue in $gamut',
+    (query) => {
+      checkAgreement(query, bruteForce(query, 400, 120));
+    },
   );
-  it.each(spread)(
+
+  it.each(SPREAD)(
     'spread: $metric $threshold on $hex at h$hue in $gamut',
     (query) => {
       checkAgreement(query, bruteForce(query, 400, 120));
     },
   );
+
+  it.each(SPREAD.slice(0, 16))(
+    'spread at interactive sampling: $metric $threshold on $hex at h$hue in $gamut',
+    (query) => {
+      checkAgreement(
+        query,
+        bruteForce(query, 400, 120),
+        undefined,
+        INTERACTIVE,
+        INTERACTIVE_AGREEMENT,
+      );
+    },
+  );
+});
+
+// The sRGB blue fold: near h 264 a thin in-gamut fin runs beside the main
+// body, so the in-gamut set is two intervals at fixed lightness or chroma.
+// A contour crossing the fin is a separate piece that ends on the fin's
+// edges; one crossing the gap must stop at the gamut edge. Gamut events are
+// found independently of the sampling options, so pieces must match at
+// both the core defaults and the interactive setting.
+describe('contrast regions follow the sRGB blue fold', () => {
+  const absolute = (query: (typeof FOLD_BAND)[number]) =>
+    bruteForceAbsolute(query, 800, 640);
+
+  it.each([...FIN_REPROS, ...COARSE_FOLD_REPROS])(
+    'finds every fin piece for $metric $threshold on $hex at h$hue',
+    (query) => {
+      const truth = absolute(query);
+      checkAgreement(query, truth, truth.pieces);
+      checkAgreement(
+        query,
+        truth,
+        truth.pieces,
+        INTERACTIVE,
+        INTERACTIVE_AGREEMENT,
+      );
+    },
+  );
+
+  it.each([...FOLD_BAND, wcag('#000000', 2, 264.1, 'display-p3')])(
+    'fold band: $metric $threshold on $hex at h$hue in $gamut',
+    (query) => {
+      const truth = absolute(query);
+      checkAgreement(query, truth, truth.pieces);
+      checkAgreement(
+        query,
+        truth,
+        truth.pieces,
+        INTERACTIVE,
+        INTERACTIVE_AGREEMENT,
+      );
+    },
+  );
+});
+
+describe('contrast regions split at gamut notches', () => {
+  // Brute force confirms the two pieces for a few; the rest check the piece
+  // count found by the review's truth and that no chord leaves the gamut.
+  it.each([NOTCH_REPROS[2]])(
+    'agrees with brute force across the notch: WCAG $threshold at h$hue',
+    (query) => {
+      const truth = bruteForceAbsolute(query, 800, 640);
+      expect(truth.pieces).toBe(2);
+      checkAgreement(query, truth, 2);
+      checkAgreement(query, truth, 2, INTERACTIVE, INTERACTIVE_AGREEMENT);
+    },
+  );
+
+  it.each(NOTCH_REPROS)(
+    'keeps two pieces and in-gamut chords: WCAG $threshold at h$hue',
+    (query) => {
+      for (const sampling of [{}, INTERACTIVE]) {
+        const paths = contrastRegionPaths(parse(query.hex), query.hue, {
+          threshold: query.threshold,
+          ...sampling,
+        });
+        expect(paths).toHaveLength(2);
+        expectVerticesPass(query, paths);
+        expectChordsInGamut(paths, query.hue, query.gamut);
+      }
+    },
+  );
+
+  it('does not bridge the notch gap for APCA positive on a dark reference', () => {
+    // The true gap runs from chroma 0.28317 to 0.28517; a bridging chord
+    // left the gamut by 0.0016 in lightness.
+    const reference = {
+      l: 0.20243248087354004,
+      c: 0.0068675961825647395,
+      h: 103.23549835011363,
+      alpha: 1,
+    };
+    const hue = 264.20614510828165;
+    for (const sampling of [{}, INTERACTIVE]) {
+      const paths = contrastRegionPaths(reference, hue, {
+        metric: 'apca',
+        threshold: 0.15568124939687553,
+        apcaPolarity: 'positive',
+        apcaRole: 'sample-background',
+        ...sampling,
+      });
+      expect(paths).toHaveLength(2);
+      expectChordsInGamut(paths, hue, 'srgb');
+      for (const path of paths) {
+        for (const point of path) {
+          const sample = { l: point.l, c: point.c, h: hue, alpha: 1 };
+          expect(contrastAPCA(reference, sample)).toBeGreaterThanOrEqual(
+            0.15568124939687553,
+          );
+          expect(inSrgbGamut(sample)).toBe(true);
+          expect(point.c > 0.2832 && point.c < 0.2851).toBe(false);
+        }
+      }
+    }
+  });
+});
+
+describe('contrast regions at the edges of the criterion', () => {
+  it.each(['#767676', '#22aa55', '#000000'])(
+    'returns white alone when the WCAG threshold equals the contrast of %s against white',
+    (hex) => {
+      const reference = parse(hex);
+      const white = { l: 1, c: 0 };
+      for (const gamut of ['srgb', 'display-p3'] as const) {
+        const threshold = contrastRatio(
+          { ...white, h: 0, alpha: 1 },
+          reference,
+          { gamut },
+        );
+        const paths = contrastRegionPaths(reference, 30, { threshold, gamut });
+        expect(paths).toContainEqual([white]);
+        expectVerticesPass(wcag(hex, threshold, 30, gamut), paths);
+        // A hair above it, nothing on the light side passes.
+        const above = contrastRegionPaths(reference, 30, {
+          threshold: threshold + 1e-12,
+          gamut,
+        });
+        expect(above.flat().every((point) => point.l < 0.99)).toBe(true);
+      }
+    },
+  );
+
+  it('reaches the public gamut edge near black', () => {
+    // The prototype used a strict lower channel bound below L 0.05, so the
+    // dark contour stopped 0.0055 short of where `inP3Gamut` puts the edge.
+    const query = wcag(
+      '#6c691c',
+      3.6739755325760246,
+      69.9028090853244,
+      'display-p3',
+    );
+    for (const sampling of [{}, INTERACTIVE]) {
+      const paths = contrastRegionPaths(parse(query.hex), query.hue, {
+        threshold: query.threshold,
+        gamut: query.gamut,
+        ...sampling,
+      });
+      expectVerticesPass(query, paths);
+      const dark = paths.find((path) =>
+        path.some((point) => point.c === 0 && point.l < 0.1),
+      );
+      expect(dark).toBeDefined();
+      const outer = dark!.reduce((a, b) => (b.c > a.c ? b : a));
+      const color = { l: outer.l, c: outer.c, h: query.hue, alpha: 1 };
+      expect(outer.c).toBeGreaterThan(0.0118);
+      expect(inP3Gamut(color)).toBe(true);
+      // Just past the end the contour leaves the gamut.
+      expect(inP3Gamut({ ...color, c: color.c + 1e-7 })).toBe(false);
+    }
+  });
+
+  it('traces both sides of a WCAG threshold just above 1', () => {
+    // Only a band a few 1e-5 wide around the reference's luminance fails.
+    const query = wcag('#767676', 1.0001, 315, 'srgb');
+    const reference = parse(query.hex);
+    const paths = contrastRegionPaths(reference, query.hue, {
+      threshold: query.threshold,
+    });
+    expect(paths).toHaveLength(2);
+    expectVerticesPass(query, paths);
+    // One contour is darker than the reference and one lighter.
+    const referenceY = relativeLuminance(reference);
+    const sides = paths
+      .map((path) => {
+        const ys = path.map((point) =>
+          relativeLuminance({ l: point.l, c: point.c, h: query.hue, alpha: 1 }),
+        );
+        return ys.every((y) => y < referenceY)
+          ? 'dark'
+          : ys.every((y) => y > referenceY)
+            ? 'light'
+            : 'both';
+      })
+      .sort();
+    expect(sides).toEqual(['dark', 'light']);
+    for (const path of paths) {
+      expect(Math.min(...path.map((point) => point.c))).toBe(0);
+      for (const point of path) {
+        const ratio = contrastRatio(
+          { l: point.l, c: point.c, h: query.hue, alpha: 1 },
+          reference,
+        );
+        expect(ratio - query.threshold).toBeLessThan(1e-9);
+      }
+    }
+  });
+
+  it('keeps the light region 1e-9 below the largest WCAG ratio', () => {
+    // 4.542224958605249 is 1e-9 below #767676's ratio against white, so
+    // only colors within ~1e-10 of white's luminance pass on the light side.
+    const query = wcag('#767676', 4.542224958605249, 0, 'srgb');
+    const paths = contrastRegionPaths(parse(query.hex), query.hue, {
+      threshold: query.threshold,
+    });
+    expectVerticesPass(query, paths);
+    const light = paths.filter((path) => path.every((point) => point.l > 0.9));
+    expect(light).toHaveLength(1);
+    expect(light[0].length).toBeGreaterThanOrEqual(2);
+    expect(Math.min(...light[0].map((point) => point.c))).toBe(0);
+    expect(Math.max(...light[0].map((point) => 1 - point.l))).toBeLessThan(
+      1e-6,
+    );
+  });
+});
+
+// Every returned point must pass the public check and be in gamut per
+// `inSrgbGamut` / `inP3Gamut`, exactly, including inside their GAMUT_EPSILON
+// slack (near black, and references there), for every metric, polarity, and
+// role. Chords between points must stay in the gamut too.
+describe('contrast regions agree with the public checks', () => {
+  it('keeps every point and chord inside the passing, in-gamut set', () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          l: fc.double({ min: 0, max: 1, noNaN: true }),
+          c: fc.double({ min: 0, max: 0.37, noNaN: true }),
+          h: fc.double({ min: 0, max: 360, maxExcluded: true, noNaN: true }),
+        }),
+        fc.double({ min: 0, max: 360, maxExcluded: true, noNaN: true }),
+        fc.constantFrom<GamutTarget>('srgb', 'display-p3'),
+        fc.oneof(
+          fc.record({
+            metric: fc.constant<'wcag'>('wcag'),
+            threshold: fc.double({ min: 1.0001, max: 20, noNaN: true }),
+            apcaPolarity: fc.constant<ContrastApcaPolarity>('absolute'),
+            apcaRole: fc.constant<ContrastApcaRole>('sample-text'),
+          }),
+          fc.record({
+            metric: fc.constant<'apca'>('apca'),
+            threshold: fc.double({ min: 0.01, max: 1.05, noNaN: true }),
+            apcaPolarity: fc.constantFrom<ContrastApcaPolarity>(
+              'absolute',
+              'positive',
+              'negative',
+            ),
+            apcaRole: fc.constantFrom<ContrastApcaRole>(
+              'sample-text',
+              'sample-background',
+            ),
+          }),
+        ),
+        fc.constantFrom({}, INTERACTIVE),
+        (ref, hue, gamut, criterion, sampling) => {
+          const reference = { ...ref, alpha: 1 };
+          const paths = contrastRegionPaths(reference, hue, {
+            gamut,
+            ...criterion,
+            ...sampling,
+          });
+          const options = { gamut };
+          // Measured unmapped, as the solver and the public checks do.
+          const mapped = reference;
+          const inGamut = gamut === 'display-p3' ? inP3Gamut : inSrgbGamut;
+          const passes = (l: number, c: number): boolean => {
+            const sample = { l, c, h: hue, alpha: 1 };
+            if (criterion.metric === 'wcag') {
+              return (
+                contrastRatio(sample, mapped, options) >= criterion.threshold
+              );
+            }
+            const lc =
+              criterion.apcaRole === 'sample-background'
+                ? contrastAPCA(mapped, sample, options)
+                : contrastAPCA(sample, mapped, options);
+            const value =
+              criterion.apcaPolarity === 'positive'
+                ? lc
+                : criterion.apcaPolarity === 'negative'
+                  ? -lc
+                  : Math.abs(lc);
+            return value >= criterion.threshold;
+          };
+          for (const path of paths) {
+            path.forEach((point, index) => {
+              const label = JSON.stringify(point);
+              expect(passes(point.l, point.c), label).toBe(true);
+              expect(
+                inGamut({ l: point.l, c: point.c, h: hue, alpha: 1 }),
+                label,
+              ).toBe(true);
+              if (index === 0) return;
+              const previous = path[index - 1];
+              const middle = {
+                l: (previous.l + point.l) / 2,
+                c: (previous.c + point.c) / 2,
+                h: hue,
+                alpha: 1,
+              };
+              expect(inGamut(middle), label).toBe(true);
+            });
+          }
+        },
+      ),
+      { numRuns: 300, seed: 0xc0ffee },
+    );
+  });
 });
