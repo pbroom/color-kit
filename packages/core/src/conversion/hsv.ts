@@ -1,7 +1,8 @@
 import type { Rgb, Hsv } from '../types.js';
 import { normalizeHue } from '../utils/index.js';
+import { RGB_GRAY_DELTA } from './hsl.js';
 
-/** Convert sRGB (0-255) to HSV */
+/** Convert sRGB (0-255, fractional values allowed) to HSV */
 export function rgbToHsv(rgb: Rgb): Hsv {
   const r = rgb.r / 255;
   const g = rgb.g / 255;
@@ -11,11 +12,12 @@ export function rgbToHsv(rgb: Rgb): Hsv {
   const min = Math.min(r, g, b);
   const delta = max - min;
 
+  const gray = !(delta > RGB_GRAY_DELTA);
   let h = 0;
-  const s = max === 0 ? 0 : delta / max;
+  const s = max === 0 || gray ? 0 : delta / max;
   const v = max;
 
-  if (delta !== 0) {
+  if (!gray) {
     if (max === r) {
       h = ((g - b) / delta + (g < b ? 6 : 0)) * 60;
     } else if (max === g) {

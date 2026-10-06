@@ -24,12 +24,12 @@ import {
 import type { PlanePoint } from '../geometry/types.js';
 import { buildAxisAnchors } from '../sampling/adaptive1d.js';
 import { simplifyPolyline } from '../utils/index.js';
-import { contrastRatioUnclamped } from './metrics.js';
 import {
   ADAPTIVE_EDGE_PROBES,
   mapToGamut,
   resolveContrastCriterion,
   toTracePaths,
+  type ResolvedContrastCriterion,
   validateSteps,
 } from './region-shared.js';
 import type {
@@ -116,7 +116,7 @@ export function contrastRegionPathsLegacy(
   if (mode === 'adaptive' && criterion.metric === 'wcag') {
     segments = contrastRegionPathsAdaptive(
       hue,
-      criterion.threshold,
+      criterion,
       maxChroma,
       alpha,
       gamut,
@@ -302,7 +302,7 @@ function buildAdaptiveChromaAnchors(
 
 function contrastRegionPathsAdaptive(
   hue: number,
-  threshold: number,
+  criterion: ResolvedContrastCriterion,
   maxChroma: number,
   alpha: number,
   gamut: GamutTarget,
@@ -348,7 +348,7 @@ function contrastRegionPathsAdaptive(
     if (c > maxInGamut) return -1;
     const sample: Color = { l, c, h: hue, alpha };
     const mappedSample = mapToGamut(sample, gamut);
-    return contrastRatioUnclamped(mappedSample, mappedReference) - threshold;
+    return criterion.evaluate(mappedSample, mappedReference);
   };
 
   const cusp = maxChromaForHue(hue, {

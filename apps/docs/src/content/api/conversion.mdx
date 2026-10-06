@@ -164,11 +164,13 @@ Notes on non-obvious behavior:
 - **Gamut clamping.** `toRgb` rounds each channel to an integer and clamps to
   `0–255`, and `toP3` clamps gamma-encoded channels to `0–1`. Colors outside
   the target gamut are silently clamped channel-by-channel, not gamut-mapped.
-  `toHex`, `toHsl`, `toHsv`, and `toHct` route through `toRgb`, so they inherit
-  the sRGB clamp.
-- **HCT round-trips.** `toHct` and `fromHct` go through Material's 8-bit ARGB
-  representation, so conversions are quantized to sRGB precision. `fromHct`
-  preserves the input `alpha` verbatim.
+  `toHex` routes through `toRgb`. `toHsl`, `toHsv`, and `toHct` clip to sRGB
+  the same way but skip the 8-bit rounding, so fractional colors keep full
+  precision. Grays report hue and saturation `0`.
+- **HCT round-trips.** `toHct` uses Material's CAM16 math on the unrounded,
+  sRGB-clipped color. `fromHct` goes through Material's 8-bit ARGB
+  representation, so it is quantized to sRGB precision. `fromHct` preserves
+  the input `alpha` verbatim.
 - **`toOklch` / `fromOklch`** are identity conversions that return new
   objects, since `Color` already is OKLCH.
 
