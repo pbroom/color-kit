@@ -27,6 +27,7 @@
  */
 import { afterAll, describe, expect, it } from 'vitest';
 import ColorJs from 'colorjs.io';
+import namedKeywords from 'colorjs.io/src/keywords.js';
 import {
   contrastAPCA,
   contrastRatio,
@@ -789,6 +790,127 @@ describe('reference accuracy: CSS parsing and serialization', () => {
     lc.assert();
     hue.assert();
     alpha.assert();
+  });
+
+  describe('parse() matches colorjs.io for CSS Color 4 syntax', () => {
+    const r3 = (v: number) => Math.round(v * 1000) / 1000;
+    const signed = () => r3((random() - 0.5) * 2);
+
+    /** Samples grouped by syntax, so a failure names the syntax. */
+    function syntaxSamples(): Record<string, string[]> {
+      const groups: Record<string, string[]> = {
+        'named colors': [...Object.keys(namedKeywords), 'transparent'],
+        'rgb() percentages': ['rgb(100% 0% 0%)', 'rgb(20% 40.5% 60% / 50%)'],
+        'hsl() numbers': ['hsl(120 50 50)', 'hsl(200 30 70 / 0.4)'],
+        'hue units': [
+          'hsl(-30 50% 50%)',
+          'hsl(0.5turn 50% 50%)',
+          'hsl(1rad 50% 50%)',
+          'hsl(100grad 50% 50%)',
+          'hsl(-1.25turn 50% 50%)',
+          'oklch(0.6 0.12 -30deg)',
+          'oklch(0.6 0.12 3rad)',
+          'lch(60 40 250grad)',
+          'hwb(-0.25turn 10% 20%)',
+        ],
+        'lab()': ['lab(50 20 -30)', 'lab(50% 50% -50%)', 'lab(0 0 0)'],
+        'lch()': ['lch(50 40 200)', 'lch(50% 50% 30)', 'lch(80 0 0)'],
+        'hwb()': ['hwb(120 30% 40%)', 'hwb(120 30 40)', 'hwb(0 60% 60%)'],
+        'color(srgb)': ['color(srgb 1 0 0)', 'color(srgb -0.2 0.5 1.2)'],
+        'color(srgb-linear)': ['color(srgb-linear 0.2 0.5 0.9)'],
+        'color(display-p3)': ['color(display-p3 -0.1 0.5 0.2)'],
+        'color(rec2020)': ['color(rec2020 0.3 0.6 0.1)'],
+        'color(a98-rgb)': ['color(a98-rgb 0.3 0.6 0.1)'],
+        'color(prophoto-rgb)': [
+          'color(prophoto-rgb 0.3 0.6 0.01)',
+          'color(prophoto-rgb -0.02 0.5 0.2)',
+        ],
+        'color(xyz)': ['color(xyz 0.2 0.3 0.4)', 'color(xyz-d65 0.2 0.3 0.4)'],
+        'color(xyz-d50)': ['color(xyz-d50 0.2 0.3 0.4)'],
+      };
+      for (let i = 0; i < 150; i += 1) {
+        const [a, b, c] = randomUnitVec();
+        const alpha = r3(random());
+        groups['lab()'].push(
+          `lab(${r3(a * 100)} ${r3((b - 0.5) * 250)} ${r3((c - 0.5) * 250)} / ${alpha})`,
+        );
+        groups['lch()'].push(
+          `lch(${r3(a * 100)} ${r3(b * 150)} ${r3((c - 0.5) * 1080)})`,
+        );
+        groups['hwb()'].push(
+          `hwb(${r3((a - 0.5) * 1080)} ${r3(b * 100)}% ${r3(c * 100)}%)`,
+        );
+        groups['hsl() numbers'].push(
+          `hsl(${r3(a * 360)} ${r3(b * 100)} ${r3(c * 100)} / ${alpha})`,
+        );
+        groups['rgb() percentages'].push(
+          `rgb(${r3(a * 100)}% ${r3(b * 100)}% ${r3(c * 100)}%)`,
+        );
+        for (const space of [
+          'srgb',
+          'srgb-linear',
+          'display-p3',
+          'rec2020',
+          'a98-rgb',
+          'prophoto-rgb',
+        ]) {
+          // Extended range, including negative channels.
+          groups[`color(${space})`].push(
+            `color(${space} ${r3(a * 1.2 - 0.1)} ${r3(b)} ${signed()} / ${alpha})`,
+          );
+        }
+        groups['color(xyz)'].push(`color(xyz ${r3(a)} ${r3(b)} ${r3(c)})`);
+        groups['color(xyz-d50)'].push(
+          `color(xyz-d50 ${r3(a)} ${r3(b)} ${r3(c)})`,
+        );
+      }
+      return groups;
+    }
+
+    for (const [syntax, samples] of Object.entries(syntaxSamples())) {
+      it(syntax, () => {
+        const lc = new Tracker(`parse() ${syntax} (L, C)`, FLOAT_TOL);
+        const hue = new Tracker(`parse() ${syntax} (h, deg)`, HUE_TOL);
+        const alpha = new Tracker(`parse() ${syntax} alpha`, FLOAT_TOL);
+        for (const css of samples) {
+          const kit = parse(css);
+          expect(kit.h).toBeGreaterThanOrEqual(0);
+          expect(kit.h).toBeLessThan(360);
+          const reference = new ColorJs(css);
+          const err = lchError(kit, refCoords(reference, 'oklch'));
+          lc.observe(err.lc, () => css);
+          hue.observe(err.h, () => css);
+          alpha.observe(
+            Math.abs(kit.alpha - (reference.alpha as number)),
+            () => css,
+          );
+        }
+        lc.assert();
+        hue.assert();
+        alpha.assert();
+      });
+    }
+
+    it('`none` behaves like 0 (a missing component)', () => {
+      const lc = new Tracker('parse() none (L, C)', FLOAT_TOL);
+      const pairs: [string, string][] = [
+        ['rgb(none 20 30)', 'rgb(0 20 30)'],
+        ['hsl(none 50% 50%)', 'hsl(0 50% 50%)'],
+        ['hwb(120 none 40%)', 'hwb(120 0% 40%)'],
+        ['lab(none 20 -30)', 'lab(0 20 -30)'],
+        ['lch(50 40 none)', 'lch(50 40 0)'],
+        ['oklch(0.5 0.1 none)', 'oklch(0.5 0.1 0)'],
+        ['oklab(0.5 none 0.1)', 'oklab(0.5 0 0.1)'],
+        ['color(display-p3 none 0.5 0.2)', 'color(display-p3 0 0.5 0.2)'],
+        ['color(xyz-d50 0.2 none 0.4)', 'color(xyz-d50 0.2 0 0.4)'],
+      ];
+      for (const [withNone, withZero] of pairs) {
+        const kit = parse(withNone);
+        const err = lchError(kit, refCoords(new ColorJs(withZero), 'oklch'));
+        lc.observe(Math.max(err.lc, err.h), () => withNone);
+      }
+      lc.assert();
+    });
   });
 
   it('toCss() output reads back in colorjs.io within serialization rounding', () => {
