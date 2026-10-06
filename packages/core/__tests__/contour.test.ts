@@ -87,7 +87,7 @@ describe('contour utilities', () => {
     expect(loops[0][0]).toEqual(loops[0][loops[0].length - 1]);
   });
 
-  it('extracts scalar-grid contours with midpoint or linear interpolation', () => {
+  it('extracts scalar-grid contours with linear edge interpolation', () => {
     const grid = {
       minX: 0,
       maxX: 1,
@@ -100,17 +100,8 @@ describe('contour utilities', () => {
       ],
     };
 
-    const midpoint = extractGridContourSegments(grid, {
-      interpolation: 'midpoint',
-    });
-    const linear = extractGridContourSegments(grid, {
-      interpolation: 'linear',
-    });
+    const linear = extractGridContourSegments(grid);
 
-    expect(midpoint.segments[0]).toEqual([
-      { x: 0.5, y: 0 },
-      { x: 0.5, y: 1 },
-    ]);
     expect(linear.segments[0]).toEqual([
       { x: 0.25, y: 0 },
       { x: 0.25, y: 1 },

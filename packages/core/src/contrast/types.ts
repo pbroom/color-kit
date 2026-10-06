@@ -23,8 +23,12 @@ export interface ContrastRegionPoint {
   c: number;
 }
 
-/** Options shared by both contrast-region engines. */
-export interface ContrastRegionBaseOptions {
+/**
+ * Options for `contrastRegionPaths` and the plane contrast queries. Regions
+ * are traced by direct chroma-root tracing with adaptive lightness
+ * refinement.
+ */
+export interface ContrastRegionPathOptions {
   gamut?: GamutTarget;
   /**
    * Contrast metric used when evaluating region membership.
@@ -63,17 +67,15 @@ export interface ContrastRegionBaseOptions {
    */
   apcaRole?: ContrastApcaRole;
   /**
-   * Lightness sampling density (integer >= 2).
-   * - hybrid: initial density, clamped to 12–320; adaptive refinement adds
-   *   samples where the contour bends. Default 72.
-   * - legacy: number of lightness grid cells. Default 64.
+   * Initial lightness sampling density (integer >= 2), clamped to 12–320.
+   * Adaptive refinement adds samples where the contour bends.
+   * @default 72
    */
   lightnessSteps?: number;
   /**
-   * Chroma sampling density (integer >= 2).
-   * - hybrid: root-bracketing density per lightness sample, clamped to
-   *   16–768. Default 96.
-   * - legacy: number of chroma grid cells. Default 64.
+   * Chroma root-bracketing density per lightness sample (integer >= 2),
+   * clamped to 16–768.
+   * @default 96
    */
   chromaSteps?: number;
   /**
@@ -98,19 +100,6 @@ export interface ContrastRegionBaseOptions {
    * Omit or 0 to disable.
    */
   simplifyTolerance?: number;
-}
-
-/** Contrast-region solver. */
-export type ContrastRegionEngine = 'hybrid' | 'legacy';
-
-/**
- * Options for the default hybrid engine: direct chroma-root tracing with
- * adaptive lightness refinement. Legacy-only options are type errors here
- * and throw a `TypeError` at runtime.
- */
-export interface ContrastRegionHybridOptions extends ContrastRegionBaseOptions {
-  /** @default 'hybrid' */
-  engine?: 'hybrid';
   /**
    * Maximum adaptive lightness refinement depth.
    * @default 7
@@ -122,51 +111,17 @@ export interface ContrastRegionHybridOptions extends ContrastRegionBaseOptions {
    * @default 0.0015
    */
   hybridErrorTolerance?: number;
+  /**
+   * Removed with the legacy marching-squares engine. Passing it is a type
+   * error and throws a `TypeError`.
+   */
+  engine?: never;
+  /** Removed with the legacy engine; see `engine`. */
   samplingMode?: never;
+  /** Removed with the legacy engine; see `engine`. */
   edgeInterpolation?: never;
+  /** Removed with the legacy engine; see `engine`. */
   adaptiveBaseSteps?: never;
+  /** Removed with the legacy engine; see `engine`. */
   adaptiveMaxDepth?: never;
 }
-
-/**
- * Options for the legacy marching-squares engine. Select it explicitly with
- * `engine: 'legacy'`; hybrid-only options are type errors here and throw a
- * `TypeError` at runtime.
- */
-export interface ContrastRegionLegacyOptions extends ContrastRegionBaseOptions {
-  engine: 'legacy';
-  /**
-   * Grid strategy. `adaptive` subdivides cells the contour crosses and only
-   * applies to the `wcag` metric; APCA always uses the `uniform` grid.
-   * @default 'adaptive' when `adaptiveBaseSteps` or `adaptiveMaxDepth` is
-   * set, otherwise 'uniform'
-   */
-  samplingMode?: 'uniform' | 'adaptive';
-  /**
-   * Edge placement for marching-squares contours: `linear` interpolates the
-   * threshold crossing, `midpoint` uses cell-edge midpoints.
-   * @default 'linear'
-   */
-  edgeInterpolation?: 'linear' | 'midpoint';
-  /**
-   * Adaptive mode: base grid size per axis, subdivided where the contour
-   * crosses.
-   * @default 16
-   */
-  adaptiveBaseSteps?: number;
-  /**
-   * Adaptive mode: maximum subdivision depth.
-   * @default 3
-   */
-  adaptiveMaxDepth?: number;
-  hybridMaxDepth?: never;
-  hybridErrorTolerance?: never;
-}
-
-/**
- * Options for `contrastRegionPaths` and the plane contrast queries,
- * discriminated by `engine`.
- */
-export type ContrastRegionPathOptions =
-  | ContrastRegionHybridOptions
-  | ContrastRegionLegacyOptions;

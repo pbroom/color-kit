@@ -115,41 +115,22 @@ console.log(
   `hybrid+simplify:     paths=${cp2.length} totalPoints=${total2}  median=${median(ct2).toFixed(2)}ms  (tol=0.002)`,
 );
 
-const contrastLegacyUniform = () =>
+const contrastInteractive = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
     gamut: 'srgb',
-    engine: 'legacy',
-    samplingMode: 'uniform',
-    lightnessSteps: 48,
-    chromaSteps: 48,
+    lightnessSteps: 12,
+    chromaSteps: 16,
+    hybridMaxDepth: 3,
+    hybridErrorTolerance: 0.003,
   });
-for (let i = 0; i < WARMUP; i++) contrastLegacyUniform();
-const ctLegacy = [];
-for (let i = 0; i < MEASURE_ROUNDS; i++)
-  ctLegacy.push(timeMs(contrastLegacyUniform));
-const cpLegacy = contrastLegacyUniform();
-const totalLegacy = cpLegacy.reduce((s, path) => s + path.length, 0);
-console.log(
-  `legacy uniform 48x48: paths=${cpLegacy.length} totalPoints=${totalLegacy}  median=${median(ctLegacy).toFixed(2)}ms`,
-);
-
-const contrastAdaptive = () =>
-  contrastRegionPaths(ref, 200, {
-    level: 'AA',
-    gamut: 'srgb',
-    engine: 'legacy',
-    samplingMode: 'adaptive',
-    adaptiveBaseSteps: 16,
-    adaptiveMaxDepth: 2,
-  });
-for (let i = 0; i < WARMUP; i++) contrastAdaptive();
+for (let i = 0; i < WARMUP; i++) contrastInteractive();
 const ct3 = [];
-for (let i = 0; i < MEASURE_ROUNDS; i++) ct3.push(timeMs(contrastAdaptive));
-const cp3 = contrastAdaptive();
+for (let i = 0; i < MEASURE_ROUNDS; i++) ct3.push(timeMs(contrastInteractive));
+const cp3 = contrastInteractive();
 const total3 = cp3.reduce((s, path) => s + path.length, 0);
 console.log(
-  `legacy adaptive 16 d=2: paths=${cp3.length} totalPoints=${total3}  median=${median(ct3).toFixed(2)}ms`,
+  `interactive 12x16 d=3: paths=${cp3.length} totalPoints=${total3}  median=${median(ct3).toFixed(2)}ms  (ContrastRegionLayer defaults)`,
 );
 
 console.log(

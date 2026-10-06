@@ -150,9 +150,7 @@ describe('plane compute scheduler', () => {
     const snapshot = scheduler.getTelemetrySnapshot();
 
     expect(
-      snapshot.buckets.some((bucket) =>
-        bucket.key.includes('contrast:wcag:hybrid'),
-      ),
+      snapshot.buckets.some((bucket) => bucket.key.includes('|contrast:wcag|')),
     ).toBe(true);
   });
 

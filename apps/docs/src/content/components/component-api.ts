@@ -143,6 +143,13 @@ export const componentApiDocs: ComponentApiDocs = {
         'Use ContrastRegionFill as a child of ContrastRegionLayer for filled region and optional dot pattern; omit children for contour lines only.',
     },
     {
+      name: 'ContrastRegionLayer.lightnessSteps / chromaSteps / hybridMaxDepth / hybridErrorTolerance',
+      type: 'number / number / number / number',
+      defaultValue: '12 / 16 / 3 at high quality (2 medium, 1 low) / 0.003',
+      description:
+        'Contrast-region solver settings, tuned for interactive use: about 0.25 ms per region with fills that match the contrast check to within 0.02% of the plane on average. Steps scale with quality. The legacy samplingMode, edgeInterpolation, adaptiveBaseSteps, and adaptiveMaxDepth props were removed.',
+    },
+    {
       name: 'GamutBoundaryLayer.showPathPoints / pointProps',
       type: 'boolean / SVGAttributes<SVGCircleElement>',
       defaultValue: 'false / undefined',

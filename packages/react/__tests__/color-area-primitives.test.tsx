@@ -240,6 +240,34 @@ describe('ColorArea primitives', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('runs contrast regions with the interactive solver defaults', () => {
+    const spy = vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths');
+    const requested: Color = { l: 0.6, c: 0.08, h: 150, alpha: 1 };
+    render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ContrastRegionLayer threshold={4.5} quality="high" />
+      </ColorArea>,
+    );
+
+    expect(spy).toHaveBeenCalled();
+    const options = spy.mock.calls[spy.mock.calls.length - 1][3] ?? {};
+    expect(options).toMatchObject({
+      lightnessSteps: 12,
+      chromaSteps: 16,
+      hybridMaxDepth: 3,
+      hybridErrorTolerance: 0.003,
+    });
+    for (const removed of [
+      'engine',
+      'samplingMode',
+      'edgeInterpolation',
+      'adaptiveBaseSteps',
+      'adaptiveMaxDepth',
+    ]) {
+      expect(options).not.toHaveProperty(removed);
+    }
+  });
+
   it('renders layer primitives with externally supplied plane geometry', () => {
     const requested: Color = { l: 0.7, c: 0.2, h: 240, alpha: 1 };
     const points = [
@@ -350,7 +378,6 @@ describe('ColorArea primitives', () => {
       <ColorArea requested={requested} onChangeRequested={() => {}}>
         <ContrastRegionLayer
           threshold={4.5}
-          samplingMode="uniform"
           lightnessSteps={32}
           chromaSteps={32}
           showPathPoints
@@ -377,13 +404,12 @@ describe('ColorArea primitives', () => {
     ).toBeTruthy();
   });
 
-  it('renders non-empty contrast region lines with adaptive sampling', () => {
+  it('renders non-empty contrast region lines', () => {
     const requested: Color = { l: 0.85, c: 0.08, h: 200, alpha: 1 };
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
         <ContrastRegionLayer
           threshold={4.5}
-          samplingMode="adaptive"
           lightnessSteps={32}
           chromaSteps={32}
         />
@@ -398,11 +424,11 @@ describe('ColorArea primitives', () => {
     expect(lines.length).toBeGreaterThan(0);
   });
 
-  it('renders contrast region fill when adaptive paths are open', () => {
+  it('renders contrast region fill when paths are open', () => {
     const requested: Color = { l: 0.6953, c: 0.1316, h: 29, alpha: 1 };
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ContrastRegionLayer threshold={4.5} samplingMode="adaptive">
+        <ContrastRegionLayer threshold={4.5}>
           <ContrastRegionFill dotOpacity={0.2} />
         </ContrastRegionLayer>
       </ColorArea>,
@@ -413,11 +439,11 @@ describe('ColorArea primitives', () => {
     ).toBeTruthy();
   });
 
-  it('keeps AAA adaptive fill non-degenerate near cusp transitions', () => {
+  it('keeps AAA fill non-degenerate near cusp transitions', () => {
     const requested: Color = { l: 0.878, c: 0.1621, h: 292.72, alpha: 1 };
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ContrastRegionLayer threshold={7} samplingMode="adaptive">
+        <ContrastRegionLayer threshold={7}>
           <ContrastRegionFill dotOpacity={0} />
         </ContrastRegionLayer>
       </ColorArea>,
@@ -439,7 +465,7 @@ describe('ColorArea primitives', () => {
       const requested: Color = { l: 0.4959, c: 0.0902, h: 0, alpha: 1 };
       const { container } = render(
         <ColorArea requested={requested} onChangeRequested={() => {}}>
-          <ContrastRegionLayer threshold={threshold} samplingMode="adaptive">
+          <ContrastRegionLayer threshold={threshold}>
             <ContrastRegionFill dotOpacity={0} />
           </ContrastRegionLayer>
         </ColorArea>,
@@ -464,11 +490,7 @@ describe('ColorArea primitives', () => {
 
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ContrastRegionLayer
-          gamut="srgb"
-          threshold={4.5}
-          samplingMode="adaptive"
-        >
+        <ContrastRegionLayer gamut="srgb" threshold={4.5}>
           <ContrastRegionFill dotOpacity={0} />
         </ContrastRegionLayer>
       </ColorArea>,
@@ -705,7 +727,7 @@ describe('ColorArea primitives', () => {
     const onChangeRequested = vi.fn();
     const { container, rerender } = render(
       <ColorArea requested={requestedA} onChangeRequested={onChangeRequested}>
-        <ContrastRegionLayer threshold={4.5} samplingMode="adaptive" />
+        <ContrastRegionLayer threshold={4.5} />
       </ColorArea>,
     );
 
@@ -736,7 +758,7 @@ describe('ColorArea primitives', () => {
 
     rerender(
       <ColorArea requested={requestedB} onChangeRequested={onChangeRequested}>
-        <ContrastRegionLayer threshold={4.5} samplingMode="adaptive" />
+        <ContrastRegionLayer threshold={4.5} />
       </ColorArea>,
     );
 
@@ -839,7 +861,6 @@ describe('ColorArea primitives', () => {
       <ColorArea requested={requested} onChangeRequested={() => {}}>
         <ContrastRegionLayer
           threshold={4.5}
-          samplingMode="adaptive"
           includeSchedulerTelemetry
           onMetrics={onMetrics}
         />
@@ -882,7 +903,7 @@ describe('ColorArea primitives', () => {
     expect(latest.scheduleReason).toBe('default-js');
     expect(latest.schedulerBucketCount).toBe(1);
     expect(latest.contrastMetric).toBe('wcag');
-    expect(latest.samplingMode).toBe('adaptive');
+    expect(latest.hybridMaxDepth).toBeGreaterThanOrEqual(1);
   });
 
   it.each([
@@ -980,11 +1001,7 @@ describe('ColorArea primitives', () => {
       const onMetrics = vi.fn();
       const { container } = render(
         <ColorArea requested={requested} onChangeRequested={() => {}}>
-          <ContrastRegionLayer
-            {...props}
-            samplingMode="adaptive"
-            onMetrics={onMetrics}
-          />
+          <ContrastRegionLayer {...props} onMetrics={onMetrics} />
         </ColorArea>,
       );
 

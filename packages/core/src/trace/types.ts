@@ -60,11 +60,7 @@ export interface PlaneQueryTraceSummary {
   pointCount: number;
   resultPathCount: number;
   resultPointCount: number;
-  solver?:
-    | PlaneGamutSolver
-    | 'contrast-hybrid'
-    | 'contrast-legacy-uniform'
-    | 'contrast-legacy-adaptive';
+  solver?: PlaneGamutSolver | 'contrast-hybrid';
   degradedReason?: ContrastHybridDegradedReason;
   samplingMode?: 'analytic' | 'uniform' | 'adaptive' | 'hybrid';
   viewportRelation?: PlaneViewportRelation;
