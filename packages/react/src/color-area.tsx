@@ -13,6 +13,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { assignRef } from './assign-ref.js';
 import { useColorStoreSelector } from './color-store.js';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
@@ -255,6 +256,22 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
 
     const areaRef = useRef<HTMLDivElement>(null);
     const [areaNode, setAreaNode] = useState<HTMLDivElement | null>(null);
+    // Memoized callback ref: an inline ref is detached and reattached on
+    // every commit, churning `areaNode` state and consumer refs each render.
+    const setAreaRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        areaRef.current = node;
+        setAreaNode(node);
+        const detachForwarded = assignRef(ref, node);
+        return () => {
+          areaRef.current = null;
+          setAreaNode(null);
+          detachForwarded();
+        };
+      },
+      [ref],
+    );
+    const detachWindowListenersRef = useRef<(() => void) | null>(null);
     const warnedMultiThumbRef = useRef(false);
     const warnedAxesRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -562,25 +579,25 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       };
     }, [areaNode, refreshRect]);
 
-    useEffect(() => {
-      if (typeof window === 'undefined') {
-        return;
-      }
-      const onScroll = () => {
-        if (isDraggingRef.current) {
-          refreshRect();
-        }
-      };
-      window.addEventListener('scroll', onScroll, true);
-      return () => {
-        window.removeEventListener('scroll', onScroll, true);
-      };
-    }, [refreshRect]);
+    const stopWindowTracking = useCallback(() => {
+      const detach = detachWindowListenersRef.current;
+      detachWindowListenersRef.current = null;
+      detach?.();
+    }, []);
 
-    useEffect(() => {
+    /**
+     * Window listeners are attached only for the lifetime of a drag so idle
+     * areas cost nothing per pointer move or scroll anywhere on the page.
+     */
+    const startWindowTracking = useCallback(() => {
+      stopWindowTracking();
       if (typeof window === 'undefined') {
         return;
       }
+
+      const onScroll = () => {
+        refreshRect();
+      };
 
       const onWindowPointerMove = (event: PointerEvent) => {
         if (!isDraggingRef.current) {
@@ -640,6 +657,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         activePointerIdRef.current = null;
         isDraggingRef.current = false;
         setIsDragging(false);
+        stopWindowTracking();
         flushPendingPositionRef.current(true);
       };
 
@@ -652,13 +670,17 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       window.addEventListener('pointercancel', endWindowDrag, {
         passive: true,
       });
+      window.addEventListener('scroll', onScroll, true);
 
-      return () => {
+      detachWindowListenersRef.current = () => {
         window.removeEventListener('pointermove', onWindowPointerMove);
         window.removeEventListener('pointerup', endWindowDrag);
         window.removeEventListener('pointercancel', endWindowDrag);
+        window.removeEventListener('scroll', onScroll, true);
       };
-    }, []);
+    }, [refreshRect, stopWindowTracking]);
+
+    useEffect(() => stopWindowTracking, [stopWindowTracking]);
 
     const onRootPointerDown = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -677,6 +699,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         lastCommitTsRef.current = 0;
         lastNormRef.current = null;
         refreshRect();
+        startWindowTracking();
         if ('setPointerCapture' in event.currentTarget) {
           event.currentTarget.setPointerCapture(event.pointerId);
         }
@@ -688,7 +711,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
 
         commitFromPosition(clientX, clientY, { force: true });
       },
-      [commitFromPosition, onPointerDown, refreshRect],
+      [commitFromPosition, onPointerDown, refreshRect, startWindowTracking],
     );
 
     const onRootPointerMove = useCallback(
@@ -728,9 +751,10 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         activePointerIdRef.current = null;
         isDraggingRef.current = false;
         setIsDragging(false);
+        stopWindowTracking();
         flushPendingPosition(true);
       },
-      [onPointerUp, flushPendingPosition],
+      [onPointerUp, flushPendingPosition, stopWindowTracking],
     );
 
     const onRootPointerCancel = useCallback(
@@ -742,9 +766,10 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         activePointerIdRef.current = null;
         isDraggingRef.current = false;
         setIsDragging(false);
+        stopWindowTracking();
         flushPendingPosition(true);
       },
-      [onPointerCancel, flushPendingPosition],
+      [onPointerCancel, flushPendingPosition, stopWindowTracking],
     );
 
     const { explicitThumbCount, resolvedThumb, resolvedChildren } =
@@ -808,15 +833,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       <ColorAreaContext.Provider value={contextValue}>
         <div
           {...props}
-          ref={(node) => {
-            areaRef.current = node;
-            setAreaNode(node);
-            if (typeof ref === 'function') {
-              ref(node);
-            } else if (ref) {
-              ref.current = node;
-            }
-          }}
+          ref={setAreaRef}
           data-color-area=""
           data-dragging={isDragging || undefined}
           data-performance-profile={performanceProfile}

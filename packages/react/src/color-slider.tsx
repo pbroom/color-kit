@@ -9,6 +9,7 @@ import {
   forwardRef,
   type HTMLAttributes,
 } from 'react';
+import { assignRef } from './assign-ref.js';
 import { useColorStoreSelector } from './color-store.js';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
@@ -31,6 +32,11 @@ import {
 interface PointerSnapshot {
   clientX: number;
   clientY: number;
+}
+
+interface SliderGeometry {
+  rect: DOMRect;
+  positionInset: number;
 }
 
 function getSliderPositionInset(element: HTMLElement): number {
@@ -102,6 +108,12 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       onChangeRequested: onChangeRequestedProp,
       dragEpsilon = 0.0005,
       maxPointerRate = 60,
+      onPointerDown: onPointerDownProp,
+      onPointerMove: onPointerMoveProp,
+      onPointerUp: onPointerUpProp,
+      onPointerCancel: onPointerCancelProp,
+      onLostPointerCapture: onLostPointerCaptureProp,
+      onKeyDown: onKeyDownProp,
       ...props
     },
     ref,
@@ -122,6 +134,26 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     }
 
     const sliderRef = useRef<HTMLDivElement>(null);
+    const [sliderNode, setSliderNode] = useState<HTMLDivElement | null>(null);
+    const setRootRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        sliderRef.current = node;
+        setSliderNode(node);
+        const detachForwarded = assignRef(ref, node);
+        return () => {
+          sliderRef.current = null;
+          setSliderNode(null);
+          detachForwarded();
+        };
+      },
+      [ref],
+    );
+    /**
+     * Layout read once per drag (and on resize/scroll), not per pointer frame:
+     * `getBoundingClientRect` + `getComputedStyle` force style/layout.
+     */
+    const geometryRef = useRef<SliderGeometry | null>(null);
+    const detachScrollListenerRef = useRef<(() => void) | null>(null);
 
     const [isDragging, setIsDragging] = useState(false);
     const isDraggingRef = useRef(false);
@@ -142,13 +174,27 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       lastCommittedNormRef.current = norm;
     }, [norm]);
 
+    const refreshGeometry = useCallback((): SliderGeometry | null => {
+      const element = sliderRef.current;
+      if (!element) {
+        geometryRef.current = null;
+        return null;
+      }
+
+      const geometry: SliderGeometry = {
+        rect: element.getBoundingClientRect(),
+        positionInset: getSliderPositionInset(element),
+      };
+      geometryRef.current = geometry;
+      return geometry;
+    }, []);
+
     const resolvePointerNorm = useCallback(
       (clientX: number, clientY: number): number | null => {
-        const element = sliderRef.current;
-        if (!element) return null;
+        const geometry = geometryRef.current ?? refreshGeometry();
+        if (!geometry) return null;
 
-        const rect = element.getBoundingClientRect();
-        const positionInset = getSliderPositionInset(element);
+        const { rect, positionInset } = geometry;
 
         return normalizeColorSliderPointer(
           orientation,
@@ -158,7 +204,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           positionInset,
         );
       },
-      [orientation],
+      [orientation, refreshGeometry],
     );
 
     const commitNorm = useCallback(
@@ -258,19 +304,58 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       [schedulePendingPointerFrame],
     );
 
+    const stopScrollTracking = useCallback(() => {
+      const detach = detachScrollListenerRef.current;
+      detachScrollListenerRef.current = null;
+      detach?.();
+    }, []);
+
     const beginDragging = useCallback(() => {
       setIsDragging(true);
       isDraggingRef.current = true;
-    }, []);
+      refreshGeometry();
+
+      stopScrollTracking();
+      if (typeof window !== 'undefined') {
+        // Scrolling moves the slider under a captured pointer; re-measure.
+        const onScroll = () => {
+          refreshGeometry();
+        };
+        window.addEventListener('scroll', onScroll, true);
+        detachScrollListenerRef.current = () => {
+          window.removeEventListener('scroll', onScroll, true);
+        };
+      }
+    }, [refreshGeometry, stopScrollTracking]);
 
     const endDragging = useCallback(() => {
       setIsDragging(false);
       isDraggingRef.current = false;
       stopPointerFrame();
-    }, [stopPointerFrame]);
+      stopScrollTracking();
+    }, [stopPointerFrame, stopScrollTracking]);
+
+    useEffect(() => {
+      if (!sliderNode || typeof ResizeObserver === 'undefined') {
+        return;
+      }
+
+      const observer = new ResizeObserver(() => {
+        geometryRef.current = null;
+      });
+      observer.observe(sliderNode);
+      return () => {
+        observer.disconnect();
+      };
+    }, [sliderNode]);
 
     const onPointerDown = useCallback(
-      (event: ReactPointerEvent) => {
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onPointerDownProp?.(event);
+        if (event.defaultPrevented) {
+          return;
+        }
+
         event.preventDefault();
         beginDragging();
 
@@ -285,19 +370,50 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         lastCommittedNormRef.current = nextNorm;
         lastPointerCommitTsRef.current = performance.now();
       },
-      [beginDragging, commitNorm, resolvePointerNorm],
+      [beginDragging, commitNorm, onPointerDownProp, resolvePointerNorm],
     );
 
     const onPointerMove = useCallback(
-      (event: ReactPointerEvent) => {
-        if (!isDraggingRef.current) return;
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onPointerMoveProp?.(event);
+        if (event.defaultPrevented || !isDraggingRef.current) return;
         queuePointerUpdate(event.clientX, event.clientY);
       },
-      [queuePointerUpdate],
+      [onPointerMoveProp, queuePointerUpdate],
+    );
+
+    // Drag end always runs so a consumer handler can never strand a drag.
+    const onPointerUp = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onPointerUpProp?.(event);
+        endDragging();
+      },
+      [endDragging, onPointerUpProp],
+    );
+
+    const onPointerCancel = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onPointerCancelProp?.(event);
+        endDragging();
+      },
+      [endDragging, onPointerCancelProp],
+    );
+
+    const onLostPointerCapture = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        onLostPointerCaptureProp?.(event);
+        endDragging();
+      },
+      [endDragging, onLostPointerCaptureProp],
     );
 
     const onKeyDown = useCallback(
-      (event: ReactKeyboardEvent) => {
+      (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        onKeyDownProp?.(event);
+        if (event.defaultPrevented) {
+          return;
+        }
+
         const step = event.shiftKey ? 0.1 : 0.01;
         const newColor: Color | null = colorFromColorSliderKey(
           requested,
@@ -315,30 +431,15 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           });
         }
       },
-      [channel, requested, r, setRequested],
-    );
-
-    const setRootRef = useCallback(
-      (node: HTMLDivElement | null) => {
-        sliderRef.current = node;
-
-        if (typeof ref === 'function') {
-          ref(node);
-          return;
-        }
-
-        if (ref) {
-          ref.current = node;
-        }
-      },
-      [ref],
+      [channel, onKeyDownProp, requested, r, setRequested],
     );
 
     useEffect(() => {
       return () => {
         stopPointerFrame();
+        stopScrollTracking();
       };
-    }, [stopPointerFrame]);
+    }, [stopPointerFrame, stopScrollTracking]);
 
     const isHorizontal = orientation === 'horizontal';
     const defaultLabel = `${getColorSliderLabel(channel)} slider`;
@@ -374,9 +475,9 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           tabIndex={0}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={endDragging}
-          onPointerCancel={endDragging}
-          onLostPointerCapture={endDragging}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+          onLostPointerCapture={onLostPointerCapture}
           onKeyDown={onKeyDown}
           style={{
             position: 'relative',
