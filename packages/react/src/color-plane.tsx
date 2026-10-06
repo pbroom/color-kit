@@ -7,6 +7,7 @@ import {
   useState,
   type CanvasHTMLAttributes,
 } from 'react';
+import { assignRef } from './assign-ref.js';
 import { useColorStoreSelector } from './color-store.js';
 import { type Color, type GamutTarget } from '@color-kit/core';
 import { colorFromColorAreaPosition } from '@color-kit/driver';
@@ -80,6 +81,15 @@ interface WebglUniforms {
   gamut: WebGLUniformLocation;
   edgeBehavior: WebGLUniformLocation;
 }
+
+type CanvasContextKind = 'webgl' | '2d' | null;
+
+const WEBGL_CONTEXT_ATTRIBUTES: WebGLContextAttributes = {
+  antialias: false,
+  alpha: true,
+  premultipliedAlpha: false,
+  preserveDrawingBuffer: true,
+};
 
 interface WebglState {
   gl: WebGLRenderingContext;
@@ -205,15 +215,8 @@ function resolveRenderer(
   return renderer;
 }
 
-function createWebglState(canvas: HTMLCanvasElement): WebglState | null {
-  const gl = canvas.getContext('webgl', {
-    antialias: false,
-    alpha: true,
-    premultipliedAlpha: false,
-    preserveDrawingBuffer: true,
-  });
-
-  if (!gl) {
+function createWebglState(gl: WebGLRenderingContext): WebglState | null {
+  if (gl.isContextLost()) {
     return null;
   }
 
@@ -407,9 +410,36 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
     const [canvasNode, setCanvasNode] = useState<HTMLCanvasElement | null>(
       null,
     );
+    // Memoized callback ref: an inline ref is detached and reattached on every
+    // commit, which used to tear down the WebGL program on each drag frame.
+    // Per-canvas resources live in effects keyed on `canvasNode` instead.
+    const setCanvasRef = useCallback(
+      (node: HTMLCanvasElement | null) => {
+        canvasRef.current = node;
+        setCanvasNode(node);
+        const detachForwarded = assignRef(ref, node);
+        return () => {
+          canvasRef.current = null;
+          setCanvasNode(null);
+          detachForwarded();
+        };
+      },
+      [ref],
+    );
     const webglStateRef = useRef<WebglState | null>(null);
     const gpuUnavailableRef = useRef(false);
     const lastRenderKeyRef = useRef<string | null>(null);
+    /**
+     * A canvas is locked to the first context kind requested from it, so the
+     * cpu fallback cannot draw into a canvas that already holds a WebGL
+     * context (and vice versa). Switching paths remounts the canvas element.
+     */
+    const canvasContextKindRef = useRef<CanvasContextKind>(null);
+    const [canvasGeneration, setCanvasGeneration] = useState(0);
+    /** Canvas whose WebGL context is lost; cpu renders until it is restored. */
+    const [lostCanvas, setLostCanvas] = useState<HTMLCanvasElement | null>(
+      null,
+    );
     const [activeRenderer, setActiveRenderer] =
       useState<ActiveColorPlaneRenderer>(
         BENCHMARK_SELECTED_COLOR_PLANE_RENDERER,
@@ -510,11 +540,32 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       if (lastRenderKeyRef.current === renderKey) {
         return;
       }
+
+      const wantsGpu =
+        resolvedRenderer === 'gpu' &&
+        !gpuUnavailableRef.current &&
+        lostCanvas === null;
+      const requiredKind: CanvasContextKind = wantsGpu ? 'webgl' : '2d';
+      if (
+        canvasContextKindRef.current !== null &&
+        canvasContextKindRef.current !== requiredKind
+      ) {
+        // The canvas is locked to the other context kind; remount a fresh
+        // canvas element and render into it on the next pass.
+        destroyWebglState(webglStateRef.current);
+        webglStateRef.current = null;
+        setCanvasGeneration((generation) => generation + 1);
+        return;
+      }
       lastRenderKeyRef.current = renderKey;
 
-      if (resolvedRenderer === 'gpu' && !gpuUnavailableRef.current) {
+      if (wantsGpu) {
         if (!webglStateRef.current) {
-          webglStateRef.current = createWebglState(canvas);
+          const gl = canvas.getContext('webgl', WEBGL_CONTEXT_ATTRIBUTES);
+          if (gl) {
+            canvasContextKindRef.current = 'webgl';
+            webglStateRef.current = createWebglState(gl);
+          }
         }
 
         if (
@@ -532,6 +583,13 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
         }
 
         gpuUnavailableRef.current = true;
+        if (canvasContextKindRef.current === 'webgl') {
+          destroyWebglState(webglStateRef.current);
+          webglStateRef.current = null;
+          lastRenderKeyRef.current = null;
+          setCanvasGeneration((generation) => generation + 1);
+          return;
+        }
       }
 
       const pixels = renderPixels(
@@ -546,11 +604,13 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
 
       const canvasOk = drawWithCanvas2d(canvas, pixels);
       if (canvasOk) {
+        canvasContextKindRef.current = '2d';
         setActiveRenderer('cpu');
       }
     }, [
       axes,
       displayGamut,
+      lostCanvas,
       requested,
       resolvedRenderer,
       resolvedEdgeBehavior,
@@ -558,7 +618,64 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       syncCanvasSize,
     ]);
 
+    // Per-canvas lifecycle, keyed on the mounted element (not on renders):
+    // reset render bookkeeping for a new canvas, watch for WebGL context loss,
+    // and free GPU resources when the element goes away.
     useEffect(() => {
+      if (!canvasNode) {
+        return;
+      }
+
+      canvasContextKindRef.current = null;
+      lastRenderKeyRef.current = null;
+
+      const onContextLost = (event: Event) => {
+        // Opt in to restoration; without this the context stays lost.
+        event.preventDefault();
+        // GPU resources died with the context.
+        webglStateRef.current = null;
+        lastRenderKeyRef.current = null;
+        setLostCanvas(canvasNode);
+      };
+
+      canvasNode.addEventListener('webglcontextlost', onContextLost);
+      return () => {
+        canvasNode.removeEventListener('webglcontextlost', onContextLost);
+        const state = webglStateRef.current;
+        if (state && state.gl.canvas === canvasNode) {
+          destroyWebglState(state);
+          webglStateRef.current = null;
+        }
+      };
+    }, [canvasNode]);
+
+    // While the context is lost the plane renders through the cpu path on a
+    // fresh canvas. Once the browser restores it, return to the gpu path.
+    useEffect(() => {
+      if (!lostCanvas) {
+        return;
+      }
+
+      const onContextRestored = () => {
+        gpuUnavailableRef.current = false;
+        lastRenderKeyRef.current = null;
+        setLostCanvas(null);
+      };
+
+      lostCanvas.addEventListener('webglcontextrestored', onContextRestored);
+      return () => {
+        lostCanvas.removeEventListener(
+          'webglcontextrestored',
+          onContextRestored,
+        );
+      };
+    }, [lostCanvas]);
+
+    useEffect(() => {
+      if (!canvasNode) {
+        return;
+      }
+
       const frame = window.requestAnimationFrame(() => {
         renderPlane();
       });
@@ -566,7 +683,7 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       return () => {
         window.cancelAnimationFrame(frame);
       };
-    }, [renderPlane]);
+    }, [canvasNode, renderPlane]);
 
     useEffect(() => {
       if (!canvasNode || typeof ResizeObserver === 'undefined') {
@@ -583,31 +700,11 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       };
     }, [canvasNode, renderPlane, syncCanvasSize]);
 
-    useEffect(() => {
-      return () => {
-        destroyWebglState(webglStateRef.current);
-        webglStateRef.current = null;
-      };
-    }, []);
-
     return (
       <canvas
         {...props}
-        ref={(node) => {
-          if (canvasRef.current !== node) {
-            lastRenderKeyRef.current = null;
-            destroyWebglState(webglStateRef.current);
-            webglStateRef.current = null;
-            gpuUnavailableRef.current = false;
-          }
-          canvasRef.current = node;
-          setCanvasNode(node);
-          if (typeof ref === 'function') {
-            ref(node);
-          } else if (ref) {
-            ref.current = node;
-          }
-        }}
+        key={canvasGeneration}
+        ref={setCanvasRef}
         data-color-area-plane=""
         data-source={source}
         data-renderer={activeRenderer}
