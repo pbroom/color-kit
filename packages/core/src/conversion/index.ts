@@ -10,6 +10,7 @@
 import { Hct as MaterialHct } from '@material/material-color-utilities';
 import type { Color, Rgb, Hsl, Hsv, Hct, Oklab, Oklch, P3 } from '../types.js';
 import { round } from '../utils/index.js';
+import { withP3Hint } from '../utils/space-hint.js';
 
 import { assertFinite } from './finite.js';
 import { rgbToHex, hexToRgb } from './srgb.js';
@@ -240,7 +241,10 @@ export function toCss(color: Color, format: CssColorFormat = 'hex'): string {
     }
     default:
       throw new TypeError(
-        `toCss: unknown format "${String(format)}" (expected hex, rgb, hsl, oklch, oklab or display-p3)`,
+        withP3Hint(
+          `toCss: unknown format "${String(format)}" (expected hex, rgb, hsl, oklch, oklab or display-p3)`,
+          format,
+        ),
       );
   }
 }

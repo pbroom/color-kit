@@ -1,4 +1,5 @@
 import { toP3Gamut, toSrgbGamut } from '../../gamut/index.js';
+import { assertGamutTarget } from '../../gamut/target.js';
 import { colorToPlane } from '../mapping.js';
 import { requireGamutField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
@@ -22,6 +23,7 @@ export function getPlaneFallbackPoint(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneFallbackPointQuery, 'kind'>,
 ): PlaneFallbackPointResult {
+  assertGamutTarget(query.gamut, 'fallbackPoint()');
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const color = withFiniteHue(query.color);
   const mapped =

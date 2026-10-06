@@ -1,6 +1,7 @@
 import type { Color } from '../types.js';
 import { clamp, normalizeHue } from '../utils/index.js';
 import { isInTargetGamut } from './membership.js';
+import { assertGamutTarget } from './target.js';
 import {
   DEFAULT_MAX_CHROMA,
   DEFAULT_MAX_ITERATIONS,
@@ -30,6 +31,7 @@ export function maxChromaAt(
     maxChroma = DEFAULT_MAX_CHROMA,
     alpha = 1,
   } = options;
+  assertGamutTarget(gamut, 'maxChromaAt()');
 
   const l = clamp(lightness, 0, 1);
   if (l <= 0 || l >= 1) return 0;

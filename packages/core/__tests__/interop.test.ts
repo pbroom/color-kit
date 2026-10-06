@@ -487,13 +487,13 @@ describe('packColors / unpackColors', () => {
       RangeError,
     );
     expect(() => packColors(colors, 'rgb' as ArraySpace, undefined)).toThrow(
-      RangeError,
+      TypeError,
     );
     expect(() =>
       unpackColors(new Float32Array(6), 'srgb', { count: 3 }),
     ).toThrow(RangeError);
     expect(() =>
       unpackColors(new Float32Array(6), 'toString' as ArraySpace),
-    ).toThrow(RangeError);
+    ).toThrow(TypeError);
   });
 });

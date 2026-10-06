@@ -383,7 +383,7 @@ const d = toSvgPath(boundary.points, {
 
 `display-p3` is the same identifier used by gamut options such as
 `gamutBoundary({ gamut: 'display-p3' })`, `mix(..., { space: 'display-p3' })`,
-and `toCss(color, 'display-p3')`. Unknown models throw a `TypeError`.
+and `toCss(color, 'display-p3')`. Unknown models throw a `TypeError`. The old `'p3'` spelling is not an alias: every API that takes a model, space, gamut, or format throws a `TypeError` saying `'p3' is not supported; use 'display-p3'`.
 
 Internally, query computation remains canonical in OKLCH. Mapping helpers (`colorToPlane`, `planeToColor`, `projectRegionBetweenPlanes`, `fallbackPoint`, `gradient`) convert through model adapters, while LC-specific geometry queries remain capability-gated.
 
