@@ -40,3 +40,21 @@ export function Palette() {
 - `setActiveGamut(gamut)` / `setActiveView(view)`
 - `addColor(id, color)` / `removeColor(id)` / `renameColor(id, nextId)`
 - `select(id)`
+
+## Controlled mode and `onChange`
+
+Pass `state` and `onChange` to own the collection yourself. `onChange` fires synchronously inside the operation call, before React re-renders, in both controlled and uncontrolled modes, and is skipped for no-op operations.
+
+Several operations in one tick compose: each `event.next` builds on the previous one, even before your new `state` prop arrives. After React re-renders, the `state` you committed becomes the base for later operations, so an update you ignore (by not passing it back) is not carried into the next one.
+
+```tsx
+const [state, setState] = useState(initialState);
+const colors = useMultiColor({
+  state,
+  onChange: (event) => setState(event.next),
+});
+
+// Both edits land, in order.
+colors.setChannel('base', 'l', 0.4);
+colors.setChannel('accent', 'h', 210);
+```

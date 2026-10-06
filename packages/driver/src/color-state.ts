@@ -145,3 +145,97 @@ export function colorsEqual(a: Color, b: Color, epsilon: number = 0): boolean {
     Math.abs(a.alpha - b.alpha) <= epsilon
   );
 }
+
+// Single-color reducers. Each returns the input state unchanged (same
+// reference) when the operation is a no-op, so callers can cheaply skip
+// redundant commits and change notifications.
+
+/**
+ * Replaces the requested color, re-deriving displayed colors and gamut flags
+ * while keeping the active gamut/view and gamut mapping method
+ * (`state.meta.gamutMapMethod`, unless `options.gamutMapMethod` overrides it).
+ * No-op when the requested color and source are unchanged.
+ */
+export function setColorRequested(
+  state: ColorState,
+  requested: Color,
+  source: ColorSource,
+  options: MapDisplayedColorsOptions = {},
+): ColorState {
+  if (
+    colorsEqual(state.requested, requested, 0) &&
+    state.meta.source === source
+  ) {
+    return state;
+  }
+
+  return createColorState(requested, {
+    activeGamut: state.activeGamut,
+    activeView: state.activeView,
+    source,
+    gamutMapMethod: options.gamutMapMethod ?? state.meta.gamutMapMethod,
+  });
+}
+
+/**
+ * Sets one requested channel. No-op when the channel already holds `value`
+ * (regardless of source). `options` is forwarded to `setColorRequested`.
+ */
+export function setColorChannel(
+  state: ColorState,
+  channel: ColorChannel,
+  value: number,
+  source: ColorSource,
+  options: MapDisplayedColorsOptions = {},
+): ColorState {
+  if (state.requested[channel] === value) {
+    return state;
+  }
+
+  return setColorRequested(
+    state,
+    { ...state.requested, [channel]: value },
+    source,
+    options,
+  );
+}
+
+/**
+ * Switches the active display gamut without touching requested/displayed
+ * values. No-op when both gamut and source are unchanged.
+ */
+export function setColorActiveGamut(
+  state: ColorState,
+  gamut: GamutTarget,
+  source: ColorSource,
+): ColorState {
+  if (state.activeGamut === gamut && state.meta.source === source) {
+    return state;
+  }
+
+  return {
+    ...state,
+    activeGamut: gamut,
+    meta: { ...state.meta, source },
+  };
+}
+
+/**
+ * Switches the active view model without touching requested/displayed
+ * values. No-op when both view and source are unchanged.
+ */
+export function setColorActiveView(
+  state: ColorState,
+  view: ViewModel,
+  source: ColorSource,
+): ColorState {
+  if (state.activeView === view && state.meta.source === source) {
+    return state;
+  }
+
+  return {
+    ...state,
+    activeView: view,
+    meta: { ...state.meta, source },
+  };
+}
