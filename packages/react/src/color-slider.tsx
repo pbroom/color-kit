@@ -18,12 +18,14 @@ import {
   colorFromColorSliderPosition,
   getColorSliderLabel,
   getColorSliderThumbPosition,
+  getColorSliderValueText,
   normalizeColorSliderPointer,
   resolveColorSliderRange,
   type ColorSliderChannel,
   type ColorSliderOrientation,
 } from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
+import { useFocusVisible } from './use-focus-visible.js';
 import {
   ColorSliderContext,
   type ColorSliderContextValue,
@@ -80,6 +82,31 @@ export interface ColorSliderProps extends Omit<
    * @default 60
    */
   maxPointerRate?: number;
+  /**
+   * Arrow-key step as a ratio of the range.
+   * @default 0.01
+   */
+  stepRatio?: number;
+  /**
+   * PageUp/PageDown and Shift+Arrow step as a ratio of the range.
+   * @default 0.1
+   */
+  largeStepRatio?: number;
+  /**
+   * Wrap keyboard steps around the range ends instead of clamping.
+   * @default true for `h`, false otherwise
+   */
+  wrap?: boolean;
+  /**
+   * Disables pointer and keyboard interaction and removes the slider from the
+   * tab order. Sets `aria-disabled` and `data-disabled`.
+   */
+  disabled?: boolean;
+  /**
+   * Formats `aria-valuetext`. Defaults to channel name plus a unit-aware
+   * value, e.g. "Hue 213°", "Lightness 60%", "Opacity 50%".
+   */
+  getValueText?: (value: number, channel: ColorSliderChannel) => string;
 }
 
 /**
@@ -93,6 +120,12 @@ export interface ColorSliderProps extends Omit<
  * - `[data-channel]` - the channel name (l, c, h, alpha)
  * - `[data-orientation]` - horizontal or vertical
  * - `[data-dragging]` - present while the user is dragging
+ * - `[data-disabled]` - present when `disabled`
+ * - `[data-focus-visible]` - present while focused via keyboard
+ *
+ * Keyboard: Arrow keys step by `stepRatio` (Shift: `largeStepRatio`),
+ * PageUp/PageDown by `largeStepRatio`, Home/End jump to the range ends.
+ * Hue wraps around by default.
  *
  * Data attributes on the thumb (first child):
  * - `[data-color-slider-thumb]` - always present
@@ -108,6 +141,13 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       onChangeRequested: onChangeRequestedProp,
       dragEpsilon = 0.0005,
       maxPointerRate = 60,
+      stepRatio = 0.01,
+      largeStepRatio = 0.1,
+      wrap,
+      disabled = false,
+      getValueText,
+      onFocus: onFocusProp,
+      onBlur: onBlurProp,
       onPointerDown: onPointerDownProp,
       onPointerMove: onPointerMoveProp,
       onPointerUp: onPointerUpProp,
@@ -356,11 +396,14 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     const onPointerDown = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerDownProp?.(event);
-        if (event.defaultPrevented) {
+        if (event.defaultPrevented || disabled) {
           return;
         }
 
+        // preventDefault suppresses the compatibility mousedown (and with it
+        // the default focus), so focus explicitly.
         event.preventDefault();
+        event.currentTarget.focus({ preventScroll: true });
         beginDragging();
 
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -374,7 +417,13 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         lastCommittedNormRef.current = nextNorm;
         lastPointerCommitTsRef.current = performance.now();
       },
-      [beginDragging, commitNorm, onPointerDownProp, resolvePointerNorm],
+      [
+        beginDragging,
+        commitNorm,
+        disabled,
+        onPointerDownProp,
+        resolvePointerNorm,
+      ],
     );
 
     const onPointerMove = useCallback(
@@ -411,20 +460,25 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       [endDragging, onLostPointerCaptureProp],
     );
 
+    const { focusVisible, onFocus, onBlur, markKeyboardInteraction } =
+      useFocusVisible<HTMLDivElement>(onFocusProp, onBlurProp);
+
     const onKeyDown = useCallback(
       (event: ReactKeyboardEvent<HTMLDivElement>) => {
         onKeyDownProp?.(event);
-        if (event.defaultPrevented) {
+        markKeyboardInteraction(event);
+        if (event.defaultPrevented || disabled) {
           return;
         }
 
-        const step = event.shiftKey ? 0.1 : 0.01;
+        const step = event.shiftKey ? largeStepRatio : stepRatio;
         const newColor: Color | null = colorFromColorSliderKey(
           requested,
           channel,
           event.key,
           step,
           r,
+          { largeStepRatio, wrap },
         );
 
         if (newColor) {
@@ -435,7 +489,18 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           });
         }
       },
-      [channel, onKeyDownProp, requested, r, setRequested],
+      [
+        channel,
+        disabled,
+        largeStepRatio,
+        markKeyboardInteraction,
+        onKeyDownProp,
+        requested,
+        r,
+        setRequested,
+        stepRatio,
+        wrap,
+      ],
     );
 
     useEffect(() => {
@@ -447,6 +512,12 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     const isHorizontal = orientation === 'horizontal';
     const defaultLabel = `${getColorSliderLabel(channel)} slider`;
+    const value = requested[channel];
+    const valueText =
+      props['aria-valuetext'] ??
+      (getValueText
+        ? getValueText(value, channel)
+        : getColorSliderValueText(channel, value));
     const sliderPositionInset = 'var(--ck-slider-position-inset, 0px)';
     const sliderPositionSpan = `calc(100% - (${sliderPositionInset} * 2))`;
 
@@ -470,13 +541,19 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
           data-channel={channel}
           data-orientation={orientation}
           data-dragging={isDragging || undefined}
+          data-disabled={disabled || undefined}
+          data-focus-visible={focusVisible || undefined}
           role="slider"
           aria-label={props['aria-label'] ?? defaultLabel}
-          aria-valuemin={r[0]}
-          aria-valuemax={r[1]}
-          aria-valuenow={requested[channel]}
+          aria-valuemin={Math.min(r[0], r[1])}
+          aria-valuemax={Math.max(r[0], r[1])}
+          aria-valuenow={value}
+          aria-valuetext={valueText}
           aria-orientation={orientation}
-          tabIndex={0}
+          aria-disabled={disabled || undefined}
+          tabIndex={disabled ? undefined : (props.tabIndex ?? 0)}
+          onFocus={onFocus}
+          onBlur={onBlur}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

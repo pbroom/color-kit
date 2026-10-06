@@ -14,9 +14,35 @@ import {
   type ContrastRegionLevel,
   type GamutTarget,
 } from '@color-kit/core';
+import {
+  DEFAULT_LARGE_STEP_RATIO,
+  getChannelValueText,
+  stepRangeValue,
+} from './channel-keys.js';
 
 export type ColorAreaChannel = 'l' | 'c' | 'h';
-export type ColorAreaKey = 'ArrowRight' | 'ArrowLeft' | 'ArrowUp' | 'ArrowDown';
+export type ColorAreaKey =
+  | 'ArrowRight'
+  | 'ArrowLeft'
+  | 'ArrowUp'
+  | 'ArrowDown'
+  | 'PageUp'
+  | 'PageDown'
+  | 'Home'
+  | 'End';
+
+export interface ColorAreaKeyOptions {
+  /**
+   * PageUp/PageDown step as a ratio of the y-axis range.
+   * @default 0.1
+   */
+  largeStepRatio?: number;
+  /**
+   * Wrap hue axes around their range ends instead of clamping.
+   * @default true
+   */
+  wrapHue?: boolean;
+}
 const COLOR_AREA_PLANE_MODEL = 'oklch' as const;
 
 export interface ColorAreaAxis {
@@ -399,55 +425,93 @@ export function getColorAreaFallbackPoint(
   };
 }
 
+/** Axis a ColorArea key acts on, or `null` when the key is not handled. */
+export function getColorAreaKeyAxis(key: string): 'x' | 'y' | null {
+  switch (key as ColorAreaKey) {
+    case 'ArrowRight':
+    case 'ArrowLeft':
+    case 'Home':
+    case 'End':
+      return 'x';
+    case 'ArrowUp':
+    case 'ArrowDown':
+    case 'PageUp':
+    case 'PageDown':
+      return 'y';
+    default:
+      return null;
+  }
+}
+
+/**
+ * Keyboard model for the 2D ColorArea thumb:
+ * - Arrow Left/Right step the x axis; Arrow Up/Down step the y axis, by
+ *   `stepRatio` of the axis range (up moves the thumb up).
+ * - PageUp/PageDown step the y axis by `largeStepRatio`.
+ * - Home/End jump the x axis to its range start/end.
+ *
+ * Hue axes wrap by default; other channels clamp. Returns `null` for keys the
+ * area does not handle.
+ */
 export function colorFromColorAreaKey(
   color: Color,
   axes: ResolvedColorAreaAxes,
   key: string,
   stepRatio: number,
+  options: ColorAreaKeyOptions = {},
 ): Color | null {
-  const xRange = axes.x.range;
-  const yRange = axes.y.range;
-  const xStep = stepRatio * (xRange[1] - xRange[0]);
-  const yStep = stepRatio * (yRange[1] - yRange[0]);
+  const axisKey = getColorAreaKeyAxis(key);
+  if (!axisKey) {
+    return null;
+  }
 
+  const axis = axes[axisKey];
+  const range = axis.range;
+  const span = range[1] - range[0];
+  const wrap = axis.channel === 'h' && (options.wrapHue ?? true);
+  const largeStepRatio = options.largeStepRatio ?? DEFAULT_LARGE_STEP_RATIO;
+  const value = color[axis.channel];
+
+  let next: number;
   switch (key as ColorAreaKey) {
     case 'ArrowRight':
-      return {
-        ...color,
-        [axes.x.channel]: clamp(
-          color[axes.x.channel] + xStep,
-          xRange[0],
-          xRange[1],
-        ),
-      };
-    case 'ArrowLeft':
-      return {
-        ...color,
-        [axes.x.channel]: clamp(
-          color[axes.x.channel] - xStep,
-          xRange[0],
-          xRange[1],
-        ),
-      };
     case 'ArrowUp':
-      return {
-        ...color,
-        [axes.y.channel]: clamp(
-          color[axes.y.channel] + yStep,
-          yRange[0],
-          yRange[1],
-        ),
-      };
+      next = stepRangeValue(value, stepRatio * span, range, wrap);
+      break;
+    case 'ArrowLeft':
     case 'ArrowDown':
-      return {
-        ...color,
-        [axes.y.channel]: clamp(
-          color[axes.y.channel] - yStep,
-          yRange[0],
-          yRange[1],
-        ),
-      };
+      next = stepRangeValue(value, -stepRatio * span, range, wrap);
+      break;
+    case 'PageUp':
+      next = stepRangeValue(value, largeStepRatio * span, range, wrap);
+      break;
+    case 'PageDown':
+      next = stepRangeValue(value, -largeStepRatio * span, range, wrap);
+      break;
+    case 'Home':
+      next = range[0];
+      break;
+    case 'End':
     default:
-      return null;
+      next = range[1];
+      break;
   }
+
+  return {
+    ...color,
+    [axis.channel]: next,
+  };
+}
+
+/**
+ * Human-readable `aria-valuetext` for both axes, e.g.
+ * "Lightness 60%, Chroma 0.2".
+ */
+export function getColorAreaValueText(
+  color: Color,
+  axes: ResolvedColorAreaAxes,
+): string {
+  return [axes.x, axes.y]
+    .map((axis) => getChannelValueText(axis.channel, color[axis.channel]))
+    .join(', ');
 }
