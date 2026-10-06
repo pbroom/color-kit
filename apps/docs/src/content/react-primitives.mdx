@@ -17,7 +17,6 @@ import {
   ColorSlider,
   ColorStringInput,
 } from 'color-kit/react';
-import { ColorInput } from 'color-kit/react/color-input';
 
 export function Picker() {
   return (
@@ -25,12 +24,18 @@ export function Picker() {
       <ColorArea />
       <ColorSlider channel="h" />
       <ColorSlider channel="alpha" />
-      <ColorInput model="oklch" channel="h" />
       <ColorStringInput format="oklch" />
     </Color>
   );
 }
 ```
+
+> **ColorInput is not in the published package yet.** The channel input is
+> built on [control-kit](https://github.com/pbroom/control-kit), which is not
+> published to npm, so `color-kit` does not ship a `color-kit/react/color-input`
+> subpath. Inside this monorepo it is available from the
+> `@color-kit/react/color-input` workspace entry; it will return to the
+> published package once control-kit is published.
 
 ## API design goals
 

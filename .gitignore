@@ -3,6 +3,8 @@ node_modules/
 
 # Build outputs
 dist/
+# Copied from the root LICENSE by packages/color-kit/scripts/build.mjs
+packages/color-kit/LICENSE
 *.tsbuildinfo
 !vendor/sandpack/**/dist/
 !vendor/sandpack/**/dist/**
@@ -41,6 +43,9 @@ apps/docs/.vite/
 
 # Codex local workspace files
 .codex/
+
+# Claude Code agent worktrees
+.claude/worktrees/
 
 # Cursor continual-learning hook machine state (checkpoint + transcript index).
 # Not AGENTS learnings — those stay in AGENTS.md / AGENTS.learnings.archive.md.

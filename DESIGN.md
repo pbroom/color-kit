@@ -58,9 +58,9 @@ Display P3 is the **primary** output target; sRGB is the fallback when P3 is not
 
 > **Why:** Wide-gamut displays and CSS `color(display-p3 ...)` adoption make P3 the forward-looking default. Consumers who need sRGB can set `activeGamut: 'srgb'`. The fallback chain is deterministic so behavior is reproducible across environments.
 
-### Zero-dependency core
+### No runtime dependencies
 
-`color-kit` has **no external color library**. All conversion and gamut math is implemented in-house.
+`color-kit` has **no runtime dependencies** and no external color library for conversion or gamut math, which is implemented in-house. The one exception is HCT: core bundles the HCT solver from [Material color utilities](https://github.com/material-foundation/material-color-utilities) (Apache-2.0) at build time, so it ships inside the package rather than as a dependency. Its notice ships in `THIRD_PARTY_NOTICES.md`.
 
 > **Why:** Keeps bundle size minimal and allows full control over precision, gamut mapping behavior, and edge cases (e.g. degenerate L/C/H). Tree-shaking stays effective because consumers only pay for what they import. The main alternative, [culori](https://github.com/nicksrandall/culori), is excellent but would delegate gamut mapping and conversion details; color-kit needs those to stay fixed for the requested/displayed contract and for consistent overlay geometry.
 
@@ -441,7 +441,7 @@ Each feature area has associated test files that must pass before it is consider
 
 | Alternative                                | Decision | Reason                                                                                                                                 |
 | ------------------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **culori for core math**                   | Rejected | Need full control over gamut mapping and precision; zero-dependency core keeps bundle small and behavior predictable.                  |
+| **culori for core math**                   | Rejected | Need full control over gamut mapping and precision; an in-house core keeps bundle small and behavior predictable.                      |
 | **CIELAB as canonical**                    | Rejected | OKLCH/OKLAB are more perceptually uniform and OKLCH is CSS-native.                                                                     |
 | **Lightness-based gamut mapping**          | Rejected | Would change perceived brightness; chroma reduction preserves lightness and hue.                                                       |
 | **Monolithic ColorPicker component**       | Rejected | Composability (Area, Slider, Input, Swatch) supports diverse UIs and keeps each primitive testable and reusable.                       |

@@ -29,7 +29,7 @@ import {
   type SliderHueGradientMode,
   useColor,
 } from 'color-kit/react';
-import { ColorInput } from 'color-kit/react/color-input';
+import { ColorInput } from '@color-kit/react/color-input';
 import * as ColorApi from 'color-kit/driver';
 import {
   useCallback,

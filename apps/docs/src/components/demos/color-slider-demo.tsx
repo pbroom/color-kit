@@ -6,7 +6,7 @@ import {
   useColor,
   useColorContext,
 } from 'color-kit/react';
-import { ColorInput } from 'color-kit/react/color-input';
+import { ColorInput } from '@color-kit/react/color-input';
 import { useEffect, useMemo, useRef } from 'react';
 import { useOptionalDocsInspector } from '../docs-inspector-context.js';
 import {
