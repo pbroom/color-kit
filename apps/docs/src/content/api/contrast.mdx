@@ -221,8 +221,8 @@ const paths = contrastRegionPaths(parse('#ffffff'), 220, {
 
 Engine notes:
 
-- The hybrid engine finds chroma roots of the contrast field at each lightness sample and joins them into paths. When it cannot resolve a field reliably (for example a thin region at the very top or bottom of the lightness range, whose boundary is vertical), it returns its best-effort paths (possibly none) and records `degradedReason` in the query trace summary (`inspectPlaneQuery`). It does not fall back to the legacy engine.
-- The legacy engine extracts marching-squares contours from a sampled grid. It is faster per region and also resolves those thin regions, so `ContrastRegionLayer` uses it.
+- The hybrid engine finds chroma roots of the contrast field at each lightness sample and joins them into paths, strip by strip between neighbouring samples. A path stays connected where the contour folds back in lightness, and ends exactly on the chroma axis or the gamut edge where it meets them (including the vertical boundary of a thin region at the top or bottom of the lightness range). Its paths are the contrast contour only: they do not run along the gamut edge. Open paths start at their lower-lightness end. When it cannot resolve a field reliably, it returns its best-effort paths (possibly none) and records `degradedReason` in the query trace summary (`inspectPlaneQuery`). It does not fall back to the legacy engine.
+- The legacy engine extracts marching-squares contours from a sampled grid, so its paths also follow the gamut edge, and its accuracy is limited by the grid. It is faster per region, so `ContrastRegionLayer` uses it.
 - Legacy `samplingMode` defaults to `'adaptive'` when `adaptiveBaseSteps` or `adaptiveMaxDepth` is set, otherwise `'uniform'`. The `adaptive` grid only applies to the `wcag` metric; APCA uses the `uniform` grid.
 
 ## `contrastRegionPath`

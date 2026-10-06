@@ -544,9 +544,10 @@ describe('contrastRegionPaths()', () => {
         const prev = path[index - 1];
         const next = path[index];
         expect(prev.l === next.l && prev.c === next.c).toBe(false);
-        // Hybrid branches are traced along ascending lightness anchors.
-        expect(next.l + 1e-6).toBeGreaterThanOrEqual(prev.l);
       }
+      // Open paths start at their lower-lightness end. (A contour can fold
+      // back in lightness, so points are not monotonic in between.)
+      expect(path[0].l).toBeLessThanOrEqual(path[path.length - 1].l);
     }
   });
 });

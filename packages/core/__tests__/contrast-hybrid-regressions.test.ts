@@ -194,10 +194,10 @@ describe('hybrid contrast engine regressions', () => {
 
   // Regions that are a thin sliver at the top of the lightness range (every
   // in-gamut chroma passes above some L > 0.98) have a vertical boundary
-  // and no chroma roots, so the hybrid engine still cannot trace them. It
-  // reports that instead of returning a misleading result; the legacy
-  // engine finds them.
-  const unresolved: RegressionCase[] = [
+  // and no chroma roots. The hybrid engine used to report them as degraded
+  // with no paths; it now traces the boundary from the chroma axis to the
+  // gamut edge where the zero-chroma and gamut-edge margins change sign.
+  const thinTop: RegressionCase[] = [
     ...[0, 60, 120, 180, 240, 300].map((hue) => ({
       name: `WCAG 7 at h${hue} on #595959`,
       reference: parse('#595959'),
@@ -228,15 +228,29 @@ describe('hybrid contrast engine regressions', () => {
     },
   ];
 
-  it.each(unresolved.map((testCase) => [testCase.name, testCase] as const))(
-    'reports %s as degraded and the legacy engine finds it',
+  it.each(thinTop.map((testCase) => [testCase.name, testCase] as const))(
+    'traces %s as a vertical boundary that matches the legacy engine',
     (_name, testCase) => {
       const evaluate = margin(testCase);
       expect(evaluate(1, 0)).toBeGreaterThan(0);
 
       const hybrid = inspectHybrid(testCase);
-      expect(hybrid.result.paths).toEqual([]);
-      expect(hybrid.trace.summary.degradedReason).toBeDefined();
+      expect(hybrid.trace.summary.degradedReason).toBeUndefined();
+      expect(hybrid.result.paths).toHaveLength(1);
+      const [path] = hybrid.result.paths;
+      const boundaryL = Math.min(...path.map((point) => point.l));
+      expect(
+        Math.max(...path.map((point) => point.l)) - boundaryL,
+      ).toBeLessThan(1e-4);
+      const chromas = path.map((point) => point.c);
+      expect(Math.min(...chromas)).toBe(0);
+      expect(Math.max(...chromas)).toBeCloseTo(
+        maxChromaAt(boundaryL, testCase.hue, { gamut: 'srgb', maxChroma: 0.4 }),
+        5,
+      );
+      // Just below the boundary nothing passes; just above, the axis does.
+      expect(evaluate(boundaryL - 1e-4, 0)).toBeLessThan(0);
+      expect(evaluate(boundaryL + 1e-4, 0)).toBeGreaterThan(0);
 
       const legacy = inspectPlaneQuery(
         definePlane({ fixed: { h: testCase.hue } }),
@@ -253,6 +267,10 @@ describe('hybrid contrast engine regressions', () => {
       for (const point of legacy.result.paths.flat()) {
         expect(point.l).toBeGreaterThan(0.98);
       }
+      const legacyL = Math.min(
+        ...legacy.result.paths.flat().map((point) => point.l),
+      );
+      expect(Math.abs(legacyL - boundaryL)).toBeLessThan(1e-3);
     },
   );
 });
