@@ -1000,9 +1000,11 @@ export function ContrastRegionLayer({
         computeTimeMs: payload.computeTimeMs,
         pathCount: payload.paths.length,
         pointCount: countPathPoints(payload.paths),
-        lightnessSteps: effectiveLightnessSteps,
-        chromaSteps: effectiveChromaSteps,
-        hybridMaxDepth: effectiveMaxDepth,
+        // Report the sampling the solver ran with: while dragging this is the
+        // frozen idle sampling, not the current quality level's.
+        lightnessSteps: samplingForOptions.lightness,
+        chromaSteps: samplingForOptions.chroma,
+        hybridMaxDepth: samplingForOptions.maxDepth,
         contrastMetric: resolvedContrastMetric,
         backend: payload.backend,
         scheduleReason: payload.scheduleReason,
@@ -1012,13 +1014,13 @@ export function ContrastRegionLayer({
       });
     },
     [
-      effectiveChromaSteps,
-      effectiveLightnessSteps,
-      effectiveMaxDepth,
       isDragging,
       onMetrics,
       resolvedContrastMetric,
       resolvedQuality,
+      samplingForOptions.chroma,
+      samplingForOptions.lightness,
+      samplingForOptions.maxDepth,
     ],
   );
 

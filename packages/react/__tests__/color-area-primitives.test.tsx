@@ -783,6 +783,7 @@ describe('ColorArea primitives', () => {
       [],
     );
 
+    const postedMessages: unknown[] = [];
     class MockWorker {
       private listeners = new Set<(event: MessageEvent<unknown>) => void>();
 
@@ -809,6 +810,7 @@ describe('ColorArea primitives', () => {
       }
 
       postMessage(message: { id: number }): void {
+        postedMessages.push(message);
         const payload = {
           id: message.id,
           result: packContrastRegionWorkerResult([
@@ -904,6 +906,24 @@ describe('ColorArea primitives', () => {
     expect(latest.schedulerBucketCount).toBe(1);
     expect(latest.contrastMetric).toBe('wcag');
     expect(latest.hybridMaxDepth).toBeGreaterThanOrEqual(1);
+    // Metrics report the sampling the solver was asked to run with.
+    const findOption = (value: unknown, key: string): unknown => {
+      if (value == null || typeof value !== 'object') return undefined;
+      if (key in value) return (value as Record<string, unknown>)[key];
+      for (const child of Object.values(value)) {
+        const found = findOption(child, key);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    const lastRequest = postedMessages[postedMessages.length - 1];
+    expect(latest.hybridMaxDepth).toBe(
+      findOption(lastRequest, 'hybridMaxDepth'),
+    );
+    expect(latest.lightnessSteps).toBe(
+      findOption(lastRequest, 'lightnessSteps'),
+    );
+    expect(latest.chromaSteps).toBe(findOption(lastRequest, 'chromaSteps'));
   });
 
   it.each([
