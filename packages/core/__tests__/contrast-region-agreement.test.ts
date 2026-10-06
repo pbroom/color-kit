@@ -33,6 +33,7 @@ function bruteForce(
   referenceHex: string,
   gamut: GamutTarget,
   size = 400,
+  threshold = THRESHOLD,
 ): BruteForce {
   const reference = parse(referenceHex);
   const margins: Array<Array<number | null>> = [];
@@ -46,7 +47,7 @@ function bruteForce(
         c > cMax
           ? null
           : contrastRatio({ l, c, h: hue, alpha: 1 }, reference, { gamut }) -
-              THRESHOLD,
+              threshold,
       );
     }
     margins.push(line);
@@ -227,4 +228,42 @@ describe('contrast regions agree with a brute-force grid', () => {
       expect(maxGap(truth, paths)).toBeLessThan(0.002);
     },
   );
+
+  // A mid-gray reference at 3:1 passes in two separate regions: one darker
+  // and one lighter than the reference. Strip matching must keep their
+  // contours apart instead of joining roots across the failing band.
+  describe.each(
+    [30, 150, 264].flatMap((hue) =>
+      gamuts.map((gamut) => [hue, gamut] as const),
+    ),
+  )('WCAG 3:1 at h%i on #767676 in %s', (hue, gamut) => {
+    const reference = '#767676';
+    const threshold = 3;
+    const truth = bruteForce(hue, reference, gamut, 200, threshold);
+
+    it('has two passing regions', () => {
+      expect(truth.components).toBe(2);
+    });
+
+    it('hybrid traces two separate contours', () => {
+      const paths = contrastRegionPaths(parse(reference), hue, {
+        threshold,
+        gamut,
+      });
+      expect(paths).toHaveLength(2);
+      expect(maxGap(truth, paths)).toBeLessThan(0.002);
+
+      // One contour bounds the darker region and one the lighter region;
+      // neither crosses the failing band around the reference lightness.
+      const referenceL = parse(reference).l;
+      const sides = paths
+        .map((path) => {
+          const below = path.every((point) => point.l < referenceL);
+          const above = path.every((point) => point.l > referenceL);
+          return below ? 'below' : above ? 'above' : 'both';
+        })
+        .sort();
+      expect(sides).toEqual(['above', 'below']);
+    });
+  });
 });
