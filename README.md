@@ -61,7 +61,7 @@ This is the layer that powers gamut visualizations, contrast-safe pickers, and o
 ```typescript
 import { parse, toHex, lighten, contrastRatio, complementary } from 'color-kit';
 
-// Parse any CSS color
+// Parse CSS Color 4 strings: hex, named colors, rgb(), hsl(), lab(), oklch(), color()
 const blue = parse('#3b82f6');
 
 // Manipulate in OKLCH space

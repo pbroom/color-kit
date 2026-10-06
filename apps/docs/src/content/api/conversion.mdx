@@ -54,25 +54,37 @@ const wide = parse('color(display-p3 0 1 0)');
   Returns <code>Color</code>
 </p>
 
-Input is trimmed and lowercased before matching. The supported syntaxes,
-exactly as implemented:
+Input is trimmed and lowercased before matching. `parse` implements the CSS
+Color 4 syntax:
 
-| Syntax                | Examples                                                   | Notes                                                                                            |
-| --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Hex                   | `#f0a`, `#f0a8`, `#ff00aa`, `#ff00aa88`                    | 3, 4, 6, or 8 digits; 4th/8th pair is alpha                                                      |
-| `rgb()` / `rgba()`    | `rgb(59 130 246)`, `rgba(59, 130, 246, 0.5)`               | Comma or space separated; channels clamped to `0–255`; alpha via `/` or `,`, plain number or `%` |
-| `hsl()` / `hsla()`    | `hsl(220 90% 60%)`, `hsla(220, 90%, 60%, 0.5)`             | Optional `deg` on hue; `%` required on saturation and lightness                                  |
-| `oklch()`             | `oklch(0.7 0.15 280)`, `oklch(70% 40% 280 / 80%)`          | `l` accepts number or `%`; `c` as `%` maps `100%` to `0.4`; optional `deg` on hue                |
-| `oklab()`             | `oklab(0.7 0.1 -0.08)`, `oklab(70% 25% -20%)`              | `L` accepts number or `%`; `a`/`b` as `%` map `100%` to `±0.4`                                   |
-| `color(display-p3 …)` | `color(display-p3 0 1 0)`, `color(display-p3 0 1 0 / 50%)` | Channels are `0–1`; converted through linear P3 into the canonical `Color`                       |
+| Syntax                | Examples                                                               | Notes                                                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hex                   | `#f0a`, `#f0a8`, `#ff00aa`, `#ff00aa88`                                | 3, 4, 6, or 8 digits; 4th/8th pair is alpha                                                                                                         |
+| Named colors          | `red`, `rebeccapurple`, `slategrey`, `transparent`                     | All 148 CSS named colors plus `transparent`; `currentcolor` and system colors are not supported                                                     |
+| `rgb()` / `rgba()`    | `rgb(59 130 246)`, `rgb(100% 50% 0% / 50%)`, `rgba(59, 130, 246, 0.5)` | Numbers or `%` (`100%` = `255`); channels clamped to `0–255`                                                                                        |
+| `hsl()` / `hsla()`    | `hsl(220 90% 60%)`, `hsl(220 90 60)`, `hsla(220, 90%, 60%, 0.5)`       | Saturation and lightness as `%` or plain numbers                                                                                                    |
+| `hwb()`               | `hwb(220 10% 20%)`                                                     | Whiteness + blackness `>= 100%` gives a gray                                                                                                        |
+| `lab()` / `lch()`     | `lab(54 -10 -60)`, `lch(54 61 260)`                                    | CIE Lab (D50); `%` maps `100%` to `100` for L, `125` for a/b, `150` for C; L clamped to `0–100`, C to `>= 0`                                        |
+| `oklab()` / `oklch()` | `oklab(0.7 0.1 -0.08)`, `oklch(70% 40% 280 / 80%)`                     | `%` maps `100%` to `1` for L and `0.4` for a/b/C; L clamped to `0–1`, C to `>= 0`                                                                   |
+| `color()`             | `color(display-p3 0 1 0)`, `color(rec2020 0.2 0.8 0.1 / 50%)`          | `srgb`, `srgb-linear`, `display-p3`, `rec2020`, `a98-rgb`, `prophoto-rgb`, `xyz`, `xyz-d65`, `xyz-d50`; `100%` = `1`; values outside `0–1` are kept |
 
-Alpha is always clamped to `[0, 1]` and defaults to `1` when omitted. Any
-string that matches none of these patterns throws
-`Error: Unable to parse color: "..."` &mdash; named colors such as `red` and
-keywords such as `none` are not supported. Malformed input also throws rather
-than producing `NaN` channels: invalid hex digits or lengths (`#gggggg`,
-`#12345`), malformed numbers (`rgb(1.2.3 0 0)`), and components that overflow
-to `Infinity` (`rgb(1e999 0 0)`).
+Shared rules:
+
+- Modern syntax separates components with spaces and alpha with `/`. The
+  legacy comma syntax is accepted for `rgb()`, `rgba()`, `hsl()` and `hsla()`.
+- Hues accept a plain number (degrees) or `deg`, `grad`, `rad`, `turn`, and
+  the parsed hue is normalized to `[0, 360)`.
+- `none` is a missing component and behaves as `0`, as in CSS. It is not
+  allowed in legacy comma syntax.
+- Alpha is clamped to `[0, 1]` and defaults to `1` when omitted.
+- Conversions use the CSS Color 4 matrices in full float64 precision and agree
+  with [colorjs.io](https://colorjs.io) to ~1e-15.
+
+Anything else throws `Error: Unable to parse color: "..."`, including invalid
+hex digits or lengths (`#gggggg`, `#12345`), malformed numbers
+(`rgb(1.2.3 0 0)`), units on the wrong component (`rgb(10deg 0 0)`), unknown
+`color()` spaces, and values that overflow to `Infinity` (`rgb(1e999 0 0)`).
+Relative color syntax (`rgb(from …)`) and `color-mix()` are not supported.
 
 ## `tryParse`
 
