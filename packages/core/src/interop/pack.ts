@@ -29,7 +29,7 @@ const WRITE_KERNELS: Record<ArraySpace, WriteKernel> = {
   linearSrgb: writeLinearSrgb,
   srgb: writeSrgb,
   linearP3: writeLinearP3,
-  p3: writeP3,
+  'display-p3': writeP3,
   oklab: writeOklab,
   oklch: writeOklch,
 };
@@ -38,7 +38,7 @@ const READ_KERNELS: Record<ArraySpace, ReadKernel> = {
   linearSrgb: readLinearSrgb,
   srgb: readSrgb,
   linearP3: readLinearP3,
-  p3: readP3,
+  'display-p3': readP3,
   oklab: readOklab,
   oklch: readOklch,
 };
@@ -86,7 +86,7 @@ function resolveKernel<K>(table: Record<ArraySpace, K>, space: string): K {
  *
  * @param colors - Colors to write, in order.
  * @param space - Channel layout: `'linearSrgb'`, `'srgb'`, `'linearP3'`,
- * `'p3'`, `'oklab'` or `'oklch'`.
+ * `'display-p3'`, `'oklab'` or `'oklch'`.
  * @param out - Destination. When omitted, a `Float32Array` of length
  * `offset + colors.length * stride` is allocated. Throws a `RangeError` if
  * `out` is too short, since typed arrays silently drop out-of-range writes.

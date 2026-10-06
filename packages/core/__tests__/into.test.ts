@@ -226,7 +226,7 @@ describe('mixInto / interpolateInto', () => {
     { space: 'srgb' },
     { space: 'linear-srgb' },
     { space: 'linear-srgb', premultiplied: false },
-    { space: 'p3' },
+    { space: 'display-p3' },
     { space: 'linear-p3' },
   ];
   const T_VALUES = [-0.25, 0, 0.3, 0.5, 1, 1.5];
@@ -289,7 +289,7 @@ describe('re-entrant accessors', () => {
     fromP3({ r: 0.1, g: 0.9, b: 0.4, alpha: 0.5 });
     toSrgbGamut(OTHER);
     toP3Gamut(OTHER);
-    mix(OTHER, OTHER_2, 0.3, { space: 'p3' });
+    mix(OTHER, OTHER_2, 0.3, { space: 'display-p3' });
     mix(OTHER, OTHER_2, 0.6, { space: 'oklch', hue: 'longer' });
   }
 

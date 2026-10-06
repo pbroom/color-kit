@@ -27,7 +27,11 @@ export const DEMO_ROWS: DemoRow[] = [
     label: "{ space: 'linear-srgb' }",
     options: { space: 'linear-srgb' },
   },
-  { id: 'p3', label: "{ space: 'p3' }", options: { space: 'p3' } },
+  {
+    id: 'display-p3',
+    label: "{ space: 'display-p3' }",
+    options: { space: 'display-p3' },
+  },
 ];
 
 /** A stepped ramp from `a` to `b`. */

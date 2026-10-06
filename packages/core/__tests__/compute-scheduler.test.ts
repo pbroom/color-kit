@@ -55,7 +55,7 @@ const contrastSchedulerRequest: PlaneComputeRequest = {
 
 const gamutRegionSchedulerRequest: PlaneComputeRequest = {
   plane: {
-    model: 'p3',
+    model: 'display-p3',
     x: { channel: 'r', range: [0, 1] },
     y: { channel: 'g', range: [1, 0] },
     fixed: { b: 1, alpha: 1 },
@@ -235,7 +235,7 @@ describe('plane compute scheduler', () => {
 
     expect(
       bucketKeys.some((key) =>
-        key.includes('gamutRegion:srgb:viewport:p3:r/g'),
+        key.includes('gamutRegion:srgb:viewport:display-p3:r/g'),
       ),
     ).toBe(true);
     expect(
@@ -338,7 +338,7 @@ describe('plane compute scheduler', () => {
     expect(response.debugTrace?.queries).toHaveLength(1);
     expect(response.debugTrace?.queries[0].summary.backend).toBe('js');
     expect(response.debugTrace?.queries[0].summary.bucketKey).toContain(
-      'gamutRegion:srgb:viewport:p3:r/g',
+      'gamutRegion:srgb:viewport:display-p3:r/g',
     );
     expect(response.debugTrace?.queries[0].summary.scheduleReason).toBe(
       'default-js',

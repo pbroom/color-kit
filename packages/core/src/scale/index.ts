@@ -30,7 +30,7 @@ import {
  * @param t - Interpolation position; values outside `[0, 1]` extrapolate
  * @param options - Interpolation space, hue method, and alpha handling
  * @param options.space - `'oklch'` (default), `'oklab'`, `'srgb'`,
- *   `'linear-srgb'`, `'p3'`, or `'linear-p3'`
+ *   `'linear-srgb'`, `'display-p3'`, or `'linear-p3'`
  * @param options.hue - Hue arc for polar spaces (default `'shorter'`)
  * @param options.premultiplied - Premultiply alpha (default `true` for
  *   rectangular spaces, `false` for `'oklch'`)

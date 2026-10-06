@@ -42,10 +42,8 @@ export type {
 } from '../trace/types.js';
 
 /**
- * Color models supported by plane geometry.
- *
- * The legacy `display-p3` token remains accepted and resolves to the canonical
- * `p3` model.
+ * Color models supported by plane geometry. `display-p3` is gamma-encoded
+ * Display P3, named after CSS `color(display-p3 …)`.
  */
 export type PlaneModel =
   | 'oklch'
@@ -54,7 +52,6 @@ export type PlaneModel =
   | 'hsv'
   | 'oklab'
   | 'hct'
-  | 'p3'
   | 'display-p3';
 
 /**
@@ -83,13 +80,8 @@ export interface PlaneModelChannelMap {
   hsv: 'h' | 's' | 'v';
   oklab: 'L' | 'a' | 'b';
   hct: 'h' | 'c' | 't';
-  p3: 'r' | 'g' | 'b';
   'display-p3': 'r' | 'g' | 'b';
 }
-
-type ResolvedPlaneModel<Model extends PlaneModel> = Model extends 'display-p3'
-  ? 'p3'
-  : Model;
 
 /**
  * Channel identifiers supported by a specific plane model.
@@ -194,7 +186,7 @@ export interface ResolvedPlaneAxis<Model extends PlaneModel = PlaneModel> {
 export interface ResolvedPlaneDefinition<
   Model extends PlaneModel = PlaneModel,
 > {
-  model: ResolvedPlaneModel<Model>;
+  model: Model;
   x: ResolvedPlaneAxis<Model>;
   y: ResolvedPlaneAxis<Model>;
   fixed: PlaneModelColor<Model>;

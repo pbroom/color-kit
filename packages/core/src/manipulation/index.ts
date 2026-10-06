@@ -82,7 +82,7 @@ export function setAlpha(color: Color, alpha: number): Color {
  * @param t - Mix position (default `0.5`)
  * @param options - Interpolation space, hue method, and alpha handling
  * @param options.space - `'oklch'` (default), `'oklab'`, `'srgb'`,
- *   `'linear-srgb'`, `'p3'`, or `'linear-p3'`
+ *   `'linear-srgb'`, `'display-p3'`, or `'linear-p3'`
  * @param options.hue - Hue arc for polar spaces: `'shorter'` (default),
  *   `'longer'`, `'increasing'`, or `'decreasing'`
  * @param options.premultiplied - Premultiply alpha (default `true` for

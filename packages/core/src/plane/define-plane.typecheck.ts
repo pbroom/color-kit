@@ -41,8 +41,11 @@ const displayP3Definition: PlaneDefinitionFor<'display-p3'> = {
 };
 
 const displayP3Plane = definePlane(displayP3Definition);
-const canonicalDisplayP3Model: 'p3' = displayP3Plane.model;
-void canonicalDisplayP3Model;
+const displayP3Model: 'display-p3' = displayP3Plane.model;
+void displayP3Model;
+
+// @ts-expect-error the Display P3 model is only spelled 'display-p3'
+definePlane({ model: 'p3' });
 
 definePlane({
   model: 'rgb',

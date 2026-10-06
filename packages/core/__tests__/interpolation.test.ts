@@ -22,7 +22,7 @@ const SPACES: InterpolationSpace[] = [
   'oklab',
   'srgb',
   'linear-srgb',
-  'p3',
+  'display-p3',
   'linear-p3',
 ];
 
@@ -53,6 +53,14 @@ describe('mix() / interpolate() defaults are unchanged', () => {
 });
 
 describe('interpolation space option', () => {
+  it('rejects unknown spaces such as the old p3 spelling', () => {
+    const a = parse('#3b82f6');
+    const b = parse('#ef4444');
+    expect(() =>
+      mix(a, b, 0.5, { space: 'p3' as unknown as InterpolationSpace }),
+    ).toThrow(TypeError);
+  });
+
   it('returns the endpoints (to float precision) at t = 0 and t = 1', () => {
     const a = parse('#3b82f6');
     const b = parse('rgb(239 68 68 / 0.4)');

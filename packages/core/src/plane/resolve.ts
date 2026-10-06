@@ -1,7 +1,6 @@
 import type { Color } from '../types.js';
 import {
   isFiniteNumber,
-  normalizePlaneModel,
   planeModelSpec,
   type PlaneModelSpec,
 } from './model-specs.js';
@@ -142,7 +141,7 @@ function validateDistinctAxes(definition: Plane): void {
  * because its overloads provide model-aware TypeScript narrowing.
  *
  * @param planeObject Plane input object.
- * @param planeObject.model Target model (`oklch`, `rgb`, `hsl`, `hsv`, `oklab`, `hct`, `p3`; legacy `display-p3` also works).
+ * @param planeObject.model Target model (`oklch`, `rgb`, `hsl`, `hsv`, `oklab`, `hct`, `display-p3`).
  * @param planeObject.x Optional x-axis descriptor; defaults to model defaults.
  * @param planeObject.y Optional y-axis descriptor; defaults to model defaults.
  * @param planeObject.color Optional anchor color converted into the selected
@@ -153,9 +152,8 @@ function validateDistinctAxes(definition: Plane): void {
 export function resolvePlaneDefinition(
   planeObject: PlaneDefinition = {},
 ): Plane {
-  const requestedModel = planeObject.model ?? 'oklch';
-  const model = normalizePlaneModel(requestedModel);
-  const modelSpec = planeModelSpec(requestedModel);
+  const model = planeObject.model ?? 'oklch';
+  const modelSpec = planeModelSpec(model);
   const defaultAxes = modelSpec.defaultAxes;
 
   validateFixedChannels(model, modelSpec, planeObject.fixed);

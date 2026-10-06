@@ -23,13 +23,14 @@ export interface WritableArrayLike {
 }
 
 /**
- * Channel layouts supported by the array interop helpers. Each name matches
- * the `to<Space>Array` / `from<Space>Array` function pair:
+ * Channel layouts supported by the array interop helpers. Each name maps to
+ * a `to<Space>Array` / `from<Space>Array` function pair (`'display-p3'` to
+ * `toP3Array` / `fromP3Array`):
  *
  * - `linearSrgb`: linear-light sRGB `[r, g, b]` (three.js working space).
  * - `srgb`: gamma-encoded sRGB `[r, g, b]` in 0–1 (not 0–255).
  * - `linearP3`: linear-light Display P3 `[r, g, b]`.
- * - `p3`: gamma-encoded Display P3 `[r, g, b]` in 0–1.
+ * - `display-p3`: gamma-encoded Display P3 `[r, g, b]` in 0–1.
  * - `oklab`: `[L, a, b]`.
  * - `oklch`: `[l, c, h]` with hue in degrees.
  */
@@ -37,7 +38,7 @@ export type ArraySpace =
   | 'linearSrgb'
   | 'srgb'
   | 'linearP3'
-  | 'p3'
+  | 'display-p3'
   | 'oklab'
   | 'oklch';
 
@@ -53,7 +54,7 @@ export type ArraySpace =
 export interface ArrayWriteOptions {
   /**
    * Clip RGB channels to `[0, 1]` after conversion. Only affects the RGB
-   * spaces (`linearSrgb`, `srgb`, `linearP3`, `p3`); it is a no-op for
+   * spaces (`linearSrgb`, `srgb`, `linearP3`, `display-p3`); it is a no-op for
    * `oklab` / `oklch`. Alpha is written unchanged. Clipping shifts hue and
    * lightness; map with `toSrgbGamut` / `toP3Gamut` first to reduce chroma
    * instead.

@@ -995,7 +995,7 @@ describe('reference accuracy: CSS parsing and serialization', () => {
       );
 
       if (reference.inGamut('p3', { epsilon: 0 })) {
-        const p3Back = new ColorJs(toCss(color, 'p3'));
+        const p3Back = new ColorJs(toCss(color, 'display-p3'));
         p3Tracker.observe(
           vecError(refCoords(p3Back, 'p3'), refCoords(reference, 'p3')),
           describeColor,
@@ -1428,14 +1428,14 @@ describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
     oklab: 'oklab',
     srgb: 'srgb',
     'linear-srgb': 'srgb-linear',
-    p3: 'p3',
+    'display-p3': 'p3',
     'linear-p3': 'p3-linear',
   };
   const RECTANGULAR: InterpolationSpace[] = [
     'oklab',
     'srgb',
     'linear-srgb',
-    'p3',
+    'display-p3',
     'linear-p3',
   ];
   const HUE_METHODS: HueInterpolationMethod[] = [

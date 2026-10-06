@@ -14,8 +14,8 @@
  * the GLSL/WGSL `vec3` / `vec4` (and three.js `Color` / `Vector4`) they
  * feed, and hot paths never branch on an options object.
  *
- * Spaces: `linearSrgb`, `srgb` (gamma-encoded, 0–1), `linearP3`, `p3`
- * (gamma-encoded, 0–1), `oklab`, `oklch`. Writers emit unclamped floats by
+ * Spaces: `linearSrgb`, `srgb` (gamma-encoded, 0–1), `linearP3`,
+ * `display-p3` (gamma-encoded, 0–1), `oklab`, `oklch`. Writers emit unclamped floats by
  * default; `clamp` opts in to clipping. For chroma reduction, compose with
  * the gamut mappers instead of passing an option, so the writers stay small:
  * `toLinearSrgbArray(toSrgbGamut(c), out)` or

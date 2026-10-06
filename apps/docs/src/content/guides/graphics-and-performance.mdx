@@ -38,7 +38,7 @@ color-kit keeps its own strengths: OKLCH as the working model, CSS Color 4 gamut
 | Arithmetic               | `add`, `sub`, `multiply`, `multiplyScalar`                | Not provided; write to arrays and do the math there                                        |
 | Out-of-gamut handling    | `color.clamp` (per-channel clip)                          | `toSrgbGamut` / `toP3Gamut` (CSS Color 4 chroma reduction), `inSrgbGamut` / `inP3Gamut`    |
 | Contrast / accessibility | `color.luminance` (Rec. 709)                              | `relativeLuminance`, WCAG 2.1 `contrastRatio`, `contrastAPCA`                              |
-| Parsing / output         | Hex strings, numbers, tuples; `toCSS` as `rgb()`, `toHex` | CSS Color 4 `parse`; `toCss` as `hex`, `rgb`, `hsl`, `oklch`, `oklab`, `p3`                |
+| Parsing / output         | Hex strings, numbers, tuples; `toCSS` as `rgb()`, `toHex` | CSS Color 4 `parse`; `toCss` as `hex`, `rgb`, `hsl`, `oklch`, `oklab`, `display-p3`        |
 | Geometry                 | None                                                      | Plane API: gamut boundaries and contrast regions as SVG paths                              |
 
 ## 1. Linear-light mixing
@@ -72,7 +72,7 @@ generateScale(red, lime, 7, { space: 'linear-srgb' });
 mix(red, lime, 0.5, { space: 'oklch', hue: 'longer', premultiplied: true });
 ```
 
-`space` accepts `'oklch' | 'oklab' | 'srgb' | 'linear-srgb' | 'p3' | 'linear-p3'`, named after CSS `color-mix()` (`linear-srgb` is `srgb-linear`, `p3` is `display-p3`). See [Scale](/docs/api/scale#interpolation-options) for the full option reference.
+`space` accepts `'oklch' | 'oklab' | 'srgb' | 'linear-srgb' | 'display-p3' | 'linear-p3'`, named after CSS `color-mix()` (`linear-srgb` is `srgb-linear`, `linear-p3` is `display-p3-linear`). See [Scale](/docs/api/scale#interpolation-options) for the full option reference.
 
 ### Compared with the default
 
@@ -94,7 +94,7 @@ Midpoints at `t = 0.5`, from `pnpm --filter @color-kit/core bench:mix-space`. Y 
 - Gamma-encoded `srgb` is what CSS gradients do by default. It darkens the red-to-lime midpoint to a muddy olive.
 - OKLCH can leave the gamut even when both ends are inside it. Mixing in-gamut colors in `srgb` or `linear-srgb` always stays in sRGB. No option does gamut mapping; use `toSrgbGamut` / `toP3Gamut` for a displayable color.
 - `t = 0` and `t = 1` return exact copies of the endpoints. If the interpolated alpha is exactly 0 (for example, both endpoints fully transparent), the channels fall back to straight-alpha interpolation instead of collapsing to transparent black; this is a deliberate deviation from CSS and colorjs.io.
-- Apart from that fallback, results match colorjs.io to within 4e-15. Cost per call: about 21 ns for the legacy default, 29 ns for `oklch`, 66 ns for `oklab`, 116 ns for `linear-srgb`, 211 ns for `srgb`, and 228 ns for `p3`.
+- Apart from that fallback, results match colorjs.io to within 4e-15. Cost per call: about 21 ns for the legacy default, 29 ns for `oklch`, 66 ns for `oklab`, 116 ns for `linear-srgb`, 211 ns for `srgb`, and 228 ns for `display-p3`.
 
 <Recommendation verdict="adopt in addition; keep OKLCH as the default">
 
@@ -246,15 +246,15 @@ device.queue.writeBuffer(buffer, 0, data);
 
 ### Object and string output vs array writers
 
-| API                                  | Output                                                                      | Range and precision                                                                                                | Allocation                | Use for                                   |
-| ------------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------- | ----------------------------------------- |
-| `toRgb(c)`                           | `{ r, g, b, alpha }`                                                        | 0–255 integers, clipped to sRGB                                                                                    | New object                | Canvas 2D, UI readouts                    |
-| `toP3(c)`                            | `{ r, g, b, alpha }`                                                        | 0–1 gamma-encoded, clipped to P3                                                                                   | New object                | UI readouts, P3 CSS                       |
-| `toCss(c, format)`                   | String (`hex`, `rgb`, `hsl`, `oklch`, `oklab`, `p3`; unknown formats throw) | `hex`/`rgb`/`hsl` are 8-bit or rounded and clipped to sRGB; `p3` clipped to P3; `oklch`/`oklab` rounded, unclamped | New string                | CSS, serialization                        |
-| `toLinearSrgbArray(c, out?)`         | `[r, g, b]` or your typed array                                             | Unclamped float, linear light                                                                                      | None when `out` is passed | three.js `Color`, GL uniforms, lighting   |
-| `toSrgbArray` / `toP3Array(c, out?)` | `[r, g, b]` gamma-encoded 0–1                                               | Unclamped float (sign mirrored, like colorjs.io)                                                                   | None when `out` is passed | Shaders that output to an encoded surface |
-| `toOklabArray` / `toOklchArray`      | `[L, a, b]` / `[l, c, h]`                                                   | Float                                                                                                              | None when `out` is passed | Shader-side OKLab math                    |
-| `packColors(colors, space, out?)`    | `Float32Array` (or your array)                                              | Float32, optional alpha, stride, and offset                                                                        | One buffer for all colors | Vertex attributes, storage buffers        |
+| API                                  | Output                                                                              | Range and precision                                                                                                        | Allocation                | Use for                                   |
+| ------------------------------------ | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------- |
+| `toRgb(c)`                           | `{ r, g, b, alpha }`                                                                | 0–255 integers, clipped to sRGB                                                                                            | New object                | Canvas 2D, UI readouts                    |
+| `toP3(c)`                            | `{ r, g, b, alpha }`                                                                | 0–1 gamma-encoded, clipped to P3                                                                                           | New object                | UI readouts, P3 CSS                       |
+| `toCss(c, format)`                   | String (`hex`, `rgb`, `hsl`, `oklch`, `oklab`, `display-p3`; unknown formats throw) | `hex`/`rgb`/`hsl` are 8-bit or rounded and clipped to sRGB; `display-p3` clipped to P3; `oklch`/`oklab` rounded, unclamped | New string                | CSS, serialization                        |
+| `toLinearSrgbArray(c, out?)`         | `[r, g, b]` or your typed array                                                     | Unclamped float, linear light                                                                                              | None when `out` is passed | three.js `Color`, GL uniforms, lighting   |
+| `toSrgbArray` / `toP3Array(c, out?)` | `[r, g, b]` gamma-encoded 0–1                                                       | Unclamped float (sign mirrored, like colorjs.io)                                                                           | None when `out` is passed | Shaders that output to an encoded surface |
+| `toOklabArray` / `toOklchArray`      | `[L, a, b]` / `[l, c, h]`                                                           | Float                                                                                                                      | None when `out` is passed | Shader-side OKLab math                    |
+| `packColors(colors, space, out?)`    | `Float32Array` (or your array)                                                      | Float32, optional alpha, stride, and offset                                                                                | One buffer for all colors | Vertex attributes, storage buffers        |
 
 <Recommendation verdict="adopt in addition">
 
