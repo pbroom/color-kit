@@ -6,11 +6,10 @@ import {
   OKLAB_TO_LMS,
 } from './matrices.js';
 
-const [M1R, M1G, M1B] = LINEAR_SRGB_TO_LMS;
-const [M2L, M2A, M2B] = LMS_TO_OKLAB;
-// OKLAB_TO_LMS has an all-ones first column, so only the a/b terms are needed.
-const [[, LA, LB], [, MA, MB], [, SA, SB]] = OKLAB_TO_LMS;
-const [RL, GL, BL] = LMS_TO_LINEAR_SRGB;
+// Matrix rows are read inside each kernel rather than destructured at module
+// scope: bundlers keep top-level destructuring (and property reads) even when
+// nothing uses the result, which would pin all four matrices into any bundle
+// that needs only one direction.
 
 /**
  * Convert linear sRGB to OKLAB, writing into `out` (allocation-free).
@@ -30,6 +29,8 @@ export function linearRgbToOklabInto(out: Oklab, rgb: LinearRgb): Oklab {
   const g = rgb.g;
   const b = rgb.b;
   const alpha = rgb.alpha;
+  const [M1R, M1G, M1B] = LINEAR_SRGB_TO_LMS;
+  const [M2L, M2A, M2B] = LMS_TO_OKLAB;
 
   // Linear sRGB to LMS
   const l = M1R[0] * r + M1R[1] * g + M1R[2] * b;
@@ -74,6 +75,9 @@ export function oklabToLinearRgbInto(out: LinearRgb, lab: Oklab): LinearRgb {
   const a = lab.a;
   const b = lab.b;
   const alpha = lab.alpha;
+  // OKLAB_TO_LMS has an all-ones first column, so only the a/b terms are needed.
+  const [[, LA, LB], [, MA, MB], [, SA, SB]] = OKLAB_TO_LMS;
+  const [RL, GL, BL] = LMS_TO_LINEAR_SRGB;
 
   // OKLAB to LMS (cube roots)
   const l_ = L + LA * a + LB * b;
