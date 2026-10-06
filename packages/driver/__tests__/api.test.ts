@@ -78,8 +78,7 @@ describe('Color API helpers', () => {
     });
     const paths = getColorAreaContrastRegionPaths(parse('#ffffff'), 220, axes, {
       level: 'AA',
-      lightnessSteps: 16,
-      chromaSteps: 16,
+      initialSamples: 16,
     });
 
     expect(paths.length).toBeGreaterThan(0);
@@ -101,8 +100,7 @@ describe('Color API helpers', () => {
     });
     const paths = getColorAreaContrastRegionPaths(parse('#ffffff'), 220, axes, {
       level: 'AA',
-      lightnessSteps: 12,
-      chromaSteps: 12,
+      initialSamples: 12,
     });
 
     expect(paths).toEqual([]);
@@ -132,8 +130,7 @@ describe('Color API helpers', () => {
       axes,
       {
         threshold: 4.5,
-        lightnessSteps: 16,
-        chromaSteps: 16,
+        initialSamples: 16,
       },
     );
     expect(regions.length).toBeGreaterThan(0);

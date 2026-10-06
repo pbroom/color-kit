@@ -73,15 +73,13 @@ describe('contrast metric router (contrastRegionPaths metric="apca")', () => {
     const bodyPreset = contrastRegionPaths(white, 210, {
       metric: 'apca',
       apcaPreset: 'body',
-      lightnessSteps: 40,
-      chromaSteps: 40,
+      initialSamples: 40,
     });
     const overridden = contrastRegionPaths(white, 210, {
       metric: 'apca',
       apcaPreset: 'ui',
       threshold: 0.6,
-      lightnessSteps: 40,
-      chromaSteps: 40,
+      initialSamples: 40,
     });
 
     expect(bodyPreset.length).toBeGreaterThan(0);
@@ -98,24 +96,21 @@ describe('contrast metric router (contrastRegionPaths metric="apca")', () => {
       threshold: 0.45,
       apcaRole: 'sample-text',
       apcaPolarity: 'positive',
-      lightnessSteps: 40,
-      chromaSteps: 40,
+      initialSamples: 40,
     });
     const backgroundRolePositive = contrastRegionPaths(white, 210, {
       metric: 'apca',
       threshold: 0.45,
       apcaRole: 'sample-background',
       apcaPolarity: 'positive',
-      lightnessSteps: 40,
-      chromaSteps: 40,
+      initialSamples: 40,
     });
     const backgroundRoleNegative = contrastRegionPaths(white, 210, {
       metric: 'apca',
       threshold: 0.45,
       apcaRole: 'sample-background',
       apcaPolarity: 'negative',
-      lightnessSteps: 40,
-      chromaSteps: 40,
+      initialSamples: 40,
     });
 
     expect(textRolePositive.length).toBeGreaterThan(0);

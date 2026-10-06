@@ -82,28 +82,24 @@ console.log(
 console.log('\n--- Contrast region (reference=#fff, hue=200, AA) ---\n');
 
 const ref = fromHex('#ffffff');
-const contrastHybrid = () =>
+const contrastDefaults = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
     gamut: 'srgb',
-    lightnessSteps: 48,
-    chromaSteps: 48,
   });
-for (let i = 0; i < WARMUP; i++) contrastHybrid();
+for (let i = 0; i < WARMUP; i++) contrastDefaults();
 const ct1 = [];
-for (let i = 0; i < MEASURE_ROUNDS; i++) ct1.push(timeMs(contrastHybrid));
-const cp1 = contrastHybrid();
+for (let i = 0; i < MEASURE_ROUNDS; i++) ct1.push(timeMs(contrastDefaults));
+const cp1 = contrastDefaults();
 const total1 = cp1.reduce((s, path) => s + path.length, 0);
 console.log(
-  `hybrid 48x48:        paths=${cp1.length} totalPoints=${total1}  median=${median(ct1).toFixed(2)}ms`,
+  `defaults:            paths=${cp1.length} totalPoints=${total1}  median=${median(ct1).toFixed(2)}ms`,
 );
 
 const contrastSimplify = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
     gamut: 'srgb',
-    lightnessSteps: 48,
-    chromaSteps: 48,
     simplifyTolerance: 0.002,
   });
 for (let i = 0; i < WARMUP; i++) contrastSimplify();
@@ -112,17 +108,16 @@ for (let i = 0; i < MEASURE_ROUNDS; i++) ct2.push(timeMs(contrastSimplify));
 const cp2 = contrastSimplify();
 const total2 = cp2.reduce((s, path) => s + path.length, 0);
 console.log(
-  `hybrid+simplify:     paths=${cp2.length} totalPoints=${total2}  median=${median(ct2).toFixed(2)}ms  (tol=0.002)`,
+  `defaults+simplify:   paths=${cp2.length} totalPoints=${total2}  median=${median(ct2).toFixed(2)}ms  (tol=0.002)`,
 );
 
 const contrastInteractive = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
     gamut: 'srgb',
-    lightnessSteps: 12,
-    chromaSteps: 16,
-    hybridMaxDepth: 3,
-    hybridErrorTolerance: 0.003,
+    initialSamples: 8,
+    errorTolerance: 0.004,
+    maxDepth: 3,
   });
 for (let i = 0; i < WARMUP; i++) contrastInteractive();
 const ct3 = [];
@@ -130,7 +125,7 @@ for (let i = 0; i < MEASURE_ROUNDS; i++) ct3.push(timeMs(contrastInteractive));
 const cp3 = contrastInteractive();
 const total3 = cp3.reduce((s, path) => s + path.length, 0);
 console.log(
-  `interactive 12x16 d=3: paths=${cp3.length} totalPoints=${total3}  median=${median(ct3).toFixed(2)}ms  (ContrastRegionLayer defaults)`,
+  `interactive 8/0.004/3: paths=${cp3.length} totalPoints=${total3}  median=${median(ct3).toFixed(2)}ms  (ContrastRegionLayer defaults)`,
 );
 
 console.log(

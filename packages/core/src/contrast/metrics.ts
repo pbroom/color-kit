@@ -119,6 +119,16 @@ export function relativeLuminance(
 }
 
 /**
+ * WCAG relative luminance of displayed linear sRGB channels, by the same
+ * arithmetic as `relativeLuminance()` (kept separate so it adds nothing to
+ * that function's bundle). Internal: the contrast-region solver measures
+ * samples with it.
+ */
+export function wcagLuminanceOfLinear(r: number, g: number, b: number): number {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
  * Calculate WCAG 2.1 contrast ratio between two colors.
  * Returns a value between 1 and 21.
  * https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio
@@ -165,16 +175,29 @@ function apcaChannel(encoded: number): number {
 /**
  * APCA "screen luminance" of the displayed sRGB color. APCA intentionally
  * uses a simple 2.4 power curve here rather than the piecewise sRGB EOTF.
+ * Internal: the contrast-region solver measures the reference with it.
  */
-function apcaScreenLuminance(
+export function apcaScreenLuminance(
   color: Color,
   options: ContrastOptions | undefined,
 ): number {
   const encoded = displayedSrgb(color, options, true);
+  return apcaLuminanceOfEncoded(encoded.r, encoded.g, encoded.b);
+}
+
+/**
+ * APCA screen luminance of displayed gamma-encoded sRGB channels. Internal:
+ * shared with the contrast-region solver (see `wcagLuminanceOfLinear`).
+ */
+export function apcaLuminanceOfEncoded(
+  r: number,
+  g: number,
+  b: number,
+): number {
   return (
-    APCA_SR_COEFF * apcaChannel(encoded.r) +
-    APCA_SG_COEFF * apcaChannel(encoded.g) +
-    APCA_SB_COEFF * apcaChannel(encoded.b)
+    APCA_SR_COEFF * apcaChannel(r) +
+    APCA_SG_COEFF * apcaChannel(g) +
+    APCA_SB_COEFF * apcaChannel(b)
   );
 }
 
@@ -197,9 +220,18 @@ export function contrastAPCA(
   bgColor: Color,
   options?: ContrastOptions,
 ): number {
-  let txtY = apcaScreenLuminance(textColor, options);
-  let bgY = apcaScreenLuminance(bgColor, options);
+  return apcaContrastOfLuminances(
+    apcaScreenLuminance(textColor, options),
+    apcaScreenLuminance(bgColor, options),
+  );
+}
 
+/**
+ * APCA Lc of text and background screen luminances. Internal: shared by
+ * `contrastAPCA` and the contrast-region solver, so both decide pass/fail
+ * from the same arithmetic.
+ */
+export function apcaContrastOfLuminances(txtY: number, bgY: number): number {
   // Soft clamp of near-black luminance (flare compensation)
   if (txtY <= APCA_BLK_THRS) {
     txtY += (APCA_BLK_THRS - txtY) ** APCA_BLK_CLMP;

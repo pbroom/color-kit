@@ -3,6 +3,7 @@ import {
   contrastAPCA,
   contrastRatio,
   definePlane,
+  inSrgbGamut,
   inspectPlaneQuery,
   maxChromaAt,
   parse,
@@ -114,7 +115,7 @@ function distanceToPaths(
   return best;
 }
 
-function inspectHybrid(testCase: RegressionCase) {
+function inspect(testCase: RegressionCase) {
   return inspectPlaneQuery(definePlane({ fixed: { h: testCase.hue } }), {
     kind: 'contrastRegion',
     reference: testCase.reference,
@@ -125,10 +126,9 @@ function inspectHybrid(testCase: RegressionCase) {
 }
 
 describe('contrast-region solver regressions', () => {
-  // Contours with nearly constant lightness jump more than the branch join
-  // distance in chroma between lightness samples. Before the root-jump
-  // split these left gaps of more than 0.03 against the brute-force
-  // boundary.
+  // Contours with nearly constant lightness. An earlier solver, which
+  // sampled lightness and joined chroma roots into branches, left gaps of
+  // more than 0.03 against the brute-force boundary here.
   const resolved: RegressionCase[] = [
     {
       name: 'WCAG 3 at h180 on a dark teal reference (ContrastRegionLayer repro)',
@@ -177,10 +177,9 @@ describe('contrast-region solver regressions', () => {
   it.each(resolved.map((testCase) => [testCase.name, testCase] as const))(
     'traces %s close to the brute-force boundary',
     (_name, testCase) => {
-      const inspection = inspectHybrid(testCase);
+      const inspection = inspect(testCase);
       const paths = inspection.result.paths;
       expect(paths.length).toBeGreaterThan(0);
-      expect(inspection.trace.summary.degradedReason).toBeUndefined();
 
       const crossings = bruteForceCrossings(testCase);
       expect(crossings.length).toBeGreaterThan(0);
@@ -188,15 +187,14 @@ describe('contrast-region solver regressions', () => {
       for (const crossing of crossings) {
         maxGap = Math.max(maxGap, distanceToPaths(crossing, paths));
       }
-      expect(maxGap).toBeLessThan(0.01);
+      expect(maxGap).toBeLessThan(0.002);
     },
   );
 
   // Regions that are a thin sliver at the top of the lightness range (every
-  // in-gamut chroma passes above some L > 0.98) have a vertical boundary
-  // and no chroma roots. The solver used to report them as degraded
-  // with no paths; it now traces the boundary from the chroma axis to the
-  // gamut edge where the zero-chroma and gamut-edge margins change sign.
+  // in-gamut chroma passes above some L > 0.98) have a vertical boundary.
+  // An earlier solver reported them as degraded with no paths; the boundary
+  // runs from the chroma axis to the gamut edge.
   const thinTop: RegressionCase[] = [
     ...[0, 60, 120, 180, 240, 300].map((hue) => ({
       name: `WCAG 7 at h${hue} on #595959`,
@@ -234,20 +232,21 @@ describe('contrast-region solver regressions', () => {
       const evaluate = margin(testCase);
       expect(evaluate(1, 0)).toBeGreaterThan(0);
 
-      const hybrid = inspectHybrid(testCase);
-      expect(hybrid.trace.summary.degradedReason).toBeUndefined();
-      expect(hybrid.result.paths).toHaveLength(1);
-      const [path] = hybrid.result.paths;
+      const inspection = inspect(testCase);
+      expect(inspection.result.paths).toHaveLength(1);
+      const [path] = inspection.result.paths;
       const boundaryL = Math.min(...path.map((point) => point.l));
       expect(
         Math.max(...path.map((point) => point.l)) - boundaryL,
       ).toBeLessThan(1e-4);
       const chromas = path.map((point) => point.c);
       expect(Math.min(...chromas)).toBe(0);
-      expect(Math.max(...chromas)).toBeCloseTo(
-        maxChromaAt(boundaryL, testCase.hue, { gamut: 'srgb', maxChroma: 0.4 }),
-        5,
-      );
+      // The outer end is on the gamut edge: in gamut, and out of gamut a
+      // hair further out in chroma.
+      const outer = path.reduce((a, b) => (b.c > a.c ? b : a));
+      const color = { l: outer.l, c: outer.c, h: testCase.hue, alpha: 1 };
+      expect(inSrgbGamut(color)).toBe(true);
+      expect(inSrgbGamut({ ...color, c: color.c + 1e-7 })).toBe(false);
       // Just below the boundary nothing passes; just above, the axis does.
       expect(evaluate(boundaryL - 1e-4, 0)).toBeLessThan(0);
       expect(evaluate(boundaryL + 1e-4, 0)).toBeGreaterThan(0);

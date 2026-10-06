@@ -192,15 +192,13 @@ describe('plane compute packing', () => {
         kind: 'contrastBoundary' as const,
         reference: parse('#ffffff'),
         threshold: 4.5,
-        lightnessSteps: 24,
-        chromaSteps: 24,
+        initialSamples: 24,
       },
       {
         kind: 'contrastRegion' as const,
         reference: parse('#111827'),
         threshold: 3,
-        lightnessSteps: 20,
-        chromaSteps: 20,
+        initialSamples: 20,
       },
       {
         kind: 'chromaBand' as const,

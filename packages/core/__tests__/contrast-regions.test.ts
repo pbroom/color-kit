@@ -22,14 +22,12 @@ describe('contrastRegionPaths()', () => {
     const first = contrastRegionPaths(reference, 210, {
       level: 'AA',
       gamut: 'srgb',
-      lightnessSteps: 24,
-      chromaSteps: 24,
+      initialSamples: 24,
     });
     const second = contrastRegionPaths(reference, 210, {
       level: 'AA',
       gamut: 'srgb',
-      lightnessSteps: 24,
-      chromaSteps: 24,
+      initialSamples: 24,
     });
 
     expect(first).toEqual(second);
@@ -51,13 +49,11 @@ describe('contrastRegionPaths()', () => {
 
     const aa = contrastRegionPaths(reference, 145, {
       level: 'AA',
-      lightnessSteps: 28,
-      chromaSteps: 28,
+      initialSamples: 28,
     });
     const aaa = contrastRegionPaths(reference, 145, {
       level: 'AAA',
-      lightnessSteps: 28,
-      chromaSteps: 28,
+      initialSamples: 28,
     });
 
     expect(aa.length).toBeGreaterThan(0);
@@ -73,14 +69,13 @@ describe('contrastRegionPaths()', () => {
 
     const paths = contrastRegionPaths(reference, 200, {
       threshold: 22,
-      lightnessSteps: 16,
-      chromaSteps: 16,
+      initialSamples: 16,
     });
 
     expect(paths).toEqual([]);
   });
 
-  it('uses unclamped luminance for display-p3 sampling', () => {
+  it('measures luminance in the display-p3 gamut for display-p3 regions', () => {
     const reference = { l: 0.9, c: 0.03, h: 95, alpha: 1 };
     const sample = {
       l: 0.5,
@@ -98,8 +93,7 @@ describe('contrastRegionPaths()', () => {
     const paths = contrastRegionPaths(reference, sample.h, {
       gamut: 'display-p3',
       threshold,
-      lightnessSteps: 2,
-      chromaSteps: 2,
+      initialSamples: 2,
       maxChroma,
     });
 
@@ -112,13 +106,11 @@ describe('contrastRegionPaths()', () => {
 
     const paths = contrastRegionPaths(reference, 320, {
       level: 'AA',
-      lightnessSteps: 22,
-      chromaSteps: 22,
+      initialSamples: 22,
     });
     const largest = contrastRegionPath(reference, 320, {
       level: 'AA',
-      lightnessSteps: 22,
-      chromaSteps: 22,
+      initialSamples: 22,
     });
 
     expect(largest).toEqual(paths[0] ?? []);
@@ -135,9 +127,52 @@ describe('contrastRegionPaths()', () => {
 
     expect(() =>
       contrastRegionPaths(reference, 200, {
-        lightnessSteps: 1,
+        initialSamples: 1,
       }),
-    ).toThrow('contrastRegionPaths() lightnessSteps must be an integer >= 2');
+    ).toThrow('contrastRegionPaths() initialSamples must be an integer >= 2');
+    expect(() =>
+      contrastRegionPaths(reference, 200, {
+        initialSamples: 2.5,
+      }),
+    ).toThrow('contrastRegionPaths() initialSamples must be an integer >= 2');
+    expect(() =>
+      contrastRegionPaths(reference, 200, {
+        maxDepth: -1,
+      }),
+    ).toThrow('contrastRegionPaths() maxDepth must be an integer >= 0');
+    expect(() =>
+      contrastRegionPaths(reference, 200, {
+        errorTolerance: 0,
+      }),
+    ).toThrow(
+      'contrastRegionPaths() errorTolerance must be a finite number > 0',
+    );
+    expect(() =>
+      contrastRegionPaths(reference, 200, {
+        errorTolerance: Number.NaN,
+      }),
+    ).toThrow(
+      'contrastRegionPaths() errorTolerance must be a finite number > 0',
+    );
+  });
+
+  it('clamps oversized sampling options', () => {
+    const reference = fromHex('#767676');
+    const started = performance.now();
+    const huge = contrastRegionPaths(reference, 30, {
+      threshold: 3,
+      initialSamples: 2_000_000,
+      maxDepth: 40,
+      errorTolerance: 1e-15,
+    });
+    expect(performance.now() - started).toBeLessThan(2000);
+    const clamped = contrastRegionPaths(reference, 30, {
+      threshold: 3,
+      initialSamples: 512,
+      maxDepth: 12,
+      errorTolerance: 1e-6,
+    });
+    expect(huge).toEqual(clamped);
   });
 
   it.each([
@@ -153,7 +188,25 @@ describe('contrastRegionPaths()', () => {
     >[2];
     expect(() => contrastRegionPaths(fromHex('#ffffff'), 200, options)).toThrow(
       new TypeError(
-        `contrastRegionPaths() option "${name}" was removed with the legacy contrast-region engine; tune the solver with lightnessSteps, chromaSteps, hybridMaxDepth, and hybridErrorTolerance`,
+        `contrastRegionPaths() option "${name}" was removed with the legacy contrast-region engine; tune the solver with initialSamples, errorTolerance, and maxDepth`,
+      ),
+    );
+  });
+
+  it.each([
+    ['lightnessSteps', 72],
+    ['chromaSteps', 96],
+    ['hybridMaxDepth', 7],
+    ['hybridErrorTolerance', 0.0015],
+    ['tolerance', 1e-4],
+    ['maxIterations', 30],
+  ])('rejects the removed hybrid-solver option %s', (name, value) => {
+    const options = { level: 'AA', [name]: value } as unknown as Parameters<
+      typeof contrastRegionPaths
+    >[2];
+    expect(() => contrastRegionPaths(fromHex('#ffffff'), 200, options)).toThrow(
+      new TypeError(
+        `contrastRegionPaths() option "${name}" was removed with the hybrid contrast-region solver; tune the solver with initialSamples, errorTolerance, and maxDepth`,
       ),
     );
   });
@@ -168,17 +221,69 @@ describe('contrastRegionPaths()', () => {
       // @ts-expect-error samplingMode was removed with the legacy engine
       contrastRegionPaths(reference, 200, { samplingMode: 'adaptive' }),
     ).toThrow(TypeError);
+    expect(() =>
+      // @ts-expect-error hybridMaxDepth was removed with the hybrid solver
+      contrastRegionPaths(reference, 200, { hybridMaxDepth: 7 }),
+    ).toThrow(TypeError);
+    expect(() =>
+      // @ts-expect-error lightnessSteps was removed with the hybrid solver
+      contrastRegionPaths(reference, 200, { lightnessSteps: 72 }),
+    ).toThrow(TypeError);
   });
 
-  it('records the solver in the trace', () => {
+  it('records the solver and its sampling in the trace', () => {
     const plane = definePlane({ fixed: { h: 200 } });
-    const summary = inspectPlaneQuery(plane, {
+    const inspection = inspectPlaneQuery(plane, {
       kind: 'contrastRegion',
       reference: fromHex('#ffffff'),
       level: 'AA',
-    }).trace.summary;
-    expect(summary.solver).toBe('contrast-hybrid');
-    expect(summary.samplingMode).toBe('hybrid');
+      initialSamples: 12,
+      errorTolerance: 0.002,
+      maxDepth: 4,
+      simplifyTolerance: 0.0005,
+    });
+    const { summary, stages } = inspection.trace;
+    expect(summary.solver).toBe('contrast-rays');
+    expect(summary.samplingMode).toBe('adaptive');
+    expect(summary.fidelity).toEqual({
+      simplifyTolerance: 0.0005,
+      resolution: 12,
+      maxDepth: 4,
+      errorTolerance: 0.002,
+    });
+    expect(summary).not.toHaveProperty('degradedReason');
+    expect(summary.droppedPieceCount).toBe(0);
+    expect(summary.sampleCount).toBeGreaterThan(0);
+    expect(summary.pathCount).toBe(inspection.result.paths.length);
+    expect(stages[0]).toEqual({
+      kind: 'solver',
+      solver: 'contrast-rays',
+      samplingMode: 'adaptive',
+    });
+    expect(
+      stages.some(
+        (stage) =>
+          stage.kind === 'paths' &&
+          stage.label === 'contrast-region-paths' &&
+          stage.pathCount === inspection.result.paths.length,
+      ),
+    ).toBe(true);
+  });
+
+  it('records the clamped sampling it ran with', () => {
+    const plane = definePlane({ fixed: { h: 200 } });
+    const { summary } = inspectPlaneQuery(plane, {
+      kind: 'contrastRegion',
+      reference: fromHex('#ffffff'),
+      initialSamples: 5000,
+      maxDepth: 30,
+      errorTolerance: 1e-9,
+    }).trace;
+    expect(summary.fidelity).toMatchObject({
+      resolution: 512,
+      maxDepth: 12,
+      errorTolerance: 1e-6,
+    });
   });
 
   it('rejects removed options in plane queries like direct calls', () => {
@@ -198,6 +303,15 @@ describe('contrastRegionPaths()', () => {
         engine: 'hybrid',
       }),
     ).toThrow(TypeError);
+    expect(() =>
+      sense(plane).contrastRegion({
+        reference: fromHex('#ffffff'),
+        // @ts-expect-error hybridErrorTolerance was removed with the hybrid solver
+        hybridErrorTolerance: 0.003,
+      }),
+    ).toThrow(
+      /option "hybridErrorTolerance" was removed with the hybrid contrast-region solver/,
+    );
   });
 
   it('simplifyTolerance reduces contour point count', () => {
@@ -205,14 +319,12 @@ describe('contrastRegionPaths()', () => {
     const raw = contrastRegionPaths(reference, 200, {
       level: 'AA',
       gamut: 'srgb',
-      lightnessSteps: 32,
-      chromaSteps: 32,
+      initialSamples: 32,
     });
     const simplified = contrastRegionPaths(reference, 200, {
       level: 'AA',
       gamut: 'srgb',
-      lightnessSteps: 32,
-      chromaSteps: 32,
+      initialSamples: 32,
       simplifyTolerance: 0.002,
     });
     expect(simplified.length).toBe(raw.length);
@@ -228,8 +340,7 @@ describe('contrastRegionPaths()', () => {
       metric: 'apca',
       threshold: 0.6,
       apcaPolarity: 'absolute',
-      lightnessSteps: 48,
-      chromaSteps: 48,
+      initialSamples: 48,
     });
     expect(paths.length).toBeGreaterThan(0);
     for (const path of paths) {
@@ -248,15 +359,13 @@ describe('contrastRegionPaths()', () => {
       metric: 'apca',
       threshold: 0.45,
       apcaPolarity: 'positive',
-      lightnessSteps: 40,
-      chromaSteps: 40,
+      initialSamples: 40,
     });
     const negative = contrastRegionPaths(reference, 210, {
       metric: 'apca',
       threshold: 0.45,
       apcaPolarity: 'negative',
-      lightnessSteps: 40,
-      chromaSteps: 40,
+      initialSamples: 40,
     });
     const positivePoints = positive.reduce((sum, path) => sum + path.length, 0);
     const negativePoints = negative.reduce((sum, path) => sum + path.length, 0);
@@ -274,15 +383,14 @@ describe('contrastRegionPaths()', () => {
     ).toThrow('contrastRegionPaths() APCA threshold must be > 0');
   });
 
-  it('hybrid tracing remains deterministic with explicit refinement controls', () => {
+  it('tracing remains deterministic with explicit refinement controls', () => {
     const reference = fromHex('#f9fafb');
     const options = {
       metric: 'wcag' as const,
       threshold: 4.5,
-      lightnessSteps: 88,
-      chromaSteps: 180,
-      hybridMaxDepth: 8,
-      hybridErrorTolerance: 0.0009,
+      initialSamples: 88,
+      maxDepth: 8,
+      errorTolerance: 0.0009,
     };
     const first = contrastRegionPaths(reference, 230, options);
     const second = contrastRegionPaths(reference, 230, options);

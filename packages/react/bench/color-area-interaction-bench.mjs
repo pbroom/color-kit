@@ -79,8 +79,9 @@ function runDragScenario({ name, steps, axes, withAnalysis }) {
       contrastRegionPaths(displayedP3, requested.h, {
         gamut: 'display-p3',
         threshold: 4.5,
-        lightnessSteps: 28,
-        chromaSteps: 28,
+        initialSamples: 8,
+        errorTolerance: 0.004,
+        maxDepth: 3,
       });
     }
 

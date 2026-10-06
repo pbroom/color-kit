@@ -1,5 +1,3 @@
-import type { ContrastHybridDegradedReason } from '../contrast/types.js';
-import type { GamutTarget } from '../gamut/index.js';
 import type { PlanePoint } from '../geometry/types.js';
 
 /**
@@ -31,6 +29,12 @@ export type PlaneGamutSolver =
   | 'analytic-hct'
   | 'implicit-contour';
 
+/**
+ * Contrast-region solver: luminance level curves traced along rays from
+ * black (see `contrastRegionPaths`).
+ */
+export type PlaneContrastSolver = 'contrast-rays';
+
 export type PlaneGamutRegionScope = 'viewport' | 'full';
 
 export type PlaneQueryTraceLevel = 'summary' | 'stages' | 'full';
@@ -60,13 +64,17 @@ export interface PlaneQueryTraceSummary {
   pointCount: number;
   resultPathCount: number;
   resultPointCount: number;
-  solver?: PlaneGamutSolver | 'contrast-hybrid';
-  degradedReason?: ContrastHybridDegradedReason;
-  samplingMode?: 'analytic' | 'uniform' | 'adaptive' | 'hybrid';
+  solver?: PlaneGamutSolver | PlaneContrastSolver;
+  samplingMode?: 'analytic' | 'uniform' | 'adaptive';
   viewportRelation?: PlaneViewportRelation;
   backend?: PlaneComputeBackendKind;
   bucketKey?: string;
   scheduleReason?: PlaneComputeScheduleReason;
+  /**
+   * Contrast queries: contour pieces the solver dropped because no end point
+   * passed the public checks (0 unless something is badly wrong).
+   */
+  droppedPieceCount?: number;
   fidelity?: {
     simplifyTolerance?: number;
     resolution?: number;
@@ -84,10 +92,7 @@ export interface PlaneQueryTraceSummary {
       | 'simplify'
       | 'clipping'
       | 'visibleRegion'
-      | 'cusp'
-      | 'rootFinding'
       | 'refinement'
-      | 'branching'
       | 'compute'
       | 'marshal',
       number
@@ -150,72 +155,6 @@ export interface PlaneQueryTracePathStage {
   durationMs?: number;
 }
 
-export interface PlaneQueryTraceCuspStage {
-  kind: 'cusp';
-  hue: number;
-  lightness: number;
-  chroma: number;
-  gamut: GamutTarget;
-  method: 'direct' | 'lut';
-  durationMs?: number;
-}
-
-export interface PlaneQueryTraceHybridSample {
-  lightness: number;
-  maxChroma: number;
-  roots: number[];
-}
-
-export interface PlaneQueryTraceHybridSamplesStage {
-  kind: 'hybridSamples';
-  label: 'seed' | 'refined';
-  samples: PlaneQueryTraceHybridSample[];
-  durationMs?: number;
-}
-
-export interface PlaneQueryTraceRootIteration {
-  lo: number;
-  hi: number;
-  mid: number;
-  value: number;
-}
-
-export interface PlaneQueryTraceRootStage {
-  kind: 'rootBisection';
-  lightness: number;
-  loStart: number;
-  hiStart: number;
-  valueLoStart: number;
-  valueHiStart: number;
-  root: number;
-  iterations?: PlaneQueryTraceRootIteration[];
-  durationMs?: number;
-}
-
-export interface PlaneQueryTraceRefinementDecision {
-  left: number;
-  right: number;
-  midpoint: number;
-  depth: number;
-  split: boolean;
-}
-
-export interface PlaneQueryTraceRefinementStage {
-  kind: 'refinement';
-  decisions: PlaneQueryTraceRefinementDecision[];
-  durationMs?: number;
-}
-
-export interface PlaneQueryTraceBranchingStage {
-  kind: 'branching';
-  activeCount: number;
-  finishedCount: number;
-  pathCount: number;
-  hasComplexTopology: boolean;
-  paths?: PlanePoint[][];
-  durationMs?: number;
-}
-
 export interface PlaneQueryTraceMetricsStage {
   kind: 'metrics';
   summary: Pick<
@@ -238,11 +177,6 @@ export type PlaneQueryTraceStage =
   | PlaneQueryTraceViewportStage
   | PlaneQueryTraceMarchingSquaresStage
   | PlaneQueryTracePathStage
-  | PlaneQueryTraceCuspStage
-  | PlaneQueryTraceHybridSamplesStage
-  | PlaneQueryTraceRootStage
-  | PlaneQueryTraceRefinementStage
-  | PlaneQueryTraceBranchingStage
   | PlaneQueryTraceMetricsStage;
 
 export interface PlaneQueryTrace {
