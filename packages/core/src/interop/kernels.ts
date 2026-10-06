@@ -17,11 +17,7 @@ import {
   OKLAB_TO_LMS,
   type Matrix3,
 } from '../conversion/matrices.js';
-import {
-  degToRad,
-  linearToSrgbChannel,
-  srgbToLinearChannel,
-} from '../utils/index.js';
+import { degToRad, linearToSrgbChannel } from '../utils/index.js';
 import type { ArrayWriteOptions, WritableArrayLike } from './types.js';
 
 export type WriteKernel = (
@@ -32,20 +28,6 @@ export type WriteKernel = (
 
 // OKLAB_TO_LMS has an all-ones first column, so only the a/b terms are needed.
 const [[, LA, LB], [, MA, MB], [, SA, SB]] = OKLAB_TO_LMS;
-
-/**
- * sRGB / Display P3 transfer function, extended to negative values by
- * mirroring (CSS Color 4 / colorjs.io), so out-of-gamut linear values stay
- * invertible instead of being folded or clipped.
- */
-export function encodeChannel(value: number): number {
-  return value < 0 ? -linearToSrgbChannel(-value) : linearToSrgbChannel(value);
-}
-
-/** Inverse of {@link encodeChannel}. */
-export function decodeChannel(value: number): number {
-  return value < 0 ? -srgbToLinearChannel(-value) : srgbToLinearChannel(value);
-}
 
 function writeLinearRgb(
   color: Color,
@@ -70,7 +52,7 @@ function writeLinearRgb(
   for (let i = 0; i < 3; i += 1) {
     const row = rows[i];
     const value = row[0] * l + row[1] * m + row[2] * s;
-    out[offset + i] = encode ? encodeChannel(value) : value;
+    out[offset + i] = encode ? linearToSrgbChannel(value) : value;
   }
 }
 

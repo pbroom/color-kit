@@ -1,5 +1,10 @@
 import type { Color, Oklab, Oklch } from '../types.js';
-import { degToRad, radToDeg, normalizeHue } from '../utils/index.js';
+import {
+  degToRad,
+  isAchromatic,
+  normalizeHue,
+  radToDeg,
+} from '../utils/index.js';
 
 /**
  * Convert OKLAB to OKLCH, writing into `out` (allocation-free).
@@ -18,13 +23,10 @@ export function oklabToOklchInto(out: Oklch, lab: Oklab): Oklch {
   const alpha = lab.alpha;
 
   const c = Math.sqrt(a * a + b * b);
-  let h = radToDeg(Math.atan2(b, a));
-  h = normalizeHue(h);
-
-  // For near-zero chroma, hue is undefined; default to 0
-  if (c < 0.0001) {
-    h = 0;
-  }
+  // At or below ACHROMATIC_CHROMA_THRESHOLD the hue is powerless: atan2 of
+  // float residue (grays convert with chroma ~1e-15) is noise, so report the
+  // canonical achromatic hue 0. Chroma is left as computed.
+  const h = isAchromatic(c) ? 0 : normalizeHue(radToDeg(Math.atan2(b, a)));
 
   out.l = L;
   out.c = c;
@@ -33,7 +35,10 @@ export function oklabToOklchInto(out: Oklch, lab: Oklab): Oklch {
   return out;
 }
 
-/** Convert OKLAB to OKLCH */
+/**
+ * Convert OKLAB to OKLCH. Achromatic results (chroma at or below
+ * `ACHROMATIC_CHROMA_THRESHOLD`) get hue `0`.
+ */
 export function oklabToOklch(lab: Oklab): Oklch {
   return oklabToOklchInto({ l: 0, c: 0, h: 0, alpha: 1 }, lab);
 }

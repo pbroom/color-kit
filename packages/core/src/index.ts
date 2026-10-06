@@ -118,6 +118,7 @@ export {
   generateScale,
   lightnessScale,
 } from './scale/index.js';
+export { ACHROMATIC_CHROMA_THRESHOLD, isAchromatic } from './utils/index.js';
 export type {
   HueInterpolationMethod,
   InterpolationOptions,

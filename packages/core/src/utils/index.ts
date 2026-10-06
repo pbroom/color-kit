@@ -36,23 +36,66 @@ export function lerp(a: number, b: number, t: number): number {
 }
 
 /**
- * sRGB transfer function: convert linear light to sRGB gamma-encoded.
- * Values are in the 0-1 range.
+ * OKLCH chroma at or below which a color is achromatic and its hue is
+ * powerless: the CSS Color 4 OKLCH epsilon (`OKLab_to_OKLCH` in the spec's
+ * sample code uses `chroma <= 0.000004`). Every 8-bit and float gray converts
+ * with chroma around `1e-15`, while the least chromatic non-gray 8-bit color
+ * has chroma around `0.001`, so the cutoff separates the two with margin.
+ *
+ * Used everywhere color-kit decides whether a hue means anything:
+ * OKLab → OKLCH conversion (achromatic results get `h = 0`) and every
+ * interpolation path (`mix`, `interpolate`, `generateScale`), where an
+ * achromatic endpoint takes the other endpoint's hue.
  */
-export function linearToSrgbChannel(c: number): number {
-  if (c <= 0.0031308) {
-    return 12.92 * c;
-  }
-  return 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+export const ACHROMATIC_CHROMA_THRESHOLD = 0.000004;
+
+/**
+ * True when an OKLCH chroma is at or below `ACHROMATIC_CHROMA_THRESHOLD`
+ * (or is not a number), i.e. the hue is powerless.
+ */
+export function isAchromatic(chroma: number): boolean {
+  return !(chroma > ACHROMATIC_CHROMA_THRESHOLD);
 }
 
 /**
- * Inverse sRGB transfer function: convert sRGB gamma-encoded to linear light.
- * Values are in the 0-1 range.
+ * True when a color's hue carries no information: the color is achromatic
+ * or the hue is not a finite number. Interpolation substitutes the other
+ * endpoint's hue for a powerless one.
+ */
+export function hasPowerlessHue(color: { c: number; h: number }): boolean {
+  return isAchromatic(color.c) || !Number.isFinite(color.h);
+}
+
+/**
+ * sRGB / Display P3 transfer function (gamma encoding): linear light to
+ * gamma-encoded, for one channel.
+ *
+ * Extended range, as in CSS Color 4 and colorjs.io: negative inputs are
+ * mirrored (`f(-x) = -f(x)`) and values above 1 follow the same curve, so
+ * out-of-gamut linear values stay invertible instead of being folded or
+ * clipped. In-range `[0, 1]` inputs are unaffected. Callers that need a
+ * displayable channel clamp the result themselves.
+ */
+export function linearToSrgbChannel(c: number): number {
+  const abs = c < 0 ? -c : c;
+  if (abs <= 0.0031308) {
+    return 12.92 * c;
+  }
+  const encoded = 1.055 * Math.pow(abs, 1 / 2.4) - 0.055;
+  return c < 0 ? -encoded : encoded;
+}
+
+/**
+ * Inverse sRGB / Display P3 transfer function (linearization):
+ * gamma-encoded to linear light, for one channel. Extended range with the
+ * same sign mirroring as `linearToSrgbChannel()`, of which it is the exact
+ * inverse.
  */
 export function srgbToLinearChannel(c: number): number {
-  if (c <= 0.04045) {
+  const abs = c < 0 ? -c : c;
+  if (abs <= 0.04045) {
     return c / 12.92;
   }
-  return Math.pow((c + 0.055) / 1.055, 2.4);
+  const linear = Math.pow((abs + 0.055) / 1.055, 2.4);
+  return c < 0 ? -linear : linear;
 }
