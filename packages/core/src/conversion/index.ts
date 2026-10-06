@@ -12,8 +12,9 @@ import {
   argbFromRgb,
 } from '@material/material-color-utilities';
 import type { Color, Rgb, Hsl, Hsv, Hct, Oklab, Oklch, P3 } from '../types.js';
-import { round, clamp } from '../utils/index.js';
+import { round } from '../utils/index.js';
 
+import { assertFinite } from './finite.js';
 import { rgbToHex, hexToRgb } from './srgb.js';
 import { rgbToHsl, hslToRgbUnrounded } from './hsl.js';
 import { rgbToHsv, hsvToRgbUnrounded } from './hsv.js';
@@ -30,6 +31,7 @@ export {
   hexToRgb,
 } from './srgb.js';
 export { rgbToHsl, hslToRgb } from './hsl.js';
+export { parse, tryParse } from './parse.js';
 export { rgbToHsv, hsvToRgb } from './hsv.js';
 export {
   linearRgbToOklab,
@@ -78,8 +80,12 @@ export function fromRgb(rgb: Rgb): Color {
   return fromRgbInto({ l: 0, c: 0, h: 0, alpha: 1 }, rgb);
 }
 
-/** Convert a Color to a hex string */
+/**
+ * Convert a Color to a hex string. Throws a `RangeError` when any channel is
+ * not finite.
+ */
 export function toHex(color: Color): string {
+  assertFinite('toHex', color.l, color.c, color.h, color.alpha);
   return rgbToHex(toRgb(color));
 }
 
@@ -173,8 +179,16 @@ export function fromP3(p3: P3): Color {
   return fromP3Into({ l: 0, c: 0, h: 0, alpha: 1 }, p3);
 }
 
-/** Convert a Color to a CSS color string in the given format */
-export function toCss(color: Color, format: string = 'hex'): string {
+/** Output formats accepted by {@link toCss}. */
+export type CssColorFormat = 'hex' | 'rgb' | 'hsl' | 'oklch' | 'oklab' | 'p3';
+
+/**
+ * Convert a Color to a CSS color string in the given format (default
+ * `'hex'`). Throws a `TypeError` for an unknown format and a `RangeError`
+ * when any channel of `color` is not finite.
+ */
+export function toCss(color: Color, format: CssColorFormat = 'hex'): string {
+  assertFinite('toCss', color.l, color.c, color.h, color.alpha);
   switch (format) {
     case 'hex':
       return toHex(color);
@@ -226,100 +240,8 @@ export function toCss(color: Color, format: string = 'hex'): string {
           )})`;
     }
     default:
-      return toHex(color);
+      throw new TypeError(
+        `toCss: unknown format "${String(format)}" (expected hex, rgb, hsl, oklch, oklab or p3)`,
+      );
   }
-}
-
-// ─── CSS color string parser ────────────────────────────────────────
-
-/** A number, or a percentage mapped so that `100%` equals `percentScale`. */
-function parseNumberOrPercent(value: string, percentScale: number): number {
-  return value.endsWith('%')
-    ? (parseFloat(value) / 100) * percentScale
-    : parseFloat(value);
-}
-
-/** Optional alpha component (number or percentage), clamped to `[0, 1]`. */
-function parseAlpha(value: string | undefined): number {
-  return clamp(value ? parseNumberOrPercent(value, 1) : 1, 0, 1);
-}
-
-/**
- * Parse any CSS color string into a Color.
- * Supports: hex, rgb(), hsl(), oklch(), oklab(), color(display-p3 ...)
- */
-export function parse(input: string): Color {
-  const str = input.trim().toLowerCase();
-
-  // Hex
-  if (str.startsWith('#')) {
-    return fromHex(str);
-  }
-
-  // rgb() / rgba()
-  const rgbMatch = str.match(
-    /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[/,]\s*([\d.]+%?))?\s*\)$/,
-  );
-  if (rgbMatch) {
-    return fromRgb({
-      r: clamp(parseFloat(rgbMatch[1]), 0, 255),
-      g: clamp(parseFloat(rgbMatch[2]), 0, 255),
-      b: clamp(parseFloat(rgbMatch[3]), 0, 255),
-      alpha: parseAlpha(rgbMatch[4]),
-    });
-  }
-
-  // hsl() / hsla()
-  const hslMatch = str.match(
-    /^hsla?\(\s*([\d.]+)(?:deg)?[,\s]+([\d.]+)%[,\s]+([\d.]+)%(?:\s*[/,]\s*([\d.]+%?))?\s*\)$/,
-  );
-  if (hslMatch) {
-    return fromHsl({
-      h: parseFloat(hslMatch[1]),
-      s: parseFloat(hslMatch[2]),
-      l: parseFloat(hslMatch[3]),
-      alpha: parseAlpha(hslMatch[4]),
-    });
-  }
-
-  // oklch()
-  const oklchMatch = str.match(
-    /^oklch\(\s*([\d.]+%?)\s+([\d.]+%?)\s+([\d.]+)(?:deg)?(?:\s*\/\s*([\d.]+%?))?\s*\)$/,
-  );
-  if (oklchMatch) {
-    return {
-      l: parseNumberOrPercent(oklchMatch[1], 1),
-      c: parseNumberOrPercent(oklchMatch[2], 0.4),
-      h: parseFloat(oklchMatch[3]),
-      alpha: parseAlpha(oklchMatch[4]),
-    };
-  }
-
-  // oklab()
-  const oklabMatch = str.match(
-    /^oklab\(\s*([\d.]+%?)\s+([-\d.]+%?)\s+([-\d.]+%?)(?:\s*\/\s*([\d.]+%?))?\s*\)$/,
-  );
-  if (oklabMatch) {
-    return fromOklab({
-      L: parseNumberOrPercent(oklabMatch[1], 1),
-      a: parseNumberOrPercent(oklabMatch[2], 0.4),
-      b: parseNumberOrPercent(oklabMatch[3], 0.4),
-      alpha: parseAlpha(oklabMatch[4]),
-    });
-  }
-
-  // color(display-p3 ...)
-  const p3Match = str.match(
-    /^color\(\s*display-p3\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/,
-  );
-  if (p3Match) {
-    return fromP3({
-      r: parseFloat(p3Match[1]),
-      g: parseFloat(p3Match[2]),
-      b: parseFloat(p3Match[3]),
-      alpha: parseAlpha(p3Match[4]),
-    });
-  }
-
-  throw new Error(`Unable to parse color: "${input}"`);
 }
