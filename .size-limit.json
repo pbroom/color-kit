@@ -4,14 +4,14 @@
     "path": "packages/color-kit/dist/index.js",
     "import": "{ parse, toHex, contrastRatio }",
     "gzip": true,
-    "limit": "5.28 kB"
+    "limit": "5.35 kB"
   },
   {
     "name": "color-kit: everyday toolkit (+ lighten, complementary)",
     "path": "packages/color-kit/dist/index.js",
     "import": "{ parse, toHex, contrastRatio, lighten, complementary }",
     "gzip": true,
-    "limit": "5.33 kB"
+    "limit": "5.4 kB"
   },
   {
     "name": "color-kit: toLinearSrgbArray (three.js / WebGL uniform)",

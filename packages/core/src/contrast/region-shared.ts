@@ -1,7 +1,11 @@
 import type { Color } from '../types.js';
 import { toP3Gamut, toSrgbGamut, type GamutTarget } from '../gamut/index.js';
 import type { PlanePoint } from '../geometry/types.js';
-import { contrastAPCA, contrastRatioUnclamped } from './metrics.js';
+import {
+  contrastAPCA,
+  contrastRatio,
+  type ContrastOptions,
+} from './metrics.js';
 import type {
   ContrastApcaPreset,
   ContrastMetric,
@@ -21,6 +25,11 @@ const APCA_PRESET_THRESHOLDS: Record<ContrastApcaPreset, number> = {
 export interface ResolvedContrastCriterion {
   metric: ContrastMetric;
   threshold: number;
+  /**
+   * Signed margin of `sample` against `reference`: `>= 0` passes. Uses the
+   * public metric (`contrastRatio` / `contrastAPCA`) with the region's gamut,
+   * so a point inside a region passes the matching check.
+   */
   evaluate: (sample: Color, reference: Color) => number;
 }
 
@@ -48,6 +57,7 @@ export function resolveContrastCriterion(
   options: ContrastRegionPathOptions,
 ): ResolvedContrastCriterion {
   const metric = options.metric ?? 'wcag';
+  const metricOptions: ContrastOptions = { gamut: options.gamut ?? 'srgb' };
   if (metric === 'apca') {
     const preset = options.apcaPreset ?? 'body';
     const threshold =
@@ -65,8 +75,8 @@ export function resolveContrastCriterion(
       evaluate: (sample, reference) => {
         const lc =
           role === 'sample-background'
-            ? contrastAPCA(reference, sample)
-            : contrastAPCA(sample, reference);
+            ? contrastAPCA(reference, sample, metricOptions)
+            : contrastAPCA(sample, reference, metricOptions);
         if (polarity === 'positive') {
           return lc - threshold;
         }
@@ -86,7 +96,7 @@ export function resolveContrastCriterion(
     metric,
     threshold,
     evaluate: (sample, reference) =>
-      contrastRatioUnclamped(sample, reference) - threshold,
+      contrastRatio(sample, reference, metricOptions) - threshold,
   };
 }
 
