@@ -23,24 +23,48 @@ const schedulerRequest = {
   performanceProfile: 'balanced',
 };
 
-function assertSharedDefaultSchedulerTelemetry(rootEntry, computeEntry) {
-  rootEntry.resetDefaultPlaneComputeTelemetry();
+function assertDefaultSchedulerTelemetry(computeEntry) {
+  computeEntry.resetDefaultPlaneComputeTelemetry();
   assert.equal(
-    rootEntry.getDefaultPlaneComputeTelemetrySnapshot().buckets.length,
+    computeEntry.getDefaultPlaneComputeTelemetrySnapshot().buckets.length,
     0,
   );
 
   computeEntry.runScheduledPlaneCompute(schedulerRequest);
   assert.equal(
-    rootEntry.getDefaultPlaneComputeTelemetrySnapshot().buckets.length,
+    computeEntry.getDefaultPlaneComputeTelemetrySnapshot().buckets.length,
     1,
   );
 
-  rootEntry.resetDefaultPlaneComputeTelemetry();
+  computeEntry.resetDefaultPlaneComputeTelemetry();
   assert.equal(
     computeEntry.getDefaultPlaneComputeTelemetrySnapshot().buckets.length,
     0,
   );
+}
+
+// The compute engine and the marching-squares contour helpers are not part
+// of the root barrel: compute lives only on `color-kit/compute`, and the
+// contour helpers are internal.
+const NOT_ON_ROOT = [
+  'createJsPlaneComputeBackend',
+  'createPlaneComputeScheduler',
+  'runPlaneCompute',
+  'runScheduledPlaneCompute',
+  'getDefaultPlaneComputeTelemetrySnapshot',
+  'resetDefaultPlaneComputeTelemetry',
+  'packPlaneQueryResults',
+  'unpackPlaneQueryResults',
+  'buildContourPaths',
+  'contourEdgeKey',
+  'interpolateZero',
+  'PLANE_DEFAULT_RANGES',
+];
+
+function assertNotOnRoot(rootEntry) {
+  for (const name of NOT_ON_ROOT) {
+    assert.equal(name in rootEntry, false, `${name} must not be on the root`);
+  }
 }
 
 const root = await import('color-kit');
@@ -82,19 +106,13 @@ assert.equal('ColorInput' in react, false);
 assert.equal('ColorInput' in reactColorInput, true);
 
 // Subpath entries must share module state with the root barrel (chunk
-// splitting), otherwise module-level singletons like the default compute
-// scheduler would be duplicated per entry point.
-assert.equal(
-  root.createJsPlaneComputeBackend,
-  compute.createJsPlaneComputeBackend,
-);
-assert.equal(
-  root.createJsPlaneComputeBackend,
-  core.createJsPlaneComputeBackend,
-);
+// splitting), otherwise module-level state would be duplicated per entry
+// point.
 assert.equal(root.definePlane, plane.definePlane);
-assertSharedDefaultSchedulerTelemetry(root, compute);
-assertSharedDefaultSchedulerTelemetry(core, compute);
+assert.equal(root.definePlane, core.definePlane);
+assertNotOnRoot(root);
+assertNotOnRoot(core);
+assertDefaultSchedulerTelemetry(compute);
 
 const cjsRoot = require('color-kit');
 const cjsCore = require('color-kit/core');
@@ -123,14 +141,8 @@ assert.equal(cjsRoot.packColors, cjsInterop.packColors);
 assert.equal(typeof cjsReact.Color, 'function');
 assert.equal('ColorInput' in cjsReact, false);
 assert.equal('ColorInput' in cjsReactColorInput, true);
-assert.equal(
-  cjsRoot.createJsPlaneComputeBackend,
-  cjsCompute.createJsPlaneComputeBackend,
-);
-assert.equal(
-  cjsRoot.createJsPlaneComputeBackend,
-  cjsCore.createJsPlaneComputeBackend,
-);
 assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);
-assertSharedDefaultSchedulerTelemetry(cjsRoot, cjsCompute);
-assertSharedDefaultSchedulerTelemetry(cjsCore, cjsCompute);
+assert.equal(cjsRoot.definePlane, cjsCore.definePlane);
+assertNotOnRoot(cjsRoot);
+assertNotOnRoot(cjsCore);
+assertDefaultSchedulerTelemetry(cjsCompute);

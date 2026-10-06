@@ -392,7 +392,7 @@ Internally, query computation remains canonical in OKLCH. Mapping helpers (`colo
 Use `definePlane()` to normalize ranges and fixed channels. All inputs are optional. Defaults are model-specific:
 
 - axis channels use model defaults (for example `oklch` defaults to `x: l`, `y: c`)
-- ranges use model defaults (for `oklch`, `PLANE_DEFAULT_RANGES`)
+- ranges use model defaults (for `oklch`, `PLANE_MODEL_DEFAULT_RANGES.oklch`)
 - `fixed` channels are interpreted in the selected model
 
 ```ts

@@ -18,6 +18,7 @@ import type { Color, Hct, Hsl, Hsv, Oklab, Oklch, P3, Rgb } from '../types.js';
 import { clamp, normalizeHue } from '../utils/index.js';
 import type {
   PlaneChannel,
+  PlaneChannelFor,
   PlaneFixedInput,
   PlaneModel,
   PlaneModelColor,
@@ -57,31 +58,22 @@ export const PLANE_MODEL_DEFAULT_AXES: Record<
   'display-p3': { x: 'r', y: 'g' },
 };
 
-const OKLCH_DEFAULT_RANGES: Record<'l' | 'c' | 'h', [number, number]> = {
-  l: [0, 1],
-  c: [0.4, 0], // chroma is positive, so we invert the range
-  h: [0, 360],
-};
-
-/**
- * Backwards-compatible OKLCH defaults (`l`, `c`, `h`).
- *
- * Prefer `PLANE_MODEL_DEFAULT_RANGES` for model-aware usage.
- */
-export const PLANE_DEFAULT_RANGES: Record<'l' | 'c' | 'h', [number, number]> =
-  OKLCH_DEFAULT_RANGES;
-
 /**
  * Default axis ranges for each model's channels.
  *
  * Ranges may be descending (for example `[100, 0]`) to intentionally invert an
  * axis direction in normalized space.
  */
-export const PLANE_MODEL_DEFAULT_RANGES: Record<
-  PlaneModel,
-  Partial<Record<PlaneChannel, [number, number]>>
-> = {
-  oklch: OKLCH_DEFAULT_RANGES,
+export const PLANE_MODEL_DEFAULT_RANGES: {
+  readonly [Model in PlaneModel]: Readonly<
+    Record<PlaneChannelFor<Model>, [number, number]>
+  >;
+} = {
+  oklch: {
+    l: [0, 1],
+    c: [0.4, 0], // chroma is positive, so we invert the range
+    h: [0, 360],
+  },
   rgb: {
     r: [0, 255],
     g: [0, 255],

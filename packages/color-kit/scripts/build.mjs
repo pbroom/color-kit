@@ -22,6 +22,10 @@ const reactDistRoot = path.join(repoRoot, 'packages', 'react', 'dist');
 const rewriteRules = [
   // Order matters: rewrite the longer specifiers before the bare core one.
   [/(["'])@color-kit\/driver\1/g, '$1color-kit/driver$1'],
+  [
+    /(["'])@color-kit\/core\/(plane|compute|hct|interop)\1/g,
+    '$1color-kit/$2$1',
+  ],
   [/(["'])@color-kit\/core\1/g, '$1color-kit$1'],
 ];
 

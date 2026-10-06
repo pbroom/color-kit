@@ -235,75 +235,6 @@ export type {
 // Utilities
 export { clamp, round, normalizeHue, lerp } from './utils/index.js';
 
-// Compute backends
-export {
-  createJsPlaneComputeBackend,
-  createPlaneComputeScheduler,
-  getDefaultPlaneComputeTelemetrySnapshot,
-  getPackedPlaneQueryTransferables,
-  packPlaneQueryResults,
-  runPackedPlaneQueries,
-  runPlaneCompute,
-  runScheduledPlaneCompute,
-  resetDefaultPlaneComputeTelemetry,
-  unpackPlaneQueryResults,
-} from './compute/index.js';
-export type {
-  PackedPlaneQueryDescriptor,
-  PackedPlaneQueryResult,
-  PlaneComputeBackend,
-  PlaneComputeBackendKind,
-  PlaneComputeDebugTrace,
-  PlaneComputeCircuitBreakerState,
-  PlaneComputePerformanceProfile,
-  PlaneComputePriority,
-  PlaneComputeQuality,
-  PlaneComputeRequest,
-  PlaneComputeResponse,
-  PlaneComputeScheduleTrace,
-  PlaneComputeScheduler,
-  PlaneComputeSchedulerOptions,
-  PlaneComputeTelemetryBackendStats,
-  PlaneComputeTelemetryBucket,
-  PlaneComputeTelemetrySnapshot,
-} from './compute/index.js';
-
-// Contour utilities
-export {
-  buildContourPaths,
-  canonicalizeContourPoint,
-  cellMaskFromBooleans,
-  cellMaskFromValues,
-  contourEdgeKey,
-  contourPointKey,
-  contourPointsEqual,
-  extractAdaptiveContourSegments,
-  extractGridContourSegments,
-  interpolateCellEdge,
-  interpolateZero,
-  pointOnCellEdge,
-  segmentEdgesForCell,
-} from './contour/index.js';
-export type {
-  AdaptiveContourCell,
-  AdaptiveContourExtraction,
-  AdaptiveContourOptions,
-  AdaptiveContourRefineContext,
-  BuildContourPathOptions,
-  ContourCell,
-  ContourCellBounds,
-  ContourCellEvent,
-  ContourCellValues,
-  ContourEdge,
-  ContourEdgePair,
-  ContourInterpolation,
-  ContourPoint,
-  ContourSegment,
-  ContourSegmentExtraction,
-  GridContourOptions,
-  ScalarContourGrid,
-} from './contour/index.js';
-
 // Plane geometry
 export {
   colorAtPlanePoint,
@@ -324,7 +255,6 @@ export {
   planeModelChannels,
   planeModelDefaultRange,
   planeToColor,
-  PLANE_DEFAULT_RANGES,
   PLANE_MODEL_CHANNELS,
   PLANE_MODEL_DEFAULT_AXES,
   PLANE_MODEL_DEFAULT_RANGES,
@@ -402,7 +332,6 @@ export type {
   PlaneQueryTraceSummary,
   PlaneQueryTraceViewportStage,
   PlaneSense,
-  PlaneSenseApi,
   PlaneWithSense,
   PlaneRegion,
   PlaneRegionPoint,

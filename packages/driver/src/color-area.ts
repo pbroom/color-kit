@@ -2,7 +2,7 @@ import type { Color } from '@color-kit/core';
 import {
   clamp,
   definePlane,
-  PLANE_DEFAULT_RANGES,
+  PLANE_MODEL_DEFAULT_RANGES,
   sense,
   toP3Gamut,
   toSrgbGamut,
@@ -65,14 +65,16 @@ export interface ResolvedColorAreaAxes {
   y: ResolvedColorAreaAxis;
 }
 
+const OKLCH_DEFAULT_RANGES = PLANE_MODEL_DEFAULT_RANGES.oklch;
+
 export const COLOR_AREA_DEFAULT_RANGES: Record<
   ColorAreaChannel,
   [number, number]
 > = {
-  l: [PLANE_DEFAULT_RANGES.l[0], PLANE_DEFAULT_RANGES.l[1]],
+  l: [OKLCH_DEFAULT_RANGES.l[0], OKLCH_DEFAULT_RANGES.l[1]],
   // UI Y coordinates are flipped, so keep chroma ascending here.
-  c: [PLANE_DEFAULT_RANGES.c[1], PLANE_DEFAULT_RANGES.c[0]],
-  h: [PLANE_DEFAULT_RANGES.h[0], PLANE_DEFAULT_RANGES.h[1]],
+  c: [OKLCH_DEFAULT_RANGES.c[1], OKLCH_DEFAULT_RANGES.c[0]],
+  h: [OKLCH_DEFAULT_RANGES.h[0], OKLCH_DEFAULT_RANGES.h[1]],
 };
 
 const COLOR_AREA_DEFAULT_AXES: ResolvedColorAreaAxes = {
