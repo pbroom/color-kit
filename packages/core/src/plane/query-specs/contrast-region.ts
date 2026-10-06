@@ -1,3 +1,4 @@
+import { assertGamutTarget } from '../../gamut/target.js';
 import { contrastRegionPaths } from '../../contrast/index.js';
 import type { InternalPlaneTraceContext } from '../../trace/context.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
@@ -36,6 +37,9 @@ export function getPlaneContrastRegion(
   trace?: InternalPlaneTraceContext | null,
 ): PlaneContrastRegionResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
+  // Validate before the non-L×C early return so every plane rejects an
+  // unsupported gamut (such as the removed 'p3') the same way.
+  assertGamutTarget(query.gamut, 'contrastRegion()');
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'contrastRegion',

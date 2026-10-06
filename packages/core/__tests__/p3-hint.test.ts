@@ -30,6 +30,9 @@ const a = parse('#3b82f6');
 const b = parse('#ef4444');
 const out: Color = { l: 0, c: 0, h: 0, alpha: 1 };
 const plane = definePlane({ model: 'oklch' });
+// Contrast and chroma-band queries return empty geometry on non-L×C planes;
+// the gamut must still be validated there.
+const rgbPlane = definePlane({ model: 'rgb' });
 const reference = fromHex('#111827');
 
 // Every public entry point that takes a space, gamut, model or format must
@@ -133,6 +136,34 @@ describe("the removed 'p3' spelling", () => {
       expect(run).toThrow(EXACT_HINT);
     },
   );
+
+  it.each(PLANE_QUERIES)(
+    'plane %s query on an RGB plane throws a TypeError with the hint',
+    (_name, query) => {
+      const run = () => runPlaneQueries(rgbPlane, [query]);
+      expect(run).toThrow(TypeError);
+      expect(run).toThrow(EXACT_HINT);
+    },
+  );
+
+  // The exact-endpoint shortcut must not skip space validation.
+  it.each([
+    ['mix t=0', () => mix(a, b, 0, { space: 'p3' as never })],
+    ['mix t=1', () => mix(a, b, 1, { space: 'p3' as never })],
+    ['mixInto t=0', () => mixInto(out, a, b, 0, { space: 'p3' as never })],
+    ['interpolate t=1', () => interpolate(a, b, 1, { space: 'p3' as never })],
+    [
+      'interpolateInto t=0',
+      () => interpolateInto(out, a, b, 0, { space: 'p3' as never }),
+    ],
+    [
+      'generateScale endpoints only',
+      () => generateScale(a, b, 2, { space: 'p3' as never }),
+    ],
+  ] as const)('%s throws a TypeError with the hint', (_name, run) => {
+    expect(run).toThrow(TypeError);
+    expect(run).toThrow(EXACT_HINT);
+  });
 
   it('rejects other unknown gamuts without the p3 hint', () => {
     const run = () => maxChromaAt(0.5, 200, { gamut: 'rec2020' as never });

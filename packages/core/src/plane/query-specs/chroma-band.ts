@@ -1,3 +1,4 @@
+import { assertGamutTarget } from '../../gamut/target.js';
 import { chromaBand } from '../../gamut/index.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
 import { requireHueField } from '../packed-abi.js';
@@ -29,6 +30,9 @@ export function getPlaneChromaBand(
   query: Omit<PlaneChromaBandQuery, 'kind'> = {},
 ): PlaneChromaBandResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
+  // Validate before the non-L×C early return so every plane rejects an
+  // unsupported gamut (such as the removed 'p3') the same way.
+  assertGamutTarget(query.gamut, 'chromaBand()');
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'chromaBand',
