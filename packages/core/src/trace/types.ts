@@ -1,4 +1,4 @@
-import type { ContrastHybridFallbackReason } from '../contrast/types.js';
+import type { ContrastHybridDegradedReason } from '../contrast/types.js';
 import type { GamutTarget } from '../gamut/index.js';
 import type { PlanePoint } from '../geometry/types.js';
 
@@ -16,17 +16,11 @@ export type PlaneQueryKind =
   | 'fallbackPoint'
   | 'gradient';
 
-export type PlaneComputeBackendKind = 'js' | 'webgpu';
+/** Compute backends that exist today. Only the JS backend is implemented. */
+export type PlaneComputeBackendKind = 'js';
 
-export type PlaneComputeScheduleReason =
-  | 'default-js'
-  | 'baseline-probe'
-  | 'warmup'
-  | 'telemetry-win'
-  | 'circuit-open'
-  | 'unsupported-backend'
-  | 'telemetry-regression'
-  | 'backend-error';
+/** Why the scheduler picked a backend. Only the JS backend exists. */
+export type PlaneComputeScheduleReason = 'default-js';
 
 export type PlaneViewportRelation = 'inside' | 'outside' | 'intersects';
 
@@ -71,7 +65,7 @@ export interface PlaneQueryTraceSummary {
     | 'contrast-hybrid'
     | 'contrast-legacy-uniform'
     | 'contrast-legacy-adaptive';
-  fallbackReason?: ContrastHybridFallbackReason;
+  degradedReason?: ContrastHybridDegradedReason;
   samplingMode?: 'analytic' | 'uniform' | 'adaptive' | 'hybrid';
   viewportRelation?: PlaneViewportRelation;
   backend?: PlaneComputeBackendKind;

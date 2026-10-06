@@ -5,8 +5,8 @@ import { requireHueField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
 import { resolvePlaneDefinition } from '../resolve.js';
 import type {
-  PlaneContrastRegionQuery,
   PlaneContrastRegionResult,
+  PlaneContrastQueryOptions,
   PlaneDefinition,
 } from '../types.js';
 import {
@@ -32,7 +32,7 @@ import { countPlanePaths, toPlaneBoundaryPoint } from './shared.js';
  */
 export function getPlaneContrastRegion(
   planeDefinition: PlaneDefinition,
-  query: Omit<PlaneContrastRegionQuery, 'kind'>,
+  query: PlaneContrastQueryOptions,
   trace?: InternalPlaneTraceContext | null,
 ): PlaneContrastRegionResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);

@@ -2,12 +2,16 @@ import type { ContrastRegionPathOptions } from '../../contrast/types.js';
 import type { PlaneContrastQueryOptions } from '../types.js';
 
 /**
- * Picks the contrast solver options out of a plane contrast query.
+ * Picks the contrast solver options out of a plane contrast query. The
+ * engine and every engine-specific option are passed through unchanged, so
+ * `contrastRegionPaths` validates them (and rejects invalid combinations)
+ * exactly as it does for direct calls.
  */
 export function toContrastRegionPathOptions(
   query: PlaneContrastQueryOptions,
 ): ContrastRegionPathOptions {
   return {
+    engine: query.engine,
     gamut: query.gamut,
     metric: query.metric,
     level: query.level,
@@ -21,21 +25,39 @@ export function toContrastRegionPathOptions(
     tolerance: query.tolerance,
     maxIterations: query.maxIterations,
     alpha: query.alpha,
-    edgeInterpolation: query.edgeInterpolation,
     simplifyTolerance: query.simplifyTolerance,
     samplingMode: query.samplingMode,
+    edgeInterpolation: query.edgeInterpolation,
     adaptiveBaseSteps: query.adaptiveBaseSteps,
     adaptiveMaxDepth: query.adaptiveMaxDepth,
     hybridMaxDepth: query.hybridMaxDepth,
     hybridErrorTolerance: query.hybridErrorTolerance,
-  };
+  } as ContrastRegionPathOptions;
+}
+
+/**
+ * Sampling strategy a contrast query runs with: `'hybrid'` for the hybrid
+ * engine, or the legacy engine's resolved grid mode.
+ */
+function contrastSamplingMode(
+  query: PlaneContrastQueryOptions,
+): 'hybrid' | 'uniform' | 'adaptive' {
+  if (query.engine !== 'legacy') {
+    return 'hybrid';
+  }
+  if (query.samplingMode === 'uniform' || query.samplingMode === 'adaptive') {
+    return query.samplingMode;
+  }
+  return query.adaptiveBaseSteps != null || query.adaptiveMaxDepth != null
+    ? 'adaptive'
+    : 'uniform';
 }
 
 /**
  * Scheduler work estimate shared by contrast boundary and region queries.
  */
 export function contrastQueryBudget(query: PlaneContrastQueryOptions): number {
-  const samplingMode = query.samplingMode ?? 'hybrid';
+  const samplingMode = contrastSamplingMode(query);
   if (samplingMode === 'uniform') {
     const lightness = query.lightnessSteps ?? 64;
     const chroma = query.chromaSteps ?? 64;
@@ -72,7 +94,7 @@ export function contrastTelemetrySignature(
   query: PlaneContrastQueryOptions,
 ): string {
   const metric = query.metric ?? 'wcag';
-  const samplingMode = query.samplingMode ?? 'hybrid';
+  const samplingMode = contrastSamplingMode(query);
   if (metric !== 'apca') {
     return `${metric}:${samplingMode}`;
   }

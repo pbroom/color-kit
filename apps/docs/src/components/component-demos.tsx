@@ -238,9 +238,9 @@ interface ContrastMetricSample {
   pointCount: number;
   lightnessSteps: number;
   chromaSteps: number;
-  samplingMode: 'hybrid' | 'uniform' | 'adaptive';
+  samplingMode: 'uniform' | 'adaptive';
   contrastMetric: ContrastMetric;
-  backend?: 'js' | 'webgpu';
+  backend?: 'js';
   scheduleReason?: string;
   schedulerBucketCount?: number;
   quality: 'high' | 'medium' | 'low';
@@ -250,21 +250,11 @@ interface ContrastMetricSample {
 interface ContrastObservabilitySummary {
   sampleCount: number;
   workerSampleCount: number;
-  workerJsFallbackCount: number;
-  workerJsFallbackRate: number;
   syncFallbackCount: number;
   syncFallbackRate: number;
   topScheduleReasons: Array<{ reason: string; count: number }>;
   latestSchedulerBucketCount: number;
 }
-
-const WORKER_JS_FALLBACK_REASONS = new Set([
-  'default-js',
-  'backend-error',
-  'circuit-open',
-  'unsupported-backend',
-  'telemetry-regression',
-]);
 
 function summarizeContrastObservability(
   samples: ContrastMetricSample[],
@@ -273,8 +263,6 @@ function summarizeContrastObservability(
     return {
       sampleCount: 0,
       workerSampleCount: 0,
-      workerJsFallbackCount: 0,
-      workerJsFallbackRate: 0,
       syncFallbackCount: 0,
       syncFallbackRate: 0,
       topScheduleReasons: [],
@@ -284,15 +272,6 @@ function summarizeContrastObservability(
 
   const workerSamples = samples.filter((sample) => sample.source === 'worker');
   const syncSamples = samples.filter((sample) => sample.source === 'sync');
-  const workerFallbackCount = workerSamples.filter((sample) => {
-    if (sample.backend !== 'js') {
-      return false;
-    }
-    if (!sample.scheduleReason) {
-      return false;
-    }
-    return WORKER_JS_FALLBACK_REASONS.has(sample.scheduleReason);
-  }).length;
   const syncFallbackCount = syncSamples.filter((sample) =>
     (sample.scheduleReason ?? '').startsWith('worker-'),
   ).length;
@@ -319,9 +298,6 @@ function summarizeContrastObservability(
   return {
     sampleCount: samples.length,
     workerSampleCount: workerSamples.length,
-    workerJsFallbackCount: workerFallbackCount,
-    workerJsFallbackRate:
-      workerSamples.length > 0 ? workerFallbackCount / workerSamples.length : 0,
     syncFallbackCount,
     syncFallbackRate:
       syncSamples.length > 0 ? syncFallbackCount / syncSamples.length : 0,
@@ -845,12 +821,9 @@ export function ColorAreaDemo({
         </div>
         {contrastObservability.sampleCount > 0 ? (
           <div>
-            Worker JS fallback{' '}
-            {(contrastObservability.workerJsFallbackRate * 100).toFixed(1)}% (
-            {contrastObservability.workerJsFallbackCount}/
-            {contrastObservability.workerSampleCount}) · sync fallback{' '}
-            {(contrastObservability.syncFallbackRate * 100).toFixed(1)}% (
-            {contrastObservability.syncFallbackCount}) · reasons{' '}
+            Worker samples {contrastObservability.workerSampleCount} · sync
+            fallback {(contrastObservability.syncFallbackRate * 100).toFixed(1)}
+            % ({contrastObservability.syncFallbackCount}) · reasons{' '}
             {contrastObservability.topScheduleReasons.length > 0
               ? contrastObservability.topScheduleReasons
                   .map((entry) => `${entry.reason}:${entry.count}`)

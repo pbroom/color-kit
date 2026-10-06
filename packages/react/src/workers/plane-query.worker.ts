@@ -17,9 +17,7 @@ interface MinimalWorkerScope {
 }
 
 const workerScope = self as unknown as MinimalWorkerScope;
-const scheduler = createPlaneComputeScheduler({
-  options: { preferredBackends: ['js'] },
-});
+const scheduler = createPlaneComputeScheduler();
 
 workerScope.onmessage = (event): void => {
   const payload = event.data;

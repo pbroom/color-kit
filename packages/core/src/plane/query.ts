@@ -17,10 +17,9 @@ import type {
   Plane,
   PlaneChromaBandQuery,
   PlaneChromaBandResult,
-  PlaneContrastBoundaryQuery,
   PlaneContrastBoundaryResult,
-  PlaneContrastRegionQuery,
   PlaneContrastRegionResult,
+  PlaneContrastQueryOptions,
   PlaneDefinition,
   PlaneFallbackPointQuery,
   PlaneFallbackPointResult,
@@ -129,11 +128,11 @@ export interface PlaneSense {
   ) => PlaneGamutRegionResult;
   /** Computes a projected contrast-threshold contour. */
   contrastBoundary: (
-    query: Omit<PlaneContrastBoundaryQuery, 'kind'>,
+    query: PlaneContrastQueryOptions,
   ) => PlaneContrastBoundaryResult;
   /** Computes one or more projected filled contrast regions. */
   contrastRegion: (
-    query: Omit<PlaneContrastRegionQuery, 'kind'>,
+    query: PlaneContrastQueryOptions,
   ) => PlaneContrastRegionResult;
   /** Computes a projected chroma-band point sequence. */
   chromaBand: (
