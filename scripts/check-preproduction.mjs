@@ -5,6 +5,7 @@ const PACKAGE_ROOTS = ['packages', 'apps'];
 const CONTROL_KIT_PACKAGE = '@color-kit/control-kit';
 const CONTROL_KIT_GITHUB_SPEC_PREFIX = 'github:pbroom/control-kit';
 const LOCAL_DEPENDENCY_PREFIXES = ['workspace:', 'file:', 'link:'];
+const CHANGESET_DIR = '.changeset';
 
 function parseMajor(version) {
   const match = /^(\d+)(?:\.|$)/.exec(version);
@@ -34,8 +35,72 @@ async function collectPackageJsonPaths() {
   return packageJsonPaths;
 }
 
+/**
+ * Parse the YAML frontmatter of a changeset (`'name': bump` lines).
+ * @param {string} source
+ * @returns {Array<{ name: string, bump: string }>}
+ */
+function parseChangesetReleases(source) {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source);
+  if (!match) {
+    return [];
+  }
+
+  return match[1]
+    .split(/\r?\n/)
+    .map((line) => /^\s*(['"]?)([^'"]+)\1\s*:\s*(\w+)\s*$/.exec(line))
+    .filter(Boolean)
+    .map(([, , name, bump]) => ({ name, bump }));
+}
+
+/**
+ * Changesets may only target publishable packages (private workspace packages
+ * are not versioned, so their changesets would be silently dropped), and a
+ * `major` bump would take a 0.x package to 1.0.0.
+ */
+async function checkChangesets(publishablePackages, errors) {
+  let entries = [];
+  try {
+    entries = await readdir(CHANGESET_DIR, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (
+      !entry.isFile() ||
+      !entry.name.endsWith('.md') ||
+      entry.name === 'README.md'
+    ) {
+      continue;
+    }
+
+    const changesetPath = path.join(CHANGESET_DIR, entry.name);
+    const releases = parseChangesetReleases(
+      await readFile(changesetPath, 'utf8'),
+    );
+
+    for (const { name, bump } of releases) {
+      const version = publishablePackages.get(name);
+      if (version === undefined) {
+        errors.push(
+          `${changesetPath}: "${name}" is not a publishable workspace package; target ${[...publishablePackages.keys()].map((pkg) => `"${pkg}"`).join(', ')} instead`,
+        );
+        continue;
+      }
+
+      if (bump === 'major' && (parseMajor(version) ?? 0) < 1) {
+        errors.push(
+          `${changesetPath}: "${name}" is pre-1.0; use a minor bump for breaking changes instead of major`,
+        );
+      }
+    }
+  }
+}
+
 async function main() {
   const errors = [];
+  const publishablePackages = new Map();
   const packageJsonPaths = await collectPackageJsonPaths();
   const controlKitPath = packageJsonPaths.find(
     (packageJsonPath) =>
@@ -88,6 +153,10 @@ async function main() {
       continue;
     }
 
+    if (typeof pkg.name === 'string') {
+      publishablePackages.set(pkg.name, pkg.version);
+    }
+
     if (typeof pkg.version !== 'string') {
       errors.push(`${packageJsonPath}: missing string version`);
       continue;
@@ -108,6 +177,8 @@ async function main() {
     }
   }
 
+  await checkChangesets(publishablePackages, errors);
+
   if (errors.length > 0) {
     console.error('Pre-production version guard failed:');
     for (const error of errors) {
@@ -117,7 +188,7 @@ async function main() {
   }
 
   console.log(
-    'Pre-production version guard passed: all publishable workspace packages are < 1.0.0.',
+    'Pre-production version guard passed: all publishable workspace packages are < 1.0.0 and changesets only target them with non-major bumps.',
   );
 }
 

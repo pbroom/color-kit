@@ -33,6 +33,7 @@ Node 20+ and pnpm are required.
 - Use Conventional Commit messages.
 - One logical change per branch; keep PRs reviewable.
 - Before pushing: `pnpm lint`, `pnpm format:check`, and `pnpm test` should pass. `pnpm pr:validate` bundles the standard checks.
+- If the change is visible to people who install `color-kit`, add a changeset (see [Changesets](#changesets)).
 
 ## Testing
 
@@ -40,6 +41,31 @@ Node 20+ and pnpm are required.
 - `pnpm --filter @color-kit/core test` for engine-only runs.
 - New public API needs docs: an MDX page under `apps/docs` and, where useful, a runnable demo.
 
+## Changesets
+
+Versions and release notes are managed with [Changesets](https://github.com/changesets/changesets). Only the published `color-kit` package is versioned. The workspace packages (`@color-kit/core`, `@color-kit/driver`, `@color-kit/react`, and the docs app) are private, so Changesets ignores them.
+
+To record a user-visible change, run `pnpm changeset` and commit the generated `.changeset/*.md` file with your PR. Or write the file by hand:
+
+```md
+---
+'color-kit': minor
+---
+
+What changed, written for people who use the package. Include migration steps for breaking changes.
+```
+
+- **Target `color-kit` only**, even when the change lives in `packages/core`, `packages/driver`, or `packages/react`. Their code ships through the `color-kit` facade.
+- **Choose the bump for 0.x:** use `minor` for breaking changes and new features, and `patch` for fixes. Never use `major`: it would take the package to 1.0.0.
+- `pnpm check:preprod` (which runs in CI) rejects changesets that target another package or use `major`.
+- Internal-only changes (tests, tooling, docs site, refactors with no API or behavior change) don't need a changeset.
+
 ## Releases
 
-Publishing is maintainer-driven (`pnpm publish:next`). The project is pre-1.0: public packages stay on `0.x.y` and breaking changes may land in minor releases.
+The project is pre-1.0. `color-kit` stays on `0.x.y`, breaking changes land in minor releases, and npm publishes use the `next` dist-tag. Changesets runs in normal mode, not prerelease mode, so versions stay plain `0.x.y` with no `-next.N` suffix.
+
+1. **Version PR (automated).** On every push to `main`, the [Version Packages workflow](.github/workflows/version-packages.yml) runs `changesets/action`. When unreleased changesets exist, it opens or updates a `chore: version packages` PR. That PR runs `pnpm version-packages` (`changeset version`, then `pnpm check:preprod`), which bumps `packages/color-kit/package.json`, writes `packages/color-kit/CHANGELOG.md`, and deletes the consumed changesets.
+2. **Review and merge** the version PR like any other. PRs opened with the default `GITHUB_TOKEN` don't trigger other workflows, so CI won't start on it automatically. Re-run CI on it, for example by closing and reopening the PR or pushing an empty commit, before you merge.
+3. **Publish (manual).** From an up-to-date `main`, a maintainer runs `pnpm publish:next:dry` and then `pnpm publish:next`. These run `release:verify` (preprod guard, build, artifact checks, tests, lint) and publish `color-kit` to npm with the `next` tag. CI never publishes and holds no npm token.
+
+The workflow needs **Allow GitHub Actions to create and approve pull requests** turned on under repository Settings > Actions > General.
