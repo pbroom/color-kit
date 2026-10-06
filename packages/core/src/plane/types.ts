@@ -245,18 +245,18 @@ export interface PlaneGamutRegionQuery {
  * Shared options for contrast plane queries. Identical to
  * `ContrastRegionPathOptions` plus the reference color and hue override.
  */
-export interface PlaneContrastQueryOptions extends ContrastRegionPathOptions {
+export type PlaneContrastQueryOptions = ContrastRegionPathOptions & {
   reference: Color;
   hue?: number;
-}
+};
 
-export interface PlaneContrastBoundaryQuery extends PlaneContrastQueryOptions {
+export type PlaneContrastBoundaryQuery = PlaneContrastQueryOptions & {
   kind: 'contrastBoundary';
-}
+};
 
-export interface PlaneContrastRegionQuery extends PlaneContrastQueryOptions {
+export type PlaneContrastRegionQuery = PlaneContrastQueryOptions & {
   kind: 'contrastRegion';
-}
+};
 
 export interface PlaneChromaBandQuery {
   kind: 'chromaBand';

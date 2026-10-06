@@ -42,7 +42,6 @@ const contrastSchedulerRequest: PlaneComputeRequest = {
       reference: { l: 0.58, c: 0.15, h: 275, alpha: 1 },
       metric: 'wcag',
       threshold: 4.5,
-      samplingMode: 'hybrid',
       hybridMaxDepth: 7,
       hybridErrorTolerance: 0.0015,
       hue: 275,
@@ -111,106 +110,45 @@ function createTimedBackend(
 }
 
 describe('plane compute scheduler', () => {
-  it('prefers faster non-js backend after baseline telemetry', () => {
+  it('runs on the JS backend and records EWMA telemetry per bucket', () => {
     const scheduler = createPlaneComputeScheduler({
       backends: {
         js: createTimedBackend('js', 8),
-        webgpu: createTimedBackend('webgpu', 3),
       },
-      options: {
-        preferredBackends: ['webgpu', 'js'],
-        minSamplesForDecision: 1,
-        warmupSamples: 1,
-        baselineProbeInterval: 3,
-        dragRegressionRatio: 1.1,
-        idleRegressionRatio: 1.2,
-      },
+      options: { ewmaAlpha: 0.5 },
     });
 
     const first = scheduler.run(schedulerRequest);
     const second = scheduler.run(schedulerRequest);
-    const third = scheduler.run(schedulerRequest);
-    const fourth = scheduler.run(schedulerRequest);
-    const fifth = scheduler.run(schedulerRequest);
-
-    expect(first.backend).toBe('webgpu');
-    expect(second.backend).toBe('webgpu');
-    expect(third.backend).toBe('webgpu');
-    expect(fourth.backend).toBe('js');
-    expect(fourth.schedule?.reason).toBe('baseline-probe');
-    expect(fifth.backend).toBe('webgpu');
-    expect(fifth.schedule?.reason).toBe('telemetry-win');
-  });
-
-  it('opens a circuit breaker after repeated non-js backend errors', () => {
-    const jsBackend = createTimedBackend('js', 5);
-    const throwingBackend: PlaneComputeBackend = {
-      kind: 'webgpu',
-      run() {
-        throw new Error('webgpu backend unavailable');
-      },
-    };
-    const scheduler = createPlaneComputeScheduler({
-      backends: {
-        js: jsBackend,
-        webgpu: throwingBackend,
-      },
-      options: {
-        preferredBackends: ['webgpu', 'js'],
-        baselineProbeInterval: 99,
-        backendErrorTripCount: 2,
-        circuitBreakerCooldownMs: 60_000,
-      },
-    });
-
-    const first = scheduler.run(schedulerRequest);
-    const second = scheduler.run(schedulerRequest);
-    const third = scheduler.run(schedulerRequest);
     const snapshot = scheduler.getTelemetrySnapshot();
 
     expect(first.backend).toBe('js');
-    expect(first.schedule?.reason).toBe('backend-error');
-    expect(second.backend).toBe('js');
-    expect(second.schedule?.reason).toBe('backend-error');
-    expect(third.backend).toBe('js');
-    expect(third.schedule?.reason).toBe('circuit-open');
-    expect(
-      snapshot.circuitBreakers.webgpu?.disabledUntilMs ?? 0,
-    ).toBeGreaterThan(0);
+    expect(first.schedule?.reason).toBe('default-js');
+    expect(second.schedule?.reason).toBe('default-js');
+    expect(second.schedule?.bucketKey).toBe(first.schedule?.bucketKey);
+    expect(snapshot.buckets).toHaveLength(1);
+    expect(snapshot.buckets[0]?.totalSamples).toBe(2);
+    expect(snapshot.buckets[0]?.lastUsedBackend).toBe('js');
+    expect(snapshot.buckets[0]?.backends.js).toEqual({
+      sampleCount: 2,
+      averageTotalMs: 8,
+      lastTotalMs: 8,
+    });
+
+    scheduler.resetTelemetry();
+    expect(scheduler.getTelemetrySnapshot().buckets).toEqual([]);
   });
 
-  it('falls back to js and opens circuit for contrast queries when the backend fails', () => {
-    const jsBackend = createTimedBackend('js', 7);
-    const throwingBackend: PlaneComputeBackend = {
-      kind: 'webgpu',
-      run() {
-        throw new Error('contrast webgpu backend unavailable');
-      },
-    };
+  it('keys contrast workloads by metric and solver signature', () => {
     const scheduler = createPlaneComputeScheduler({
       backends: {
-        js: jsBackend,
-        webgpu: throwingBackend,
-      },
-      options: {
-        preferredBackends: ['webgpu', 'js'],
-        baselineProbeInterval: 99,
-        backendErrorTripCount: 2,
-        circuitBreakerCooldownMs: 60_000,
+        js: createTimedBackend('js', 6),
       },
     });
 
-    const first = scheduler.run(contrastSchedulerRequest);
-    const second = scheduler.run(contrastSchedulerRequest);
-    const third = scheduler.run(contrastSchedulerRequest);
+    scheduler.run(contrastSchedulerRequest);
     const snapshot = scheduler.getTelemetrySnapshot();
 
-    expect(first.backend).toBe('js');
-    expect(first.schedule?.reason).toBe('backend-error');
-    expect(second.backend).toBe('js');
-    expect(second.schedule?.reason).toBe('backend-error');
-    expect(third.backend).toBe('js');
-    expect(third.schedule?.reason).toBe('circuit-open');
     expect(
       snapshot.buckets.some((bucket) =>
         bucket.key.includes('contrast:wcag:hybrid'),
@@ -218,13 +156,43 @@ describe('plane compute scheduler', () => {
     ).toBe(true);
   });
 
-  it('separates gamut-region telemetry buckets by workload signature', () => {
+  it('evicts the least recently used telemetry bucket', () => {
     const scheduler = createPlaneComputeScheduler({
       backends: {
         js: createTimedBackend('js', 6),
       },
-      options: {
-        preferredBackends: ['js'],
+      options: { maxTelemetryBuckets: 1 },
+    });
+
+    scheduler.run(schedulerRequest);
+    const latest = scheduler.run(contrastSchedulerRequest);
+    const snapshot = scheduler.getTelemetrySnapshot();
+
+    expect(snapshot.buckets.map((bucket) => bucket.key)).toEqual([
+      latest.schedule?.bucketKey,
+    ]);
+  });
+
+  it('propagates backend errors without recording telemetry', () => {
+    const scheduler = createPlaneComputeScheduler({
+      backends: {
+        js: {
+          kind: 'js',
+          run() {
+            throw new Error('backend failed');
+          },
+        },
+      },
+    });
+
+    expect(() => scheduler.run(schedulerRequest)).toThrow('backend failed');
+    expect(scheduler.getTelemetrySnapshot().buckets).toEqual([]);
+  });
+
+  it('separates gamut-region telemetry buckets by workload signature', () => {
+    const scheduler = createPlaneComputeScheduler({
+      backends: {
+        js: createTimedBackend('js', 6),
       },
     });
 
@@ -243,37 +211,6 @@ describe('plane compute scheduler', () => {
         key.includes('gamutRegion:srgb:viewport:hsl:h/s'),
       ),
     ).toBe(true);
-  });
-
-  it('skips unsupported non-js backends before recording telemetry', () => {
-    let backendRunCount = 0;
-    const unsupportedBackend: PlaneComputeBackend = {
-      kind: 'webgpu',
-      supportsRequest: (request) =>
-        request.queries.every((query) => query.kind === 'contrastRegion'),
-      run(request) {
-        backendRunCount += 1;
-        return createTimedBackend('webgpu', 1).run(request);
-      },
-    };
-    const scheduler = createPlaneComputeScheduler({
-      backends: {
-        js: createTimedBackend('js', 6),
-        webgpu: unsupportedBackend,
-      },
-      options: {
-        preferredBackends: ['webgpu', 'js'],
-      },
-    });
-
-    const response = scheduler.run(schedulerRequest);
-    const snapshot = scheduler.getTelemetrySnapshot();
-
-    expect(response.backend).toBe('js');
-    expect(response.schedule?.reason).toBe('unsupported-backend');
-    expect(backendRunCount).toBe(0);
-    expect(snapshot.buckets[0]?.backends.webgpu).toBeUndefined();
-    expect(snapshot.buckets[0]?.backends.js?.sampleCount).toBe(1);
   });
 
   it('distributes batched debug timings across traced queries', () => {
@@ -321,9 +258,6 @@ describe('plane compute scheduler', () => {
     const scheduler = createPlaneComputeScheduler({
       backends: {
         js: createTimedBackend('js', 6),
-      },
-      options: {
-        preferredBackends: ['js'],
       },
     });
 

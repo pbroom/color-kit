@@ -21,7 +21,6 @@ export type {
   PlaneComputeBackend,
   PlaneComputeBackendKind,
   PlaneComputeDebugTrace,
-  PlaneComputeCircuitBreakerState,
   PlaneComputePerformanceProfile,
   PlaneComputePriority,
   PlaneComputeQuality,

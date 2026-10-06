@@ -208,6 +208,7 @@ function goldenCases(): Array<{
             reference: dark,
             metric: 'apca',
             apcaPolarity: 'positive',
+            engine: 'legacy',
             samplingMode: 'adaptive',
             adaptiveBaseSteps: 12,
           },
@@ -228,6 +229,7 @@ function goldenCases(): Array<{
           {
             kind: 'contrastRegion',
             reference,
+            engine: 'legacy',
             samplingMode: 'uniform',
             lightnessSteps: 32,
             chromaSteps: 32,

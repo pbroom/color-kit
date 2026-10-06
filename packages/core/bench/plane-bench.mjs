@@ -72,11 +72,23 @@ const boundary = runCase('plane.gamutBoundary adaptive', () =>
   ),
 );
 
-const contrast = runCase('plane.contrastRegion adaptive', () =>
+const contrastHybrid = runCase('plane.contrastRegion hybrid', () =>
   THRESHOLDS.map((threshold) =>
     query.contrastRegion({
       reference,
       threshold,
+      lightnessSteps: 48,
+      chromaSteps: 48,
+    }),
+  ),
+);
+
+const contrast = runCase('plane.contrastRegion legacy adaptive', () =>
+  THRESHOLDS.map((threshold) =>
+    query.contrastRegion({
+      reference,
+      threshold,
+      engine: 'legacy',
       samplingMode: 'adaptive',
       lightnessSteps: 48,
       chromaSteps: 48,
@@ -93,6 +105,7 @@ const compile = runCase('plane.compile svg', () => {
   const contrastRegion = query.contrastRegion({
     reference,
     threshold: 4.5,
+    engine: 'legacy',
     samplingMode: 'adaptive',
     lightnessSteps: 48,
     chromaSteps: 48,
@@ -121,12 +134,13 @@ console.log(
       warmup: WARMUP,
       summary: {
         boundaryMedianMs: boundary.medianMs,
+        contrastHybridMedianMs: contrastHybrid.medianMs,
         contrastMedianMs: contrast.medianMs,
         compileMedianMs: compile.medianMs,
         boundaryPointCount,
         contrastPointCount,
       },
-      cases: [boundary, contrast, compile],
+      cases: [boundary, contrastHybrid, contrast, compile],
     },
     null,
     2,

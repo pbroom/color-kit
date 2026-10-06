@@ -20,11 +20,15 @@ import {
   type ContrastApcaRole,
   type ContrastMetric,
   type Color,
+  type ContrastRegionLegacyOptions,
   type ContrastRegionLevel,
   type GamutTarget,
   type PlaneContrastRegionResult,
 } from '@color-kit/core';
-import { unpackPlaneQueryResults } from '@color-kit/core/compute';
+import {
+  unpackPlaneQueryResults,
+  type PlaneComputeBackendKind,
+} from '@color-kit/core/compute';
 import {
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
@@ -59,9 +63,10 @@ export interface ContrastRegionLayerMetrics {
   pointCount: number;
   lightnessSteps: number;
   chromaSteps: number;
-  samplingMode: 'hybrid' | 'uniform' | 'adaptive';
+  /** Legacy-engine grid strategy the layer ran with. */
+  samplingMode: 'uniform' | 'adaptive';
   contrastMetric: ContrastMetric;
-  backend?: 'js' | 'webgpu';
+  backend?: PlaneComputeBackendKind;
   scheduleReason?: string;
   schedulerBucketCount?: number;
   quality: 'high' | 'medium' | 'low';
@@ -84,7 +89,7 @@ export interface ContrastRegionLayerProps extends LayerProps {
   tolerance?: number;
   maxIterations?: number;
   alpha?: number;
-  edgeInterpolation?: ColorAreaContrastRegionOptions['edgeInterpolation'];
+  edgeInterpolation?: ContrastRegionLegacyOptions['edgeInterpolation'];
   quality?: ColorAreaLayerQuality;
   pathProps?: SVGAttributes<SVGPathElement>;
   showPathPoints?: boolean;
@@ -92,12 +97,15 @@ export interface ContrastRegionLayerProps extends LayerProps {
   onMetrics?: (metrics: ContrastRegionLayerMetrics) => void;
   /** RDP simplification tolerance in (l,c) space; omit to disable */
   simplifyTolerance?: number;
-  /** 'hybrid' (default), 'uniform', or 'adaptive' grid for contour extraction */
-  samplingMode?: 'hybrid' | 'uniform' | 'adaptive';
+  /**
+   * Grid strategy for contour extraction. The layer always runs the legacy
+   * marching-squares engine (`engine: 'legacy'`), which matches the public
+   * contrast checks closely enough for fills and is faster per region.
+   * @default 'uniform'
+   */
+  samplingMode?: ContrastRegionLegacyOptions['samplingMode'];
   adaptiveBaseSteps?: number;
   adaptiveMaxDepth?: number;
-  hybridMaxDepth?: number;
-  hybridErrorTolerance?: number;
   includeSchedulerTelemetry?: boolean;
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
@@ -777,8 +785,6 @@ export function ContrastRegionLayer({
   samplingMode,
   adaptiveBaseSteps,
   adaptiveMaxDepth,
-  hybridMaxDepth,
-  hybridErrorTolerance,
   includeSchedulerTelemetry = false,
   cornerRadius,
   paths: pathsProp,
@@ -958,11 +964,12 @@ export function ContrastRegionLayer({
           baseSteps: resolvedAdaptiveBaseSteps,
           maxDepth: resolvedAdaptiveMaxDepth,
         };
-  const resolvedSamplingMode = samplingMode ?? 'hybrid';
+  const resolvedSamplingMode = samplingMode ?? 'uniform';
   const resolvedContrastMetric = metric ?? 'wcag';
 
   const options = useMemo<ColorAreaContrastRegionOptions>(
     () => ({
+      engine: 'legacy',
       gamut,
       metric,
       threshold,
@@ -981,8 +988,6 @@ export function ContrastRegionLayer({
       samplingMode: resolvedSamplingMode,
       adaptiveBaseSteps: adaptiveForOptions.baseSteps,
       adaptiveMaxDepth: adaptiveForOptions.maxDepth,
-      hybridMaxDepth,
-      hybridErrorTolerance,
     }),
     [
       alpha,
@@ -995,8 +1000,6 @@ export function ContrastRegionLayer({
       adaptiveForOptions.baseSteps,
       adaptiveForOptions.maxDepth,
       gamut,
-      hybridErrorTolerance,
-      hybridMaxDepth,
       level,
       maxChroma,
       maxIterations,
@@ -1075,7 +1078,7 @@ export function ContrastRegionLayer({
       requestId: number;
       computeTimeMs: number;
       paths: ColorAreaContrastRegionPoint[][];
-      backend?: 'js' | 'webgpu';
+      backend?: PlaneComputeBackendKind;
       scheduleReason?: string;
       schedulerBucketCount?: number;
     }) => {

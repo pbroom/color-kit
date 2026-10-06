@@ -673,7 +673,7 @@ describe('ColorArea primitives', () => {
           schedule: {
             bucketKey: 'contrastRegion|drag',
             selectedBackend: 'js',
-            reason: 'backend-error',
+            reason: 'default-js',
           },
           schedulerTelemetry: {
             buckets: [
@@ -690,7 +690,6 @@ describe('ColorArea primitives', () => {
                 },
               },
             ],
-            circuitBreakers: {},
           },
           computeTimeMs: 1.2,
           marshalTimeMs: 0.4,
@@ -753,7 +752,7 @@ describe('ColorArea primitives', () => {
 
     expect(latest.source).toBe('worker');
     expect(latest.backend).toBe('js');
-    expect(latest.scheduleReason).toBe('backend-error');
+    expect(latest.scheduleReason).toBe('default-js');
     expect(latest.schedulerBucketCount).toBe(1);
     expect(latest.contrastMetric).toBe('wcag');
     expect(latest.samplingMode).toBe('adaptive');
@@ -833,7 +832,7 @@ describe('ColorArea primitives', () => {
             schedule: {
               bucketKey: 'contrastRegion|drag',
               selectedBackend: 'js',
-              reason: 'telemetry-win',
+              reason: 'default-js',
             },
             computeTimeMs: 1,
             marshalTimeMs: 0.2,
@@ -896,7 +895,7 @@ describe('ColorArea primitives', () => {
       const latest = workerMetrics[workerMetrics.length - 1];
 
       expect(latest.source).toBe('worker');
-      expect(latest.scheduleReason).toBe('telemetry-win');
+      expect(latest.scheduleReason).toBe('default-js');
       expect(latest.contrastMetric).toBe(expectedMetric);
     },
   );

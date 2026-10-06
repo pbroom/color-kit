@@ -18,8 +18,8 @@ import {
   toTracePaths,
 } from './region-shared.js';
 import type {
-  ContrastHybridFallbackReason,
-  ContrastRegionPathOptions,
+  ContrastHybridDegradedReason,
+  ContrastRegionHybridOptions,
   ContrastRegionPoint,
 } from './types.js';
 
@@ -32,18 +32,39 @@ const HYBRID_LIGHTNESS_EPSILON = 1e-6;
 const HYBRID_ROOT_EPSILON = 1e-7;
 const HYBRID_BRANCH_JOIN_EPSILON = 0.06;
 
-/**
- * Explicit solver outcome: either usable paths or a fallback request with
- * a reason, replacing the previous silent `null` control flow.
- */
-export type ContrastSolverOutcome =
-  | { status: 'ok'; paths: ContrastRegionPoint[][] }
-  | { status: 'fallback'; fallbackReason: ContrastHybridFallbackReason };
-
 interface HybridLightnessSample {
   l: number;
   cMax: number;
   roots: number[];
+  /** Sign of the contrast margin at chroma 0 (-1, 0, or 1). */
+  zeroSign: number;
+}
+
+/**
+ * Extra bisection depth allowed, beyond `hybridMaxDepth`, to locate a
+ * contour that crosses between two lightness samples without producing a
+ * chroma root at either (a near-vertical boundary in the l/c plane).
+ */
+const HYBRID_CROSSING_EXTRA_DEPTH = 10;
+/**
+ * Extra bisection depth allowed to localize where a contour branch ends
+ * between two lightness samples, so a branch is not reduced to one point.
+ */
+const HYBRID_ENDPOINT_EXTRA_DEPTH = 2;
+/**
+ * Chroma distance between index-matched roots of neighbouring lightness
+ * samples above which an interval keeps splitting. Half of
+ * HYBRID_BRANCH_JOIN_EPSILON, so refined neighbours can always be joined.
+ */
+const HYBRID_ROOT_JUMP = 0.03;
+
+function hasHybridRootJump(left: number[], right: number[]): boolean {
+  for (let index = 0; index < left.length; index += 1) {
+    if (Math.abs(left[index] - right[index]) > HYBRID_ROOT_JUMP) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function bisectHybridRoot(
@@ -162,12 +183,12 @@ function buildHybridLightnessAnchors(
 export function contrastRegionPathsHybrid(
   reference: Color,
   hue: number,
-  options: ContrastRegionPathOptions,
+  options: ContrastRegionHybridOptions,
   trace?: InternalPlaneTraceContext | null,
-): ContrastSolverOutcome {
+): ContrastRegionPoint[][] {
   const criterion = resolveContrastCriterion(options);
   const maxChroma = Math.max(0, options.maxChroma ?? 0.4);
-  if (maxChroma <= 0) return { status: 'ok', paths: [] };
+  if (maxChroma <= 0) return [];
   const alpha = options.alpha ?? 1;
   const gamut = options.gamut ?? 'srgb';
   // The criterion uses the public metric, which clips an out-of-gamut
@@ -254,13 +275,19 @@ export function contrastRegionPathsHybrid(
     return criterion.evaluate(mappedSample, mappedReference);
   };
   const hasComplexTopology = { value: false };
-  const findRootsAtLightness = (lightness: number, cMax: number): number[] => {
-    if (cMax <= HYBRID_ROOT_EPSILON) return [];
+  const findRootsAtLightness = (
+    lightness: number,
+    cMax: number,
+  ): { roots: number[]; zeroSign: number } => {
+    if (cMax <= HYBRID_ROOT_EPSILON) {
+      return { roots: [], zeroSign: Math.sign(evaluateAt(lightness, 0)) };
+    }
     const evaluateChroma = (chroma: number) => evaluateAt(lightness, chroma);
     const stepCount = Math.max(8, chromaBrackets);
     const roots: number[] = [];
     let prevC = 0;
     let prevV = evaluateChroma(0);
+    const zeroSign = Math.sign(prevV);
     if (Math.abs(prevV) <= HYBRID_ROOT_EPSILON) {
       roots.push(0);
     }
@@ -290,7 +317,7 @@ export function contrastRegionPathsHybrid(
     if (deduped.length > 6) {
       hasComplexTopology.value = true;
     }
-    return deduped;
+    return { roots: deduped, zeroSign };
   };
   const lightnessSampleCache = new Map<string, HybridLightnessSample>();
   const getLightnessSample = (lightness: number): HybridLightnessSample => {
@@ -301,11 +328,12 @@ export function contrastRegionPathsHybrid(
       return cached;
     }
     const cMax = getMaxInGamut(normalized);
-    const roots = findRootsAtLightness(normalized, cMax);
+    const { roots, zeroSign } = findRootsAtLightness(normalized, cMax);
     const sample = {
       l: normalized,
       cMax,
       roots,
+      zeroSign,
     };
     lightnessSampleCache.set(key, sample);
     return sample;
@@ -345,10 +373,41 @@ export function contrastRegionPathsHybrid(
     midpoint: HybridLightnessSample,
     depth: number,
   ): boolean => {
-    if (depth >= maxDepth) {
+    if (Math.abs(right.l - left.l) <= HYBRID_LIGHTNESS_EPSILON * 2) {
       return false;
     }
-    if (Math.abs(right.l - left.l) <= HYBRID_LIGHTNESS_EPSILON * 2) {
+    // Both ends root-free but on opposite sides of the threshold: the
+    // contour crosses between them. Keep bisecting (with extra depth) until
+    // a sample lands on it, so near-vertical boundaries are not skipped.
+    if (
+      left.roots.length === 0 &&
+      right.roots.length === 0 &&
+      midpoint.roots.length === 0 &&
+      left.zeroSign !== right.zeroSign
+    ) {
+      return depth < maxDepth + HYBRID_CROSSING_EXTRA_DEPTH;
+    }
+    // A contour that only touches one side of the interval ends inside it.
+    // Localize that end (with the same extra depth) so the branch gets at
+    // least two samples instead of being dropped as a single point.
+    if (
+      (left.roots.length === 0) !== (right.roots.length === 0) &&
+      depth >= maxDepth
+    ) {
+      return depth < maxDepth + HYBRID_ENDPOINT_EXTRA_DEPTH;
+    }
+    // A contour with nearly constant lightness moves a long way in chroma
+    // between neighbouring lightness samples. Its midpoint can still look
+    // linear, but the branch matcher refuses to join roots more than
+    // HYBRID_BRANCH_JOIN_EPSILON apart, so keep splitting (with extra depth)
+    // until matched roots are close enough to join.
+    if (
+      left.roots.length === right.roots.length &&
+      hasHybridRootJump(left.roots, right.roots)
+    ) {
+      return depth < maxDepth + HYBRID_CROSSING_EXTRA_DEPTH;
+    }
+    if (depth >= maxDepth) {
       return false;
     }
     if (
@@ -524,18 +583,16 @@ export function contrastRegionPathsHybrid(
     paths: limitTracePaths(trace, toTracePaths(cleaned)),
   });
 
-  if (hasComplexTopology.value) {
-    return { status: 'fallback', fallbackReason: 'complex-topology' };
-  }
-
+  // The hybrid tracer is the only solver. When it cannot resolve the
+  // field reliably it still returns its best-effort paths (possibly none)
+  // and records why in the trace summary.
+  let degradedReason: ContrastHybridDegradedReason | undefined;
   const hasRoots = refinedSamples.some((sample) => sample.roots.length > 0);
-  if (hasRoots && cleaned.length === 0) {
-    return {
-      status: 'fallback',
-      fallbackReason: 'branch-reconstruction-empty',
-    };
-  }
-  if (!hasRoots && cleaned.length === 0) {
+  if (hasComplexTopology.value) {
+    degradedReason = 'complex-topology';
+  } else if (hasRoots && cleaned.length === 0) {
+    degradedReason = 'branch-reconstruction-empty';
+  } else if (!hasRoots && cleaned.length === 0) {
     let minScore = Number.POSITIVE_INFINITY;
     let maxScore = Number.NEGATIVE_INFINITY;
     for (const sample of refinedSamples) {
@@ -547,8 +604,11 @@ export function contrastRegionPathsHybrid(
       }
     }
     if (minScore < 0 && maxScore > 0) {
-      return { status: 'fallback', fallbackReason: 'unresolved-sign-change' };
+      degradedReason = 'unresolved-sign-change';
     }
+  }
+  if (degradedReason) {
+    setTraceSummaryField(trace, 'degradedReason', degradedReason);
   }
 
   const simplifyTolerance = options.simplifyTolerance;
@@ -573,8 +633,5 @@ export function contrastRegionPathsHybrid(
     paths: limitTracePaths(trace, toTracePaths(maybeSimplified)),
   });
 
-  return {
-    status: 'ok',
-    paths: maybeSimplified.sort((a, b) => b.length - a.length),
-  };
+  return maybeSimplified.sort((a, b) => b.length - a.length);
 }

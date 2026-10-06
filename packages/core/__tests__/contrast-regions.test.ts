@@ -3,9 +3,12 @@ import {
   contrastRatio,
   contrastRegionPath,
   contrastRegionPaths,
+  definePlane,
   fromHex,
   inP3Gamut,
   inSrgbGamut,
+  inspectPlaneQuery,
+  sense,
 } from '../src/index.js';
 
 function flattenLightness(paths: Array<Array<{ l: number }>>): number[] {
@@ -51,6 +54,7 @@ describe('contrastRegionPaths()', () => {
       gamut: 'srgb',
       lightnessSteps: 24,
       chromaSteps: 24,
+      engine: 'legacy',
       edgeInterpolation: 'midpoint',
     });
     const linear = contrastRegionPaths(reference, 203, {
@@ -58,6 +62,7 @@ describe('contrastRegionPaths()', () => {
       gamut: 'srgb',
       lightnessSteps: 24,
       chromaSteps: 24,
+      engine: 'legacy',
       edgeInterpolation: 'linear',
     });
 
@@ -172,11 +177,125 @@ describe('contrastRegionPaths()', () => {
 
     expect(() =>
       contrastRegionPaths(reference, 200, {
+        engine: 'legacy',
         edgeInterpolation: 'nearest' as unknown as 'linear',
       }),
     ).toThrow(
       "contrastRegionPaths() edgeInterpolation must be 'linear' or 'midpoint'",
     );
+  });
+
+  it.each([
+    ['samplingMode', 'adaptive'],
+    ['edgeInterpolation', 'linear'],
+    ['adaptiveBaseSteps', 12],
+    ['adaptiveMaxDepth', 2],
+  ])(
+    'rejects the legacy-only %s option without engine: legacy',
+    (name, value) => {
+      const options = { level: 'AA', [name]: value } as unknown as Parameters<
+        typeof contrastRegionPaths
+      >[2];
+      expect(() =>
+        contrastRegionPaths(fromHex('#ffffff'), 200, options),
+      ).toThrow(
+        new TypeError(
+          `contrastRegionPaths() option "${name}" requires engine: 'legacy' (the default hybrid engine is tuned with lightnessSteps, chromaSteps, hybridMaxDepth, and hybridErrorTolerance)`,
+        ),
+      );
+    },
+  );
+
+  it.each([
+    ['hybridMaxDepth', 6],
+    ['hybridErrorTolerance', 0.001],
+  ])('rejects the hybrid-only %s option with engine: legacy', (name, value) => {
+    const options = {
+      engine: 'legacy',
+      level: 'AA',
+      [name]: value,
+    } as unknown as Parameters<typeof contrastRegionPaths>[2];
+    expect(() => contrastRegionPaths(fromHex('#ffffff'), 200, options)).toThrow(
+      TypeError,
+    );
+  });
+
+  it('rejects unknown engines and legacy sampling modes', () => {
+    const reference = fromHex('#ffffff');
+    expect(() =>
+      contrastRegionPaths(reference, 200, {
+        engine: 'marching' as unknown as 'legacy',
+      }),
+    ).toThrow(
+      new TypeError(
+        "contrastRegionPaths() engine must be 'hybrid' or 'legacy'",
+      ),
+    );
+    expect(() =>
+      contrastRegionPaths(reference, 200, {
+        engine: 'legacy',
+        samplingMode: 'hybrid' as unknown as 'uniform',
+      }),
+    ).toThrow(TypeError);
+  });
+
+  it('rejects mixed-engine options at the type level', () => {
+    const reference = fromHex('#ffffff');
+    expect(() =>
+      // @ts-expect-error samplingMode requires engine: 'legacy'
+      contrastRegionPaths(reference, 200, { samplingMode: 'adaptive' }),
+    ).toThrow(TypeError);
+    expect(() =>
+      contrastRegionPaths(reference, 200, {
+        engine: 'legacy',
+        // @ts-expect-error hybridMaxDepth only applies to the hybrid engine
+        hybridMaxDepth: 6,
+      }),
+    ).toThrow(TypeError);
+  });
+
+  it('runs the selected engine and records it in the trace', () => {
+    const plane = definePlane({ fixed: { h: 200 } });
+    const base = {
+      kind: 'contrastRegion' as const,
+      reference: fromHex('#ffffff'),
+      level: 'AA' as const,
+    };
+    expect(inspectPlaneQuery(plane, base).trace.summary.solver).toBe(
+      'contrast-hybrid',
+    );
+    expect(
+      inspectPlaneQuery(plane, { ...base, engine: 'legacy' }).trace.summary
+        .solver,
+    ).toBe('contrast-legacy-uniform');
+    expect(
+      inspectPlaneQuery(plane, {
+        ...base,
+        engine: 'legacy',
+        adaptiveBaseSteps: 12,
+      }).trace.summary.solver,
+    ).toBe('contrast-legacy-adaptive');
+  });
+
+  it('validates plane query engine options like direct calls', () => {
+    const plane = definePlane({ fixed: { h: 200 } });
+    const query = {
+      kind: 'contrastRegion',
+      reference: fromHex('#ffffff'),
+      samplingMode: 'adaptive',
+    } as unknown as Parameters<typeof inspectPlaneQuery>[1];
+    expect(() => inspectPlaneQuery(plane, query)).toThrow(
+      /option "samplingMode" requires engine: 'legacy'/,
+    );
+    const legacyWithHybridOption = {
+      reference: fromHex('#ffffff'),
+      engine: 'legacy',
+      hybridErrorTolerance: 0.001,
+    } as const;
+    expect(() =>
+      // @ts-expect-error hybridErrorTolerance only applies to the hybrid engine
+      sense(plane).contrastBoundary(legacyWithHybridOption),
+    ).toThrow(TypeError);
   });
 
   it('simplifyTolerance reduces contour point count', () => {
@@ -206,6 +325,7 @@ describe('contrastRegionPaths()', () => {
     const first = contrastRegionPaths(reference, 150, {
       level: 'AA',
       gamut: 'srgb',
+      engine: 'legacy',
       samplingMode: 'adaptive',
       adaptiveBaseSteps: 12,
       adaptiveMaxDepth: 2,
@@ -213,6 +333,7 @@ describe('contrastRegionPaths()', () => {
     const second = contrastRegionPaths(reference, 150, {
       level: 'AA',
       gamut: 'srgb',
+      engine: 'legacy',
       samplingMode: 'adaptive',
       adaptiveBaseSteps: 12,
       adaptiveMaxDepth: 2,
@@ -232,6 +353,7 @@ describe('contrastRegionPaths()', () => {
     const paths = contrastRegionPaths(reference, 200, {
       level: 'AA',
       gamut: 'srgb',
+      engine: 'legacy',
       samplingMode: 'adaptive',
       adaptiveBaseSteps: 16,
       adaptiveMaxDepth: 2,
@@ -253,6 +375,7 @@ describe('contrastRegionPaths()', () => {
     const paths = contrastRegionPaths(reference, 200, {
       level: 'AA',
       gamut: 'srgb',
+      engine: 'legacy',
       samplingMode: 'adaptive',
       adaptiveBaseSteps: 12,
       adaptiveMaxDepth: 3,
@@ -276,6 +399,7 @@ describe('contrastRegionPaths()', () => {
     const adaptive = contrastRegionPaths(reference, 9, {
       gamut: 'srgb',
       threshold: 3,
+      engine: 'legacy',
       samplingMode: 'adaptive',
       adaptiveBaseSteps: 8,
       adaptiveMaxDepth: 2,
@@ -284,6 +408,7 @@ describe('contrastRegionPaths()', () => {
     const uniform = contrastRegionPaths(reference, 9, {
       gamut: 'srgb',
       threshold: 3,
+      engine: 'legacy',
       samplingMode: 'uniform',
       lightnessSteps: 8,
       chromaSteps: 8,
@@ -321,6 +446,7 @@ describe('contrastRegionPaths()', () => {
       metric: 'apca',
       threshold: 0.45,
       apcaPolarity: 'absolute',
+      engine: 'legacy',
       samplingMode: 'uniform',
       lightnessSteps: 22,
       chromaSteps: 22,
@@ -330,6 +456,7 @@ describe('contrastRegionPaths()', () => {
       metric: 'apca',
       threshold: 0.45,
       apcaPolarity: 'absolute',
+      engine: 'legacy',
       samplingMode: 'uniform',
       lightnessSteps: 22,
       chromaSteps: 22,
@@ -339,6 +466,7 @@ describe('contrastRegionPaths()', () => {
       metric: 'apca',
       threshold: 0.45,
       apcaPolarity: 'absolute',
+      engine: 'legacy',
       samplingMode: 'adaptive',
       adaptiveBaseSteps: 12,
       adaptiveMaxDepth: 2,
@@ -348,6 +476,7 @@ describe('contrastRegionPaths()', () => {
       metric: 'apca',
       threshold: 0.45,
       apcaPolarity: 'absolute',
+      engine: 'legacy',
       samplingMode: 'adaptive',
       adaptiveBaseSteps: 12,
       adaptiveMaxDepth: 2,
@@ -399,7 +528,6 @@ describe('contrastRegionPaths()', () => {
     const options = {
       metric: 'wcag' as const,
       threshold: 4.5,
-      samplingMode: 'hybrid' as const,
       lightnessSteps: 88,
       chromaSteps: 180,
       hybridMaxDepth: 8,
