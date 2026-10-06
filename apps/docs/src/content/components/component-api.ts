@@ -82,7 +82,7 @@ export const componentApiDocs: ComponentApiDocs = {
       type: 'number',
       defaultValue: '0.0005',
       description:
-        'Minimum normalized movement delta required before committing another pointer update.',
+        'Skip pointer updates when the normalized movement on both axes is not larger than this delta.',
     },
     {
       name: 'disabled',
@@ -197,14 +197,14 @@ export const componentApiDocs: ComponentApiDocs = {
       type: 'number',
       defaultValue: '0.0005',
       description:
-        'Minimum normalized movement required before another pointer update is committed.',
+        'Skip pointer updates when the normalized movement is not larger than this delta.',
     },
     {
-      name: 'maxPointerRate',
+      name: 'maxUpdateHz',
       type: 'number',
       defaultValue: '60',
       description:
-        'Upper bound for pointer update frequency while dragging (updates/second).',
+        'Upper bound for pointer-driven updates while dragging (updates/second). Shared with ColorArea via the driver drag controller.',
     },
     {
       name: 'stepRatio / largeStepRatio',

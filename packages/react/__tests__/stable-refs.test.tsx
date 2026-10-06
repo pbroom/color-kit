@@ -339,7 +339,7 @@ describe('ColorSlider handler composition', () => {
     const slider = getByRole('slider');
     setupSlider(slider);
 
-    fireEvent.pointerDown(slider, { pointerId: 1, clientX: 20, clientY: 5 });
+    dispatchPointer(slider, 'pointerdown', 20, 5);
     fireEvent.pointerMove(slider, { pointerId: 1, clientX: 30, clientY: 5 });
     fireEvent.pointerUp(slider, { pointerId: 1, clientX: 30, clientY: 5 });
     fireEvent.pointerCancel(slider, { pointerId: 1 });
@@ -389,7 +389,7 @@ describe('ColorSlider handler composition', () => {
         channel="alpha"
         requested={requested}
         onChangeRequested={onChangeRequested}
-        maxPointerRate={1000}
+        maxUpdateHz={1000}
       />,
     );
     const slider = getByRole('slider');

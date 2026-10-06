@@ -14,6 +14,7 @@ import { useColorStoreSelector } from './color-store.js';
 import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import {
+  createPointerDragController,
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
   getColorSliderLabel,
@@ -73,15 +74,15 @@ export interface ColorSliderProps extends Omit<
   /** Standalone change handler (alternative to Color) */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /**
-   * Minimum normalized movement before committing another pointer update.
+   * Skip pointer updates when the normalized delta is not larger than this.
    * @default 0.0005
    */
   dragEpsilon?: number;
   /**
-   * Maximum pointer update rate during drag interactions.
+   * Maximum pointer-driven update frequency while dragging (updates/second).
    * @default 60
    */
-  maxPointerRate?: number;
+  maxUpdateHz?: number;
   /**
    * Arrow-key step as a ratio of the range.
    * @default 0.01
@@ -140,7 +141,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       requested: requestedProp,
       onChangeRequested: onChangeRequestedProp,
       dragEpsilon = 0.0005,
-      maxPointerRate = 60,
+      maxUpdateHz = 60,
       stepRatio = 0.01,
       largeStepRatio = 0.1,
       wrap,
@@ -203,23 +204,10 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     if (disabled && isDragging) {
       setIsDragging(false);
     }
-    const isDraggingRef = useRef(false);
-
-    const pointerFrameRef = useRef<number | null>(null);
-    const pendingPointerRef = useRef<PointerSnapshot | null>(null);
-    const processPendingPointerRef = useRef<(frameTime: number) => void>(
-      () => {},
-    );
-    const lastPointerCommitTsRef = useRef(0);
 
     const r = resolveColorSliderRange(channel, range);
 
     const norm = getColorSliderThumbPosition(requested, channel, r);
-    const lastCommittedNormRef = useRef(norm);
-
-    useEffect(() => {
-      lastCommittedNormRef.current = norm;
-    }, [norm]);
 
     const refreshGeometry = useCallback((): SliderGeometry | null => {
       const element = sliderRef.current;
@@ -273,85 +261,33 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       [channel, requested, r, setRequested],
     );
 
-    const stopPointerFrame = useCallback(() => {
-      if (pointerFrameRef.current !== null) {
-        cancelAnimationFrame(pointerFrameRef.current);
-        pointerFrameRef.current = null;
-      }
-      pendingPointerRef.current = null;
-    }, []);
-
-    const schedulePendingPointerFrame = useCallback(() => {
-      pointerFrameRef.current = requestAnimationFrame((frameTime: number) => {
-        processPendingPointerRef.current(frameTime);
-      });
-    }, []);
-
-    const processPendingPointer = useCallback(
-      (frameTime: number) => {
-        pointerFrameRef.current = null;
-
-        if (!isDraggingRef.current) {
-          pendingPointerRef.current = null;
-          return;
-        }
-
-        const pending = pendingPointerRef.current;
-        if (!pending) {
-          return;
-        }
-
-        const clampedRate = Math.max(1, maxPointerRate);
-        const minFrameDelta = 1000 / clampedRate;
-
-        if (
-          lastPointerCommitTsRef.current > 0 &&
-          frameTime >= lastPointerCommitTsRef.current &&
-          frameTime - lastPointerCommitTsRef.current < minFrameDelta
-        ) {
-          schedulePendingPointerFrame();
-          return;
-        }
-
-        pendingPointerRef.current = null;
-
-        const nextNorm = resolvePointerNorm(pending.clientX, pending.clientY);
-        if (nextNorm === null) {
-          return;
-        }
-
-        if (Math.abs(nextNorm - lastCommittedNormRef.current) >= dragEpsilon) {
-          commitNorm(nextNorm, 'pointer');
-          lastCommittedNormRef.current = nextNorm;
-          lastPointerCommitTsRef.current = frameTime;
-        }
-
-        if (pendingPointerRef.current) {
-          schedulePendingPointerFrame();
-        }
-      },
-      [
-        commitNorm,
-        dragEpsilon,
-        maxPointerRate,
-        resolvePointerNorm,
-        schedulePendingPointerFrame,
-      ],
+    // Shared driver drag controller: rAF coalescing, dragEpsilon, maxUpdateHz.
+    const [dragController] = useState(() =>
+      createPointerDragController<PointerSnapshot>({
+        normalize: () => null,
+        commit: () => {},
+      }),
     );
 
     useEffect(() => {
-      processPendingPointerRef.current = processPendingPointer;
-    }, [processPendingPointer]);
-
-    const queuePointerUpdate = useCallback(
-      (clientX: number, clientY: number) => {
-        pendingPointerRef.current = { clientX, clientY };
-        if (pointerFrameRef.current === null) {
-          schedulePendingPointerFrame();
-        }
-      },
-      [schedulePendingPointerFrame],
-    );
+      dragController.configure({
+        normalize: ({ clientX, clientY }) => {
+          const nextNorm = resolvePointerNorm(clientX, clientY);
+          return nextNorm === null ? null : { x: nextNorm, y: 0 };
+        },
+        commit: (point) => {
+          commitNorm(point.x, 'pointer');
+        },
+        maxUpdateHz,
+        dragEpsilon,
+      });
+    }, [
+      commitNorm,
+      dragController,
+      dragEpsilon,
+      maxUpdateHz,
+      resolvePointerNorm,
+    ]);
 
     const stopScrollTracking = useCallback(() => {
       const detach = detachScrollListenerRef.current;
@@ -361,7 +297,6 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     const beginDragging = useCallback(() => {
       setIsDragging(true);
-      isDraggingRef.current = true;
       refreshGeometry();
 
       stopScrollTracking();
@@ -379,19 +314,18 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     const endDragging = useCallback(() => {
       setIsDragging(false);
-      isDraggingRef.current = false;
-      stopPointerFrame();
+      dragController.end();
       stopScrollTracking();
-    }, [stopPointerFrame, stopScrollTracking]);
+    }, [dragController, stopScrollTracking]);
 
     // Cancel an active drag when the slider becomes disabled: drop the
-    // pending pointer frame so its value cannot change while disabled.
+    // pending pointer frame (without the release commit `end()` would make)
+    // so its value cannot change while disabled.
     useEffect(() => {
       if (!disabled) return;
-      isDraggingRef.current = false;
-      stopPointerFrame();
+      dragController.cancel();
       stopScrollTracking();
-    }, [disabled, stopPointerFrame, stopScrollTracking]);
+    }, [disabled, dragController, stopScrollTracking]);
 
     useEffect(() => {
       if (!sliderNode || typeof ResizeObserver === 'undefined') {
@@ -421,32 +355,21 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         beginDragging();
 
         event.currentTarget.setPointerCapture(event.pointerId);
-
-        const nextNorm = resolvePointerNorm(event.clientX, event.clientY);
-        if (nextNorm === null) {
-          return;
-        }
-
-        commitNorm(nextNorm, 'pointer');
-        lastCommittedNormRef.current = nextNorm;
-        lastPointerCommitTsRef.current = performance.now();
+        dragController.start({
+          clientX: event.clientX,
+          clientY: event.clientY,
+        });
       },
-      [
-        beginDragging,
-        commitNorm,
-        disabled,
-        onPointerDownProp,
-        resolvePointerNorm,
-      ],
+      [beginDragging, disabled, dragController, onPointerDownProp],
     );
 
     const onPointerMove = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerMoveProp?.(event);
-        if (event.defaultPrevented || !isDraggingRef.current) return;
-        queuePointerUpdate(event.clientX, event.clientY);
+        if (event.defaultPrevented) return;
+        dragController.move({ clientX: event.clientX, clientY: event.clientY });
       },
-      [onPointerMoveProp, queuePointerUpdate],
+      [dragController, onPointerMoveProp],
     );
 
     // Drag end always runs so a consumer handler can never strand a drag.
@@ -519,10 +442,10 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     useEffect(() => {
       return () => {
-        stopPointerFrame();
+        dragController.cancel();
         stopScrollTracking();
       };
-    }, [stopPointerFrame, stopScrollTracking]);
+    }, [dragController, stopScrollTracking]);
 
     const isHorizontal = orientation === 'horizontal';
     const defaultLabel = `${getColorSliderLabel(channel)} slider`;
