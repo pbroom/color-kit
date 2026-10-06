@@ -261,6 +261,36 @@ export function getColorAreaThumbPosition(
   };
 }
 
+export interface ColorAreaPointerRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Normalizes a pointer position against the area's client rect into clamped
+ * `[0, 1]` coordinates (x right, y down). Returns `null` for an empty rect or
+ * non-finite input.
+ */
+export function normalizeColorAreaPointer(
+  clientX: number,
+  clientY: number,
+  rect: ColorAreaPointerRect,
+): { x: number; y: number } | null {
+  if (!(rect.width > 0) || !(rect.height > 0)) {
+    return null;
+  }
+
+  const x = (clientX - rect.left) / rect.width;
+  const y = (clientY - rect.top) / rect.height;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return null;
+  }
+
+  return { x: clamp(x, 0, 1), y: clamp(y, 0, 1) };
+}
+
 export function colorFromColorAreaPosition(
   color: Color,
   axes: ResolvedColorAreaAxes,

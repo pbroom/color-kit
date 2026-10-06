@@ -10,6 +10,7 @@ export {
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,
   getColorAreaThumbPosition,
+  normalizeColorAreaPointer,
   resolveColorAreaAxes,
   resolveColorAreaRange,
   toColorAreaPlaneDefinition,
@@ -27,9 +28,26 @@ export type {
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,
   ColorAreaKeyOptions,
+  ColorAreaPointerRect,
   ResolvedColorAreaAxes,
   ResolvedColorAreaAxis,
 } from './color-area.js';
+
+export {
+  createDefaultFrameScheduler,
+  createPointerDragController,
+  DEFAULT_DRAG_EPSILON,
+  DEFAULT_MAX_UPDATE_HZ,
+  resolveDragEpsilon,
+  resolveMaxUpdateHz,
+} from './drag-controller.js';
+export type {
+  DragCommitInfo,
+  DragFrameScheduler,
+  DragPoint,
+  PointerDragController,
+  PointerDragControllerConfig,
+} from './drag-controller.js';
 
 export {
   COLOR_SLIDER_DEFAULT_RANGES,
