@@ -253,8 +253,10 @@ pnpm dev:full
 
 ## Publishing (Maintainers)
 
+Versions and the `color-kit` changelog come from [Changesets](https://github.com/changesets/changesets): add one with `pnpm changeset`, and merging the automated "Version Packages" PR bumps the version. Publishing stays manual. See [CONTRIBUTING.md](./CONTRIBUTING.md#releases) for the full flow.
+
 ```bash
-# Validate pre-production policy, then publish workspace packages to npm @next
+# Validate pre-production policy, then publish color-kit to npm @next
 pnpm publish:next
 
 # Same flow without publishing artifacts
