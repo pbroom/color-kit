@@ -53,13 +53,6 @@ export default defineConfig({
         replacement: resolve(__dirname, '../../packages/react/src/index.ts'),
       },
       {
-        find: /^color-kit\/react\/color-input$/,
-        replacement: resolve(
-          __dirname,
-          '../../packages/react/src/color-input.tsx',
-        ),
-      },
-      {
         find: /^@color-kit\/core$/,
         replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
       },

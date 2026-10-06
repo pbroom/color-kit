@@ -286,4 +286,4 @@ pnpm agents:check:strict
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE). The published package bundles the HCT solver from [Material color utilities](https://github.com/material-foundation/material-color-utilities) (Apache-2.0); see [THIRD_PARTY_NOTICES.md](./packages/color-kit/THIRD_PARTY_NOTICES.md).

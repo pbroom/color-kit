@@ -26,7 +26,7 @@
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "size": "size-limit",
+    "size": "size-limit --config .size-limit.js",
     "clean": "pnpm -r exec rm -rf dist node_modules"
   },
   "keywords": [

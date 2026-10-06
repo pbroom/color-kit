@@ -169,12 +169,6 @@ importers:
 
   packages/color-kit:
     dependencies:
-      '@base-ui/react':
-        specifier: ^1.4.1
-        version: 1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      radix-ui:
-        specifier: ^1.4.3
-        version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: ^19.2.4
         version: 19.2.4
@@ -182,9 +176,6 @@ importers:
         specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
     devDependencies:
-      '@color-kit/control-kit':
-        specifier: github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289
-        version: https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@color-kit/core':
         specifier: workspace:*
         version: link:../core
@@ -196,11 +187,10 @@ importers:
         version: link:../react
 
   packages/core:
-    dependencies:
+    devDependencies:
       '@material/material-color-utilities':
         specifier: ^0.3.0
         version: 0.3.0
-    devDependencies:
       colorjs.io:
         specifier: ^0.7.1
         version: 0.7.1
