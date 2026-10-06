@@ -30,7 +30,12 @@ const DEFAULT_HYBRID_LIGHTNESS_STEPS = 72;
 const DEFAULT_HYBRID_CHROMA_BRACKETS = 96;
 const HYBRID_LIGHTNESS_EPSILON = 1e-6;
 const HYBRID_ROOT_EPSILON = 1e-7;
-const HYBRID_BRANCH_JOIN_EPSILON = 0.06;
+/**
+ * Cost of leaving a strip crossing unmatched. Larger than any matching
+ * distance in the l/c plane, so crossings stay unmatched only when root
+ * parity is broken (for example two roots merged by deduplication).
+ */
+const HYBRID_UNMATCHED_COST = 10;
 
 interface HybridLightnessSample {
   l: number;
@@ -38,6 +43,8 @@ interface HybridLightnessSample {
   roots: number[];
   /** Sign of the contrast margin at chroma 0 (-1, 0, or 1). */
   zeroSign: number;
+  /** Sign of the contrast margin at the gamut edge `cMax` (-1, 0, or 1). */
+  topSign: number;
 }
 
 /**
@@ -53,8 +60,8 @@ const HYBRID_CROSSING_EXTRA_DEPTH = 10;
 const HYBRID_ENDPOINT_EXTRA_DEPTH = 2;
 /**
  * Chroma distance between index-matched roots of neighbouring lightness
- * samples above which an interval keeps splitting. Half of
- * HYBRID_BRANCH_JOIN_EPSILON, so refined neighbours can always be joined.
+ * samples above which an interval keeps splitting, so a contour with
+ * nearly constant lightness is not drawn as one long chord.
  */
 const HYBRID_ROOT_JUMP = 0.03;
 
@@ -129,6 +136,134 @@ function bisectHybridRoot(
     if (Math.abs(vHi) <= HYBRID_ROOT_EPSILON) return finish(hi);
   }
   return finish((lo + hi) / 2);
+}
+
+function hasSignChange(a: number, b: number): boolean {
+  return (a < 0 && b > 0) || (a > 0 && b < 0);
+}
+
+/** Bisects `evaluate` over lightness, given its sign at `loStart`. */
+function bisectHybridLightness(
+  evaluate: (lightness: number) => number,
+  loStart: number,
+  hiStart: number,
+  signLo: number,
+): number {
+  let lo = loStart;
+  let hi = hiStart;
+  for (let index = 0; index < DEFAULT_HYBRID_ROOT_ITERATIONS; index += 1) {
+    const mid = (lo + hi) / 2;
+    const value = evaluate(mid);
+    if (Math.abs(value) <= HYBRID_ROOT_EPSILON) return mid;
+    if (value < 0 === signLo < 0) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return (lo + hi) / 2;
+}
+
+/**
+ * Minimum-cost non-crossing matching of contour crossings listed in order
+ * around a strip boundary, by chroma distance. Each match has an even
+ * number of crossings inside it, so the regions it separates keep their
+ * signs. Returns index pairs into `points`.
+ */
+function matchStripCrossings(
+  points: ContrastRegionPoint[],
+): Array<[number, number]> {
+  const count = points.length;
+  if (count < 2) return [];
+  // cost[start][end] covers points start..end-1.
+  const cost = Array.from({ length: count + 1 }, () =>
+    new Array<number>(count + 1).fill(0),
+  );
+  const partnerOf = Array.from({ length: count + 1 }, () =>
+    new Array<number>(count + 1).fill(-1),
+  );
+  for (let length = 1; length <= count; length += 1) {
+    for (let start = 0; start + length <= count; start += 1) {
+      const end = start + length;
+      let best = HYBRID_UNMATCHED_COST + cost[start + 1][end];
+      let bestPartner = -1;
+      for (let partner = start + 1; partner < end; partner += 2) {
+        const value =
+          Math.abs(points[partner].c - points[start].c) +
+          cost[start + 1][partner] +
+          cost[partner + 1][end];
+        if (value < best) {
+          best = value;
+          bestPartner = partner;
+        }
+      }
+      cost[start][end] = best;
+      partnerOf[start][end] = bestPartner;
+    }
+  }
+  const pairs: Array<[number, number]> = [];
+  const pending: Array<[number, number]> = [[0, count]];
+  while (pending.length > 0) {
+    const [start, end] = pending.pop()!;
+    if (start >= end) continue;
+    const partner = partnerOf[start][end];
+    if (partner < 0) {
+      pending.push([start + 1, end]);
+      continue;
+    }
+    pairs.push([start, partner]);
+    pending.push([start + 1, partner], [partner + 1, end]);
+  }
+  return pairs;
+}
+
+/**
+ * Chains matched crossings into paths. Every node has at most two edges
+ * (one per neighbouring strip), so the graph is a set of simple chains and
+ * loops. Open paths run from their lower-lightness end; loops repeat their
+ * first point at the end.
+ */
+function chainHybridEdges(
+  nodes: ContrastRegionPoint[],
+  edges: Array<[number, number]>,
+): ContrastRegionPoint[][] {
+  const incident = nodes.map(() => [] as number[]);
+  edges.forEach(([a, b], edgeIndex) => {
+    incident[a].push(edgeIndex);
+    incident[b].push(edgeIndex);
+  });
+  const usedEdges = new Set<number>();
+  const walk = (start: number): number[] => {
+    const chain = [start];
+    let current = start;
+    for (;;) {
+      const edgeIndex = incident[current].find((edge) => !usedEdges.has(edge));
+      if (edgeIndex === undefined) return chain;
+      usedEdges.add(edgeIndex);
+      const [a, b] = edges[edgeIndex];
+      current = a === current ? b : a;
+      chain.push(current);
+    }
+  };
+  const paths: ContrastRegionPoint[][] = [];
+  for (let node = 0; node < nodes.length; node += 1) {
+    if (incident[node].length !== 1 || usedEdges.has(incident[node][0])) {
+      continue;
+    }
+    const chain = walk(node).map((index) => nodes[index]);
+    const first = chain[0];
+    const last = chain[chain.length - 1];
+    if (last.l < first.l || (last.l === first.l && last.c < first.c)) {
+      chain.reverse();
+    }
+    paths.push(chain);
+  }
+  for (let node = 0; node < nodes.length; node += 1) {
+    if (incident[node].some((edge) => !usedEdges.has(edge))) {
+      paths.push(walk(node).map((index) => nodes[index]));
+    }
+  }
+  return paths;
 }
 
 function dedupeSortedRoots(values: number[]): number[] {
@@ -278,9 +413,10 @@ export function contrastRegionPathsHybrid(
   const findRootsAtLightness = (
     lightness: number,
     cMax: number,
-  ): { roots: number[]; zeroSign: number } => {
+  ): { roots: number[]; zeroSign: number; topSign: number } => {
     if (cMax <= HYBRID_ROOT_EPSILON) {
-      return { roots: [], zeroSign: Math.sign(evaluateAt(lightness, 0)) };
+      const sign = Math.sign(evaluateAt(lightness, 0));
+      return { roots: [], zeroSign: sign, topSign: sign };
     }
     const evaluateChroma = (chroma: number) => evaluateAt(lightness, chroma);
     const stepCount = Math.max(8, chromaBrackets);
@@ -317,7 +453,7 @@ export function contrastRegionPathsHybrid(
     if (deduped.length > 6) {
       hasComplexTopology.value = true;
     }
-    return { roots: deduped, zeroSign };
+    return { roots: deduped, zeroSign, topSign: Math.sign(prevV) };
   };
   const lightnessSampleCache = new Map<string, HybridLightnessSample>();
   const getLightnessSample = (lightness: number): HybridLightnessSample => {
@@ -328,12 +464,13 @@ export function contrastRegionPathsHybrid(
       return cached;
     }
     const cMax = getMaxInGamut(normalized);
-    const { roots, zeroSign } = findRootsAtLightness(normalized, cMax);
+    const { roots, zeroSign, topSign } = findRootsAtLightness(normalized, cMax);
     const sample = {
       l: normalized,
       cMax,
       roots,
       zeroSign,
+      topSign,
     };
     lightnessSampleCache.set(key, sample);
     return sample;
@@ -387,9 +524,9 @@ export function contrastRegionPathsHybrid(
     ) {
       return depth < maxDepth + HYBRID_CROSSING_EXTRA_DEPTH;
     }
-    // A contour that only touches one side of the interval ends inside it.
-    // Localize that end (with the same extra depth) so the branch gets at
-    // least two samples instead of being dropped as a single point.
+    // A contour that only touches one side of the interval turns or ends
+    // inside it. Localize that end (a little past maxDepth) so the strip
+    // that closes it is narrow.
     if (
       (left.roots.length === 0) !== (right.roots.length === 0) &&
       depth >= maxDepth
@@ -398,9 +535,8 @@ export function contrastRegionPathsHybrid(
     }
     // A contour with nearly constant lightness moves a long way in chroma
     // between neighbouring lightness samples. Its midpoint can still look
-    // linear, but the branch matcher refuses to join roots more than
-    // HYBRID_BRANCH_JOIN_EPSILON apart, so keep splitting (with extra depth)
-    // until matched roots are close enough to join.
+    // linear, so keep splitting (with extra depth) until index-matched roots
+    // are close, rather than joining them with one long chord.
     if (
       left.roots.length === right.roots.length &&
       hasHybridRootJump(left.roots, right.roots)
@@ -482,82 +618,72 @@ export function contrastRegionPathsHybrid(
       ) ?? [],
   });
 
-  interface HybridBranch {
-    points: ContrastRegionPoint[];
-    lastC: number;
-  }
-
-  const finishedPaths: ContrastRegionPoint[][] = [];
-  let activeBranches: HybridBranch[] = [];
-  const matchThreshold = Math.max(
-    HYBRID_BRANCH_JOIN_EPSILON,
-    errorTolerance * 10,
+  // Each pair of neighbouring samples bounds a strip of the l/c plane. The
+  // contour enters and leaves a strip through its roots on either side, the
+  // chroma axis (zero-chroma sign change), or the gamut edge (gamut-edge sign
+  // change). Matching those crossings per strip, then chaining the matches,
+  // keeps a contour connected through folds (roots born or dying in pairs)
+  // and where it meets the axis or the gamut edge between samples.
+  const nodes: ContrastRegionPoint[] = [];
+  const addNode = (point: ContrastRegionPoint): number => {
+    nodes.push(point);
+    return nodes.length - 1;
+  };
+  const rootNodes = refinedSamples.map((sample) =>
+    sample.roots.map((chroma) => addNode({ l: sample.l, c: chroma })),
   );
-
-  for (
-    let sampleIndex = 0;
-    sampleIndex < refinedSamples.length;
-    sampleIndex += 1
-  ) {
-    const sample = refinedSamples[sampleIndex];
-    const rootPoints = sample.roots.map((chroma) => ({
-      l: sample.l,
-      c: chroma,
-    }));
-    if (sampleIndex === 0) {
-      activeBranches = rootPoints.map((point) => ({
-        points: [point],
-        lastC: point.c,
-      }));
+  const edges: Array<[number, number]> = [];
+  for (let index = 0; index < refinedSamples.length - 1; index += 1) {
+    const left = refinedSamples[index];
+    const right = refinedSamples[index + 1];
+    const leftNodes = rootNodes[index];
+    const rightNodes = rootNodes[index + 1];
+    const axisNode = hasSignChange(left.zeroSign, right.zeroSign)
+      ? addNode({
+          l: bisectHybridLightness(
+            (lightness) => evaluateAt(lightness, 0),
+            left.l,
+            right.l,
+            left.zeroSign,
+          ),
+          c: 0,
+        })
+      : -1;
+    let edgeNode = -1;
+    if (hasSignChange(left.topSign, right.topSign)) {
+      const l = bisectHybridLightness(
+        (lightness) => evaluateAt(lightness, getMaxInGamut(lightness)),
+        left.l,
+        right.l,
+        left.topSign,
+      );
+      edgeNode = addNode({ l, c: getMaxInGamut(l) });
+    }
+    if (
+      axisNode < 0 &&
+      edgeNode < 0 &&
+      leftNodes.length === rightNodes.length
+    ) {
+      leftNodes.forEach((node, rootIndex) => {
+        edges.push([node, rightNodes[rootIndex]]);
+      });
       continue;
     }
-
-    const usedRoots = new Set<number>();
-    const nextActive: HybridBranch[] = [];
-    const sortedBranches = activeBranches
-      .slice()
-      .sort((a, b) => a.lastC - b.lastC);
-
-    for (const branch of sortedBranches) {
-      let bestIndex = -1;
-      let bestDistance = Number.POSITIVE_INFINITY;
-      for (let rootIndex = 0; rootIndex < rootPoints.length; rootIndex += 1) {
-        if (usedRoots.has(rootIndex)) continue;
-        const distance = Math.abs(rootPoints[rootIndex].c - branch.lastC);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestIndex = rootIndex;
-        }
-      }
-
-      if (bestIndex >= 0 && bestDistance <= matchThreshold) {
-        const nextPoint = rootPoints[bestIndex];
-        usedRoots.add(bestIndex);
-        branch.points.push(nextPoint);
-        branch.lastC = nextPoint.c;
-        nextActive.push(branch);
-      } else if (branch.points.length > 1) {
-        finishedPaths.push(branch.points);
-      }
-    }
-
-    for (let rootIndex = 0; rootIndex < rootPoints.length; rootIndex += 1) {
-      if (usedRoots.has(rootIndex)) continue;
-      const point = rootPoints[rootIndex];
-      nextActive.push({
-        points: [point],
-        lastC: point.c,
-      });
-    }
-
-    activeBranches = nextActive;
-  }
-
-  for (const branch of activeBranches) {
-    if (branch.points.length > 1) {
-      finishedPaths.push(branch.points);
+    // Strip boundary in order: axis, right side upward, gamut edge, left
+    // side downward. Contours cannot cross, so matches are non-crossing.
+    const boundary = [
+      ...(axisNode >= 0 ? [axisNode] : []),
+      ...rightNodes,
+      ...(edgeNode >= 0 ? [edgeNode] : []),
+      ...leftNodes.slice().reverse(),
+    ];
+    for (const [a, b] of matchStripCrossings(
+      boundary.map((node) => nodes[node]),
+    )) {
+      edges.push([boundary[a], boundary[b]]);
     }
   }
+  const finishedPaths = chainHybridEdges(nodes, edges);
 
   const cleaned = finishedPaths
     .map((path) => dedupeSequentialPath(path))
@@ -576,7 +702,10 @@ export function contrastRegionPathsHybrid(
 
   recordTraceStage(trace, {
     kind: 'branching',
-    activeCount: activeBranches.length,
+    // Open paths end on the plane edge, the axis, or the gamut edge.
+    activeCount: finishedPaths.filter(
+      (path) => path[0] !== path[path.length - 1],
+    ).length,
     finishedCount: finishedPaths.length,
     pathCount: cleaned.length,
     hasComplexTopology: hasComplexTopology.value,
