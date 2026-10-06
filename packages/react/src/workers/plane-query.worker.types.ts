@@ -1,3 +1,4 @@
+import type { PlaneDefinition, PlaneQuery } from '@color-kit/core';
 import type {
   PackedPlaneQueryResult,
   PlaneComputeBackendKind,
@@ -6,9 +7,7 @@ import type {
   PlaneComputeQuality,
   PlaneComputeScheduleTrace,
   PlaneComputeTelemetrySnapshot,
-  PlaneDefinition,
-  PlaneQuery,
-} from '@color-kit/core';
+} from '@color-kit/core/compute';
 
 export interface PlaneQueryWorkerRequest {
   id: number;

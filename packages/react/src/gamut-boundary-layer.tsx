@@ -1,10 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { SVGAttributes } from 'react';
-import {
-  unpackPlaneQueryResults,
-  type GamutTarget,
-  type PlaneGamutBoundaryResult,
-} from '@color-kit/core';
+import type { GamutTarget, PlaneGamutBoundaryResult } from '@color-kit/core';
+import { unpackPlaneQueryResults } from '@color-kit/core/compute';
 import {
   getColorAreaGamutBoundaryPoints,
   toColorAreaPlaneDefinition,

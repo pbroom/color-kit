@@ -6,7 +6,6 @@ export {
   planeModelChannels,
   planeModelDefaultRange,
   planeToColor,
-  PLANE_DEFAULT_RANGES,
   PLANE_MODEL_CHANNELS,
   PLANE_MODEL_DEFAULT_AXES,
   PLANE_MODEL_DEFAULT_RANGES,
@@ -58,7 +57,7 @@ export {
   scaleRegion,
   translateRegion,
 } from './transforms.js';
-export type { PlaneSense, PlaneSenseApi, PlaneWithSense } from './query.js';
+export type { PlaneSense, PlaneWithSense } from './query.js';
 
 export type {
   Plane,

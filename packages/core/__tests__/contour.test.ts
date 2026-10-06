@@ -8,7 +8,7 @@ import {
   type ContourEdgePair,
   type ContourPoint,
   type ContourSegment,
-} from '../src/index.js';
+} from '../src/contour/index.js';
 
 describe('contour utilities', () => {
   it('defines the canonical marching-squares edge table', () => {

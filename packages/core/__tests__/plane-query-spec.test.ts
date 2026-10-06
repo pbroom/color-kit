@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createPlaneComputeScheduler,
   definePlane,
   fromHex,
-  packPlaneQueryResults,
   parse,
   runPlaneQueries,
-  unpackPlaneQueryResults,
-  type PlaneComputeRequest,
   type PlaneDefinition,
   type PlaneQuery,
   type PlaneQueryResult,
 } from '../src/index.js';
+import {
+  createPlaneComputeScheduler,
+  packPlaneQueryResults,
+  unpackPlaneQueryResults,
+  type PlaneComputeRequest,
+} from '../src/compute/index.js';
 import {
   getPlaneQuerySpec,
   PLANE_QUERY_KINDS,
