@@ -142,7 +142,8 @@ describe('plane query spec registry', () => {
 /**
  * Golden scheduler bucket keys and budgets captured from the pre-registry
  * scheduler (main @ d992bc1) so the registry refactor keeps telemetry
- * buckets stable.
+ * buckets stable. Contrast keys no longer carry a sampling mode since the
+ * legacy contrast-region engine was removed.
  */
 function goldenCases(): Array<{
   name: string;
@@ -189,17 +190,17 @@ function goldenCases(): Array<{
         'gamutRegion|gamutRegion:display-p3:full:rgb:r/g|contrast:none|priority:idle|quality:medium|profile:balanced|budget:xl',
     },
     {
-      name: 'contrast region hybrid wcag',
+      name: 'contrast region wcag',
       request: {
         plane: lc,
         queries: [{ kind: 'contrastRegion', reference, metric: 'wcag' }],
       },
       budget: 1891,
       bucketKey:
-        'contrastRegion|gamutRegion:none|contrast:wcag:hybrid|priority:idle|quality:medium|profile:balanced|budget:lg',
+        'contrastRegion|gamutRegion:none|contrast:wcag|priority:idle|quality:medium|profile:balanced|budget:lg',
     },
     {
-      name: 'contrast boundary adaptive apca',
+      name: 'contrast boundary shallow apca',
       request: {
         plane: lc,
         queries: [
@@ -208,18 +209,16 @@ function goldenCases(): Array<{
             reference: dark,
             metric: 'apca',
             apcaPolarity: 'positive',
-            engine: 'legacy',
-            samplingMode: 'adaptive',
-            adaptiveBaseSteps: 12,
+            hybridMaxDepth: 4,
           },
         ],
       },
-      budget: 511,
+      budget: 1549,
       bucketKey:
-        'contrastBoundary|gamutRegion:none|contrast:apca:adaptive:positive:sample-text|priority:idle|quality:medium|profile:balanced|budget:md',
+        'contrastBoundary|gamutRegion:none|contrast:apca:positive:sample-text|priority:idle|quality:medium|profile:balanced|budget:lg',
     },
     {
-      name: 'contrast region uniform drag',
+      name: 'contrast region coarse drag',
       request: {
         plane: lc,
         priority: 'drag',
@@ -229,16 +228,14 @@ function goldenCases(): Array<{
           {
             kind: 'contrastRegion',
             reference,
-            engine: 'legacy',
-            samplingMode: 'uniform',
             lightnessSteps: 32,
             chromaSteps: 32,
           },
         ],
       },
-      budget: 1024,
+      budget: 485,
       bucketKey:
-        'contrastRegion|gamutRegion:none|contrast:wcag:uniform|priority:drag|quality:high|profile:performance|budget:md',
+        'contrastRegion|gamutRegion:none|contrast:wcag|priority:drag|quality:high|profile:performance|budget:md',
     },
     {
       name: 'mixed light queries',
@@ -272,7 +269,7 @@ function goldenCases(): Array<{
       },
       budget: 11586,
       bucketKey:
-        'contrastRegion+gamutRegion|gamutRegion:srgb:viewport:hsl:h/s|contrast:apca:hybrid:absolute:sample-background|priority:idle|quality:medium|profile:balanced|budget:xl',
+        'contrastRegion+gamutRegion|gamutRegion:srgb:viewport:hsl:h/s|contrast:apca:absolute:sample-background|priority:idle|quality:medium|profile:balanced|budget:xl',
     },
   ];
 }

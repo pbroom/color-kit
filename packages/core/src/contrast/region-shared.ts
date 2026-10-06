@@ -13,7 +13,7 @@ import type {
   ContrastRegionPoint,
 } from './types.js';
 
-/** Edge probe fractions shared by the legacy adaptive and hybrid solvers. */
+/** Lightness edge-probe fractions the contrast-region solver samples. */
 export const ADAPTIVE_EDGE_PROBES = [0.02, 0.05] as const;
 
 const APCA_PRESET_THRESHOLDS: Record<ContrastApcaPreset, number> = {

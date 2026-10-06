@@ -118,8 +118,7 @@ export interface ColorAreaFallbackPoint {
 
 /**
  * Contrast-region options for a color area: the core
- * `ContrastRegionPathOptions`, discriminated by `engine` (`'hybrid'` by
- * default, or `'legacy'` for the marching-squares engine).
+ * `ContrastRegionPathOptions`.
  */
 export type ColorAreaContrastRegionOptions = ContrastRegionPathOptions;
 

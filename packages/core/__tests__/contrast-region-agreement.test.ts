@@ -154,7 +154,7 @@ const gamuts: GamutTarget[] = ['srgb', 'display-p3'];
 describe('contrast regions agree with a brute-force grid', () => {
   // The README hero query (OKLCH plane, WCAG AA) at hue 150. The passing set
   // is one connected region whose contrast contour runs from the chroma axis
-  // to the gamut edge. Before strip matching, the hybrid engine split it
+  // to the gamut edge. Before strip matching, the solver split it
   // into two pieces with nothing between chroma 0.049 and 0.114.
   describe.each(
     references.flatMap((reference) =>
@@ -168,7 +168,7 @@ describe('contrast regions agree with a brute-force grid', () => {
       expect(truth.crossings.length).toBeGreaterThan(100);
     });
 
-    it('hybrid traces one contour from the axis to the gamut edge', () => {
+    it('traces one contour from the axis to the gamut edge', () => {
       const paths = contrastRegionPaths(parse(reference), 150, {
         level: 'AA',
         gamut,
@@ -183,7 +183,7 @@ describe('contrast regions agree with a brute-force grid', () => {
         maxChromaAt(ends[1].l, 150, { gamut, maxChroma: MAX_CHROMA }),
         6,
       );
-      // Every hybrid vertex is a root of the contrast margin.
+      // Every vertex is a root of the contrast margin.
       for (const point of path) {
         const ratio = contrastRatio(
           { l: point.l, c: point.c, h: 150, alpha: 1 },
@@ -192,16 +192,6 @@ describe('contrast regions agree with a brute-force grid', () => {
         );
         expect(Math.abs(ratio - THRESHOLD)).toBeLessThan(1e-3);
       }
-    });
-
-    it('legacy traces one boundary within its grid resolution', () => {
-      const paths = contrastRegionPaths(parse(reference), 150, {
-        engine: 'legacy',
-        level: 'AA',
-        gamut,
-      });
-      expect(paths).toHaveLength(1);
-      expect(maxGap(truth, paths)).toBeLessThan(0.01);
     });
   });
 
@@ -216,7 +206,7 @@ describe('contrast regions agree with a brute-force grid', () => {
     [250, '#000000'],
     [260, '#000000'],
   ] as const)(
-    'hybrid keeps the folded WCAG AA contour at h%i on %s connected',
+    'keeps the folded WCAG AA contour at h%i on %s connected',
     (hue, reference) => {
       const truth = bruteForce(hue, reference, 'display-p3', 200);
       expect(truth.components).toBe(1);

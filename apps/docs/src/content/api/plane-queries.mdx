@@ -26,7 +26,7 @@ runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
 ## Shared Notes
 
 - `samplingMode` on `gamutBoundary` / `chromaBand` selects `uniform` (fixed lightness stepping) or `adaptive` (recursive refinement).
-- Contrast queries take the same options as [`contrastRegionPaths`](/docs/api/contrast): `engine` selects the default `hybrid` root-tracing solver or the `legacy` marching-squares solver, and legacy-only options (`samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`) require `engine: 'legacy'`.
+- Contrast queries take the same options as [`contrastRegionPaths`](/docs/api/contrast), validated the same way: the removed legacy-engine options (`engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`) throw a `TypeError`.
 - `gamutRegion()` is viewport-first by default:
   - `scope: 'viewport'` returns only boundary fragments that intersect the current plane window.
   - `scope: 'full'` opts into offscreen boundary geometry for exports or overview visualizations.

@@ -19,7 +19,7 @@ import {
 } from './region-shared.js';
 import type {
   ContrastHybridDegradedReason,
-  ContrastRegionHybridOptions,
+  ContrastRegionPathOptions,
   ContrastRegionPoint,
 } from './types.js';
 
@@ -29,11 +29,15 @@ const DEFAULT_HYBRID_ROOT_ITERATIONS = 28;
 const DEFAULT_HYBRID_LIGHTNESS_STEPS = 72;
 const DEFAULT_HYBRID_CHROMA_BRACKETS = 96;
 const HYBRID_LIGHTNESS_EPSILON = 1e-6;
+/** Chroma bracket width at which root bisection stops. */
 const HYBRID_ROOT_EPSILON = 1e-7;
+/** Lightness bracket width at which axis and gamut-edge bisection stops. */
+const HYBRID_LIGHTNESS_TOLERANCE = 1e-9;
 /**
  * Cost of leaving a strip crossing unmatched. Larger than any matching
- * distance in the l/c plane, so crossings stay unmatched only when root
- * parity is broken (for example two roots merged by deduplication).
+ * distance in the l/c plane. Roots are placed at pass/fail class changes,
+ * so every strip has an even number of crossings and none stay unmatched;
+ * the cost only keeps the matching total if that invariant ever breaks.
  */
 const HYBRID_UNMATCHED_COST = 10;
 
@@ -41,9 +45,9 @@ interface HybridLightnessSample {
   l: number;
   cMax: number;
   roots: number[];
-  /** Sign of the contrast margin at chroma 0 (-1, 0, or 1). */
+  /** Pass/fail class of the contrast margin at chroma 0 (1 or -1). */
   zeroSign: number;
-  /** Sign of the contrast margin at the gamut edge `cMax` (-1, 0, or 1). */
+  /** Pass/fail class of the contrast margin at the gamut edge `cMax`. */
   topSign: number;
 }
 
@@ -74,6 +78,23 @@ function hasHybridRootJump(left: number[], right: number[]): boolean {
   return false;
 }
 
+/**
+ * Pass/fail class of a contrast margin: `1` when it meets the threshold
+ * (`>= 0`), otherwise `-1`. Roots are placed only where this class changes,
+ * so the roots of a lightness sample always agree in parity with its
+ * `zeroSign` and `topSign`. Accepting near-zero values as roots instead
+ * (a value tolerance) duplicated or dropped roots where the field is flat
+ * in chroma, at fold tips and along the gamut edge, which split contours.
+ */
+function marginClass(value: number): 1 | -1 {
+  return value >= 0 ? 1 : -1;
+}
+
+/**
+ * Bisects `evaluate` over chroma for the pass/fail class change inside
+ * `[loStart, hiStart]`. Stops on bracket width rather than on a small
+ * value, so a flat field cannot stop it far from the crossing.
+ */
 function bisectHybridRoot(
   evaluate: (chroma: number) => number,
   loStart: number,
@@ -85,8 +106,7 @@ function bisectHybridRoot(
 ): number {
   let lo = loStart;
   let hi = hiStart;
-  let vLo = vLoStart;
-  let vHi = vHiStart;
+  const loClass = marginClass(vLoStart);
   const iterations: Array<{
     lo: number;
     hi: number;
@@ -108,7 +128,11 @@ function bisectHybridRoot(
     });
     return root;
   };
-  for (let index = 0; index < DEFAULT_HYBRID_ROOT_ITERATIONS; index += 1) {
+  for (
+    let index = 0;
+    index < DEFAULT_HYBRID_ROOT_ITERATIONS && hi - lo > HYBRID_ROOT_EPSILON;
+    index += 1
+  ) {
     const mid = (lo + hi) / 2;
     const vMid = evaluate(mid);
     if (shouldTraceFull(trace)) {
@@ -119,43 +143,35 @@ function bisectHybridRoot(
         value: vMid,
       });
     }
-    if (
-      Math.abs(vMid) <= HYBRID_ROOT_EPSILON ||
-      hi - lo <= HYBRID_ROOT_EPSILON
-    ) {
-      return finish(mid);
-    }
-    if ((vLo < 0 && vMid > 0) || (vLo > 0 && vMid < 0)) {
-      hi = mid;
-      vHi = vMid;
-    } else {
+    if (marginClass(vMid) === loClass) {
       lo = mid;
-      vLo = vMid;
+    } else {
+      hi = mid;
     }
-    if (Math.abs(vLo) <= HYBRID_ROOT_EPSILON) return finish(lo);
-    if (Math.abs(vHi) <= HYBRID_ROOT_EPSILON) return finish(hi);
   }
   return finish((lo + hi) / 2);
 }
 
-function hasSignChange(a: number, b: number): boolean {
-  return (a < 0 && b > 0) || (a > 0 && b < 0);
-}
-
-/** Bisects `evaluate` over lightness, given its sign at `loStart`. */
+/**
+ * Bisects `evaluate` over lightness for the pass/fail class change between
+ * `loStart` and `hiStart` (either order), given the class at `loStart`.
+ */
 function bisectHybridLightness(
   evaluate: (lightness: number) => number,
   loStart: number,
   hiStart: number,
-  signLo: number,
+  classLo: number,
 ): number {
   let lo = loStart;
   let hi = hiStart;
-  for (let index = 0; index < DEFAULT_HYBRID_ROOT_ITERATIONS; index += 1) {
+  for (
+    let index = 0;
+    index < DEFAULT_HYBRID_ROOT_ITERATIONS &&
+    Math.abs(hi - lo) > HYBRID_LIGHTNESS_TOLERANCE;
+    index += 1
+  ) {
     const mid = (lo + hi) / 2;
-    const value = evaluate(mid);
-    if (Math.abs(value) <= HYBRID_ROOT_EPSILON) return mid;
-    if (value < 0 === signLo < 0) {
+    if (marginClass(evaluate(mid)) === classLo) {
       lo = mid;
     } else {
       hi = mid;
@@ -266,18 +282,6 @@ function chainHybridEdges(
   return paths;
 }
 
-function dedupeSortedRoots(values: number[]): number[] {
-  if (values.length === 0) return values;
-  const sorted = values.slice().sort((a, b) => a - b);
-  const deduped: number[] = [sorted[0]];
-  for (let index = 1; index < sorted.length; index += 1) {
-    if (Math.abs(sorted[index] - deduped[deduped.length - 1]) > 2e-5) {
-      deduped.push(sorted[index]);
-    }
-  }
-  return deduped;
-}
-
 function dedupeSequentialPath(
   path: ContrastRegionPoint[],
 ): ContrastRegionPoint[] {
@@ -318,7 +322,7 @@ function buildHybridLightnessAnchors(
 export function contrastRegionPathsHybrid(
   reference: Color,
   hue: number,
-  options: ContrastRegionHybridOptions,
+  options: ContrastRegionPathOptions,
   trace?: InternalPlaneTraceContext | null,
 ): ContrastRegionPoint[][] {
   const criterion = resolveContrastCriterion(options);
@@ -382,11 +386,13 @@ export function contrastRegionPathsHybrid(
     maxChroma,
     alpha,
   };
-  const maxChromaCache = new Map<string, number>();
+  // Keyed by exact lightness: gamut-edge bisection resolves lightness finer
+  // than a rounded key, and a rounded key could return the gamut edge from
+  // the other side of a step in `maxChromaAt`.
+  const maxChromaCache = new Map<number, number>();
   const getMaxInGamut = (lightness: number): number => {
     const normalized = Math.max(0, Math.min(1, lightness));
-    const key = hybridLightnessKey(normalized);
-    const cached = maxChromaCache.get(key);
+    const cached = maxChromaCache.get(normalized);
     if (typeof cached === 'number') {
       return cached;
     }
@@ -394,7 +400,7 @@ export function contrastRegionPathsHybrid(
       0,
       Math.min(maxChroma, maxChromaAt(normalized, hue, maxChromaAtOptions)),
     );
-    maxChromaCache.set(key, resolved);
+    maxChromaCache.set(normalized, resolved);
     return resolved;
   };
   const evaluateAt = (lightness: number, chroma: number): number => {
@@ -415,25 +421,21 @@ export function contrastRegionPathsHybrid(
     cMax: number,
   ): { roots: number[]; zeroSign: number; topSign: number } => {
     if (cMax <= HYBRID_ROOT_EPSILON) {
-      const sign = Math.sign(evaluateAt(lightness, 0));
+      const sign = marginClass(evaluateAt(lightness, 0));
       return { roots: [], zeroSign: sign, topSign: sign };
     }
     const evaluateChroma = (chroma: number) => evaluateAt(lightness, chroma);
     const stepCount = Math.max(8, chromaBrackets);
+    // One root per bracket whose ends differ in class: roots are strictly
+    // increasing and their count matches the zeroSign/topSign parity.
     const roots: number[] = [];
     let prevC = 0;
     let prevV = evaluateChroma(0);
-    const zeroSign = Math.sign(prevV);
-    if (Math.abs(prevV) <= HYBRID_ROOT_EPSILON) {
-      roots.push(0);
-    }
+    const zeroSign = marginClass(prevV);
     for (let index = 1; index <= stepCount; index += 1) {
       const c = (index / stepCount) * cMax;
       const v = evaluateChroma(c);
-      if (Math.abs(v) <= HYBRID_ROOT_EPSILON) {
-        roots.push(c);
-      }
-      if ((prevV < 0 && v > 0) || (prevV > 0 && v < 0)) {
+      if (marginClass(prevV) !== marginClass(v)) {
         roots.push(
           bisectHybridRoot(
             evaluateChroma,
@@ -449,11 +451,10 @@ export function contrastRegionPathsHybrid(
       prevC = c;
       prevV = v;
     }
-    const deduped = dedupeSortedRoots(roots);
-    if (deduped.length > 6) {
+    if (roots.length > 6) {
       hasComplexTopology.value = true;
     }
-    return { roots: deduped, zeroSign, topSign: Math.sign(prevV) };
+    return { roots, zeroSign, topSign: marginClass(prevV) };
   };
   const lightnessSampleCache = new Map<string, HybridLightnessSample>();
   const getLightnessSample = (lightness: number): HybridLightnessSample => {
@@ -632,25 +633,56 @@ export function contrastRegionPathsHybrid(
   const rootNodes = refinedSamples.map((sample) =>
     sample.roots.map((chroma) => addNode({ l: sample.l, c: chroma })),
   );
+  // Two roots on the same side of a strip that match each other are a fold:
+  // the contour turns back inside the strip. Rather than closing it with a
+  // chord along the sample, place a turning point where the line midway
+  // between the two roots leaves the region, so the fold tip is kept.
+  const findFoldTip = (
+    from: number,
+    to: number,
+    left: HybridLightnessSample,
+    right: HybridLightnessSample,
+    leftNodes: number[],
+    rightNodes: number[],
+  ): number => {
+    const onLeft = leftNodes.includes(from) && leftNodes.includes(to);
+    const onRight = rightNodes.includes(from) && rightNodes.includes(to);
+    if (!onLeft && !onRight) return -1;
+    const chroma = (nodes[from].c + nodes[to].c) / 2;
+    const [near, far] = onLeft ? [left, right] : [right, left];
+    if (chroma > far.cMax) return -1;
+    const nearClass = marginClass(evaluateAt(near.l, chroma));
+    if (marginClass(evaluateAt(far.l, chroma)) === nearClass) return -1;
+    return addNode({
+      l: bisectHybridLightness(
+        (lightness) => evaluateAt(lightness, chroma),
+        near.l,
+        far.l,
+        nearClass,
+      ),
+      c: chroma,
+    });
+  };
   const edges: Array<[number, number]> = [];
   for (let index = 0; index < refinedSamples.length - 1; index += 1) {
     const left = refinedSamples[index];
     const right = refinedSamples[index + 1];
     const leftNodes = rootNodes[index];
     const rightNodes = rootNodes[index + 1];
-    const axisNode = hasSignChange(left.zeroSign, right.zeroSign)
-      ? addNode({
-          l: bisectHybridLightness(
-            (lightness) => evaluateAt(lightness, 0),
-            left.l,
-            right.l,
-            left.zeroSign,
-          ),
-          c: 0,
-        })
-      : -1;
+    const axisNode =
+      left.zeroSign !== right.zeroSign
+        ? addNode({
+            l: bisectHybridLightness(
+              (lightness) => evaluateAt(lightness, 0),
+              left.l,
+              right.l,
+              left.zeroSign,
+            ),
+            c: 0,
+          })
+        : -1;
     let edgeNode = -1;
-    if (hasSignChange(left.topSign, right.topSign)) {
+    if (left.topSign !== right.topSign) {
       const l = bisectHybridLightness(
         (lightness) => evaluateAt(lightness, getMaxInGamut(lightness)),
         left.l,
@@ -680,7 +712,14 @@ export function contrastRegionPathsHybrid(
     for (const [a, b] of matchStripCrossings(
       boundary.map((node) => nodes[node]),
     )) {
-      edges.push([boundary[a], boundary[b]]);
+      const from = boundary[a];
+      const to = boundary[b];
+      const tip = findFoldTip(from, to, left, right, leftNodes, rightNodes);
+      if (tip >= 0) {
+        edges.push([from, tip], [tip, to]);
+      } else {
+        edges.push([from, to]);
+      }
     }
   }
   const finishedPaths = chainHybridEdges(nodes, edges);

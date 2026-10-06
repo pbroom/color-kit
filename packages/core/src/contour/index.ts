@@ -1,6 +1,5 @@
 export type ContourEdge = 0 | 1 | 2 | 3;
 export type ContourEdgePair = readonly [ContourEdge, ContourEdge];
-export type ContourInterpolation = 'linear' | 'midpoint';
 
 export interface ContourPoint {
   x: number;
@@ -75,14 +74,10 @@ export interface BuildContourPathOptions<
   pointsEqual?: (a: TPoint, b: TPoint, tolerance: number) => boolean;
 }
 
-export interface GridContourOptions<
-  TPoint extends ContourPoint = ContourPoint,
-> {
-  interpolation?: ContourInterpolation;
+export interface GridContourOptions {
   threshold?: number;
   collectCellEvents?: boolean;
   cellEventMode?: 'cell' | 'segment';
-  mapPoint?: (point: ContourPoint) => TPoint;
 }
 
 export interface AdaptiveContourCell extends ContourCell {
@@ -99,13 +94,9 @@ export interface AdaptiveContourRefineContext {
   sample: (x: number, y: number) => number;
 }
 
-export interface AdaptiveContourOptions<
-  TPoint extends ContourPoint = ContourPoint,
-> {
+export interface AdaptiveContourOptions {
   maxDepth: number;
-  interpolation?: ContourInterpolation;
   collectCellEvents?: boolean;
-  mapPoint?: (point: ContourPoint) => TPoint;
   getCellIndex?: (
     cell: ContourCell,
     depth: number,
@@ -179,11 +170,7 @@ export function interpolateZero(a: number, b: number): number {
 export function interpolateCellEdge(
   edge: ContourEdge,
   values: ContourCellValues,
-  interpolation: ContourInterpolation = 'linear',
 ): number {
-  if (interpolation === 'midpoint') {
-    return 0.5;
-  }
   switch (edge) {
     case 0:
       return interpolateZero(values.v0, values.v1);
@@ -202,9 +189,8 @@ export function pointOnCellEdge(
   edge: ContourEdge,
   bounds: ContourCellBounds,
   values?: ContourCellValues,
-  interpolation: ContourInterpolation = 'linear',
 ): ContourPoint {
-  const t = values ? interpolateCellEdge(edge, values, interpolation) : 0.5;
+  const t = values ? interpolateCellEdge(edge, values) : 0.5;
   switch (edge) {
     case 0:
       return { x: bounds.x0 + (bounds.x1 - bounds.x0) * t, y: bounds.y0 };
@@ -361,7 +347,7 @@ export function buildContourPaths<TPoint extends ContourPoint = ContourPoint>(
   return options.sortPaths ? paths.sort(options.sortPaths) : paths;
 }
 
-function defaultMapPoint<TPoint extends ContourPoint>(
+function asContourPoint<TPoint extends ContourPoint>(
   point: ContourPoint,
 ): TPoint {
   return point as TPoint;
@@ -371,11 +357,10 @@ export function extractGridContourSegments<
   TPoint extends ContourPoint = ContourPoint,
 >(
   grid: ScalarContourGrid,
-  options: GridContourOptions<TPoint> = {},
+  options: GridContourOptions = {},
 ): ContourSegmentExtraction<TPoint> {
-  const interpolation = options.interpolation ?? 'linear';
   const threshold = options.threshold ?? 0;
-  const mapPoint = options.mapPoint ?? defaultMapPoint<TPoint>;
+  const mapPoint = asContourPoint<TPoint>;
   const xSteps = grid.xSteps ?? grid.resolution;
   const ySteps = grid.ySteps ?? grid.resolution;
   const stepX = (grid.maxX - grid.minX) / xSteps;
@@ -407,10 +392,8 @@ export function extractGridContourSegments<
       cellCount += 1;
 
       for (const [fromEdge, toEdge] of edgePairs) {
-        const from = mapPoint(
-          pointOnCellEdge(fromEdge, cell, cell, interpolation),
-        );
-        const to = mapPoint(pointOnCellEdge(toEdge, cell, cell, interpolation));
+        const from = mapPoint(pointOnCellEdge(fromEdge, cell, cell));
+        const to = mapPoint(pointOnCellEdge(toEdge, cell, cell));
         segments.push([from, to]);
         segmentCount += 1;
 
@@ -441,10 +424,9 @@ export function extractAdaptiveContourSegments<
 >(
   initialCells: readonly AdaptiveContourCell[],
   sample: (x: number, y: number) => number,
-  options: AdaptiveContourOptions<TPoint>,
+  options: AdaptiveContourOptions,
 ): AdaptiveContourExtraction<TPoint> {
-  const interpolation = options.interpolation ?? 'linear';
-  const mapPoint = options.mapPoint ?? defaultMapPoint<TPoint>;
+  const mapPoint = asContourPoint<TPoint>;
   const maxDepth = Math.max(0, options.maxDepth);
   const segments: Array<ContourSegment<TPoint>> = [];
   const cellEvents: Array<ContourCellEvent<TPoint>> = [];
@@ -485,10 +467,8 @@ export function extractAdaptiveContourSegments<
 
     const tracePoints: TPoint[] = [];
     for (const [fromEdge, toEdge] of edgePairs) {
-      const from = mapPoint(
-        pointOnCellEdge(fromEdge, cell, cell, interpolation),
-      );
-      const to = mapPoint(pointOnCellEdge(toEdge, cell, cell, interpolation));
+      const from = mapPoint(pointOnCellEdge(fromEdge, cell, cell));
+      const to = mapPoint(pointOnCellEdge(toEdge, cell, cell));
       segments.push([from, to]);
       segmentCount += 1;
       if (options.collectCellEvents) {

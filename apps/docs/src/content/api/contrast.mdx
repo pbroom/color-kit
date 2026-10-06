@@ -141,7 +141,7 @@ For the plane-integrated variants that return viewport-aware, plane-space result
 
 ## `contrastRegionPaths`
 
-Generates contour paths for the region that meets or exceeds the configured contrast criterion at a fixed hue. Two engines are available, selected explicitly with `engine`: the default `hybrid` engine (direct chroma-root solving with adaptive lightness refinement) and the `legacy` marching-squares engine. The engine never switches implicitly.
+Generates contour paths for the region that meets or exceeds the configured contrast criterion at a fixed hue. The solver finds chroma roots of the contrast field at adaptively refined lightness samples and joins them into paths.
 
 ```ts
 import { contrastRegionPaths, parse } from 'color-kit';
@@ -178,52 +178,42 @@ const paths = contrastRegionPaths(parse('#ffffff'), 220, {
 
 ### Sampling options
 
-| Option              | Type                     | Default     | Description                                                                                                                                    |
-| ------------------- | ------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gamut`             | `'srgb' \| 'display-p3'` | `'srgb'`    | Target gamut; both the reference and every sample are gamut-mapped before evaluation                                                           |
-| `maxChroma`         | `number`                 | `0.4`       | Upper chroma bound used for sampling                                                                                                           |
-| `alpha`             | `number`                 | `1`         | Alpha channel used while sampling                                                                                                              |
-| `lightnessSteps`    | `number`                 | `72` / `64` | Hybrid: initial lightness sampling density (clamped to 12&ndash;320), refined where the contour bends. Legacy: lightness grid cells            |
-| `chromaSteps`       | `number`                 | `96` / `64` | Hybrid: chroma root-bracketing density per lightness sample (clamped to 16&ndash;768). Legacy: chroma grid cells                               |
-| `tolerance`         | `number`                 | —           | Search precision forwarded to `maxChromaAt`                                                                                                    |
-| `maxIterations`     | `number`                 | —           | Search iteration cap forwarded to `maxChromaAt`                                                                                                |
-| `simplifyTolerance` | `number`                 | off         | If set, runs Ramer&ndash;Douglas&ndash;Peucker simplification on each path; tolerance in normalized `(l, c)` space, e.g. `0.001`&ndash;`0.002` |
+| Option              | Type                     | Default  | Description                                                                                                                                    |
+| ------------------- | ------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gamut`             | `'srgb' \| 'display-p3'` | `'srgb'` | Target gamut; both the reference and every sample are gamut-mapped before evaluation                                                           |
+| `maxChroma`         | `number`                 | `0.4`    | Upper chroma bound used for sampling                                                                                                           |
+| `alpha`             | `number`                 | `1`      | Alpha channel used while sampling                                                                                                              |
+| `lightnessSteps`    | `number`                 | `72`     | Initial lightness sampling density (clamped to 12&ndash;320), refined where the contour bends                                                  |
+| `chromaSteps`       | `number`                 | `96`     | Chroma root-bracketing density per lightness sample (clamped to 16&ndash;768)                                                                  |
+| `tolerance`         | `number`                 | —        | Search precision forwarded to `maxChromaAt`                                                                                                    |
+| `maxIterations`     | `number`                 | —        | Search iteration cap forwarded to `maxChromaAt`                                                                                                |
+| `simplifyTolerance` | `number`                 | off      | If set, runs Ramer&ndash;Douglas&ndash;Peucker simplification on each path; tolerance in normalized `(l, c)` space, e.g. `0.001`&ndash;`0.002` |
 
-### Engine options
-
-| Option   | Type                   | Default    | Description                                                                                |
-| -------- | ---------------------- | ---------- | ------------------------------------------------------------------------------------------ |
-| `engine` | `'hybrid' \| 'legacy'` | `'hybrid'` | Contrast-region solver. `ContrastRegionPathOptions` is a union discriminated by this field |
-
-Hybrid engine options (type errors with `engine: 'legacy'`, and a `TypeError` at runtime):
+### Refinement options
 
 | Option                 | Type     | Default  | Description                                                                    |
 | ---------------------- | -------- | -------- | ------------------------------------------------------------------------------ |
 | `hybridMaxDepth`       | `number` | `7`      | Maximum adaptive lightness refinement depth                                    |
 | `hybridErrorTolerance` | `number` | `0.0015` | Maximum midpoint root deviation (in chroma units) before splitting an interval |
 
-Legacy engine options (only valid with `engine: 'legacy'`; a type error otherwise, and a `TypeError` at runtime):
-
-| Option              | Type                      | Default    | Description                                                                                 |
-| ------------------- | ------------------------- | ---------- | ------------------------------------------------------------------------------------------- |
-| `samplingMode`      | `'uniform' \| 'adaptive'` | see notes  | `uniform` samples a fixed grid; `adaptive` subdivides cells the contour crosses (WCAG only) |
-| `edgeInterpolation` | `'linear' \| 'midpoint'`  | `'linear'` | `linear` interpolates edge crossings at the threshold; `midpoint` uses cell-edge midpoints  |
-| `adaptiveBaseSteps` | `number`                  | `16`       | Adaptive mode: base grid size per axis                                                      |
-| `adaptiveMaxDepth`  | `number`                  | `3`        | Adaptive mode: maximum subdivision depth                                                    |
+The legacy marching-squares engine and its options (`engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`) were removed. Passing any of them is a type error and throws a `TypeError`.
 
 ```ts
+// Cheaper settings for interactive overlays (the ContrastRegionLayer defaults).
 const paths = contrastRegionPaths(parse('#ffffff'), 220, {
-  engine: 'legacy',
-  samplingMode: 'adaptive',
   level: 'AA',
+  lightnessSteps: 12,
+  chromaSteps: 16,
+  hybridMaxDepth: 3,
+  hybridErrorTolerance: 0.003,
 });
 ```
 
-Engine notes:
+Solver notes:
 
-- The hybrid engine finds chroma roots of the contrast field at each lightness sample and joins them into paths, strip by strip between neighbouring samples. A path stays connected where the contour folds back in lightness, and ends exactly on the chroma axis or the gamut edge where it meets them (including the vertical boundary of a thin region at the top or bottom of the lightness range). Its paths are the contrast contour only: they do not run along the gamut edge. Open paths start at their lower-lightness end. When it cannot resolve a field reliably, it returns its best-effort paths (possibly none) and records `degradedReason` in the query trace summary (`inspectPlaneQuery`). It does not fall back to the legacy engine.
-- The legacy engine extracts marching-squares contours from a sampled grid, so its paths also follow the gamut edge, and its accuracy is limited by the grid. It is faster per region, so `ContrastRegionLayer` uses it.
-- Legacy `samplingMode` defaults to `'adaptive'` when `adaptiveBaseSteps` or `adaptiveMaxDepth` is set, otherwise `'uniform'`. The `adaptive` grid only applies to the `wcag` metric; APCA uses the `uniform` grid.
+- Roots are placed only where pass/fail changes along chroma, and each strip between neighbouring lightness samples matches the contour's crossings (roots, chroma-axis crossings, and gamut-edge crossings) without crossing them. A path stays connected where the contour folds back in lightness, with a turning point at the fold tip, and ends exactly on the chroma axis or the gamut edge where it meets them (including the vertical boundary of a thin region at the top or bottom of the lightness range).
+- Paths are the contrast contour only: they do not run along the gamut edge. Open paths start at their lower-lightness end.
+- When the solver cannot resolve a field reliably, it returns its best-effort paths (possibly none) and records `degradedReason` in the query trace summary (`inspectPlaneQuery`).
 
 ## `contrastRegionPath`
 
