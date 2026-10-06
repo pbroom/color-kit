@@ -2,6 +2,7 @@ import type { Color } from '../types.js';
 import { clamp, normalizeHue } from '../utils/index.js';
 import { gamutBoundaryPath } from './boundary-path.js';
 import { maxChromaAt } from './max-chroma.js';
+import { assertGamutTarget } from './target.js';
 import type {
   ChromaBandOptions,
   GamutBoundaryPoint,
@@ -39,6 +40,7 @@ export function chromaBand(
     );
   }
 
+  assertGamutTarget(options.gamut, 'chromaBand()');
   const gamut = options.gamut ?? 'srgb';
   const alpha = options.alpha ?? 1;
   const h = normalizeHue(hue);

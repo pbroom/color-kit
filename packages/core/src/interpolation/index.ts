@@ -11,6 +11,7 @@
  */
 
 import type { Color, LinearRgb, Oklab } from '../types.js';
+import { withP3Hint } from '../utils/space-hint.js';
 import {
   hasPowerlessHue,
   lerp,
@@ -340,7 +341,10 @@ export function interpolateInSpaceInto(
     space !== 'linear-p3'
   ) {
     throw new TypeError(
-      `Unknown interpolation space "${String(space)}"; expected 'oklch', 'oklab', 'srgb', 'linear-srgb', 'display-p3' or 'linear-p3'`,
+      withP3Hint(
+        `Unknown interpolation space "${String(space)}"; expected 'oklch', 'oklab', 'srgb', 'linear-srgb', 'display-p3' or 'linear-p3'`,
+        space,
+      ),
     );
   }
   if (t === 0 || t === 1) {

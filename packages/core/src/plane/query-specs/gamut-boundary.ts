@@ -1,4 +1,5 @@
 import { gamutBoundaryPath } from '../../gamut/index.js';
+import { assertGamutTarget } from '../../gamut/target.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
 import { requireGamutField, requireHueField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
@@ -29,6 +30,7 @@ export function getPlaneGamutBoundary(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneGamutBoundaryQuery, 'kind'> = {},
 ): PlaneGamutBoundaryResult {
+  assertGamutTarget(query.gamut, 'gamutBoundary()');
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {

@@ -16,6 +16,7 @@ import {
 } from '../conversion/index.js';
 import type { Color, Hct, Hsl, Hsv, Oklab, Oklch, P3, Rgb } from '../types.js';
 import { clamp, normalizeHue } from '../utils/index.js';
+import { withP3Hint } from '../utils/space-hint.js';
 import type {
   PlaneChannel,
   PlaneChannelFor,
@@ -405,7 +406,10 @@ export function planeModelSpec(model: PlaneModel): PlaneModelSpec {
     : undefined;
   if (!spec) {
     throw new TypeError(
-      `definePlane() model "${String(model)}" is not supported; expected one of ${Object.keys(PLANE_MODEL_SPECS).join(', ')}`,
+      withP3Hint(
+        `definePlane() model "${String(model)}" is not supported; expected one of ${Object.keys(PLANE_MODEL_SPECS).join(', ')}`,
+        model,
+      ),
     );
   }
   return spec;

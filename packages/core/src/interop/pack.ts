@@ -1,4 +1,5 @@
 import type { Color } from '../types.js';
+import { withP3Hint } from '../utils/space-hint.js';
 import {
   writeColor,
   writeLinearP3,
@@ -69,7 +70,7 @@ function resolveKernel<K>(table: Record<ArraySpace, K>, space: string): K {
     ? table[space as ArraySpace]
     : undefined;
   if (kernel === undefined) {
-    throw new RangeError(`Unknown array space: ${space}`);
+    throw new TypeError(withP3Hint(`Unknown array space: ${space}`, space));
   }
   return kernel;
 }
