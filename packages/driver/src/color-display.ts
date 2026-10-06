@@ -17,7 +17,7 @@ export function getColorDisplayStyles(
   activeGamut: GamutTarget,
 ): ColorDisplayStyles {
   if (activeGamut === 'display-p3') {
-    const p3 = toCss(displayed, 'p3');
+    const p3 = toCss(displayed, 'display-p3');
     const fallbackColor =
       srgbFallback.alpha < 1 ? toCss(srgbFallback, 'rgb') : toHex(srgbFallback);
     return {

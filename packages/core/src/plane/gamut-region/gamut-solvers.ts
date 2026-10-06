@@ -205,7 +205,6 @@ function canonicalChannelBounds(
       if (channel === 'h') return [0, 360];
       if (channel === 't') return [0, 100];
       return null;
-    case 'p3':
     case 'display-p3':
       return [0, 1];
     default:
@@ -511,7 +510,7 @@ export function resolveGamutSolver(
     resolvedPlane.model === 'rgb' ||
     resolvedPlane.model === 'hsl' ||
     resolvedPlane.model === 'hsv' ||
-    (resolvedPlane.model === 'p3' && gamut === 'display-p3')
+    (resolvedPlane.model === 'display-p3' && gamut === 'display-p3')
   ) {
     return 'domain-edge';
   }

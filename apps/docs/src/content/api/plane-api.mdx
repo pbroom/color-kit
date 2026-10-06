@@ -154,7 +154,7 @@ const rgbPlane = definePlaneFromColor(color, {
 
 `color` fills in model-relative defaults from the selected model, and explicit
 `fixed` values still win. This is especially useful in UIs where the user can
-switch between `oklch`, `hsl`, `rgb`, or `p3` without rebuilding every fixed
+switch between `oklch`, `hsl`, `rgb`, or `display-p3` without rebuilding every fixed
 channel bag by hand.
 
 If you use TypeScript, `definePlane()` now narrows `x`, `y`, and `fixed` to the
@@ -379,13 +379,11 @@ const d = toSvgPath(boundary.points, {
 - `hsv` (`h`, `s`, `v`)
 - `oklab` (`L`, `a`, `b`)
 - `hct` (`h`, `c`, `t`)
-- `p3` (Display P3; `r`, `g`, `b`)
-- `display-p3` (legacy alias for `p3`)
+- `display-p3` (Display P3; `r`, `g`, `b`)
 
-`definePlane({ model: 'p3' })` and `definePlane({ model: 'display-p3' })` both
-select the Display P3 plane model. Resolved planes canonicalize that alias back
-to `p3`, while query options such as `gamutBoundary({ gamut: 'display-p3' })`
-still use the full `display-p3` gamut token.
+`display-p3` is the same identifier used by gamut options such as
+`gamutBoundary({ gamut: 'display-p3' })`, `mix(..., { space: 'display-p3' })`,
+and `toCss(color, 'display-p3')`. Unknown models throw a `TypeError`.
 
 Internally, query computation remains canonical in OKLCH. Mapping helpers (`colorToPlane`, `planeToColor`, `projectRegionBetweenPlanes`, `fallbackPoint`, `gradient`) convert through model adapters, while LC-specific geometry queries remain capability-gated.
 

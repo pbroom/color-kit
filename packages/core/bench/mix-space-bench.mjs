@@ -29,7 +29,7 @@ const SPACES = [
   ['oklab', { space: 'oklab' }],
   ['srgb', { space: 'srgb' }],
   ['linear-srgb', { space: 'linear-srgb' }],
-  ['p3', { space: 'p3' }],
+  ['display-p3', { space: 'display-p3' }],
   ['linear-p3', { space: 'linear-p3' }],
 ];
 

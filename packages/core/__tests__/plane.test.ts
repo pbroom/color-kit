@@ -80,18 +80,17 @@ describe('plane api', () => {
     expect(hslPlane.x.range).toEqual([0, 360]);
     expect(hslPlane.y.range).toEqual([100, 0]);
 
-    const p3Plane = definePlane({ model: 'p3' });
-    expect(p3Plane.x.channel).toBe('r');
-    expect(p3Plane.y.channel).toBe('g');
-    expect(p3Plane.x.range).toEqual([0, 1]);
-    expect(p3Plane.y.range).toEqual([0, 1]);
-
     const displayP3Plane = definePlane({ model: 'display-p3' });
-    expect(displayP3Plane.model).toBe('p3');
+    expect(displayP3Plane.model).toBe('display-p3');
     expect(displayP3Plane.x.channel).toBe('r');
     expect(displayP3Plane.y.channel).toBe('g');
     expect(displayP3Plane.x.range).toEqual([0, 1]);
     expect(displayP3Plane.y.range).toEqual([0, 1]);
+
+    expect(() =>
+      // @ts-expect-error 'p3' is not a plane model; use 'display-p3'
+      definePlane({ model: 'p3' }),
+    ).toThrow(/model "p3" is not supported/);
 
     expect(() =>
       definePlane({
@@ -261,9 +260,9 @@ describe('plane api', () => {
         tolerance: 10,
       },
       {
-        name: 'p3',
+        name: 'display-p3',
         definition: {
-          model: 'p3' as const,
+          model: 'display-p3' as const,
           x: { channel: 'r' as const },
           y: { channel: 'g' as const },
           fixed: { b: p3.b, alpha: p3.alpha },
@@ -405,7 +404,7 @@ describe('plane api', () => {
     );
 
     const p3Plane = definePlane({
-      model: 'p3',
+      model: 'display-p3',
       x: { channel: 'r', range: [0, 1] },
       y: { channel: 'g', range: [1, 0] },
       fixed: { b: 0.5, alpha: 1 },
@@ -474,7 +473,7 @@ describe('plane api', () => {
 
   it('captures viewport sampling and marching-squares trace stages for implicit gamut regions', () => {
     const p3Plane = definePlane({
-      model: 'p3',
+      model: 'display-p3',
       x: { channel: 'r', range: [0, 1] },
       y: { channel: 'g', range: [1, 0] },
       fixed: { b: 0.5, alpha: 1 },
@@ -822,7 +821,7 @@ describe('plane api', () => {
     ).toBe(
       createPlaneQueryKey(
         {
-          model: 'p3',
+          model: 'display-p3',
           x: { channel: 'r' },
           y: { channel: 'g' },
         },

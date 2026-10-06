@@ -87,7 +87,7 @@ const SPACES: {
     rgb: true,
   },
   {
-    space: 'p3',
+    space: 'display-p3',
     write: toP3Array,
     write4: toP3Array4,
     read: fromP3Array,
@@ -399,7 +399,7 @@ describe('packColors / unpackColors', () => {
     const header = 2;
     const out = new Array<number>(header + colors.length * 6).fill(-1);
     expect(
-      packColors(colors, 'p3', out, { stride: 6, offset: header + 3 }),
+      packColors(colors, 'display-p3', out, { stride: 6, offset: header + 3 }),
     ).toBe(out);
     colors.forEach((color, i) => {
       const base = header + i * 6;
@@ -408,7 +408,7 @@ describe('packColors / unpackColors', () => {
     });
     expect(out.slice(0, header)).toEqual([-1, -1]);
 
-    const restored = unpackColors(out, 'p3', {
+    const restored = unpackColors(out, 'display-p3', {
       stride: 6,
       offset: header + 3,
     });

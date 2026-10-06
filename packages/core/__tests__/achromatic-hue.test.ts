@@ -32,7 +32,7 @@ const SPACES: InterpolationSpace[] = [
   'oklab',
   'srgb',
   'linear-srgb',
-  'p3',
+  'display-p3',
   'linear-p3',
 ];
 
@@ -42,7 +42,7 @@ const COLORJS_SPACE: Record<InterpolationSpace, string> = {
   oklab: 'oklab',
   srgb: 'srgb',
   'linear-srgb': 'srgb-linear',
-  p3: 'p3',
+  'display-p3': 'p3',
   'linear-p3': 'p3-linear',
 };
 

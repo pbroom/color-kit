@@ -36,7 +36,6 @@ export const PLANE_MODEL_CHANNELS: Record<PlaneModel, readonly PlaneChannel[]> =
     hsv: ['h', 's', 'v'],
     oklab: ['L', 'a', 'b'],
     hct: ['h', 'c', 't'],
-    p3: ['r', 'g', 'b'],
     'display-p3': ['r', 'g', 'b'],
   };
 
@@ -55,7 +54,6 @@ export const PLANE_MODEL_DEFAULT_AXES: Record<
   hsv: { x: 'h', y: 's' },
   oklab: { x: 'a', y: 'b' },
   hct: { x: 'h', y: 'c' },
-  p3: { x: 'r', y: 'g' },
   'display-p3': { x: 'r', y: 'g' },
 };
 
@@ -109,11 +107,6 @@ export const PLANE_MODEL_DEFAULT_RANGES: Record<
     c: [150, 0],
     t: [100, 0],
   },
-  p3: {
-    r: [0, 1],
-    g: [0, 1],
-    b: [0, 1],
-  },
   'display-p3': {
     r: [0, 1],
     g: [0, 1],
@@ -132,12 +125,6 @@ export interface PlaneModelSpec {
 
 export function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
-}
-
-export function normalizePlaneModel(
-  model: PlaneModel,
-): Exclude<PlaneModel, 'display-p3'> {
-  return model === 'display-p3' ? 'p3' : model;
 }
 
 export function readChannel(
@@ -409,18 +396,10 @@ const PLANE_MODEL_SPECS: Record<PlaneModel, PlaneModelSpec> = {
     fromColor: toHctModelColor,
     toColor: fromHctModelColor,
   },
-  p3: {
-    channels: PLANE_MODEL_CHANNELS.p3,
-    defaultAxes: PLANE_MODEL_DEFAULT_AXES.p3,
-    defaultRanges: PLANE_MODEL_DEFAULT_RANGES.p3,
-    normalizeFixed: normalizeP3Fixed,
-    fromColor: toP3ModelColor,
-    toColor: fromP3ModelColor,
-  },
   'display-p3': {
-    channels: PLANE_MODEL_CHANNELS.p3,
-    defaultAxes: PLANE_MODEL_DEFAULT_AXES.p3,
-    defaultRanges: PLANE_MODEL_DEFAULT_RANGES.p3,
+    channels: PLANE_MODEL_CHANNELS['display-p3'],
+    defaultAxes: PLANE_MODEL_DEFAULT_AXES['display-p3'],
+    defaultRanges: PLANE_MODEL_DEFAULT_RANGES['display-p3'],
     normalizeFixed: normalizeP3Fixed,
     fromColor: toP3ModelColor,
     toColor: fromP3ModelColor,
@@ -429,7 +408,15 @@ const PLANE_MODEL_SPECS: Record<PlaneModel, PlaneModelSpec> = {
 
 /** Returns conversion/range behavior for a specific plane model. */
 export function planeModelSpec(model: PlaneModel): PlaneModelSpec {
-  return PLANE_MODEL_SPECS[model];
+  const spec = Object.prototype.hasOwnProperty.call(PLANE_MODEL_SPECS, model)
+    ? PLANE_MODEL_SPECS[model]
+    : undefined;
+  if (!spec) {
+    throw new TypeError(
+      `definePlane() model "${String(model)}" is not supported; expected one of ${Object.keys(PLANE_MODEL_SPECS).join(', ')}`,
+    );
+  }
+  return spec;
 }
 
 /**

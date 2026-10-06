@@ -71,7 +71,7 @@ export function useColorContext(): ColorContextValue {
       }
       return toCss(
         displayed,
-        format ?? (activeGamut === 'display-p3' ? 'p3' : 'hex'),
+        format ?? (activeGamut === 'display-p3' ? 'display-p3' : 'hex'),
       );
     },
     [activeGamut, displayed],
