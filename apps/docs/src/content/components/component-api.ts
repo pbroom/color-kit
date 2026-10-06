@@ -85,6 +85,13 @@ export const componentApiDocs: ComponentApiDocs = {
         'Minimum normalized movement delta required before committing another pointer update.',
     },
     {
+      name: 'disabled',
+      type: 'boolean',
+      defaultValue: 'false',
+      description:
+        'Disables pointer and keyboard interaction. The thumb gets `aria-disabled` and leaves the tab order; root and thumb get `data-disabled`.',
+    },
+    {
       name: 'onInteractionFrame',
       type: '(stats: ColorAreaInteractionFrameStats) => void',
       description:
@@ -95,6 +102,19 @@ export const componentApiDocs: ComponentApiDocs = {
       type: 'ReactNode',
       description:
         'Compose primitives such as Background, ColorPlane, ChromaBandLayer, GamutBoundaryLayer, ContrastRegionLayer, Thumb, Layer, Line, and Point.',
+    },
+    {
+      name: 'Thumb.stepRatio / largeStepRatio',
+      type: 'number / number',
+      defaultValue: '0.01 / 0.1',
+      description:
+        'Keyboard steps as a ratio of the axis range. Arrows use `stepRatio`; Shift+Arrow and PageUp/PageDown use `largeStepRatio`.',
+    },
+    {
+      name: 'Thumb.getValueText',
+      type: '(color: Color, axes: ResolvedColorAreaAxes) => string',
+      description:
+        'Formats `aria-valuetext`. Defaults to both axes with channel names and units, e.g. "Lightness 60%, Chroma 0.2".',
     },
     {
       name: 'ColorPlane.edgeBehavior',
@@ -185,6 +205,33 @@ export const componentApiDocs: ComponentApiDocs = {
       defaultValue: '60',
       description:
         'Upper bound for pointer update frequency while dragging (updates/second).',
+    },
+    {
+      name: 'stepRatio / largeStepRatio',
+      type: 'number / number',
+      defaultValue: '0.01 / 0.1',
+      description:
+        'Keyboard steps as a ratio of the range. Arrows use `stepRatio`; Shift+Arrow and PageUp/PageDown use `largeStepRatio`. Home/End jump to the range ends.',
+    },
+    {
+      name: 'wrap',
+      type: 'boolean',
+      defaultValue: "true for 'h', false otherwise",
+      description:
+        'Wrap keyboard steps around the range ends instead of clamping.',
+    },
+    {
+      name: 'disabled',
+      type: 'boolean',
+      defaultValue: 'false',
+      description:
+        'Disables pointer and keyboard interaction, sets `aria-disabled` and `data-disabled`, and removes the slider from the tab order.',
+    },
+    {
+      name: 'getValueText',
+      type: '(value: number, channel: ColorSliderChannel) => string',
+      description:
+        'Formats `aria-valuetext`. Defaults to a readable value such as "Hue 213°", "Lightness 60%", or "Opacity 50%".',
     },
     {
       name: 'requested',
