@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { fromHex, type Color } from '@color-kit/core';
+import { fromHex, type Color, type CssColorFormat } from '@color-kit/core';
 import { createColorState, type ColorState } from '@color-kit/driver';
 import { ColorArea } from '../src/color-area.js';
 import { ColorInput } from '../src/color-input.js';
@@ -72,8 +72,8 @@ function CssCallbackProbe({
   onSnapshot,
 }: {
   onSnapshot: (snapshot: {
-    requestedCss: (format?: string) => string;
-    displayedCss: (format?: string) => string;
+    requestedCss: (format?: CssColorFormat) => string;
+    displayedCss: (format?: CssColorFormat) => string;
   }) => void;
 }) {
   const context = useColorContext();

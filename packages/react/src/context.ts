@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext } from 'react';
 import { toCss, toHex, toHsl, toHsv, toOklch, toRgb } from '@color-kit/core';
+import type { CssColorFormat } from '@color-kit/core';
 import { getActiveDisplayedColor, type ColorState } from '@color-kit/driver';
 import { useColorStoreSelector } from './color-store.js';
 import type { UseColorReturn } from './use-color.js';
@@ -55,7 +56,7 @@ export function useColorContext(): ColorContextValue {
   const displayed = state ? getActiveDisplayedColor(state) : null;
   const activeGamut = state?.activeGamut;
   const requestedCss = useCallback(
-    (format?: string) => {
+    (format?: CssColorFormat) => {
       if (!requested) {
         throw new Error('Cannot format color outside a <Color> provider.');
       }
@@ -64,7 +65,7 @@ export function useColorContext(): ColorContextValue {
     [requested],
   );
   const displayedCss = useCallback(
-    (format?: string) => {
+    (format?: CssColorFormat) => {
       if (!displayed) {
         throw new Error('Cannot format color outside a <Color> provider.');
       }

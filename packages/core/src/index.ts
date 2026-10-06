@@ -34,6 +34,7 @@ export {
   fromP3,
   toCss,
   parse,
+  tryParse,
   // Low-level converters
   srgbToLinear,
   linearToSrgb,
@@ -54,6 +55,7 @@ export {
   linearP3ToP3,
   p3ToLinearP3,
 } from './conversion/index.js';
+export type { CssColorFormat } from './conversion/index.js';
 
 // Allocation-free (`out`-first) conversions for per-pixel / per-frame loops.
 // Each writes into `out`, returns it, and matches the allocating function
