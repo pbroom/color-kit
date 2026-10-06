@@ -330,8 +330,8 @@ export function interpolateInSpaceInto(
   options: InterpolationOptions,
 ): Color {
   const space = options.space ?? 'oklch';
-  // Validate before the endpoint shortcut so an unknown space (such as the
-  // removed 'p3' spelling) throws for every `t`, including 0 and 1.
+  // Validate before the endpoint shortcut so an unsupported space (such as
+  // the removed 'p3') throws for every `t`, not only interior samples.
   if (
     space !== 'oklch' &&
     space !== 'oklab' &&
