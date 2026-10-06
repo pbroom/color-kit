@@ -235,9 +235,12 @@ function checkAgreement(
   });
   expect(paths).toHaveLength(expectedPaths);
   for (const path of paths) {
-    if (isClosed(path)) continue;
-    for (const end of [path[0], path[path.length - 1]]) {
-      expect(endsOnBoundary(query, end), JSON.stringify(end)).toBe(true);
+    // Closed paths have no ends to check, but their points must still lie
+    // on the contrast boundary.
+    if (!isClosed(path)) {
+      for (const end of [path[0], path[path.length - 1]]) {
+        expect(endsOnBoundary(query, end), JSON.stringify(end)).toBe(true);
+      }
     }
     for (const point of path) {
       expect(distanceToContour(query, point)).toBeLessThan(AGREEMENT);
