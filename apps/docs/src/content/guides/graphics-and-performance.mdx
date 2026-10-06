@@ -49,7 +49,7 @@ color-kit keeps its own strengths: OKLCH as the working model, CSS Color 4 gamut
 
 <LinearMixDemo />
 
-The first row calls `generateScale(a, b, steps)` and `mix(a, b)` with no options, which is the legacy OKLCH default. The `{ space: 'oklch' }` row takes the CSS `color-mix()` path instead. The two agree for colors with a clear hue but can differ near gray: the CSS path treats an OKLCH hue as powerless only at chroma ≤ 4e-6 (the CSS Color 4 value), while the legacy default uses 0.001. The strips and midpoint stats above come from this file:
+The first row calls `generateScale(a, b, steps)` and `mix(a, b)` with no options, which is the legacy OKLCH default. The `{ space: 'oklch' }` row takes the CSS `color-mix()` path instead. Both treat an OKLCH hue as powerless at chroma ≤ 4e-6 (the CSS Color 4 value), so they agree for opaque colors. The strips and midpoint stats above come from this file:
 
 <DemoSource file="linear-mix.ts" />
 

@@ -7,7 +7,7 @@ import type { Color } from '../types.js';
 import { linearRgbToOklab } from '../conversion/oklab.js';
 import { oklabToOklch } from '../conversion/oklch.js';
 import { linearP3ToLinearSrgb } from '../conversion/p3.js';
-import { decodeChannel } from './kernels.js';
+import { srgbToLinearChannel } from '../utils/index.js';
 
 export type ReadKernel = (
   array: ArrayLike<number>,
@@ -29,9 +29,9 @@ export const readLinearSrgb: ReadKernel = (array, offset, alpha) =>
 
 export const readSrgb: ReadKernel = (array, offset, alpha) =>
   fromLinear(
-    decodeChannel(array[offset]),
-    decodeChannel(array[offset + 1]),
-    decodeChannel(array[offset + 2]),
+    srgbToLinearChannel(array[offset]),
+    srgbToLinearChannel(array[offset + 1]),
+    srgbToLinearChannel(array[offset + 2]),
     alpha,
   );
 
@@ -40,9 +40,9 @@ export const readLinearP3: ReadKernel = (array, offset, alpha) =>
 
 export const readP3: ReadKernel = (array, offset, alpha) =>
   fromLinearP3(
-    decodeChannel(array[offset]),
-    decodeChannel(array[offset + 1]),
-    decodeChannel(array[offset + 2]),
+    srgbToLinearChannel(array[offset]),
+    srgbToLinearChannel(array[offset + 1]),
+    srgbToLinearChannel(array[offset + 2]),
     alpha,
   );
 

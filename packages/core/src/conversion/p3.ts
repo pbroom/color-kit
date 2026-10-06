@@ -1,5 +1,9 @@
 import type { P3, LinearRgb } from '../types.js';
-import { clamp } from '../utils/index.js';
+import {
+  clamp,
+  linearToSrgbChannel,
+  srgbToLinearChannel,
+} from '../utils/index.js';
 import {
   LINEAR_P3_TO_LINEAR_SRGB,
   LINEAR_SRGB_TO_LINEAR_P3,
@@ -70,22 +74,6 @@ export function linearP3ToLinearSrgb(p3: P3): LinearRgb {
   return linearP3ToLinearSrgbInto({ r: 0, g: 0, b: 0, alpha: 1 }, p3);
 }
 
-function p3Gamma(c: number): number {
-  const abs = Math.abs(c);
-  if (abs <= 0.0031308) {
-    return 12.92 * c;
-  }
-  return (1.055 * Math.pow(abs, 1 / 2.4) - 0.055) * Math.sign(c);
-}
-
-function p3Linearize(c: number): number {
-  const abs = Math.abs(c);
-  if (abs <= 0.04045) {
-    return c / 12.92;
-  }
-  return Math.pow((abs + 0.055) / 1.055, 2.4) * Math.sign(c);
-}
-
 /**
  * Apply Display P3 gamma encoding (same as sRGB transfer function), writing
  * the clamped `[0, 1]` channels into `out` (allocation-free). `out` may be the
@@ -103,9 +91,9 @@ export function linearP3ToP3Into(out: P3, linear: P3): P3 {
   const g = linear.g;
   const b = linear.b;
   const alpha = linear.alpha;
-  out.r = clamp(p3Gamma(r), 0, 1);
-  out.g = clamp(p3Gamma(g), 0, 1);
-  out.b = clamp(p3Gamma(b), 0, 1);
+  out.r = clamp(linearToSrgbChannel(r), 0, 1);
+  out.g = clamp(linearToSrgbChannel(g), 0, 1);
+  out.b = clamp(linearToSrgbChannel(b), 0, 1);
   out.alpha = alpha;
   return out;
 }
@@ -133,9 +121,9 @@ export function p3ToLinearP3Into(out: P3, p3: P3): P3 {
   const g = p3.g;
   const b = p3.b;
   const alpha = p3.alpha;
-  out.r = p3Linearize(r);
-  out.g = p3Linearize(g);
-  out.b = p3Linearize(b);
+  out.r = srgbToLinearChannel(r);
+  out.g = srgbToLinearChannel(g);
+  out.b = srgbToLinearChannel(b);
   out.alpha = alpha;
   return out;
 }

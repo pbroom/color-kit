@@ -12,6 +12,7 @@
 
 import type { Color, LinearRgb, Oklab } from '../types.js';
 import {
+  hasPowerlessHue,
   lerp,
   linearToSrgbChannel,
   normalizeHue,
@@ -96,29 +97,7 @@ export interface InterpolationOptions {
   premultiplied?: boolean;
 }
 
-/**
- * OKLCH chroma at or below which the hue is powerless: the CSS Color 4 OKLCH
- * epsilon (`OKLab_to_OKLCH` in the spec's sample code uses
- * `chroma <= 0.000004`). A powerless endpoint takes the other endpoint's hue.
- * Only the option-driven (CSS) path uses this; the option-less legacy
- * `interpolate()` keeps its own `0.001` cutoff.
- */
-export const ACHROMATIC_CHROMA_THRESHOLD = 0.000004;
-
 type Vec3 = [number, number, number];
-
-/** Sign-preserving (extended-range) sRGB / Display P3 transfer functions. */
-function encodeChannel(value: number): number {
-  return value < 0 ? -linearToSrgbChannel(-value) : linearToSrgbChannel(value);
-}
-
-function decodeChannel(value: number): number {
-  return value < 0 ? -srgbToLinearChannel(-value) : srgbToLinearChannel(value);
-}
-
-function isPowerless(color: Color): boolean {
-  return !(color.c > ACHROMATIC_CHROMA_THRESHOLD) || !Number.isFinite(color.h);
-}
 
 /** Amount added to `h1` by the CSS Color 4 hue fix-up (0 or 360). */
 function hueFixup1(diff: number, method: HueInterpolationMethod): number {
@@ -204,9 +183,9 @@ function toSpaceCoordsInto(
     linear = linearSrgbToLinearP3Into(LINEAR, linear);
   }
   if (space === 'srgb' || space === 'p3') {
-    out[0] = encodeChannel(linear.r);
-    out[1] = encodeChannel(linear.g);
-    out[2] = encodeChannel(linear.b);
+    out[0] = linearToSrgbChannel(linear.r);
+    out[1] = linearToSrgbChannel(linear.g);
+    out[2] = linearToSrgbChannel(linear.b);
     return out;
   }
   out[0] = linear.r;
@@ -232,9 +211,9 @@ function fromSpaceCoordsInto(
     let g = coords[1];
     let b = coords[2];
     if (space === 'srgb' || space === 'p3') {
-      r = decodeChannel(r);
-      g = decodeChannel(g);
-      b = decodeChannel(b);
+      r = srgbToLinearChannel(r);
+      g = srgbToLinearChannel(g);
+      b = srgbToLinearChannel(b);
     }
     const linear = LINEAR;
     linear.r = r;
@@ -263,8 +242,8 @@ function mixPolarInto(
   hue: HueInterpolationMethod,
   premultiplied: boolean,
 ): Color {
-  const powerless1 = isPowerless(color1);
-  const powerless2 = isPowerless(color2);
+  const powerless1 = hasPowerlessHue(color1);
+  const powerless2 = hasPowerlessHue(color2);
 
   // A powerless (achromatic) hue takes the other endpoint's hue, so the hue
   // stays constant along the mix. As in colorjs.io, no arc is added in that

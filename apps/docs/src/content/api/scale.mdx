@@ -15,7 +15,7 @@ These notes describe the default behavior, when no `options` are passed:
 
 - All interpolation is per-channel linear interpolation of OKLCH components (`l`, `c`, `h`, `alpha`).
 - Hue interpolation takes the shortest path around the wheel: when the raw hue difference exceeds 180 degrees, one endpoint is wrapped by 360 before interpolating, and the result is normalized back into `[0, 360)`.
-- Near-achromatic endpoints (chroma below `0.001`) do not contribute a hue: the other endpoint's hue is used as-is, and if both endpoints are achromatic the hue is `0`.
+- Achromatic endpoints (chroma at or below `ACHROMATIC_CHROMA_THRESHOLD`, `0.000004`, the CSS Color 4 OKLCH epsilon) do not contribute a hue: the other endpoint's hue is used as-is, and if both endpoints are achromatic the hue is `0`. Option-less `mix` behaves the same way, so `mix(white, blue)` stays blue, as in colorjs.io.
 
 ## Interpolation options
 
@@ -35,7 +35,7 @@ How the options behave:
 - **Endpoints are exact.** `t = 0` and `t = 1` return copies of the inputs, so a transparent endpoint keeps its color, and `generateScale` never swaps it for black.
 - **Transparent results.** When the interpolated alpha is exactly 0 (both endpoints transparent), there is nothing to un-premultiply by. color-kit then interpolates the channels with straight alpha. CSS Color 4 and colorjs.io keep the premultiplied values instead, which makes every fully transparent result transparent black. Both are invisible, but color-kit's keeps a usable color for later edits such as `setAlpha`.
 - **No gamut mapping.** Mixing in-gamut colors in `srgb` / `linear-srgb` stays in sRGB, and mixing in `p3` / `linear-p3` stays in Display P3. Floating-point noise is clamped away in those cases. Out-of-gamut inputs keep their extended (negative or >1) channel values, so the result can be out of gamut. Mixes in OKLCH (and sometimes OKLab) can leave the gamut even when both inputs are in gamut. Use `toSrgbGamut` / `toP3Gamut` when you need a displayable color.
-- **Achromatic threshold.** When `options` are passed, near-achromatic handling uses the CSS threshold (`0.000004`) rather than the `0.001` described in Shared Notes.
+- **Achromatic threshold.** With or without `options`, every interpolation path uses the same `ACHROMATIC_CHROMA_THRESHOLD` (`0.000004`), as does OKLab to OKLCH conversion, which reports hue `0` for achromatic colors. `isAchromatic(chroma)` applies the same test.
 
 ## `interpolate`
 
