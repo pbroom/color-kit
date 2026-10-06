@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose a new query, conversion, API, or React primitive.
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        color-kit is an engine first: new features should make sense as plain TypeScript functions or plane queries before they become React components. UI primitives that are not color-specific belong in [control-kit](https://github.com/pbroom/control-kit).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to build, and what is missing or awkward today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: A sketch of the call you would like to write, with its inputs and output.
+      render: ts
+      placeholder: |
+        const region = sense(plane).contrastRegion({ reference, level: 'AAA' });
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you use today, or how other libraries handle this.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to work on this?
+      options:
+        - Yes, I can open a PR
+        - Maybe, with some guidance
+        - No

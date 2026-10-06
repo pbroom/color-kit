@@ -41,6 +41,18 @@ Node 20+ and pnpm are required.
 - `pnpm --filter @color-kit/core test` for engine-only runs.
 - New public API needs docs: an MDX page under `apps/docs` and, where useful, a runnable demo.
 
+## Good first contributions
+
+These are self-contained, well-scoped ways to get familiar with the codebase. Issues labelled `good first issue` are another place to start.
+
+- **Improve doc comments on public exports.** The [generated API reference](apps/docs/scripts/generate-api-reference.mjs) is built from TSDoc comments, so a clearer summary, `@param`, or `@example` on an exported function shows up there directly. Run `pnpm docs:api` and open `apps/docs/public/reference/index.html` to check the result.
+- **Write a hand-written API page** for an entry point that only has generated docs today, such as `color-kit/interop`, `color-kit/hct`, or the interpolation helpers. Add an MDX file under `apps/docs/src/content/api/` and a nav entry in `apps/docs/src/content/docs-registry.ts`.
+- **Extend reference-accuracy coverage.** `packages/core/__tests__/reference-accuracy.test.ts` compares conversions and contrast against colorjs.io. More color spaces, edge cases (achromatic colors, hue wrap, out-of-gamut inputs), or metrics are welcome.
+- **Add property-based tests** with `fast-check` (already a core dev dependency) for invariants such as round trips (`fromX(toX(c)) ≈ c`) and gamut mapping always landing in gamut.
+- **Add a docs recipe** that shows one engine capability end to end, for example drawing a contrast-safe region with `sense(plane).contrastRegion()` and `toSvgPath()`.
+
+Before starting something larger, open a feature request so the API shape can be discussed first.
+
 ## Changesets
 
 Versions and release notes are managed with [Changesets](https://github.com/changesets/changesets). Only the published `color-kit` package is versioned. The workspace packages (`@color-kit/core`, `@color-kit/driver`, `@color-kit/react`, and the docs app) are private, so Changesets ignores them.

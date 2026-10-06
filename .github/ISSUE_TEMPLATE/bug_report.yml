@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in color-kit returns the wrong result, throws, or behaves unexpectedly.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. A minimal reproduction (input colors, options, and the call you made) is the fastest way to a fix.
+  - type: input
+    id: version
+    attributes:
+      label: color-kit version
+      description: Output of `npm ls color-kit`, or the commit SHA if you build from source.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: entry
+    attributes:
+      label: Entry point
+      description: Which import path is involved?
+      multiple: true
+      options:
+        - color-kit (root / core)
+        - color-kit/plane
+        - color-kit/compute
+        - color-kit/hct
+        - color-kit/interop
+        - color-kit/driver
+        - color-kit/react
+        - Docs site
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: The smallest code that shows the problem.
+      render: ts
+      placeholder: |
+        import { parse, toP3Gamut } from 'color-kit';
+
+        const result = toP3Gamut(parse('oklch(0.7 0.4 150)'));
+        console.log(result);
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What you expected, and where that expectation comes from (for example a CSS Color 4 reference, colorjs.io, or the APCA spec).
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: What happened instead. Include the full error and stack trace if it threw.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Runtime and version (Node, browser), bundler, and React version if you use `color-kit/react`.
+      placeholder: Node 22.11, Vite 6, React 19.2, Chrome 140
