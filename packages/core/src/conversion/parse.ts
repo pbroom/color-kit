@@ -59,10 +59,25 @@ function component(
  *
  * Throws an `Error` for anything else, including invalid hex digits or
  * lengths, malformed numbers (`1.2.3`) and components that overflow to
- * `Infinity`; a non-string `input` throws a `TypeError`. Use {@link tryParse}
+ * `Infinity`, either as written or after conversion; a non-string `input` throws a `TypeError`. Use {@link tryParse}
  * to get `null` instead of an exception.
  */
 export function parse(input: string): Color {
+  const color = parseComponents(input);
+  // Finite components can still overflow during conversion (e.g. squaring a
+  // huge `oklab` axis), so validate the converted result as well.
+  if (
+    !Number.isFinite(color.l) ||
+    !Number.isFinite(color.c) ||
+    !Number.isFinite(color.h) ||
+    !Number.isFinite(color.alpha)
+  ) {
+    fail(input, ' (non-finite result)');
+  }
+  return color;
+}
+
+function parseComponents(input: string): Color {
   const str = input.trim().toLowerCase();
 
   if (str[0] === '#') {
