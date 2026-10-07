@@ -3,6 +3,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { act, cleanup, render } from '@testing-library/react';
 import { inSrgbGamut } from '@color-kit/core';
+import {
+  createColorState,
+  type ColorState,
+  type ColorUpdateEvent,
+} from '@color-kit/driver';
 import { useColor, type UseColorReturn } from '../src/use-color.js';
 
 afterEach(() => {
@@ -135,5 +140,46 @@ describe('requested/displayed contract', () => {
     });
 
     expect(renderCount).toBe(rendersBefore);
+  });
+});
+
+function ControlledProbe(props: {
+  state: ColorState;
+  onChange: (event: ColorUpdateEvent) => void;
+  onReady: (value: UseColorReturn) => void;
+}) {
+  const color = useColor({ state: props.state, onChange: props.onChange });
+  props.onReady(color);
+  return null;
+}
+
+describe('gamut mapping method', () => {
+  it('keeps the state mapping method when the requested color changes', () => {
+    const initial = createColorState(
+      { l: 0.8, c: 0.4, h: 145, alpha: 1 },
+      { gamutMapMethod: 'css' },
+    );
+    const events: ColorUpdateEvent[] = [];
+    let probe: UseColorReturn | null = null;
+
+    render(
+      <ControlledProbe
+        state={initial}
+        onChange={(event) => events.push(event)}
+        onReady={(value) => {
+          probe = value;
+        }}
+      />,
+    );
+    act(() => {
+      probe?.setRequested({ l: 0.7, c: 0.38, h: 150, alpha: 1 });
+    });
+
+    expect(events).toHaveLength(1);
+    const next = events[0].next;
+    expect(next.meta.gamutMapMethod).toBe('css');
+    expect(next.displayed).toEqual(
+      createColorState(next.requested, { gamutMapMethod: 'css' }).displayed,
+    );
   });
 });

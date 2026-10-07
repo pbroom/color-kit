@@ -183,6 +183,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
         activeGamut: currentState.activeGamut,
         activeView: currentState.activeView,
         source,
+        gamutMapMethod: currentState.meta.gamutMapMethod,
       });
 
       commitState(nextState, options.changedChannel, interaction);
