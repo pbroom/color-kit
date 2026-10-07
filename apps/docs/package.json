@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "pnpm run docs:api && vite",
     "build": "pnpm run docs:api && vite build",
     "docs:api": "node scripts/generate-api-reference.mjs",
     "preview": "vite preview",
