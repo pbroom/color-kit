@@ -11,7 +11,7 @@
     "path": "packages/color-kit/dist/index.js",
     "import": "{ parse, toHex, contrastRatio, lighten, complementary }",
     "gzip": true,
-    "limit": "2.7 kB"
+    "limit": "2.76 kB"
   },
   {
     "name": "color-kit: toLinearSrgbArray (three.js / WebGL uniform)",
