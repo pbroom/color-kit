@@ -29,12 +29,13 @@ function segmentDistanceSq(p: LcPoint, a: LcPoint, b: LcPoint): number {
   return dL * dL + dC * dC;
 }
 
-function rdpRecurse(
-  points: LcPoint[],
+function rdpRecurse<T extends LcPoint>(
+  points: T[],
   start: number,
   end: number,
   tolSq: number,
   keep: boolean[],
+  acceptSegment?: (a: T, b: T) => boolean,
 ): void {
   if (end <= start + 1) return;
   const a = points[start];
@@ -48,10 +49,10 @@ function rdpRecurse(
       maxIndex = i;
     }
   }
-  if (maxDistSq <= tolSq) return;
+  if (maxDistSq <= tolSq && (!acceptSegment || acceptSegment(a, b))) return;
   keep[maxIndex] = true;
-  rdpRecurse(points, start, maxIndex, tolSq, keep);
-  rdpRecurse(points, maxIndex, end, tolSq, keep);
+  rdpRecurse(points, start, maxIndex, tolSq, keep, acceptSegment);
+  rdpRecurse(points, maxIndex, end, tolSq, keep, acceptSegment);
 }
 
 /**
@@ -63,12 +64,18 @@ function rdpRecurse(
  * @param points - Input path (LcPoint with l, c)
  * @param tolerance - Max allowed perpendicular distance (e.g. 0.001–0.002)
  * @param closed - If true, path is treated as closed (first === last); keeps both ends
+ * @param acceptSegment - Optional check on each simplified segment; a span
+ *   is only collapsed to one segment when it returns true, otherwise the
+ *   farthest point is kept and both halves are checked again. Segments
+ *   between adjacent input points are never checked, so the result can only
+ *   contain segments that passed it or were already in the input.
  * @returns Simplified path (new array)
  */
 export function simplifyPolyline<T extends LcPoint>(
   points: T[],
   tolerance: number,
   closed: boolean = false,
+  acceptSegment?: (a: T, b: T) => boolean,
 ): T[] {
   if (tolerance <= 0 || !Number.isFinite(tolerance)) {
     return points.slice();
@@ -99,7 +106,7 @@ export function simplifyPolyline<T extends LcPoint>(
   const keep = new Array<boolean>(n).fill(false);
   keep[0] = true;
   keep[n - 1] = true;
-  rdpRecurse(work, 0, n - 1, tolSq, keep);
+  rdpRecurse(work, 0, n - 1, tolSq, keep, acceptSegment);
 
   const result: T[] = [];
   for (let i = 0; i < n; i += 1) {

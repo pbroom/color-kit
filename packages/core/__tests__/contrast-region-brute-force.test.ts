@@ -12,6 +12,7 @@ import {
   type ContrastApcaRole,
   type GamutTarget,
 } from '../src/index.js';
+import { simplifyPolyline } from '../src/utils/index.js';
 import {
   COARSE_FOLD_REPROS,
   EDGE_REPROS,
@@ -176,6 +177,71 @@ describe('contrast regions split at gamut notches', () => {
       }
     }
   });
+});
+
+// Simplification runs after the segment checks, so it must keep the same
+// guarantee: a span collapses to one chord only when that chord stays in the
+// gamut, on the fold band and across the notches too.
+describe('contrast regions keep the segment guarantee when simplified', () => {
+  it('only collapses a span when the replacing segment is accepted', () => {
+    // An L-shaped run: plain RDP at this tolerance keeps only the ends.
+    const points = [
+      { l: 0, c: 0 },
+      { l: 0.0005, c: 0.001 },
+      { l: 0.001, c: 0.002 },
+      { l: 0.002, c: 0.002 },
+      { l: 0.003, c: 0.002 },
+    ];
+    expect(simplifyPolyline(points, 0.01)).toEqual([points[0], points[4]]);
+    // Reject segments spanning more than two input steps.
+    const accept = (a: { l: number }, b: { l: number }) =>
+      points.findIndex((point) => point.l === b.l) -
+        points.findIndex((point) => point.l === a.l) <=
+      2;
+    const simplified = simplifyPolyline(points, 0.01, false, accept);
+    expect(simplified[0]).toBe(points[0]);
+    expect(simplified[simplified.length - 1]).toBe(points[4]);
+    for (let index = 1; index < simplified.length; index += 1) {
+      const a = simplified[index - 1];
+      const b = simplified[index];
+      const adjacent =
+        points.indexOf(b) - points.indexOf(a) === 1 || accept(a, b);
+      expect(adjacent, JSON.stringify([a, b])).toBe(true);
+    }
+  });
+
+  const SIMPLIFY_TOLERANCES = [0.002, 0.02];
+
+  it.each([
+    ...FOLD_BAND,
+    ...FIN_REPROS,
+    ...COARSE_FOLD_REPROS,
+    ...NOTCH_REPROS,
+  ])(
+    'keeps simplified chords in gamut: $metric $threshold on $hex at h$hue in $gamut',
+    (query) => {
+      for (const sampling of [{}, INTERACTIVE]) {
+        const options = {
+          metric: query.metric,
+          threshold: query.threshold,
+          gamut: query.gamut,
+          ...sampling,
+        };
+        const full = contrastRegionPaths(parse(query.hex), query.hue, options);
+        for (const simplifyTolerance of SIMPLIFY_TOLERANCES) {
+          const paths = contrastRegionPaths(parse(query.hex), query.hue, {
+            ...options,
+            simplifyTolerance,
+          });
+          // Simplification never merges or drops pieces.
+          expect(paths).toHaveLength(full.length);
+          expect(paths.flat().length).toBeLessThanOrEqual(full.flat().length);
+          expectVerticesPass(query, paths);
+          expectChordsInGamut(paths, query.hue, query.gamut, 256);
+        }
+      }
+    },
+  );
 });
 
 describe('contrast regions at the edges of the criterion', () => {
