@@ -69,6 +69,19 @@ describe('parse() rejects malformed input', () => {
   });
 
   it.each([
+    'oklab(0.5 1e200 0)',
+    'oklab(0.5 0 -1e200)',
+    'color(display-p3 1e200 0 0)',
+    'hsl(0 1e308% 50%)',
+  ])(
+    'throws when finite components overflow during conversion: %s',
+    (input) => {
+      expect(() => parse(input)).toThrow(/non-finite/);
+      expect(tryParse(input)).toBeNull();
+    },
+  );
+
+  it.each([
     'NaN',
     'rgb(NaN 0 0)',
     'oklch(0.5 0.1 Infinity)',
