@@ -51,6 +51,7 @@ export interface ColorState {
 - `displayed.srgb` and `displayed.p3` are deterministic for a given `requested` and mapping algorithm.
 - Changing `activeGamut` only changes which displayed value is used for rendering; it does not mutate `requested`.
 - Channel persistence holds through degenerate states (e.g. L=0, C=0): stored channel values remain until the user changes them.
+- Hue persistence also holds for achromatic **inputs**: when a gray, black or white enters through a non-OKLCH path (hex, `rgb()`, `hsl()`, HSV, RGB/HSL channel edits), the state layer keeps the previous requested hue instead of the converted hue `0`. Only an `oklch()` string with a hue (not `none`) or an OKLCH object states its own hue. Core `parse()` and conversions stay deterministic; the rule lives in the driver's `resolveIncomingRequested`.
 
 ### P3-first rendering stance
 

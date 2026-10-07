@@ -6,6 +6,7 @@ import {
   normalizePrimitiveValue,
 } from './primitive-number.js';
 import { parseColorInputExpression } from './color-input-parser.js';
+import { resolveIncomingRequested } from './color-state.js';
 import type { ParseColorInputExpressionOptions } from './color-input-parser.js';
 
 export { parseColorInputExpression } from './color-input-parser.js';
@@ -324,6 +325,15 @@ export function getColorInputChannelValue<Model extends ColorInputModel>(
   return assertInvalidColorInputPair(model, channel);
 }
 
+/**
+ * Returns `color` with one channel of `model` set to `value`.
+ *
+ * OKLCH edits overwrite only that channel. RGB and HSL edits convert the
+ * edited color back to OKLCH; when the result is achromatic (a gray, black
+ * or white, or HSL saturation `0`), it keeps `color.h` instead of the
+ * canonical achromatic hue `0`, so raising chroma or saturation afterwards
+ * resumes the previous hue (see `resolveIncomingRequested`).
+ */
 export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
   color: Color,
   model: Model,
@@ -343,7 +353,9 @@ export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
       ...rgb,
       [channel]: value,
     };
-    return fromRgb(next);
+    return resolveIncomingRequested(color, fromRgb(next), {
+      explicitHue: false,
+    });
   }
 
   if (model === 'hsl' && isHslColorInputChannel(channel)) {
@@ -352,7 +364,9 @@ export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
       ...hsl,
       [channel]: value,
     };
-    return fromHsl(next);
+    return resolveIncomingRequested(color, fromHsl(next), {
+      explicitHue: false,
+    });
   }
 
   return assertInvalidColorInputPair(model, channel);

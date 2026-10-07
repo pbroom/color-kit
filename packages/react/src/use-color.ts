@@ -22,6 +22,7 @@ import {
 import {
   createColorState,
   getActiveDisplayedColor,
+  hasExplicitOklchHue,
   resolveColorSource,
   setColorActiveGamut,
   setColorActiveView,
@@ -68,6 +69,17 @@ export interface SetRequestedOptions {
   changedChannel?: ColorChannel;
   interaction?: ColorInteraction;
   source?: ColorSource;
+  /**
+   * Whether the new color's hue is an OKLCH hue the caller stated. When
+   * `false` and the new color is achromatic, the latest requested hue is
+   * kept, so raising chroma later resumes it.
+   *
+   * Defaults to `true` for `setRequested` (an OKLCH object states its hue),
+   * to whether the string is an `oklch()` with a hue other than `none` for
+   * `setFromString`, and to `false` for `setFromRgb` / `setFromHsl` /
+   * `setFromHsv`. Pass `true` to store the converted hue (`0` for grays).
+   */
+  explicitHue?: boolean;
 }
 
 export interface UseColorReturn {
@@ -86,6 +98,12 @@ export interface UseColorReturn {
     value: number,
     options?: Omit<SetRequestedOptions, 'changedChannel'>,
   ) => void;
+  /**
+   * Parses a CSS color and sets it as requested. Except for an `oklch()`
+   * string with a hue, an achromatic color keeps the latest requested hue
+   * (see `SetRequestedOptions.explicitHue`); the same applies to
+   * `setFromRgb`, `setFromHsl` and `setFromHsv`.
+   */
   setFromString: (css: string, options?: SetRequestedOptions) => void;
   setFromRgb: (rgb: Rgb, options?: SetRequestedOptions) => void;
   setFromHsl: (hsl: Hsl, options?: SetRequestedOptions) => void;
@@ -242,7 +260,10 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
       const interaction = options.interaction ?? 'programmatic';
       const source = resolveColorSource(interaction, options.source);
       applyUpdate(
-        (current) => setColorRequested(current, requested, source),
+        (current) =>
+          setColorRequested(current, requested, source, {
+            explicitHue: options.explicitHue,
+          }),
         options.changedChannel,
         interaction,
       );
@@ -273,6 +294,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
         interaction: options.interaction ?? 'text-input',
         source: options.source,
         changedChannel: options.changedChannel,
+        explicitHue: options.explicitHue ?? hasExplicitOklchHue(css),
       });
     },
     [setRequested],
@@ -280,21 +302,30 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
 
   const setFromRgb = useCallback(
     (rgb: Rgb, options: SetRequestedOptions = {}) => {
-      setRequested(fromRgb(rgb), options);
+      setRequested(fromRgb(rgb), {
+        ...options,
+        explicitHue: options.explicitHue ?? false,
+      });
     },
     [setRequested],
   );
 
   const setFromHsl = useCallback(
     (hsl: Hsl, options: SetRequestedOptions = {}) => {
-      setRequested(fromHsl(hsl), options);
+      setRequested(fromHsl(hsl), {
+        ...options,
+        explicitHue: options.explicitHue ?? false,
+      });
     },
     [setRequested],
   );
 
   const setFromHsv = useCallback(
     (hsv: Hsv, options: SetRequestedOptions = {}) => {
-      setRequested(fromHsv(hsv), options);
+      setRequested(fromHsv(hsv), {
+        ...options,
+        explicitHue: options.explicitHue ?? false,
+      });
     },
     [setRequested],
   );

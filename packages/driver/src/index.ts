@@ -122,6 +122,7 @@ export type {
 
 export {
   formatColorStringInputValue,
+  hasExplicitOklchHue,
   isColorStringInputValueValid,
   parseColorStringInputValue,
 } from './color-string-input.js';
@@ -136,6 +137,7 @@ export {
   getActiveDisplayedColor,
   mapDisplayedColors,
   resolveColorSource,
+  resolveIncomingRequested,
   setColorActiveGamut,
   setColorActiveView,
   setColorChannel,
@@ -150,6 +152,8 @@ export type {
   CreateColorStateOptions,
   GamutTarget,
   MapDisplayedColorsOptions,
+  ResolveIncomingRequestedOptions,
+  SetColorRequestedOptions,
   ViewModel,
 } from './color-state.js';
 
@@ -174,4 +178,5 @@ export type {
   MultiColorModel,
   MultiColorState,
   MultiColorUpdateEvent,
+  SetMultiColorRequestedOptions,
 } from './multi-color-state.js';
