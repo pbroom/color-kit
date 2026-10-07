@@ -328,6 +328,21 @@ export function interpolateInSpaceInto(
   t: number,
   options: InterpolationOptions,
 ): Color {
+  const space = options.space ?? 'oklch';
+  // Validate before the endpoint shortcut so an unknown space (such as the
+  // removed 'p3' spelling) throws for every `t`, including 0 and 1.
+  if (
+    space !== 'oklch' &&
+    space !== 'oklab' &&
+    space !== 'srgb' &&
+    space !== 'linear-srgb' &&
+    space !== 'display-p3' &&
+    space !== 'linear-p3'
+  ) {
+    throw new TypeError(
+      `Unknown interpolation space "${String(space)}"; expected 'oklch', 'oklab', 'srgb', 'linear-srgb', 'display-p3' or 'linear-p3'`,
+    );
+  }
   if (t === 0 || t === 1) {
     // Exact endpoints: no conversion round trip, and a transparent endpoint
     // keeps its color. Read before writing so `out` may alias the endpoint.
@@ -339,7 +354,6 @@ export function interpolateInSpaceInto(
     out.alpha = alpha;
     return out;
   }
-  const space = options.space ?? 'oklch';
   const hue = options.hue ?? 'shorter';
   const premultiplied = options.premultiplied;
 
@@ -365,17 +379,6 @@ export function interpolateInSpaceInto(
 
   if (space === 'oklch') {
     return mixPolarInto(out, start, end, t, hue, premultiplied ?? false);
-  }
-  if (
-    space !== 'oklab' &&
-    space !== 'srgb' &&
-    space !== 'linear-srgb' &&
-    space !== 'display-p3' &&
-    space !== 'linear-p3'
-  ) {
-    throw new TypeError(
-      `Unknown interpolation space "${String(space)}"; expected 'oklch', 'oklab', 'srgb', 'linear-srgb', 'display-p3' or 'linear-p3'`,
-    );
   }
   return mixRectangularInto(out, start, end, t, space, premultiplied ?? true);
 }

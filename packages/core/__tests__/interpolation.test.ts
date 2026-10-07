@@ -56,9 +56,12 @@ describe('interpolation space option', () => {
   it('rejects unknown spaces such as the old p3 spelling', () => {
     const a = parse('#3b82f6');
     const b = parse('#ef4444');
-    expect(() =>
-      mix(a, b, 0.5, { space: 'p3' as unknown as InterpolationSpace }),
-    ).toThrow(TypeError);
+    const space = 'p3' as unknown as InterpolationSpace;
+    for (const t of [0, 0.5, 1]) {
+      expect(() => mix(a, b, t, { space })).toThrow(TypeError);
+      expect(() => interpolate(a, b, t, { space })).toThrow(TypeError);
+    }
+    expect(() => generateScale(a, b, 2, { space })).toThrow(TypeError);
   });
 
   it('returns the endpoints (to float precision) at t = 0 and t = 1', () => {
