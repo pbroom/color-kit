@@ -112,6 +112,13 @@ export function parse(input: string): Color {
   // `color(rgb 1 0 0)` would dispatch to the top-level `rgb()` handler.
   if (name === 'color' && !COLOR_SPACE.test(space ?? '')) fail(input);
   if (parts.length !== 3) fail(input);
+  if (legacy) {
+    // Legacy comma syntax is stricter than the modern one: rgb() channels
+    // are all numbers or all percentages, and hsl() saturation and lightness
+    // are percentages.
+    const [p0, p1, p2] = parts.map((part) => part.endsWith('%'));
+    if (name[0] === 'r' ? p0 !== p1 || p1 !== p2 : !(p1 && p2)) fail(input);
+  }
 
   /**
    * Parse one component. `kind` is the value `100%` maps to, or `HUE` for a
