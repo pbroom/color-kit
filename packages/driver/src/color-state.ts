@@ -154,7 +154,8 @@ export function colorsEqual(a: Color, b: Color, epsilon: number = 0): boolean {
  * Replaces the requested color, re-deriving displayed colors and gamut flags
  * while keeping the active gamut/view and gamut mapping method
  * (`state.meta.gamutMapMethod`, unless `options.gamutMapMethod` overrides it).
- * No-op when the requested color and source are unchanged.
+ * No-op when the requested color, source and gamut mapping method are
+ * unchanged.
  */
 export function setColorRequested(
   state: ColorState,
@@ -162,9 +163,11 @@ export function setColorRequested(
   source: ColorSource,
   options: MapDisplayedColorsOptions = {},
 ): ColorState {
+  const gamutMapMethod = options.gamutMapMethod ?? state.meta.gamutMapMethod;
   if (
     colorsEqual(state.requested, requested, 0) &&
-    state.meta.source === source
+    state.meta.source === source &&
+    gamutMapMethod === state.meta.gamutMapMethod
   ) {
     return state;
   }
@@ -173,13 +176,14 @@ export function setColorRequested(
     activeGamut: state.activeGamut,
     activeView: state.activeView,
     source,
-    gamutMapMethod: options.gamutMapMethod ?? state.meta.gamutMapMethod,
+    gamutMapMethod,
   });
 }
 
 /**
  * Sets one requested channel. No-op when the channel already holds `value`
- * (regardless of source). `options` is forwarded to `setColorRequested`.
+ * (regardless of source) and `options.gamutMapMethod` does not change the
+ * stored method. `options` is forwarded to `setColorRequested`.
  */
 export function setColorChannel(
   state: ColorState,
@@ -188,7 +192,11 @@ export function setColorChannel(
   source: ColorSource,
   options: MapDisplayedColorsOptions = {},
 ): ColorState {
-  if (state.requested[channel] === value) {
+  if (
+    state.requested[channel] === value &&
+    (options.gamutMapMethod === undefined ||
+      options.gamutMapMethod === state.meta.gamutMapMethod)
+  ) {
     return state;
   }
 
