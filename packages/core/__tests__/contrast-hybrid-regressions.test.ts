@@ -27,7 +27,9 @@ interface RegressionCase {
 const DARK_TEAL: Color = { l: 0.25, c: 0.08, h: 180, alpha: 1 };
 
 function margin(testCase: RegressionCase): (l: number, c: number) => number {
-  const reference = toSrgbGamut(testCase.reference);
+  // The public checks clip an out-of-gamut reference (such as DARK_TEAL)
+  // themselves, and the region solvers measure against it unmapped too.
+  const reference = testCase.reference;
   return (l, c) => {
     const sample = toSrgbGamut({ l, c, h: testCase.hue, alpha: 1 });
     const value =
