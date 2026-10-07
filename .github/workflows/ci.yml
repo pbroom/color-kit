@@ -41,8 +41,8 @@ jobs:
       - name: Check bundle size budgets
         run: pnpm size
 
-      - name: Validate package metadata artifacts
-        run: pnpm check:artifacts:metadata
+      - name: Validate package artifacts
+        run: pnpm check:artifacts
 
       - name: Run tests
         run: pnpm test
