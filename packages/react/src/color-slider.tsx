@@ -198,6 +198,11 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     const detachScrollListenerRef = useRef<(() => void) | null>(null);
 
     const [isDragging, setIsDragging] = useState(false);
+    // Disabling mid-drag ends the drag (the refs and listeners are released
+    // in the effect below).
+    if (disabled && isDragging) {
+      setIsDragging(false);
+    }
     const isDraggingRef = useRef(false);
 
     const pointerFrameRef = useRef<number | null>(null);
@@ -379,6 +384,15 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       stopScrollTracking();
     }, [stopPointerFrame, stopScrollTracking]);
 
+    // Cancel an active drag when the slider becomes disabled: drop the
+    // pending pointer frame so its value cannot change while disabled.
+    useEffect(() => {
+      if (!disabled) return;
+      isDraggingRef.current = false;
+      stopPointerFrame();
+      stopScrollTracking();
+    }, [disabled, stopPointerFrame, stopScrollTracking]);
+
     useEffect(() => {
       if (!sliderNode || typeof ResizeObserver === 'undefined') {
         return;
@@ -461,7 +475,7 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
     );
 
     const { focusVisible, onFocus, onBlur, markKeyboardInteraction } =
-      useFocusVisible<HTMLDivElement>(onFocusProp, onBlurProp);
+      useFocusVisible<HTMLDivElement>(sliderNode, onFocusProp, onBlurProp);
 
     const onKeyDown = useCallback(
       (event: ReactKeyboardEvent<HTMLDivElement>) => {

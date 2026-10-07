@@ -281,6 +281,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const warnedMultiThumbRef = useRef(false);
     const warnedAxesRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
+    // Disabling mid-drag ends the drag (the refs and listeners are released
+    // in an effect).
+    if (disabled && isDragging) {
+      setIsDragging(false);
+    }
     const isDraggingRef = useRef(false);
     const [adaptiveQualityState, setAdaptiveQualityState] = useState<{
       profile: ColorAreaPerformanceProfile;
@@ -687,6 +692,20 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     }, [refreshRect, stopWindowTracking]);
 
     useEffect(() => stopWindowTracking, [stopWindowTracking]);
+
+    // Cancel an active drag when the area becomes disabled: drop the pending
+    // update and the drag listeners so its value cannot change while disabled.
+    useEffect(() => {
+      if (!disabled) return;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      pendingPositionRef.current = null;
+      activePointerIdRef.current = null;
+      isDraggingRef.current = false;
+      stopWindowTracking();
+    }, [disabled, stopWindowTracking]);
 
     const onRootPointerDown = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {

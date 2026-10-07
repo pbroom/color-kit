@@ -25,6 +25,28 @@ const RECT = {
   toJSON: () => '',
 } as DOMRect;
 
+/** jsdom's PointerEvent drops clientX/Y; build pointer events from MouseEvent. */
+function dispatchPointer(
+  target: EventTarget,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  clientX: number,
+  clientY: number,
+) {
+  const event = new MouseEvent(type, { bubbles: true, clientX, clientY });
+  Object.defineProperty(event, 'pointerId', { value: 1 });
+  act(() => {
+    target.dispatchEvent(event);
+  });
+}
+
+async function flushAnimationFrames(count = 3): Promise<void> {
+  for (let index = 0; index < count; index += 1) {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  }
+}
+
 async function expectNoAxeViolations(container: HTMLElement): Promise<void> {
   const results = await axe.run(container, {
     rules: {
@@ -215,6 +237,39 @@ describe('ColorSlider disabled and focus', () => {
     expect(document.activeElement).not.toBe(slider);
   });
 
+  it('cancels an active drag when disabled mid-drag', async () => {
+    const { slider, onChangeRequested, rerender } = renderSlider({
+      channel: 'l',
+      requested,
+    });
+    slider.setPointerCapture = vi.fn();
+    vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(RECT);
+
+    dispatchPointer(slider, 'pointerdown', 20, 5);
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+    expect(slider.hasAttribute('data-dragging')).toBe(true);
+
+    // A move is pending when the slider becomes disabled.
+    dispatchPointer(slider, 'pointermove', 60, 5);
+    rerender(
+      <ColorSlider
+        channel="l"
+        requested={requested}
+        onChangeRequested={onChangeRequested}
+        disabled
+      />,
+    );
+    expect(slider.hasAttribute('data-dragging')).toBe(false);
+
+    dispatchPointer(slider, 'pointermove', 90, 5);
+    await flushAnimationFrames();
+    dispatchPointer(slider, 'pointerup', 90, 5);
+    await flushAnimationFrames();
+
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+    expect(slider.hasAttribute('data-dragging')).toBe(false);
+  });
+
   it('focuses the slider on pointerdown without focus-visible', () => {
     const { slider } = renderSlider({ channel: 'l', requested });
     slider.setPointerCapture = vi.fn();
@@ -265,6 +320,94 @@ describe('ColorSlider disabled and focus', () => {
 
     expect(onFocus).toHaveBeenCalledTimes(1);
     expect(onBlur).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('focus-visible modality tracking', () => {
+  const requested: Color = { l: 0.5, c: 0.2, h: 120, alpha: 1 };
+
+  function modalityListenerTypes(spy: ReturnType<typeof vi.spyOn>): string[] {
+    return spy.mock.calls
+      .map(([type]) => String(type))
+      .filter((type) => ['keydown', 'pointerdown', 'mousedown'].includes(type))
+      .sort();
+  }
+
+  it('removes document listeners once the last control unmounts', () => {
+    const addSpy = vi.spyOn(document, 'addEventListener');
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+    const first = render(
+      <ColorSlider
+        channel="l"
+        requested={requested}
+        onChangeRequested={() => {}}
+      />,
+    );
+    const second = render(
+      <ColorSlider
+        channel="c"
+        requested={requested}
+        onChangeRequested={() => {}}
+      />,
+    );
+    expect(modalityListenerTypes(addSpy)).toEqual([
+      'keydown',
+      'mousedown',
+      'pointerdown',
+    ]);
+
+    first.unmount();
+    expect(modalityListenerTypes(removeSpy)).toEqual([]);
+
+    second.unmount();
+    expect(modalityListenerTypes(removeSpy)).toEqual([
+      'keydown',
+      'mousedown',
+      'pointerdown',
+    ]);
+  });
+
+  it("tracks input in the control's own document", () => {
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    const frameDocument = iframe.contentDocument!;
+    const container = frameDocument.createElement('div');
+    frameDocument.body.appendChild(container);
+
+    try {
+      const { getByRole, unmount } = render(
+        <ColorSlider
+          channel="l"
+          requested={requested}
+          onChangeRequested={() => {}}
+        />,
+        { container },
+      );
+      const slider = getByRole('slider');
+
+      // Pointer input in the frame: focus is not visible.
+      fireEvent.pointerDown(frameDocument.body);
+      act(() => {
+        slider.focus();
+      });
+      expect(slider.hasAttribute('data-focus-visible')).toBe(false);
+      act(() => {
+        slider.blur();
+      });
+
+      // Keyboard input in the frame: focus is visible, even though the outer
+      // document last saw pointer input.
+      fireEvent.pointerDown(document.body);
+      fireEvent.keyDown(frameDocument.body, { key: 'Tab' });
+      act(() => {
+        slider.focus();
+      });
+      expect(slider.hasAttribute('data-focus-visible')).toBe(true);
+      unmount();
+    } finally {
+      iframe.remove();
+    }
   });
 });
 
@@ -372,6 +515,35 @@ describe('ColorArea thumb accessibility', () => {
 
     expect(document.activeElement).toBe(thumb);
     expect(thumb.hasAttribute('data-focus-visible')).toBe(false);
+  });
+
+  it('cancels an active drag when disabled mid-drag', async () => {
+    const { root, onChangeRequested, rerender } = renderArea();
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(RECT);
+    root.setPointerCapture = vi.fn();
+
+    dispatchPointer(root, 'pointerdown', 30, 30);
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+    expect(root.hasAttribute('data-dragging')).toBe(true);
+
+    // A move is pending when the area becomes disabled.
+    dispatchPointer(root, 'pointermove', 60, 60);
+    rerender(
+      <ColorArea
+        requested={requested}
+        onChangeRequested={onChangeRequested}
+        disabled
+      />,
+    );
+    expect(root.hasAttribute('data-dragging')).toBe(false);
+
+    dispatchPointer(root, 'pointermove', 90, 90);
+    await flushAnimationFrames();
+    dispatchPointer(root, 'pointerup', 90, 90);
+    await flushAnimationFrames();
+
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+    expect(root.hasAttribute('data-dragging')).toBe(false);
   });
 
   it('blocks interaction when disabled', () => {
