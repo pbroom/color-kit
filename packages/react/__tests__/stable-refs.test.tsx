@@ -224,6 +224,48 @@ describe('ColorPlane WebGL lifecycle', () => {
     expect(gl.linkProgram).not.toHaveBeenCalled();
   });
 
+  it.each<[string, (gl: FakeGl) => void]>([
+    [
+      'program linking fails',
+      (gl) => {
+        gl.getProgramParameter.mockReturnValue(false);
+      },
+    ],
+    [
+      'a uniform is missing',
+      (gl) => {
+        gl.getUniformLocation.mockImplementation(
+          (_program: unknown, name: string) => (name === 'u_gamut' ? null : {}),
+        );
+      },
+    ],
+  ])('frees GL objects and falls back to cpu when %s', async (_, configure) => {
+    const { glByCanvas, putImageData } = installCanvasMocks(configure);
+    const requested: Color = { l: 0.5, c: 0.1, h: 120, alpha: 1 };
+
+    const { container } = render(
+      <ColorArea requested={requested} onChangeRequested={() => {}}>
+        <ColorPlane renderer="gpu" />
+      </ColorArea>,
+    );
+    const gpuCanvas = container.querySelector(
+      '[data-color-area-plane]',
+    ) as HTMLCanvasElement;
+
+    await waitFor(() => {
+      const plane = container.querySelector('[data-color-area-plane]');
+      expect(plane?.getAttribute('data-renderer')).toBe('cpu');
+    });
+    expect(putImageData).toHaveBeenCalled();
+
+    const gl = glByCanvas.get(gpuCanvas) as FakeGl;
+    expect(gl.linkProgram).toHaveBeenCalledTimes(1);
+    expect(gl.deleteShader).toHaveBeenCalledTimes(2);
+    expect(gl.deleteProgram).toHaveBeenCalledTimes(1);
+    expect(gl.deleteBuffer).toHaveBeenCalledTimes(1);
+    expect(gl.useProgram).not.toHaveBeenCalled();
+  });
+
   it('falls back to the cpu path on context loss and rebuilds on restore', async () => {
     const { putImageData, createProgram } = installCanvasMocks();
     const requested: Color = { l: 0.5, c: 0.1, h: 120, alpha: 1 };
