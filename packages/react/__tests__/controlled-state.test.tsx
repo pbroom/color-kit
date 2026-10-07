@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { StrictMode, useState, type ReactNode } from 'react';
+import {
+  StrictMode,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { act, cleanup, render } from '@testing-library/react';
 import { toHex, toRgb } from '@color-kit/core';
 import {
@@ -68,6 +74,32 @@ function ColorProbe(props: {
   );
   props.onReady(color);
   return null;
+}
+
+/** Calls `setChannel('h', 90)` once from its own layout effect. */
+function LayoutEffectSetter(props: {
+  trigger: boolean;
+  setChannel: UseColorReturn['setChannel'];
+}) {
+  const { trigger, setChannel } = props;
+  const fired = useRef(false);
+  useLayoutEffect(() => {
+    if (!trigger || fired.current) return;
+    fired.current = true;
+    setChannel('h', 90);
+  }, [trigger, setChannel]);
+  return null;
+}
+
+function LayoutEffectParent(props: {
+  state: ColorState;
+  trigger: boolean;
+  onChange: (event: ColorUpdateEvent) => void;
+}) {
+  const color = useColor({ state: props.state, onChange: props.onChange });
+  return (
+    <LayoutEffectSetter trigger={props.trigger} setChannel={color.setChannel} />
+  );
 }
 
 function MultiProbe(props: {
@@ -273,6 +305,29 @@ describe('useColor update semantics', () => {
     });
 
     expect(events.at(-1)?.next.requested).toMatchObject({ l: 0.5, h: 0 });
+  });
+
+  it('starts a descendant layout-effect update from the new controlled state', () => {
+    // Descendant layout effects run before the parent's, so the update must
+    // not start from the previously committed state (l = 0.2).
+    const events: ColorUpdateEvent[] = [];
+    const onChange = (event: ColorUpdateEvent) => events.push(event);
+    const at = (l: number) =>
+      createColorState({ ...INITIAL, l }, { source: 'programmatic' });
+
+    const { rerender } = render(
+      <LayoutEffectParent
+        state={at(0.2)}
+        trigger={false}
+        onChange={onChange}
+      />,
+    );
+    rerender(
+      <LayoutEffectParent state={at(0.8)} trigger onChange={onChange} />,
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0].next.requested).toMatchObject({ l: 0.8, h: 90 });
   });
 
   it('does not carry a rejected controlled update into later updates', () => {
