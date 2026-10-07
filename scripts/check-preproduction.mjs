@@ -36,21 +36,37 @@ async function collectPackageJsonPaths() {
 }
 
 /**
- * Parse the YAML frontmatter of a changeset (`'name': bump` lines).
+ * Parse the YAML frontmatter of a changeset: one `name: bump` mapping per
+ * line, with the name optionally quoted and an optional trailing `# comment`.
+ * Lines the guard cannot parse are returned as `unparsed` so the check rejects
+ * them instead of silently skipping a release.
  * @param {string} source
- * @returns {Array<{ name: string, bump: string }>}
+ * @returns {{ releases: Array<{ name: string, bump: string }>, unparsed: string[] }}
  */
 function parseChangesetReleases(source) {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source);
+  const releases = [];
+  const unparsed = [];
+  const match = /^---\r?\n(?:([\s\S]*?)\r?\n)?---/.exec(source);
   if (!match) {
-    return [];
+    return { releases, unparsed };
   }
 
-  return match[1]
-    .split(/\r?\n/)
-    .map((line) => /^\s*(['"]?)([^'"]+)\1\s*:\s*(\w+)\s*$/.exec(line))
-    .filter(Boolean)
-    .map(([, , name, bump]) => ({ name, bump }));
+  for (const line of (match[1] ?? '').split(/\r?\n/)) {
+    if (/^\s*(?:#.*)?$/.test(line)) {
+      continue;
+    }
+    const release =
+      /^\s*(?:(['"])([^'"]+)\1|([^\s'"#:][^\s'"#]*))\s*:\s*(['"]?)(\w+)\4\s*(?:#.*)?$/.exec(
+        line,
+      );
+    if (release) {
+      releases.push({ name: release[2] ?? release[3], bump: release[5] });
+    } else {
+      unparsed.push(line.trim());
+    }
+  }
+
+  return { releases, unparsed };
 }
 
 /**
@@ -76,9 +92,14 @@ async function checkChangesets(publishablePackages, errors) {
     }
 
     const changesetPath = path.join(CHANGESET_DIR, entry.name);
-    const releases = parseChangesetReleases(
+    const { releases, unparsed } = parseChangesetReleases(
       await readFile(changesetPath, 'utf8'),
     );
+    for (const line of unparsed) {
+      errors.push(
+        `${changesetPath}: cannot parse release line "${line}"; write one "'package-name': bump" per line`,
+      );
+    }
 
     for (const { name, bump } of releases) {
       const version = publishablePackages.get(name);
