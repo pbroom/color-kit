@@ -68,7 +68,11 @@ export function setAlpha(color: Color, alpha: number): Color {
  * as plain OKLCH channels, exactly like option-less `interpolate()`. In
  * every mode a powerless (achromatic) hue — chroma at or below
  * `ACHROMATIC_CHROMA_THRESHOLD` — takes the other color's hue, so mixing
- * white into blue stays blue. Passing `options` switches to CSS Color 4
+ * white into blue stays blue. Without `options` that includes `t = 0` and
+ * `t = 1`: an achromatic endpoint comes back with its own L, C and alpha but
+ * the other color's hue (CSS Color 4 missing-hue semantics), keeping the hue
+ * continuous in `t`, whereas `{ space: 'oklch' }` returns exact endpoints.
+ * Passing `options` switches to CSS Color 4
  * `color-mix()` semantics in the chosen space: `options.hue` picks the hue
  * arc, and rectangular spaces interpolate with premultiplied alpha. Results
  * are not gamut mapped.
