@@ -90,7 +90,10 @@ export function contrastRegionPathsLegacy(
       "contrastRegionPaths() edgeInterpolation must be 'linear' or 'midpoint'",
     );
   }
-  const mappedReference = mapToGamut(reference, gamut);
+  // The criterion uses the public metric, which clips an out-of-gamut
+  // reference to the display gamut; chroma-reducing it here instead would
+  // move the boundary away from what `contrastRatio`/`contrastAPCA` report.
+  const mappedReference = reference;
 
   const mode = options.samplingMode ?? 'uniform';
   const legacySolver =

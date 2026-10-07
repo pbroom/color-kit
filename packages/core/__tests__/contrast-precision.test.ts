@@ -255,6 +255,58 @@ describe('contrast regions use the public metric', () => {
   }, 30_000);
 });
 
+describe('contrast regions with an out-of-gamut reference', () => {
+  it('match the public check, which clips the reference', () => {
+    const delta = 0.0005;
+    const references: Color[] = [
+      { l: 0.6, c: 0.32, h: 150, alpha: 1 },
+      { l: 0.45, c: 0.3, h: 270, alpha: 1 },
+      { l: 0.85, c: 0.25, h: 100, alpha: 1 },
+    ];
+    let checked = 0;
+    for (const reference of references) {
+      for (const gamut of ['srgb', 'display-p3'] as Gamut[]) {
+        expect(
+          gamut === 'srgb' ? inSrgbGamut(reference) : inP3Gamut(reference),
+        ).toBe(false);
+        for (const metric of ['wcag', 'apca'] as Metric[]) {
+          const threshold = metric === 'wcag' ? 3 : 0.45;
+          for (const hue of [30, 200]) {
+            const paths = contrastRegionPaths(reference, hue, {
+              metric,
+              threshold,
+              gamut,
+            });
+            for (const path of paths) {
+              for (const vertex of path) {
+                if (vertex.l - delta <= 0 || vertex.l + delta >= 1) continue;
+                const maxChroma = Math.min(
+                  maxChromaAt(vertex.l - delta, hue, { gamut }),
+                  maxChromaAt(vertex.l + delta, hue, { gamut }),
+                );
+                if (vertex.c > maxChroma * 0.98) continue;
+                const at = (l: number): number =>
+                  checkMargin(
+                    metric,
+                    { l, c: vertex.c, h: hue, alpha: 1 },
+                    reference,
+                    threshold,
+                    { gamut },
+                  );
+                expect(
+                  at(vertex.l - delta) >= 0 !== at(vertex.l + delta) >= 0,
+                ).toBe(true);
+                checked++;
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  }, 30_000);
+});
+
 // ─── HSL / HCT ──────────────────────────────────────────────────────
 
 describe('toHsl / toHct without 8-bit rounding', () => {
