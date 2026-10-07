@@ -43,6 +43,9 @@ const HUE = 0;
 // `[\s\S]*` (not `.*`) so the arguments may span lines: CSS whitespace
 // (space, tab, LF, CR, FF) is valid between components.
 const FUNCTION = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(([\s\S]*)\)$/;
+/** Predefined spaces accepted inside `color()`. */
+const COLOR_SPACE =
+  /^(srgb|srgb-linear|display-p3|rec2020|a98-rgb|prophoto-rgb|xyz|xyz-d50|xyz-d65)$/;
 
 function fail(input: string, reason = ''): never {
   throw new Error(`Unable to parse color: "${input}"${reason}`);
@@ -105,6 +108,9 @@ export function parse(input: string): Color {
     if (slash.length === 2) alphaToken = slash[1].trim();
   }
   const space = name === 'color' ? parts.shift() : name;
+  // Only predefined spaces are valid in `color()`; without this check
+  // `color(rgb 1 0 0)` would dispatch to the top-level `rgb()` handler.
+  if (name === 'color' && !COLOR_SPACE.test(space ?? '')) fail(input);
   if (parts.length !== 3) fail(input);
 
   /**
