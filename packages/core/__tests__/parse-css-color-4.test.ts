@@ -82,6 +82,26 @@ describe('parse() CSS Color 4 syntax', () => {
     expect(() => parse('rgb(none, 0, 0)')).toThrow();
   });
 
+  it('validates legacy comma syntax component types', () => {
+    // rgb(): all numbers or all percentages; hsl(): percentage s and l.
+    for (const input of [
+      'rgb(100%, 0, 0)',
+      'rgb(255, 0%, 0)',
+      'rgba(255, 0, 0%, 0.5)',
+      'hsl(0, 100, 50)',
+      'hsl(0, 100%, 50)',
+      'hsla(0, 100, 50%, 0.5)',
+    ]) {
+      expect(tryParse(input), input).toBeNull();
+    }
+    expect(parse('rgb(100%, 0%, 0%)')).toEqual(parse('rgb(255, 0, 0)'));
+    expect(parse('rgba(255, 0, 0, 50%)')).toEqual(parse('rgb(255 0 0 / 0.5)'));
+    expect(parse('hsl(0deg, 100%, 50%)')).toEqual(parse('hsl(0 100% 50%)'));
+    // The modern syntax still allows mixing.
+    expect(parse('rgb(100% 0 0)')).toEqual(parse('rgb(255 0 0)'));
+    expect(parse('hsl(0 100 50)')).toEqual(parse('hsl(0 100% 50%)'));
+  });
+
   it('rejects comma syntax outside rgb()/hsl()', () => {
     expect(() => parse('lab(50, 20, -30)')).toThrow();
     expect(() => parse('oklch(0.5, 0.1, 30)')).toThrow();
