@@ -170,7 +170,10 @@ export function contrastRegionPathsHybrid(
   if (maxChroma <= 0) return { status: 'ok', paths: [] };
   const alpha = options.alpha ?? 1;
   const gamut = options.gamut ?? 'srgb';
-  const mappedReference = mapToGamut(reference, gamut);
+  // The criterion uses the public metric, which clips an out-of-gamut
+  // reference to the display gamut; chroma-reducing it here instead would
+  // move the boundary away from what `contrastRatio`/`contrastAPCA` report.
+  const mappedReference = reference;
   const maxDepth = Math.max(
     0,
     Math.min(
