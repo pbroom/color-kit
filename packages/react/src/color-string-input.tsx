@@ -12,8 +12,10 @@ import type { Color } from '@color-kit/core';
 import { useOptionalColorContext } from './context.js';
 import {
   formatColorStringInputValue,
+  hasExplicitOklchHue,
   isColorStringInputValueValid,
   parseColorStringInputValue,
+  resolveIncomingRequested,
   type ColorStringInputFormat,
 } from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
@@ -37,6 +39,9 @@ export interface ColorStringInputProps extends Omit<
 
 /**
  * Legacy free-form color-string input for hex/rgb/hsl/oklch editing.
+ *
+ * An achromatic entry (a gray, black or white) keeps the current hue unless
+ * it is an `oklch()` string with a hue other than `none`.
  */
 export const ColorStringInput = forwardRef<
   HTMLDivElement,
@@ -88,11 +93,21 @@ export const ColorStringInput = forwardRef<
     }
     const parsed = parseColorStringInputValue(inputValue);
     if (parsed) {
-      setRequested(parsed, { interaction: 'text-input' });
+      // Only `oklch()` with a hue states one; any other achromatic entry
+      // keeps the current hue. The resolved color serves standalone handlers;
+      // `explicitHue` lets hook setters re-resolve against the latest state.
+      const explicitHue = hasExplicitOklchHue(inputValue);
+      setRequested(
+        resolveIncomingRequested(requested, parsed, { explicitHue }),
+        {
+          interaction: 'text-input',
+          explicitHue,
+        },
+      );
     } else {
       onInvalidCommit?.(inputValue);
     }
-  }, [displayValue, inputValue, onInvalidCommit, setRequested]);
+  }, [displayValue, inputValue, onInvalidCommit, requested, setRequested]);
 
   const handleFocus = useCallback(() => {
     setIsEditing(true);

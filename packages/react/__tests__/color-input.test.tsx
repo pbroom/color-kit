@@ -191,7 +191,7 @@ describe('ColorInput', () => {
 
     expect(onChangeRequested).toHaveBeenCalledTimes(1);
     const [, options] = onChangeRequested.mock.calls[0];
-    expect(options).toEqual({ interaction: 'keyboard' });
+    expect(options).toEqual({ interaction: 'keyboard', explicitHue: false });
   });
 
   it('commits End as the maximum value for wrapped hue channels', () => {

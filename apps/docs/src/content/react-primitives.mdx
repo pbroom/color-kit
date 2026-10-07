@@ -37,6 +37,39 @@ export function Picker() {
 > `@color-kit/react/color-input` workspace entry; it will return to the
 > published package once control-kit is published.
 
+## Hue of achromatic colors
+
+`requested` is stored as OKLCH, and a gray, black or white has no hue of its
+own. Hex, `rgb()`, `hsl()` and the other non-OKLCH inputs convert to hue `0`
+at zero chroma, which would throw away the hue the user picked. The state
+layer keeps the previous hue instead whenever the new color is achromatic and
+does not state an OKLCH hue:
+
+- `useColor`'s `setFromString`, `setFromRgb`, `setFromHsl` and `setFromHsv`,
+  RGB/HSL `ColorInput` edits and `ColorStringInput` keep the latest requested
+  hue (in controlled and uncontrolled mode), so raising chroma afterwards
+  resumes it.
+- An `oklch()` string with a hue, or an OKLCH object passed to
+  `setRequested`, keeps its own hue. `oklch(0.5 0 none)` keeps the previous
+  hue. Hues from `hsl()`, `hwb()`, `lch()` or HSV are a different hue space,
+  so they do not count.
+- Pass `explicitHue: false` to `setRequested` to get the same behaviour for a
+  converted color, or `explicitHue: true` to the other setters to store the
+  converted hue `0`.
+
+```tsx
+const color = useColor({ defaultColor: { l: 0.6, c: 0.15, h: 250, alpha: 1 } });
+
+color.setFromString('#808080'); // requested.h stays 250
+color.setChannel('c', 0.1); // a blue again, not a red
+```
+
+Core `parse()` and the conversions are unchanged: they still report hue `0`
+for achromatic colors. The driver exposes the rule as
+`resolveIncomingRequested(previous, incoming, { explicitHue })` and the
+`oklch()` check as `hasExplicitOklchHue(css)`, and `setColorRequested` /
+`setMultiColorRequested` accept `explicitHue` for other bindings.
+
 ## API design goals
 
 - Stable, composable contracts.
