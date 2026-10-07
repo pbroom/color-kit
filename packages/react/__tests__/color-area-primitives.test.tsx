@@ -302,6 +302,32 @@ describe('ColorArea primitives', () => {
     expect(optionsAt('low')).toMatchObject({ initialSamples: 9, maxDepth: 1 });
   });
 
+  it('requests and reports the sampling clamped as the solver clamps it', async () => {
+    const spy = vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths');
+    const onMetrics = vi.fn();
+    render(
+      <ColorArea
+        requested={{ l: 0.6, c: 0.08, h: 150, alpha: 1 }}
+        onChangeRequested={() => {}}
+      >
+        <ContrastRegionLayer
+          threshold={4.5}
+          quality="high"
+          initialSamples={1000}
+          maxDepth={20}
+          errorTolerance={1e-9}
+          onMetrics={onMetrics}
+        />
+      </ColorArea>,
+    );
+    const clamped = { initialSamples: 512, maxDepth: 12, errorTolerance: 1e-6 };
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls[spy.mock.calls.length - 1][3]).toMatchObject(clamped);
+    await waitFor(() => expect(onMetrics).toHaveBeenCalled());
+    const latest = onMetrics.mock.calls[onMetrics.mock.calls.length - 1][0];
+    expect(latest).toMatchObject(clamped);
+  });
+
   it.each([
     ['lightnessSteps', 12],
     ['chromaSteps', 16],

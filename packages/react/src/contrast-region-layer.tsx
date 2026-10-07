@@ -10,6 +10,7 @@ import {
   type SVGAttributes,
 } from 'react';
 import {
+  clampContrastRegionSampling,
   contrastAPCA,
   contrastRatio,
   toP3Gamut,
@@ -882,13 +883,19 @@ export function ContrastRegionLayer({
     prevDraggingRef.current = isDragging;
   }, [isDragging, effectiveInitialSamples, effectiveMaxDepth]);
 
-  const samplingForOptions: LayerSampling =
+  const layerSampling: LayerSampling =
     isDragging && frozenSampling
       ? frozenSampling
       : {
           initialSamples: effectiveInitialSamples,
           maxDepth: effectiveMaxDepth,
         };
+  // The sampling the solver runs with, clamped as core clamps it, so the
+  // request and `onMetrics` agree with the work actually done.
+  const samplingForOptions = clampContrastRegionSampling({
+    ...layerSampling,
+    errorTolerance,
+  });
   const resolvedContrastMetric = metric ?? 'wcag';
 
   const options = useMemo<ColorAreaContrastRegionOptions>(
@@ -901,7 +908,7 @@ export function ContrastRegionLayer({
       apcaPolarity,
       apcaRole,
       initialSamples: samplingForOptions.initialSamples,
-      errorTolerance,
+      errorTolerance: samplingForOptions.errorTolerance,
       maxDepth: samplingForOptions.maxDepth,
       maxChroma,
       alpha,
@@ -914,7 +921,7 @@ export function ContrastRegionLayer({
       apcaRole,
       samplingForOptions.initialSamples,
       samplingForOptions.maxDepth,
-      errorTolerance,
+      samplingForOptions.errorTolerance,
       gamut,
       level,
       maxChroma,
@@ -1004,7 +1011,7 @@ export function ContrastRegionLayer({
         // Report the sampling the solver ran with: while dragging this is the
         // frozen idle sampling, not the current quality level's.
         initialSamples: samplingForOptions.initialSamples,
-        errorTolerance,
+        errorTolerance: samplingForOptions.errorTolerance,
         maxDepth: samplingForOptions.maxDepth,
         contrastMetric: resolvedContrastMetric,
         backend: payload.backend,
@@ -1019,7 +1026,7 @@ export function ContrastRegionLayer({
       onMetrics,
       resolvedContrastMetric,
       resolvedQuality,
-      errorTolerance,
+      samplingForOptions.errorTolerance,
       samplingForOptions.initialSamples,
       samplingForOptions.maxDepth,
     ],

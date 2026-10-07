@@ -73,10 +73,35 @@ export function rejectRemovedContrastOptions(
   }
 }
 
-export interface ResolvedContrastSampling {
+/** Sampling options as the contrast-region solver runs them. */
+export interface ContrastRegionSampling {
   initialSamples: number;
   errorTolerance: number;
   maxDepth: number;
+}
+
+/**
+ * The sampling `contrastRegionPaths` actually runs with: defaults filled in,
+ * `initialSamples` capped at 512, `maxDepth` at 12, and `errorTolerance`
+ * raised to at least 1e-6. It does not validate; values the solver rejects
+ * (such as `initialSamples: 1`) are returned unchanged.
+ */
+export function clampContrastRegionSampling(
+  options: Pick<
+    ContrastRegionPathOptions,
+    'initialSamples' | 'errorTolerance' | 'maxDepth'
+  >,
+): ContrastRegionSampling {
+  const {
+    initialSamples = CONTRAST_REGION_DEFAULTS.initialSamples,
+    errorTolerance = CONTRAST_REGION_DEFAULTS.errorTolerance,
+    maxDepth = CONTRAST_REGION_DEFAULTS.maxDepth,
+  } = options;
+  return {
+    initialSamples: Math.min(MAX_INITIAL_SAMPLES, initialSamples),
+    errorTolerance: Math.max(MIN_ERROR_TOLERANCE, errorTolerance),
+    maxDepth: Math.min(MAX_DEPTH_LIMIT, maxDepth),
+  };
 }
 
 /**
@@ -89,7 +114,7 @@ export function resolveContrastSampling(
     ContrastRegionPathOptions,
     'initialSamples' | 'errorTolerance' | 'maxDepth'
   >,
-): ResolvedContrastSampling {
+): ContrastRegionSampling {
   const {
     initialSamples = CONTRAST_REGION_DEFAULTS.initialSamples,
     errorTolerance = CONTRAST_REGION_DEFAULTS.errorTolerance,
@@ -110,11 +135,11 @@ export function resolveContrastSampling(
     Number.isFinite(errorTolerance) && errorTolerance > 0,
     'errorTolerance must be a finite number > 0',
   );
-  return {
-    initialSamples: Math.min(MAX_INITIAL_SAMPLES, initialSamples),
-    errorTolerance: Math.max(MIN_ERROR_TOLERANCE, errorTolerance),
-    maxDepth: Math.min(MAX_DEPTH_LIMIT, maxDepth),
-  };
+  return clampContrastRegionSampling({
+    initialSamples,
+    errorTolerance,
+    maxDepth,
+  });
 }
 
 const APCA_PRESET_THRESHOLDS: Record<ContrastApcaPreset, number> = {
