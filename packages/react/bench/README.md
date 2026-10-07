@@ -30,7 +30,7 @@ Current baseline selected renderer: `gpu`.
 
 - Benchmarks are directional only and should be paired with interaction traces.
 - `ColorPlane` keeps CPU fallback when GPU setup fails at runtime.
-- `ColorPlane` accepts legacy aliases (`webgl`, `canvas2d`) and remaps to (`gpu`, `cpu`) with deprecation warnings.
+- `ColorPlane` accepts the legacy alias `canvas2d` and remaps it to `cpu` with a deprecation warning.
 
 ## Re-run
 

@@ -30,21 +30,12 @@ import { useColorAreaContext } from './color-area-context.js';
 import { useOptionalColorContext } from './context.js';
 
 export type ColorPlaneSource = 'requested' | 'displayed';
-export type ColorPlaneRenderer = 'auto' | 'gpu' | 'cpu' | 'webgl' | 'canvas2d';
+export type ColorPlaneRenderer = 'auto' | 'gpu' | 'cpu' | 'canvas2d';
 export type ColorPlaneEdgeBehavior = 'transparent' | 'clamp';
-export interface ColorPlaneOutOfGamutConfig {
-  /**
-   * Legacy compatibility option. Mirrors prior ColorPlane behavior:
-   * - true: clamp out-of-gamut displayed pixels to the nearest edge.
-   * - false: keep out-of-gamut displayed pixels transparent.
-   */
-  repeatEdgePixels?: boolean;
-}
 
 type ActiveColorPlaneRenderer = 'gpu' | 'cpu';
 type ResolvedColorPlaneRenderer = 'gpu' | 'cpu';
 
-let warnedWebglAlias = false;
 let warnedCanvasAlias = false;
 
 export const BENCHMARK_SELECTED_COLOR_PLANE_RENDERER: ActiveColorPlaneRenderer =
@@ -64,11 +55,6 @@ export interface ColorPlaneProps extends Omit<
    * @default 'clamp'
    */
   edgeBehavior?: ColorPlaneEdgeBehavior;
-  /**
-   * @deprecated Use `edgeBehavior` instead. This legacy option remains for
-   * compatibility and will be removed in a future release.
-   */
-  outOfGamut?: ColorPlaneOutOfGamutConfig;
   /**
    * Extra backing-store scale factor beyond DPR. @default 1
    */
@@ -192,16 +178,6 @@ function channelIndex(channel: 'l' | 'c' | 'h'): number {
 function resolveRenderer(
   renderer: ColorPlaneRenderer,
 ): ResolvedColorPlaneRenderer {
-  if (renderer === 'webgl') {
-    if (!warnedWebglAlias) {
-      warnedWebglAlias = true;
-      console.warn(
-        '[ColorPlane] renderer="webgl" is deprecated; use renderer="gpu".',
-      );
-    }
-    return 'gpu';
-  }
-
   if (renderer === 'canvas2d') {
     if (!warnedCanvasAlias) {
       warnedCanvasAlias = true;
@@ -405,7 +381,6 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       displayGamut: displayGamutProp,
       renderer = 'auto',
       edgeBehavior,
-      outOfGamut,
       resolutionScale = 1,
       style,
       ...props
@@ -463,15 +438,8 @@ export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
       () => resolveRenderer(renderer),
       [renderer],
     );
-    const resolvedEdgeBehavior = useMemo<ColorPlaneEdgeBehavior>(() => {
-      if (edgeBehavior === 'clamp' || edgeBehavior === 'transparent') {
-        return edgeBehavior;
-      }
-      if (outOfGamut?.repeatEdgePixels === false) {
-        return 'transparent';
-      }
-      return 'clamp';
-    }, [edgeBehavior, outOfGamut?.repeatEdgePixels]);
+    const resolvedEdgeBehavior: ColorPlaneEdgeBehavior =
+      edgeBehavior === 'transparent' ? 'transparent' : 'clamp';
 
     const effectiveScale = useMemo(() => {
       const baseScale =
