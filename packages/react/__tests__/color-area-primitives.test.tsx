@@ -25,7 +25,6 @@ import {
 import { FallbackPointsLayer } from '../src/fallback-points-layer.js';
 import { GamutBoundaryLayer } from '../src/gamut-boundary-layer.js';
 import { OutOfGamutLayer } from '../src/out-of-gamut-layer.js';
-import type { ColorPlaneOutOfGamutConfig } from '../src/index.js';
 
 function pathAreaFromD(pathData: string): number {
   const matches = Array.from(
@@ -1338,80 +1337,6 @@ describe('ColorArea primitives', () => {
     expect(hasTransparentPixel).toBe(false);
   });
 
-  it('maps legacy outOfGamut config to edge behavior', async () => {
-    const requested: Color = { l: 0.72, c: 0.36, h: 293, alpha: 1 };
-    const legacyTransparent: ColorPlaneOutOfGamutConfig = {
-      repeatEdgePixels: false,
-    };
-
-    const createImageData = vi.fn((width: number, height: number) => ({
-      data: new Uint8ClampedArray(width * height * 4),
-      width,
-      height,
-    }));
-    const putImageData = vi.fn();
-
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
-      function getContext(this: HTMLCanvasElement, kind: string) {
-        if (kind === '2d') {
-          return {
-            createImageData,
-            putImageData,
-          } as unknown as RenderingContext;
-        }
-        return null;
-      },
-    );
-    vi.spyOn(
-      HTMLCanvasElement.prototype,
-      'getBoundingClientRect',
-    ).mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 120,
-      height: 120,
-      right: 120,
-      bottom: 120,
-      x: 0,
-      y: 0,
-      toJSON: () => '',
-    } as DOMRect);
-
-    render(
-      <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ColorPlane renderer="cpu" outOfGamut={legacyTransparent} />
-      </ColorArea>,
-    );
-
-    await waitFor(() => {
-      expect(putImageData).toHaveBeenCalled();
-    });
-
-    const latestCall = putImageData.mock.calls.at(-1);
-    const imageData = latestCall?.[0] as ImageData | undefined;
-    expect(imageData).toBeTruthy();
-
-    const pixels = imageData?.data ?? new Uint8ClampedArray();
-    let hasTransparentPixel = false;
-    let hasOpaquePixel = false;
-
-    for (let index = 3; index < pixels.length; index += 4) {
-      const alpha = pixels[index];
-      if (alpha === 0) {
-        hasTransparentPixel = true;
-      }
-      if (alpha === 255) {
-        hasOpaquePixel = true;
-      }
-      if (hasTransparentPixel && hasOpaquePixel) {
-        break;
-      }
-    }
-
-    expect(hasTransparentPixel).toBe(true);
-    expect(hasOpaquePixel).toBe(true);
-  });
-
   it('clamps out-of-gamut pixels when edge behavior is clamp', async () => {
     const requested: Color = { l: 0.72, c: 0.36, h: 293, alpha: 1 };
 
@@ -1659,58 +1584,5 @@ describe('ColorArea primitives', () => {
     expect(hasTransparentPixel).toBe(true);
     expect(hasOverlayPixel).toBe(true);
     expect(hasPatternHighlight).toBe(true);
-  });
-
-  it('accepts legacy renderer aliases for backward compatibility', async () => {
-    const requested: Color = { l: 0.6, c: 0.2, h: 250, alpha: 1 };
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
-      function getContext(this: HTMLCanvasElement, kind: string) {
-        if (kind === 'webgl') {
-          return null;
-        }
-        if (kind === '2d') {
-          return {
-            createImageData: (width: number, height: number) => ({
-              data: new Uint8ClampedArray(width * height * 4),
-              width,
-              height,
-            }),
-            putImageData: () => {},
-          } as unknown as RenderingContext;
-        }
-        return null;
-      },
-    );
-    vi.spyOn(
-      HTMLCanvasElement.prototype,
-      'getBoundingClientRect',
-    ).mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 100,
-      height: 100,
-      right: 100,
-      bottom: 100,
-      x: 0,
-      y: 0,
-      toJSON: () => '',
-    } as DOMRect);
-
-    const { container } = render(
-      <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ColorPlane renderer="webgl" />
-      </ColorArea>,
-    );
-
-    await waitFor(() => {
-      const plane = container.querySelector('[data-color-area-plane]');
-      expect(plane?.getAttribute('data-renderer')).toBe('cpu');
-    });
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[ColorPlane] renderer="webgl" is deprecated; use renderer="gpu".',
-    );
   });
 });

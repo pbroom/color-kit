@@ -119,7 +119,7 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'ColorPlane.edgeBehavior',
       type: "'transparent' | 'clamp'",
-      defaultValue: "'transparent'",
+      defaultValue: "'clamp'",
       description:
         'Controls displayed-source out-of-gamut edge treatment. `transparent` keeps out-of-gamut pixels clear; `clamp` extends the gradient with nearest in-gamut edge values.',
     },
