@@ -175,6 +175,10 @@ export function createPlaneComputeScheduler({
     backendKind: PlaneComputeBackendKind,
     totalMs: number,
   ): void => {
+    // A limit below one keeps no buckets (`0` disables telemetry).
+    if (!(config.maxTelemetryBuckets >= 1)) {
+      return;
+    }
     const bucket = getOrCreateBucket(key);
     const timestamp = nowMs();
     const existing = bucket.backends[backendKind];

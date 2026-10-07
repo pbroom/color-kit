@@ -73,6 +73,7 @@ export interface PlaneComputeSchedulerOptions {
   ewmaAlpha?: number;
   /**
    * Maximum telemetry buckets kept; the least recently used is evicted.
+   * `0` disables telemetry.
    * @default 120
    */
   maxTelemetryBuckets?: number;

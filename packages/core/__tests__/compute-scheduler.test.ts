@@ -173,6 +173,19 @@ describe('plane compute scheduler', () => {
     ]);
   });
 
+  it('keeps no telemetry when maxTelemetryBuckets is 0', () => {
+    const scheduler = createPlaneComputeScheduler({
+      backends: {
+        js: createTimedBackend('js', 6),
+      },
+      options: { maxTelemetryBuckets: 0 },
+    });
+
+    const response = scheduler.run(schedulerRequest);
+    expect(response.schedule?.bucketKey).toBeTruthy();
+    expect(scheduler.getTelemetrySnapshot().buckets).toEqual([]);
+  });
+
   it('propagates backend errors without recording telemetry', () => {
     const scheduler = createPlaneComputeScheduler({
       backends: {
