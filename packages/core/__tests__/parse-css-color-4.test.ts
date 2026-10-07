@@ -98,6 +98,19 @@ describe('parse() CSS Color 4 syntax', () => {
   it('rejects unknown color() spaces and wrong component counts', () => {
     expect(() => parse('color(cmyk 0 0 0)')).toThrow();
     expect(() => parse('color(constructor 0 0 0)')).toThrow();
+    for (const fn of [
+      'rgb',
+      'rgba',
+      'hsl',
+      'hwb',
+      'lab',
+      'lch',
+      'oklab',
+      'oklch',
+    ]) {
+      expect(() => parse(`color(${fn} 1 0 0)`)).toThrow();
+      expect(tryParse(`color(${fn} 1 0 0)`)).toBeNull();
+    }
     expect(() => parse('color(srgb 1 0)')).toThrow();
     expect(() => parse('color(srgb 1 0 0 0)')).toThrow();
     expect(() => parse('lab(50 20)')).toThrow();
