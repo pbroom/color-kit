@@ -229,6 +229,35 @@ describe('single-color reducers', () => {
     });
   });
 
+  it('setColorRequested/Channel apply a method override to an unchanged color', () => {
+    const css = { gamutMapMethod: 'css' } as const;
+    const byColor = setColorRequested(
+      base,
+      { ...base.requested },
+      base.meta.source,
+      css,
+    );
+    expect(byColor).not.toBe(base);
+    expect(byColor.meta.gamutMapMethod).toBe('css');
+    expect(byColor.displayed).toEqual(
+      createColorState(base.requested, css).displayed,
+    );
+
+    const byChannel = setColorChannel(base, 'c', base.requested.c, 'user', css);
+    expect(byChannel.meta.gamutMapMethod).toBe('css');
+    expect(byChannel.displayed).toEqual(
+      createColorState(base.requested, css).displayed,
+    );
+
+    // Passing the stored method is still a no-op.
+    expect(
+      setColorRequested(byColor, { ...byColor.requested }, 'programmatic', css),
+    ).toBe(byColor);
+    expect(
+      setColorChannel(byColor, 'c', byColor.requested.c, 'user', css),
+    ).toBe(byColor);
+  });
+
   it('setColorRequested/Channel keep the stored gamutMapMethod', () => {
     // 'css' must survive later updates instead of reverting to the default.
     const vivid: Color = { l: 0.7, c: 0.35, h: 150, alpha: 1 };
