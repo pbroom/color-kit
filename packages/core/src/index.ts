@@ -90,6 +90,7 @@ export {
   meetsAAA,
   contrastRegionPath,
   contrastRegionPaths,
+  clampContrastRegionSampling,
 } from './contrast/index.js';
 export type {
   ContrastApcaPolarity,
@@ -101,6 +102,7 @@ export type {
   ContrastRegionLevel,
   ContrastRegionPoint,
   ContrastRegionPathOptions,
+  ContrastRegionSampling,
 } from './contrast/index.js';
 
 // Harmony
