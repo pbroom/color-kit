@@ -19,6 +19,12 @@ export interface ContrastRegionPoint {
  * curve in between is sampled.
  */
 export interface ContrastRegionPathOptions {
+  /**
+   * Target gamut. The reference and samples are measured as displayed in it,
+   * with channels clipped as `contrastRatio` / `contrastAPCA` clip them (an
+   * out-of-gamut reference is not gamut-mapped), and paths stay inside it.
+   * @default 'srgb'
+   */
   gamut?: GamutTarget;
   /**
    * Contrast metric used when evaluating region membership.
@@ -67,8 +73,9 @@ export interface ContrastRegionPathOptions {
   alpha?: number;
   /**
    * If set, run Ramer-Douglas-Peucker simplification on each contour path.
-   * Tolerance is in normalized (l, c) space; e.g. 0.001–0.002.
-   * Omit or 0 to disable.
+   * Tolerance is in normalized (l, c) space; e.g. 0.001–0.002. Points are
+   * kept wherever a simplified segment would leave the gamut, so every
+   * segment stays in gamut as without simplification. Omit or 0 to disable.
    */
   simplifyTolerance?: number;
   /**

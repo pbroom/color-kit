@@ -154,11 +154,11 @@ const paths = contrastRegionPaths(parse('#ffffff'), 220, {
 });
 ```
 
-| Parameter   | Type                                   | Default | Description                                    |
-| ----------- | -------------------------------------- | ------- | ---------------------------------------------- |
-| `reference` | `Color`                                | —       | Reference color (mapped into the target gamut) |
-| `hue`       | `number`                               | —       | Fixed hue angle in degrees                     |
-| `options`   | `ContrastRegionPathOptions` (optional) | `{}`    | Criterion and solver options (see below)       |
+| Parameter   | Type                                   | Default | Description                                                              |
+| ----------- | -------------------------------------- | ------- | ------------------------------------------------------------------------ |
+| `reference` | `Color`                                | —       | Reference color, measured as displayed in the target gamut (see `gamut`) |
+| `hue`       | `number`                               | —       | Fixed hue angle in degrees                                               |
+| `options`   | `ContrastRegionPathOptions` (optional) | `{}`    | Criterion and solver options (see below)                                 |
 
 <p className="api-returns">
   Returns <code>{'ContrastRegionPoint[][]'}</code> &mdash; contour paths of{' '}
@@ -178,17 +178,17 @@ const paths = contrastRegionPaths(parse('#ffffff'), 220, {
 
 ### Sampling options
 
-| Option              | Type                     | Default  | Description                                                                                                                                             |
-| ------------------- | ------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gamut`             | `'srgb' \| 'display-p3'` | `'srgb'` | Target gamut: the reference is gamut-mapped into it, samples are measured as displayed in it, and paths stay inside it                                  |
-| `maxChroma`         | `number`                 | `0.4`    | Upper chroma bound of the region; paths end at this chroma                                                                                              |
-| `alpha`             | `number`                 | `1`      | Alpha channel used while sampling                                                                                                                       |
-| `initialSamples`    | `number`                 | `32`     | Initial samples per gamut chroma extent at the hue (integer `>= 2`, clamped to 512); each contour piece gets a share by its length (at least 1)         |
-| `errorTolerance`    | `number`                 | `0.0015` | Largest distance, in `(l, c)` units, of a sampled midpoint from its chord before the interval is split (`> 0`, clamped to at least `1e-6`)              |
-| `maxDepth`          | `number`                 | `6`      | Maximum halvings of an initial interval to meet `errorTolerance` (integer `>= 0`, clamped to 12); a few more are allowed while a chord leaves the gamut |
-| `simplifyTolerance` | `number`                 | off      | If set, runs Ramer&ndash;Douglas&ndash;Peucker simplification on each path; tolerance in normalized `(l, c)` space, e.g. `0.001`&ndash;`0.002`          |
+| Option              | Type                     | Default  | Description                                                                                                                                                                                                            |
+| ------------------- | ------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gamut`             | `'srgb' \| 'display-p3'` | `'srgb'` | Target gamut: the reference and samples are measured as displayed in it, with channels clipped as `contrastRatio` / `contrastAPCA` clip them (an out-of-gamut reference is not gamut-mapped), and paths stay inside it |
+| `maxChroma`         | `number`                 | `0.4`    | Upper chroma bound of the region; paths end at this chroma                                                                                                                                                             |
+| `alpha`             | `number`                 | `1`      | Alpha channel used while sampling                                                                                                                                                                                      |
+| `initialSamples`    | `number`                 | `32`     | Initial samples per gamut chroma extent at the hue (integer `>= 2`, clamped to 512); each contour piece gets a share by its length (at least 1)                                                                        |
+| `errorTolerance`    | `number`                 | `0.0015` | Largest distance, in `(l, c)` units, of a sampled midpoint from its chord before the interval is split (`> 0`, clamped to at least `1e-6`)                                                                             |
+| `maxDepth`          | `number`                 | `6`      | Maximum halvings of an initial interval to meet `errorTolerance` (integer `>= 0`, clamped to 12); a few more are allowed while a chord leaves the gamut                                                                |
+| `simplifyTolerance` | `number`                 | off      | If set, runs Ramer&ndash;Douglas&ndash;Peucker simplification on each path; tolerance in normalized `(l, c)` space, e.g. `0.001`&ndash;`0.002`. Points are kept where a simplified segment would leave the gamut       |
 
-Invalid `initialSamples`, `maxDepth`, or `errorTolerance` values throw an `Error`. Options of removed solvers throw a `TypeError` and are type errors:
+Invalid `initialSamples`, `maxDepth`, or `errorTolerance` values throw an `Error`. `clampContrastRegionSampling(options)` returns the `{ initialSamples, errorTolerance, maxDepth }` the solver runs with (defaults filled in and limits applied, without validating), for example to report the work actually done. Options of removed solvers throw a `TypeError` and are type errors:
 
 - the hybrid solver's `lightnessSteps`, `chromaSteps` (use `initialSamples`), `hybridMaxDepth` (use `maxDepth`), `hybridErrorTolerance` (use `errorTolerance`), and `tolerance` / `maxIterations` (which it forwarded to `maxChromaAt`);
 - the legacy marching-squares engine's `engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, and `adaptiveMaxDepth`.
