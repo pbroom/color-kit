@@ -314,6 +314,42 @@ describe('contrastRegionPaths()', () => {
     );
   });
 
+  it('validates options on planes that return no geometry', () => {
+    // An RGB plane is not lightness × chroma, so it returns empty geometry
+    // without running the solver, but must reject what an L×C plane rejects.
+    const rgbPlane = definePlane({ model: 'rgb' });
+    const reference = fromHex('#ffffff');
+    const invalid: Array<[Record<string, unknown>, RegExp]> = [
+      [{ initialSamples: 1 }, /initialSamples must be an integer >= 2/],
+      [{ maxDepth: -1 }, /maxDepth must be an integer >= 0/],
+      [{ errorTolerance: 0 }, /errorTolerance must be a finite number > 0/],
+      [{ threshold: 1 }, /requires threshold > 1/],
+      [
+        { lightnessSteps: 72 },
+        /option "lightnessSteps" was removed with the hybrid contrast-region solver/,
+      ],
+      [
+        { samplingMode: 'adaptive' },
+        /option "samplingMode" was removed with the legacy contrast-region engine/,
+      ],
+    ];
+    for (const [options, message] of invalid) {
+      for (const kind of ['contrastRegion', 'contrastBoundary'] as const) {
+        const query = { kind, reference, ...options } as unknown as Parameters<
+          typeof inspectPlaneQuery
+        >[1];
+        expect(() => inspectPlaneQuery(rgbPlane, query), kind).toThrow(message);
+      }
+    }
+    // Valid options still return empty geometry there.
+    expect(
+      sense(rgbPlane).contrastRegion({ reference, initialSamples: 1000 }).paths,
+    ).toEqual([]);
+    expect(
+      sense(rgbPlane).contrastBoundary({ reference, maxDepth: 20 }).points,
+    ).toEqual([]);
+  });
+
   it('simplifyTolerance reduces contour point count', () => {
     const reference = fromHex('#ffffff');
     const raw = contrastRegionPaths(reference, 200, {

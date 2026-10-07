@@ -33,7 +33,7 @@ runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
 - `metric` is available for `contrastBoundary` / `contrastRegion`:
   - `wcag` &mdash; threshold uses ratio values such as `3`, `4.5`, `7`.
   - `apca` &mdash; threshold uses normalized `Lc` values (for example `0.3`, `0.45`, `0.6`) and supports `apcaPolarity` + `apcaRole`.
-- On planes that are not `oklch` with `l/c` (or `c/l`) axes, LC-specific queries intentionally return empty geometry.
+- On planes that are not `oklch` with `l/c` (or `c/l`) axes, LC-specific queries intentionally return empty geometry; contrast queries still validate their options first, so invalid or removed options throw on every plane.
 
 ## Query Capability Matrix
 
