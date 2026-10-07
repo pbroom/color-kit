@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useInsertionEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -98,8 +99,14 @@ export function useLatestSnapshot<T>(committed: T): LatestSnapshot<T> {
   // even when a controlled parent rejects the update and does not re-render.
   const [committedToken, setCommittedToken] = useState(0);
 
-  useLayoutEffect(() => {
+  // Insertion effects run for the whole tree before any layout effect, so a
+  // descendant that updates from its own layout effect already reads this
+  // render's `committed` (a layout effect here would run after the child's).
+  useInsertionEffect(() => {
     committedRef.current = committed;
+  }, [committed]);
+
+  useLayoutEffect(() => {
     const pending = pendingRef.current;
     if (
       pending &&
