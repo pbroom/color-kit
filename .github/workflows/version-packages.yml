@@ -40,10 +40,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Create or update the Version Packages PR
-        # changesets/action v2.1.2. No `publish-script` input, so the action
-        # only versions; it never runs `npm publish`.
-        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51
+        # changesets/action v1.9.0, the line that supports @changesets/cli v2
+        # (pinned to keep Node 20 support); action v2 refuses CLI v2. No
+        # `publish` input, so the action only versions; it never runs
+        # `npm publish`.
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
-          version-script: pnpm version-packages
-          commit-message: 'chore: version packages'
-          pr-title: 'chore: version packages'
+          version: pnpm version-packages
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
