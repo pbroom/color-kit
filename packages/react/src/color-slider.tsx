@@ -149,8 +149,10 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
       [ref],
     );
     /**
-     * Layout read once per drag (and on resize/scroll), not per pointer frame:
-     * `getBoundingClientRect` + `getComputedStyle` force style/layout.
+     * `getComputedStyle` (the position inset) is read once per drag and on
+     * resize/scroll. The rect is re-read in `resolvePointerNorm`, which runs
+     * once per processed frame rather than per pointer event, so an ancestor
+     * reflow or transform that moves the rail mid-drag is still tracked.
      */
     const geometryRef = useRef<SliderGeometry | null>(null);
     const detachScrollListenerRef = useRef<(() => void) | null>(null);
@@ -191,10 +193,12 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
 
     const resolvePointerNorm = useCallback(
       (clientX: number, clientY: number): number | null => {
+        const element = sliderRef.current;
         const geometry = geometryRef.current ?? refreshGeometry();
-        if (!geometry) return null;
+        if (!element || !geometry) return null;
 
-        const { rect, positionInset } = geometry;
+        const rect = element.getBoundingClientRect();
+        const { positionInset } = geometry;
 
         return normalizeColorSliderPointer(
           orientation,
