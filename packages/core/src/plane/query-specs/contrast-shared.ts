@@ -3,6 +3,9 @@ import {
   MAX_DEPTH_LIMIT,
   MAX_INITIAL_SAMPLES,
   REMOVED_CONTRAST_REGION_OPTIONS,
+  rejectRemovedContrastOptions,
+  resolveContrastCriterion,
+  resolveContrastSampling,
 } from '../../contrast/region-shared.js';
 import type { ContrastRegionPathOptions } from '../../contrast/types.js';
 import type { PlaneContrastQueryOptions } from '../types.js';
@@ -38,6 +41,19 @@ export function toContrastRegionPathOptions(
     }
   }
   return options;
+}
+
+/**
+ * Validates solver options exactly as `contrastRegionPaths` does, for planes
+ * that return empty geometry without running the solver, so a query is
+ * rejected (or accepted) the same way on every plane.
+ */
+export function assertContrastRegionPathOptions(
+  options: ContrastRegionPathOptions,
+): void {
+  rejectRemovedContrastOptions(options, 'contrastRegionPaths()');
+  resolveContrastCriterion(options);
+  resolveContrastSampling(options);
 }
 
 /**
