@@ -106,6 +106,33 @@ describe('parse() rejects malformed input', () => {
   });
 });
 
+describe('parse() CSS whitespace and parse-time clamping', () => {
+  it.each([
+    ['rgb(255\n0\n0)', 'rgb(255 0 0)'],
+    ['rgb(255,\n0,\r\n0)', 'rgb(255, 0, 0)'],
+    ['rgba(\t255 0 0\t/\f0.5)', 'rgba(255 0 0 / 0.5)'],
+    ['hsl(\n120\n50%\n50%\n)', 'hsl(120 50% 50%)'],
+    ['oklch(0.6\n0.1\n30)', 'oklch(0.6 0.1 30)'],
+    ['oklab(0.6\t0.1\t0)', 'oklab(0.6 0.1 0)'],
+    ['color(display-p3\n1\n0\n0)', 'color(display-p3 1 0 0)'],
+  ])('accepts CSS whitespace between components: %j', (multiline, single) => {
+    expect(tryParse(multiline)).not.toBeNull();
+    expect(parse(multiline)).toEqual(parse(single));
+  });
+
+  it('clamps negative HSL saturation to 0% (gray, not the complement)', () => {
+    expect(parse('hsl(0 -100% 50%)')).toEqual(parse('hsl(0 0% 50%)'));
+    expect(parse('hsl(0 -100% 50%)').c).toBeLessThan(1e-6);
+  });
+
+  it('clamps OKLab/OKLCH lightness and negative OKLCH chroma', () => {
+    expect(parse('oklch(1.5 -0.1 30)')).toEqual(parse('oklch(1 0 30)'));
+    expect(parse('oklch(-0.2 0.1 30)')).toEqual(parse('oklch(0 0.1 30)'));
+    expect(parse('oklab(150% 0 0)')).toEqual(parse('oklab(1 0 0)'));
+    expect(parse('oklab(-0.5 0 0)')).toEqual(parse('oklab(0 0 0)'));
+  });
+});
+
 describe('hexToRgb()', () => {
   it.each(['gggggg', '#12', '#12345', 'ff00zz', '', '#ff00ff0'])(
     'throws for %j',
