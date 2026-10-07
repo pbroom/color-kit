@@ -382,7 +382,7 @@ describe('ColorSlider handler composition', () => {
     ).toBe(false);
   });
 
-  it('measures layout once per drag instead of every pointer frame', async () => {
+  it('reads the inset style once per drag and the rect once per frame', async () => {
     const onChangeRequested = vi.fn();
     const { getByRole } = render(
       <ColorSlider
@@ -397,16 +397,53 @@ describe('ColorSlider handler composition', () => {
     const styleSpy = vi.spyOn(window, 'getComputedStyle');
 
     dispatchPointer(slider, 'pointerdown', 10, 5);
-    for (const clientX of [20, 40, 60, 80]) {
-      dispatchPointer(slider, 'pointermove', clientX, 5);
+    const afterDown = rectSpy.mock.calls.length;
+    // Several moves inside one frame are coalesced into one rect read.
+    for (const batch of [
+      [20, 40, 60],
+      [70, 80, 90],
+    ]) {
+      for (const clientX of batch) {
+        dispatchPointer(slider, 'pointermove', clientX, 5);
+      }
       await flushAnimationFrames(3);
     }
-    fireEvent.pointerUp(slider, { pointerId: 1, clientX: 80, clientY: 5 });
+    fireEvent.pointerUp(slider, { pointerId: 1, clientX: 90, clientY: 5 });
 
     expect(onChangeRequested.mock.calls.length).toBeGreaterThan(2);
-    expect(rectSpy).toHaveBeenCalledTimes(1);
+    expect(rectSpy.mock.calls.length - afterDown).toBe(2);
     expect(
       styleSpy.mock.calls.filter(([element]) => element === slider),
     ).toHaveLength(1);
+  });
+
+  it('tracks a rail that moves without resizing during a drag', async () => {
+    const onChangeRequested = vi.fn();
+    const { getByRole } = render(
+      <ColorSlider
+        channel="alpha"
+        requested={requested}
+        onChangeRequested={onChangeRequested}
+        maxPointerRate={1000}
+      />,
+    );
+    const slider = getByRole('slider');
+    slider.setPointerCapture = vi.fn();
+    let left = 0;
+    vi.spyOn(slider, 'getBoundingClientRect').mockImplementation(
+      () => ({ ...RECT, left, height: 10, bottom: 10 }) as DOMRect,
+    );
+
+    dispatchPointer(slider, 'pointerdown', 50, 5);
+    expect(onChangeRequested.mock.lastCall?.[0].alpha).toBeCloseTo(0.5, 6);
+
+    // An ancestor transform shifts the rail by 100px without resizing it, so
+    // neither ResizeObserver nor a scroll event fires.
+    left = 100;
+    dispatchPointer(slider, 'pointermove', 175, 5);
+    await flushAnimationFrames(3);
+    fireEvent.pointerUp(slider, { pointerId: 1, clientX: 175, clientY: 5 });
+
+    expect(onChangeRequested.mock.lastCall?.[0].alpha).toBeCloseTo(0.75, 6);
   });
 });
