@@ -162,30 +162,33 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-006 — Split core multi-solver god modules
 
 - **Priority:** P1
-- **Status:** Completed 2026-09-25
-- **Evidence:**
-  - `packages/core/src/contrast/index.ts` (1,526 lines) — legacy marching squares, adaptive LC, hybrid root-tracing, and public router in one file.
+- **Status:** Completed 2026-09-25; the contrast engines were replaced afterwards in PR #223 and PR #228 (both still open in the stack); two contrast follow-ups remain open (see **Follow-ups**).
+- **Evidence:** (as filed; the legacy and hybrid contrast engines named below no longer exist)
+  - `packages/core/src/contrast/index.ts` (1,526 lines) — legacy marching squares, adaptive LC, hybrid root-tracing, and public router in one file. Now a 20-line barrel; the engines are gone (PR #223, PR #228).
   - `packages/core/src/plane/gamut-region.ts` (1,397 lines) — viewport geometry, `resolveGamutSolver` policy matrix, implicit contour, and orchestration tangled together.
-  - `contrastRegionPaths()` silently falls back from hybrid to legacy adaptive through `null` control flow instead of returning an explicit fallback reason.
+  - `contrastRegionPaths()` silently falls back from hybrid to legacy adaptive through `null` control flow instead of returning an explicit fallback reason. Resolved by removing both engines, so there is no fallback left (PR #223, PR #228).
   - `getPlaneGamutRegion()` owns solver selection, trace summary fields, domain-edge handling, analytic solvers, implicit solvers, and result assembly in one orchestration path.
   - Adaptive 1D sampling duplicated in contrast (×2) and `gamut/index.ts` (~667–745).
   - Gamut epsilon `0.000075` defined in both `gamut/index.ts` and `gamut-region.ts`.
 - **Problem:** Multi-solver routers are the highest maintenance surface. Bug fixes to adaptive sampling must land in three places. Combinatorial branching (`resolveGamutSolver`, `contrastRegionPaths` router) spread across modules, and fallback behavior is implicit instead of observable.
 - **Target shape:**
-  - `contrast/metrics.ts`, `contrast/region-legacy.ts`, `contrast/region-hybrid.ts`, `contrast/region.ts` (thin router).
+  - `contrast/metrics.ts`, `contrast/region-legacy.ts`, `contrast/region-hybrid.ts`, `contrast/region.ts` (thin router). Now `contrast/metrics.ts`, `contrast/region-solver.ts`, `contrast/region-shared.ts`, `contrast/types.ts` and a thin `contrast/region.ts`; `region-legacy.ts` was deleted in PR #223 and `region-hybrid.ts` in PR #228.
   - `gamut-region/viewport-geometry.ts`, `gamut-region/gamut-solvers.ts`, `gamut-region/getPlaneGamutRegion.ts`.
   - Shared `adaptive1d.ts` for anchor dedupe, edge probes, perpendicular error.
   - Single `GAMUT_EPSILON` constant.
 - **Suggested slices:**
   1. Extract shared adaptive 1D sampler + centralize epsilon.
   2. Split contrast along solver boundaries; keep router thin.
-  3. Return explicit `SolverOutcome` values with fallback reasons instead of `null`.
+  3. Return explicit `SolverOutcome` values with fallback reasons instead of `null`. Superseded: the contrast solver cannot degrade, so `degradedReason` was removed instead (PR #228).
   4. Split gamut-region geometry from solver dispatch.
 - **Acceptance criteria:**
   - No core production file exceeds 1k lines without documented justification.
   - Adaptive sampling logic defined once.
   - Existing core tests pass without snapshot churn.
-- **Completed:** Contrast, gamut-region and adaptive sampling were split earlier; the remaining god modules are now split too: `gamut/index.ts` is a barrel over `types`, `membership`, `cubic`, `hue-cusp`, `max-chroma`, `boundary-path` and `chroma-band`; `plane/plane.ts` is a barrel over `model-specs`, `resolve` and `mapping`; and the scheduler shrank below 600 lines by moving per-kind budgets and telemetry signatures into query specs. No core source file exceeds 600 lines except `contour/index.ts`.
+- **Completed:** Contrast, gamut-region and adaptive sampling were split earlier; the remaining god modules are now split too: `gamut/index.ts` is a barrel over `types`, `membership`, `cubic`, `hue-cusp`, `max-chroma`, `boundary-path` and `chroma-band`; `plane/plane.ts` is a barrel over `model-specs`, `resolve` and `mapping`; and the scheduler shrank below 600 lines by moving per-kind budgets and telemetry signatures into query specs. The contrast engines were then collapsed to one: PR #223 retired the legacy marching-squares engine (and `engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`, the `contrast-legacy-*` trace solvers), and PR #228 replaced the hybrid solver with a ray-based solver in `packages/core/src/contrast/region-solver.ts` that traces each side of a region as one luminance level curve along rays from black. Its options are `initialSamples`, `errorTolerance` and `maxDepth`; `hybridMaxDepth`, `hybridErrorTolerance`, `lightnessSteps`, `chromaSteps`, `tolerance`, `maxIterations` and `degradedReason` are gone. The largest core source file is now `contrast/region-solver.ts` (986 lines, one cohesive solver, under the 1k bar).
+- **Follow-ups (open):**
+  - **7 tiny P3 APCA pieces missed by the single-extremum scan.** The ray solver's scan for where a contour piece starts or ends on the gamut edge (`packages/core/src/contrast/region-solver.ts`) misses 7 tiny Display P3 APCA pieces. Widen the scan so every piece is found, then add them as regression cases.
+  - **`ContrastRegionLayer` still gamut-maps its reference.** The core solver measures against the unmapped reference, which the public contrast checks clip. `packages/react/src/contrast-region-layer.tsx` still maps the reference into the display gamut (`mapColorToGamut`) before querying, so the layer can disagree with `contrastRegionPaths` for an out-of-gamut reference. Pass the unmapped reference through and cover it in the layer tests.
 
 ---
 
