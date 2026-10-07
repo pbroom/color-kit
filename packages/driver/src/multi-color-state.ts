@@ -1,4 +1,4 @@
-import type { Color } from '@color-kit/core';
+import type { Color, GamutMapMethod } from '@color-kit/core';
 import { parse } from '@color-kit/core';
 import {
   createColorState,
@@ -41,6 +41,11 @@ export interface MultiColorUpdateEvent {
 export interface MultiColorEntryModel {
   requested: Color;
   source: ColorSource;
+  /**
+   * Gamut mapping for this entry's displayed colors, kept across updates.
+   * @default 'chroma-reduction'
+   */
+  gamutMapMethod?: GamutMapMethod;
 }
 
 /**
@@ -146,6 +151,7 @@ export function materializeMultiColorState(
       activeGamut: model.activeGamut,
       activeView: model.activeView,
       source: entry.source,
+      gamutMapMethod: entry.gamutMapMethod,
     });
   }
 
@@ -168,10 +174,15 @@ export function multiColorModelFromState(
     const colorState = state.colors[id];
     if (!colorState) continue;
     order.push(id);
-    entries[id] = {
+    const entry: MultiColorEntryModel = {
       requested: cloneColor(colorState.requested),
       source: colorState.meta.source,
     };
+    // Only a non-default method is recorded, so default states round-trip.
+    if (colorState.meta.gamutMapMethod !== 'chroma-reduction') {
+      entry.gamutMapMethod = colorState.meta.gamutMapMethod;
+    }
+    entries[id] = entry;
   }
 
   const selectedId =
@@ -214,13 +225,15 @@ export function setMultiColorRequested(
   requested: Color,
   source: ColorSource,
 ): MultiColorModel {
-  if (!model.entries[id]) return model;
+  const existing = model.entries[id];
+  if (!existing) return model;
 
   return {
     ...model,
     entries: {
       ...model.entries,
       [id]: {
+        ...existing,
         requested: cloneColor(requested),
         source,
       },
@@ -243,6 +256,7 @@ export function setMultiColorChannel(
     entries: {
       ...model.entries,
       [id]: {
+        ...existing,
         requested: {
           ...existing.requested,
           [channel]: value,
@@ -355,6 +369,7 @@ export function renameMultiColorEntry(
   );
   const nextEntries = { ...model.entries };
   nextEntries[nextId] = {
+    ...existing,
     requested: cloneColor(existing.requested),
     source,
   };
