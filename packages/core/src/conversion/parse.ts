@@ -88,7 +88,9 @@ function parseComponents(input: string): Color {
     }
   }
 
-  const fn = /^(rgba?|hsla?|oklch|oklab|color)\((.*)\)$/.exec(str);
+  // `[\s\S]*` (not `.*`) so the arguments may span lines: CSS whitespace
+  // (space, tab, LF, CR, FF) is valid between components.
+  const fn = /^(rgba?|hsla?|oklch|oklab|color)\(([\s\S]*)\)$/.exec(str);
   if (!fn) fail(input);
   const name = fn[1];
   const body = fn[2].trim();
@@ -133,19 +135,21 @@ function parseComponents(input: string): Color {
         out,
         hslToRgbUnrounded({
           h: component(input, a, HUE),
-          s: component(input, b, PERCENT, 100),
+          // CSS Color 4 clamps negative saturation to 0% at parse time.
+          s: Math.max(0, component(input, b, PERCENT, 100)),
           l: component(input, c, PERCENT, 100),
           alpha,
         }),
       );
     case 'oklch':
-      out.l = component(input, a, NUMBER_OR_PERCENT);
-      out.c = component(input, b, NUMBER_OR_PERCENT, 0.4);
+      // Lightness clamps to [0, 1] and negative chroma to 0 at parse time.
+      out.l = clamp(component(input, a, NUMBER_OR_PERCENT), 0, 1);
+      out.c = Math.max(0, component(input, b, NUMBER_OR_PERCENT, 0.4));
       out.h = component(input, c, HUE);
       return out;
     case 'oklab':
       return oklabToOklchInto(out, {
-        L: component(input, a, NUMBER_OR_PERCENT),
+        L: clamp(component(input, a, NUMBER_OR_PERCENT), 0, 1),
         a: component(input, b, NUMBER_OR_PERCENT, 0.4),
         b: component(input, c, NUMBER_OR_PERCENT, 0.4),
         alpha,
