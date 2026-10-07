@@ -484,18 +484,17 @@ export function solveContrastRegionPaths(
       sampling,
       maxChroma,
       alpha,
+      simplifyTolerance != null &&
+        Number.isFinite(simplifyTolerance) &&
+        simplifyTolerance > 0
+        ? simplifyTolerance
+        : 0,
       stats,
       paths,
     );
   }
 
-  const result = (
-    simplifyTolerance != null &&
-    Number.isFinite(simplifyTolerance) &&
-    simplifyTolerance > 0
-      ? paths.map((path) => simplifyPolyline(path, simplifyTolerance, false))
-      : paths
-  ).sort((a, b) => b.length - a.length);
+  const result = paths.sort((a, b) => b.length - a.length);
 
   if (trace) {
     const evaluations =
@@ -529,6 +528,7 @@ function tracePaths(
   sampling: ReturnType<typeof resolveContrastSampling>,
   maxChroma: number,
   alpha: number,
+  simplifyTolerance: number,
   stats: ContrastSolverStats,
   paths: ContrastRegionPoint[][],
 ): void {
@@ -702,6 +702,19 @@ function tracePaths(
       b: ContrastRegionPoint,
     ): boolean => kernel.chordMargin(a, b) >= -CHORD_SLACK;
     /**
+     * The same exact check for a simplified chord, which may not leave the
+     * gamut by more than its own end points (path points, on the gamut edge
+     * up to rounding) already do; checking `chordInGamut` alone would keep
+     * every point next to an end that rounds a hair outside.
+     */
+    const simplifiedChordInGamut = (
+      a: ContrastRegionPoint,
+      b: ContrastRegionPoint,
+    ): boolean =>
+      kernel.chordMargin(a, b) >=
+      Math.min(0, kernel.chordMargin(a, a), kernel.chordMargin(b, b)) -
+        CHORD_SLACK;
+    /**
      * The point at a piece end, checked with the public checks. They reach
      * it by a different rounding path, so if they reject it the end moves
      * inward, by steps growing from 1e-13 up to `limit` radians; `point` is
@@ -797,7 +810,20 @@ function tracePaths(
         refine(samples[index - 1], samples[index], 0);
       }
       const finished = finishPath(path);
-      if (finished.length > 1) paths.push(finished);
+      if (finished.length > 1) {
+        // Simplification keeps the segment guarantee: a span collapses to
+        // one chord only when that chord passes the exact gamut check.
+        paths.push(
+          simplifyTolerance > 0
+            ? simplifyPolyline(
+                finished,
+                simplifyTolerance,
+                false,
+                simplifiedChordInGamut,
+              )
+            : finished,
+        );
+      }
     }
   }
 }
