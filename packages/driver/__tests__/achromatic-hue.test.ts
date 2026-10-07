@@ -7,6 +7,7 @@ import {
   fromRgb,
   isAchromatic,
   parse,
+  toHsl,
 } from '@color-kit/core';
 import {
   createColorState,
@@ -15,7 +16,11 @@ import {
   setColorRequested,
 } from '../src/color-state.js';
 import { hasExplicitOklchHue } from '../src/color-string-input.js';
-import { colorFromColorInputChannelValue } from '../src/color-input.js';
+import {
+  colorFromColorInputChannelValue,
+  colorFromColorInputKey,
+  getColorInputChannelValue,
+} from '../src/color-input.js';
 import {
   createMultiColorModel,
   setMultiColorRequested,
@@ -216,5 +221,101 @@ describe('colorFromColorInputChannelValue with achromatic results', () => {
     const next = colorFromColorInputChannelValue(BLUE, 'hsl', 's', 0);
     expect(isAchromatic(next.c)).toBe(true);
     expect(next.h).toBe(250);
+  });
+});
+
+/** Absolute angular distance between two hues, in degrees. */
+function hueDistance(a: number, b: number): number {
+  return Math.abs(((((a - b) % 360) + 540) % 360) - 180);
+}
+
+describe('HSL ColorInput edits of a gray with a stored hue', () => {
+  const gray = colorFromColorInputChannelValue(BLUE, 'hsl', 's', 0);
+
+  it('resumes the stored hue when saturation rises again, not red', () => {
+    expect(isAchromatic(gray.c)).toBe(true);
+    expect(gray.h).toBe(250);
+
+    const next = colorFromColorInputChannelValue(gray, 'hsl', 's', 50);
+    expect(isAchromatic(next.c)).toBe(false);
+    expect(toHsl(next).s).toBeCloseTo(50, 6);
+    expect(hueDistance(next.h, 250)).toBeLessThan(2);
+    // Measured: the solver lands within 0.001°.
+    expect(hueDistance(next.h, 250)).toBeLessThan(0.001);
+  });
+
+  it('lands on the stored hue for any hue, lightness and saturation', () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0.1, max: 0.95, noNaN: true }),
+        fc.double({ min: 0, max: 359.99, noNaN: true }),
+        fc.double({ min: 0.5, max: 100, noNaN: true }),
+        (l, h, s) => {
+          const start: Color = { l, c: 0, h, alpha: 1 };
+          const next = colorFromColorInputChannelValue(start, 'hsl', 's', s);
+          if (isAchromatic(next.c)) return;
+          expect(hueDistance(next.h, h)).toBeLessThan(0.01);
+        },
+      ),
+    );
+  });
+
+  it('reads the HSL hue of the stored hue instead of 0', () => {
+    const hue = getColorInputChannelValue(gray, 'hsl', 'h');
+    expect(hue).not.toBe(0);
+    // HSL hue 211 is the low-saturation sRGB direction of OKLCH hue 250.
+    expect(hue).toBeCloseTo(211.17, 1);
+    expect(getColorInputChannelValue(gray, 'hsl', 's')).toBe(0);
+  });
+
+  it('steps saturation up from a gray on the stored hue', () => {
+    const stepped = colorFromColorInputKey(gray, 'hsl', 's', 'ArrowUp', {
+      step: 1,
+      range: [0, 100],
+    });
+    expect(stepped?.value).toBe(1);
+    expect(stepped && hueDistance(stepped.color.h, 250)).toBeLessThan(0.01);
+  });
+
+  it('uses a typed HSL hue and keeps the color gray', () => {
+    const next = colorFromColorInputChannelValue(gray, 'hsl', 'h', 120);
+    expect(isAchromatic(next.c)).toBe(true);
+    expect(next.l).toBeCloseTo(gray.l, 9);
+    expect(getColorInputChannelValue(next, 'hsl', 'h')).toBeCloseTo(120, 3);
+    // The stored OKLCH hue is a green, which raising saturation resumes.
+    // (Saturation follows the OKLCH hue, so the HSL hue at 50% drifts a few
+    // degrees from 120, the way OKLCH hue lines curve through sRGB.)
+    expect(hueDistance(next.h, 145.5)).toBeLessThan(0.1);
+    const raised = colorFromColorInputChannelValue(next, 'hsl', 's', 1);
+    expect(hueDistance(raised.h, next.h)).toBeLessThan(0.01);
+    expect(hueDistance(toHsl(raised).h, 120)).toBeLessThan(0.01);
+    const vivid = colorFromColorInputChannelValue(next, 'hsl', 's', 50);
+    expect(hueDistance(vivid.h, next.h)).toBeLessThan(0.01);
+  });
+
+  it('keeps the stored hue for lightness and alpha edits', () => {
+    const lighter = colorFromColorInputChannelValue(gray, 'hsl', 'l', 80);
+    expect(isAchromatic(lighter.c)).toBe(true);
+    expect(lighter.h).toBe(250);
+    const faded = colorFromColorInputChannelValue(gray, 'hsl', 'alpha', 0.5);
+    expect(faded).toMatchObject({ h: 250, alpha: 0.5 });
+  });
+
+  it('keeps black and white achromatic with their stored hue', () => {
+    for (const l of [0, 1]) {
+      const start: Color = { l, c: 0, h: 250, alpha: 1 };
+      expect(getColorInputChannelValue(start, 'hsl', 'h')).not.toBe(0);
+      const next = colorFromColorInputChannelValue(start, 'hsl', 's', 50);
+      expect(isAchromatic(next.c)).toBe(true);
+      expect(next.h).toBe(250);
+    }
+  });
+
+  it('leaves chromatic HSL edits unchanged', () => {
+    const hsl = toHsl(BLUE);
+    expect(colorFromColorInputChannelValue(BLUE, 'hsl', 's', 20)).toEqual(
+      fromHsl({ ...hsl, s: 20 }),
+    );
+    expect(getColorInputChannelValue(BLUE, 'hsl', 'h')).toBe(hsl.h);
   });
 });

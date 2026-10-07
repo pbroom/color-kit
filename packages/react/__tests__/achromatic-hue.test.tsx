@@ -246,3 +246,68 @@ describe('ColorInput RGB edits on grays', () => {
     });
   });
 });
+
+describe('ColorInput HSL edits on grays', () => {
+  function hueDistance(a: number, b: number): number {
+    return Math.abs(((((a - b) % 360) + 540) % 360) - 180);
+  }
+
+  function commit(input: HTMLElement, value: string) {
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.blur(input);
+  }
+
+  function renderHslInputs() {
+    const events: ColorUpdateEvent[] = [];
+    render(
+      <Color
+        defaultColor={BLUE}
+        onChange={(event) => {
+          events.push(event);
+        }}
+      >
+        <ColorInput model="hsl" channel="h" aria-label="Hue" />
+        <ColorInput model="hsl" channel="s" aria-label="Saturation" />
+      </Color>,
+    );
+    return {
+      events,
+      hue: screen.getByRole<HTMLInputElement>('spinbutton', { name: 'Hue' }),
+      saturation: screen.getByRole('spinbutton', { name: 'Saturation' }),
+    };
+  }
+
+  it('resumes the stored hue when saturation rises from 0', () => {
+    const { events, hue, saturation } = renderHslInputs();
+
+    commit(saturation, '0');
+    const gray = events.at(-1)?.next.requested;
+    expect(gray && isAchromatic(gray.c)).toBe(true);
+    expect(gray?.h).toBe(250);
+    // The hue field shows the HSL hue of OKLCH hue 250, not 0.
+    expect(Number.parseFloat(hue.value)).toBeCloseTo(211.2, 0);
+
+    commit(saturation, '50');
+    const next = events.at(-1)?.next.requested;
+    expect(next && isAchromatic(next.c)).toBe(false);
+    expect(next && hueDistance(next.h, 250)).toBeLessThan(2);
+  });
+
+  it('uses a typed HSL hue on a gray', () => {
+    const { events, hue, saturation } = renderHslInputs();
+
+    commit(saturation, '0');
+    commit(hue, '120');
+    const gray = events.at(-1)?.next.requested;
+    expect(gray && isAchromatic(gray.c)).toBe(true);
+    expect(gray && hueDistance(gray.h, 145.5)).toBeLessThan(0.1);
+    expect(Number.parseFloat(hue.value)).toBeCloseTo(120, 1);
+
+    commit(saturation, '50');
+    const next = events.at(-1)?.next.requested;
+    expect(next && isAchromatic(next.c)).toBe(false);
+    expect(next && gray && hueDistance(next.h, gray.h)).toBeLessThan(2);
+  });
+});

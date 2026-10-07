@@ -49,6 +49,10 @@ does not state an OKLCH hue:
   RGB/HSL `ColorInput` edits and `ColorStringInput` keep the latest requested
   hue (in controlled and uncontrolled mode), so raising chroma afterwards
   resumes it.
+- An HSL `ColorInput` shows a gray's hue as the HSL hue of its stored OKLCH
+  hue rather than `0`. Raising HSL saturation from a gray lands back on the
+  stored OKLCH hue (the HSL hue may shift by a few degrees), and typing an
+  HSL hue on a gray keeps it gray and stores that hue.
 - An `oklch()` string with a hue, or an OKLCH object passed to
   `setRequested`, keeps its own hue. `oklch(0.5 0 none)` keeps the previous
   hue. Hues from `hsl()`, `hwb()`, `lch()` or HSV are a different hue space,
