@@ -69,8 +69,51 @@ describe('createPointerDragController', () => {
     expect(commit).toHaveBeenCalledTimes(2);
     expect(commit.mock.calls[1]).toEqual([
       { x: 0.3, y: 0.3 },
-      { forced: false, coalescedCount: 4 },
+      { forced: false, coalescedCount: 5 },
     ]);
+  });
+
+  it('sums coalesced samples across deferred frames until a commit', () => {
+    const { controller, commit, frame } = setup({ maxUpdateHz: 20 });
+
+    controller.start({ x: 0, y: 0 });
+    controller.move({ x: 0.2, y: 0 }, 3);
+    frame(16); // Over budget: deferred with its samples kept.
+    controller.move({ x: 0.4, y: 0 }, 2);
+    frame(40);
+    expect(commit.mock.calls[1]).toEqual([
+      { x: 0.4, y: 0 },
+      { forced: false, coalescedCount: 5 },
+    ]);
+
+    // The count restarts after a commit.
+    controller.move({ x: 0.6, y: 0 });
+    frame(60);
+    expect(commit.mock.calls[2][1]).toEqual({
+      forced: false,
+      coalescedCount: 1,
+    });
+  });
+
+  it('measures dragEpsilon against getCurrentPoint when provided', () => {
+    const { controller, commit, frame } = setup({ dragEpsilon: 0.05 });
+    let current: DragPoint = { x: 0.5, y: 0 };
+    controller.configure({ getCurrentPoint: () => current });
+
+    controller.start({ x: 0.5, y: 0 });
+    // A controlled parent moves the value to 0.9 mid-drag.
+    current = { x: 0.9, y: 0 };
+    // Within epsilon of the last commit, but far from the current value.
+    controller.move({ x: 0.52, y: 0 });
+    frame();
+    expect(commit).toHaveBeenCalledTimes(2);
+    expect(commit.mock.calls[1][0]).toEqual({ x: 0.52, y: 0 });
+
+    // Within epsilon of the current value: skipped.
+    current = { x: 0.52, y: 0 };
+    controller.move({ x: 0.54, y: 0 });
+    frame();
+    expect(commit).toHaveBeenCalledTimes(2);
   });
 
   it('skips moves within dragEpsilon on both axes', () => {
