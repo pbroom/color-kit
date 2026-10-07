@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parse } from '@color-kit/core';
+import { parse, type GamutTarget } from '@color-kit/core';
 import {
   areColorAreaAxesDistinct,
   colorFromColorInputChannelValue,
@@ -149,6 +149,28 @@ describe('Color API helpers', () => {
     expect(fallback.x).toBeLessThanOrEqual(1);
     expect(fallback.y).toBeGreaterThanOrEqual(0);
     expect(fallback.y).toBeLessThanOrEqual(1);
+  });
+
+  it('rejects unknown gamuts in the color area fallback point', () => {
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'c', range: [0, 0.4] },
+      y: { channel: 'l', range: [0, 1] },
+    });
+    const color = parse('#3b82f6');
+    const fallback = (gamut: unknown) =>
+      getColorAreaFallbackPoint(axes, {
+        color,
+        gamut: gamut as GamutTarget,
+      });
+
+    expect(() => fallback('p3')).toThrow(TypeError);
+    expect(() => fallback('p3')).toThrow("use 'display-p3'");
+    expect(() => fallback('rec2020')).toThrow(TypeError);
+    expect(() => fallback('rec2020')).toThrow(/unknown gamut "rec2020"/);
+    expect(() => fallback(null)).toThrow(TypeError);
+    expect(() => fallback('')).toThrow(TypeError);
+    expect(fallback('srgb').gamut).toBe('srgb');
+    expect(fallback('display-p3').gamut).toBe('display-p3');
   });
 
   it('updates color area channels from keyboard input', () => {

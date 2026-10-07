@@ -1,3 +1,5 @@
+export { assertGamutTarget } from '../gamut/target.js';
+
 export {
   colorToPlane,
   definePlane,
