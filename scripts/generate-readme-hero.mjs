@@ -86,8 +86,29 @@ const contour = contrast.paths.reduce((a, b) => (b.length > a.length ? b : a));
 const contourOrdered =
   contour[0].y <= contour.at(-1).y ? contour : [...contour].reverse();
 const contourTop = contourOrdered.at(-1);
+// The traced contour can start just above zero chroma; extend its first
+// segment down to the lightness axis so the near-gray passing colors are
+// hatched too, instead of cutting a diagonal from (0, 0).
+const [first, second = first] = contourOrdered;
+const axisStart =
+  first.y > 0
+    ? {
+        x: Math.min(
+          1,
+          Math.max(
+            0,
+            second.y > first.y
+              ? first.x -
+                  ((second.x - first.x) * first.y) / (second.y - first.y)
+              : first.x,
+          ),
+        ),
+        y: 0,
+      }
+    : null;
 const passRegion = [
   { x: 0, y: 0 },
+  ...(axisStart ? [axisStart] : []),
   ...contourOrdered,
   { x: contourTop.x, y: 1 },
   { x: 0, y: 1 },
