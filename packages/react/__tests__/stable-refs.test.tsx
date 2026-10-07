@@ -340,8 +340,8 @@ describe('ColorSlider handler composition', () => {
     setupSlider(slider);
 
     dispatchPointer(slider, 'pointerdown', 20, 5);
-    fireEvent.pointerMove(slider, { pointerId: 1, clientX: 30, clientY: 5 });
-    fireEvent.pointerUp(slider, { pointerId: 1, clientX: 30, clientY: 5 });
+    dispatchPointer(slider, 'pointermove', 30, 5);
+    dispatchPointer(slider, 'pointerup', 30, 5);
     fireEvent.pointerCancel(slider, { pointerId: 1 });
     fireEvent.lostPointerCapture(slider, { pointerId: 1 });
     fireEvent.keyDown(slider, { key: 'ArrowRight' });
@@ -349,9 +349,16 @@ describe('ColorSlider handler composition', () => {
     for (const handler of Object.values(handlers)) {
       expect(handler).toHaveBeenCalledTimes(1);
     }
-    // pointerdown commit + keyboard commit
-    expect(onChangeRequested).toHaveBeenCalledTimes(2);
+    // pointerdown commit, release commit of the pending move (end() flushes
+    // it before the next frame), then the keyboard commit.
+    expect(onChangeRequested).toHaveBeenCalledTimes(3);
+    expect(onChangeRequested.mock.calls[0][0].alpha).toBeCloseTo(0.2, 6);
+    expect(onChangeRequested.mock.calls[1][0].alpha).toBeCloseTo(0.3, 6);
     expect(onChangeRequested.mock.calls[1][1]).toEqual({
+      changedChannel: 'alpha',
+      interaction: 'pointer',
+    });
+    expect(onChangeRequested.mock.calls[2][1]).toEqual({
       changedChannel: 'alpha',
       interaction: 'keyboard',
     });
@@ -415,6 +422,42 @@ describe('ColorSlider handler composition', () => {
     expect(
       styleSpy.mock.calls.filter(([element]) => element === slider),
     ).toHaveLength(1);
+  });
+
+  it('keeps responding when a controlled parent changes the value mid-drag', async () => {
+    const onChangeRequested = vi.fn();
+    const { getByRole, rerender } = render(
+      <ColorSlider
+        channel="alpha"
+        requested={requested}
+        onChangeRequested={onChangeRequested}
+        dragEpsilon={0.05}
+        maxUpdateHz={1000}
+      />,
+    );
+    const slider = getByRole('slider');
+    setupSlider(slider);
+
+    dispatchPointer(slider, 'pointerdown', 50, 5);
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+
+    // The parent overrides the value; the next move is near the last commit
+    // (0.5) but far from the displayed value (0.9).
+    rerender(
+      <ColorSlider
+        channel="alpha"
+        requested={{ ...requested, alpha: 0.9 }}
+        onChangeRequested={onChangeRequested}
+        dragEpsilon={0.05}
+        maxUpdateHz={1000}
+      />,
+    );
+    dispatchPointer(slider, 'pointermove', 52, 5);
+    await flushAnimationFrames(3);
+
+    expect(onChangeRequested).toHaveBeenCalledTimes(2);
+    expect(onChangeRequested.mock.lastCall?.[0].alpha).toBeCloseTo(0.52, 6);
+    dispatchPointer(slider, 'pointerup', 52, 5);
   });
 
   it('tracks a rail that moves without resizing during a drag', async () => {

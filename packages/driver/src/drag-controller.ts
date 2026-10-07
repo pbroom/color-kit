@@ -21,7 +21,7 @@ export interface DragPoint {
 export interface DragCommitInfo {
   /** True for commits that bypass epsilon/rate filtering (start, end). */
   forced: boolean;
-  /** Pointer samples coalesced into this commit. */
+  /** Pointer samples coalesced into this commit, summed across moves. */
   coalescedCount: number;
 }
 
@@ -49,6 +49,13 @@ export interface PointerDragControllerConfig<TInput> {
    * @default 0.0005
    */
   dragEpsilon?: number;
+  /**
+   * The control's current normalized position. When provided, `dragEpsilon`
+   * is measured against it rather than the last committed point, so a value
+   * changed elsewhere mid-drag (for example a controlled parent clamping it)
+   * does not swallow moves near the stale committed point.
+   */
+  getCurrentPoint?: () => DragPoint | null;
 }
 
 export interface PointerDragController<TInput> {
@@ -166,10 +173,12 @@ export function createPointerDragController<TInput>(
     }
 
     const epsilon = resolveDragEpsilon(config.dragEpsilon);
+    const current = config.getCurrentPoint?.() ?? null;
+    const reference = isFinitePoint(current) ? current : lastPoint;
     if (
-      lastPoint &&
-      Math.abs(point.x - lastPoint.x) <= epsilon &&
-      Math.abs(point.y - lastPoint.y) <= epsilon
+      reference &&
+      Math.abs(point.x - reference.x) <= epsilon &&
+      Math.abs(point.y - reference.y) <= epsilon
     ) {
       pending = null;
       return;
@@ -203,7 +212,12 @@ export function createPointerDragController<TInput>(
       if (!active) {
         return;
       }
-      pending = { input, coalescedCount: Math.max(1, coalescedCount) };
+      // Samples from moves that have not committed yet are carried forward.
+      pending = {
+        input,
+        coalescedCount:
+          (pending?.coalescedCount ?? 0) + Math.max(1, coalescedCount),
+      };
       scheduleFrame();
     },
     end() {

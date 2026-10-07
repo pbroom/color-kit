@@ -280,12 +280,16 @@ export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
         },
         maxUpdateHz,
         dragEpsilon,
+        // Compare moves with the displayed value, which a controlled parent
+        // may have changed since the last commit.
+        getCurrentPoint: () => ({ x: norm, y: 0 }),
       });
     }, [
       commitNorm,
       dragController,
       dragEpsilon,
       maxUpdateHz,
+      norm,
       resolvePointerNorm,
     ]);
 
