@@ -1,9 +1,12 @@
 import {
   forwardRef,
+  useCallback,
+  useState,
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import type { Color } from '@color-kit/core';
+import { assignRef } from './assign-ref.js';
 import { useColorStoreSelector } from './color-store.js';
 import {
   colorFromColorAreaKey,
@@ -72,8 +75,20 @@ export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
     colorContext?.store ?? null,
     (state) => state,
   );
+  const [thumbNode, setThumbNode] = useState<HTMLDivElement | null>(null);
+  const setThumbRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setThumbNode(node);
+      const detachForwarded = assignRef(ref, node);
+      return () => {
+        setThumbNode(null);
+        detachForwarded();
+      };
+    },
+    [ref],
+  );
   const { focusVisible, onFocus, onBlur, markKeyboardInteraction } =
-    useFocusVisible<HTMLDivElement>(onFocusProp, onBlurProp);
+    useFocusVisible<HTMLDivElement>(thumbNode, onFocusProp, onBlurProp);
 
   const { x: xNorm, y: yNorm } = getColorAreaThumbPosition(requested, axes);
   const state =
@@ -99,7 +114,7 @@ export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
   return (
     <div
       {...props}
-      ref={ref}
+      ref={setThumbRef}
       data-color-area-thumb=""
       data-gamut={state.activeGamut}
       data-out-of-gamut={state.meta.outOfGamut[activeGamutKey] || undefined}
