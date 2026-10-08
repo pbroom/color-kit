@@ -13,6 +13,9 @@ import {
   type GamutBoundaryPoint,
 } from './types.js';
 
+/** Default `steps` of a uniform {@link gamutBoundaryPath}. */
+export const DEFAULT_GAMUT_BOUNDARY_STEPS = 100;
+
 /**
  * Samples the OKLCH lightness/chroma gamut boundary at a fixed hue, from
  * black (`l: 0`) to white (`l: 1`).
@@ -53,7 +56,7 @@ export function gamutBoundaryPath(
   if (mode === 'adaptive') {
     return gamutBoundaryPathAdaptive(hue, options);
   }
-  const steps = options.steps ?? 100;
+  const steps = options.steps ?? DEFAULT_GAMUT_BOUNDARY_STEPS;
   if (!Number.isInteger(steps) || steps < 2) {
     throw new Error('gamutBoundaryPath() requires steps >= 2');
   }
@@ -75,6 +78,45 @@ const DEFAULT_ADAPTIVE_TOLERANCE = 0.001;
 const DEFAULT_ADAPTIVE_MAX_DEPTH = 12;
 const ADAPTIVE_LIGHTNESS_DEDUPE_EPSILON = 1e-7;
 const ADAPTIVE_EDGE_PROBES = [1 / 128, 1 / 64, 1 / 32, 1 / 16] as const;
+/** Anchors an adaptive path starts from: both ends, the cusp, edge probes. */
+const ADAPTIVE_ANCHOR_COUNT = 3 + ADAPTIVE_EDGE_PROBES.length * 2;
+
+type AdaptiveSamplingOptions = Pick<
+  GamutBoundaryPathOptions,
+  'adaptiveTolerance' | 'adaptiveMaxDepth'
+>;
+
+function resolveAdaptiveTolerance(options: AdaptiveSamplingOptions): number {
+  return Number.isFinite(options.adaptiveTolerance) &&
+    options.adaptiveTolerance! > 0
+    ? options.adaptiveTolerance!
+    : DEFAULT_ADAPTIVE_TOLERANCE;
+}
+
+function resolveAdaptiveMaxDepth(options: AdaptiveSamplingOptions): number {
+  return Number.isInteger(options.adaptiveMaxDepth) &&
+    options.adaptiveMaxDepth! > 0
+    ? Math.min(20, Math.max(1, options.adaptiveMaxDepth!))
+    : DEFAULT_ADAPTIVE_MAX_DEPTH;
+}
+
+/**
+ * Estimated point count of an `'adaptive'` {@link gamutBoundaryPath}, for
+ * scheduler work budgets. Calibrated on sRGB and Display P3 paths at 24
+ * hues: about 17 points at the default tolerance, with the refined points
+ * growing roughly as `(defaultTolerance / tolerance) ** 0.75` (13 points at
+ * 4x coarser, 28 and 59 at 4x and 16x finer), and never more than
+ * `maxDepth` subdivisions allow.
+ */
+export function estimateAdaptiveBoundaryPointCount(
+  options: AdaptiveSamplingOptions,
+): number {
+  const tol = resolveAdaptiveTolerance(options);
+  const maxDepth = resolveAdaptiveMaxDepth(options);
+  const refined = 6 * (DEFAULT_ADAPTIVE_TOLERANCE / tol) ** 0.75;
+  const maxRefined = (ADAPTIVE_ANCHOR_COUNT - 1) * (2 ** maxDepth - 1);
+  return Math.round(ADAPTIVE_ANCHOR_COUNT + Math.min(refined, maxRefined));
+}
 
 function gamutBoundaryPathAdaptive(
   hue: number,
@@ -82,14 +124,8 @@ function gamutBoundaryPathAdaptive(
 ): GamutBoundaryPoint[] {
   const normalizedHue = normalizeHue(hue);
   const gamut = options.gamut ?? 'srgb';
-  const tol =
-    Number.isFinite(options.adaptiveTolerance) && options.adaptiveTolerance! > 0
-      ? options.adaptiveTolerance!
-      : DEFAULT_ADAPTIVE_TOLERANCE;
-  const maxDepth =
-    Number.isInteger(options.adaptiveMaxDepth) && options.adaptiveMaxDepth! > 0
-      ? Math.min(20, Math.max(1, options.adaptiveMaxDepth!))
-      : DEFAULT_ADAPTIVE_MAX_DEPTH;
+  const tol = resolveAdaptiveTolerance(options);
+  const maxDepth = resolveAdaptiveMaxDepth(options);
 
   const maxChromaAtBound = (l: number): number =>
     maxChromaAt(l, normalizedHue, options);

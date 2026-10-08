@@ -334,7 +334,6 @@ export type {
   PlaneQueryTraceSummary,
   PlaneQueryTraceViewportStage,
   PlaneSense,
-  PlaneWithSense,
   PlaneRegion,
   PlaneRegionPoint,
   PlaneTraceBounds,

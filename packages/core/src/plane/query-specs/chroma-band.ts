@@ -1,5 +1,8 @@
 import { assertGamutTarget } from '../../gamut/target.js';
-import { chromaBand } from '../../gamut/index.js';
+import {
+  chromaBand,
+  DEFAULT_CHROMA_BAND_STEPS,
+} from '../../gamut/chroma-band.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
 import { requireHueField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
@@ -9,7 +12,11 @@ import type {
   PlaneChromaBandResult,
   PlaneDefinition,
 } from '../types.js';
-import { countSinglePath, toPlaneBoundaryPoint } from './shared.js';
+import {
+  boundaryQueryBudget,
+  countSinglePath,
+  toPlaneBoundaryPoint,
+} from './shared.js';
 
 /**
  * Samples a constant-intent chroma band across lightness at one hue and
@@ -95,7 +102,7 @@ export const chromaBandSpec: PlaneQuerySpec<'chromaBand'> = {
   pointChannels: 'xylc',
   fixedPathCount: 1,
   countGeometry: (result) => countSinglePath(result.points),
-  budget: (query) => query.steps ?? 48,
+  budget: (query) => boundaryQueryBudget(query, DEFAULT_CHROMA_BAND_STEPS),
   pack(result, writer, label) {
     const pathStart = writer.pathCount;
     writer.appendLCPath(result.points, label);
