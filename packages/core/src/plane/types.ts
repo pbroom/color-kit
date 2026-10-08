@@ -428,7 +428,8 @@ export interface PlaneGradientQuery {
   /** Gradient end color. */
   to: Color;
   /**
-   * Number of samples, endpoints included; values below 2 are raised to 2.
+   * Finite integer sample count, endpoints included; integers below 2 are
+   * raised to 2. Non-finite or fractional values throw a `RangeError`.
    * @defaultValue 16
    */
   steps?: number;
