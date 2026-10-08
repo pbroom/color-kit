@@ -1,0 +1,32 @@
+---
+title: Requested vs displayed
+description: color-kit tracks the color you asked for separately from the color a display can show, so intent survives gamut mapping.
+order: 20
+---
+
+## Two colors, one value
+
+A user can pick a color no screen can show. Clamping it in place would move
+the picker thumb, lose the choice on the next edit, and make undo lie. color-kit
+keeps two values instead:
+
+- **requested**: the exact OKLCH color that was asked for.
+- **displayed**: the requested color mapped into the output gamut, used only
+  to paint.
+
+<Swatch
+  color="oklch(0.7 0.25 30)"
+  gamut="srgb"
+  label="Mapped for an sRGB display"
+/>
+
+## Mapping changes chroma only
+
+`toSrgbGamut` and `toP3Gamut` reduce chroma at fixed lightness and hue by
+default. Lightness-driven measurements, like contrast regions on a plane, stay
+put when the gamut changes.
+
+<Callout tone="note">
+  The full concept page covers the driver's dual state, the `activeGamut`
+  switch, and when to paint each value.
+</Callout>
