@@ -1,6 +1,7 @@
 import { clamp, normalizeHue, simplifyPolyline } from '../utils/index.js';
 import {
   adaptiveMaxErrorProbe,
+  ADAPTIVE_PROBE_FRACTIONS,
   buildAxisAnchors,
   MIN_SEGMENT_LENGTH,
 } from '../sampling/adaptive1d.js';
@@ -101,21 +102,36 @@ function resolveAdaptiveMaxDepth(options: AdaptiveSamplingOptions): number {
 }
 
 /**
- * Estimated point count of an `'adaptive'` {@link gamutBoundaryPath}, for
- * scheduler work budgets. Calibrated on sRGB and Display P3 paths at 24
- * hues: about 17 points at the default tolerance, with the refined points
- * growing roughly as `(defaultTolerance / tolerance) ** 0.75` (13 points at
- * 4x coarser, 28 and 59 at 4x and 16x finer), and never more than
- * `maxDepth` subdivisions allow.
+ * Estimated `maxChromaAt` searches of an `'adaptive'`
+ * {@link gamutBoundaryPath}, for scheduler work budgets (the same unit as a
+ * uniform path's `steps`).
+ *
+ * Each anchor costs one search. Every segment the refinement visits below
+ * `maxDepth` runs {@link adaptiveMaxErrorProbe}, which costs one search per
+ * probe fraction (3), whether or not it then splits. Splitting `R` times
+ * visits `segments + 2R` segments, so the work is about
+ * `anchors + 3 * (segments + 2R)` while the path only gains `R` points.
+ *
+ * `R` is calibrated on sRGB and Display P3 paths at 24 hues: about 6 at the
+ * default tolerance, growing roughly as `(defaultTolerance / tolerance) **
+ * 0.75`. That gives about 78 searches at the default tolerance (17 points)
+ * and 300+ at 16x finer (59 points). A shallow `maxDepth` caps the visited
+ * segments at `segments * (2 ** maxDepth - 1)`.
  */
-export function estimateAdaptiveBoundaryPointCount(
+export function estimateAdaptiveBoundarySearches(
   options: AdaptiveSamplingOptions,
 ): number {
   const tol = resolveAdaptiveTolerance(options);
   const maxDepth = resolveAdaptiveMaxDepth(options);
+  const segments = ADAPTIVE_ANCHOR_COUNT - 1;
   const refined = 6 * (DEFAULT_ADAPTIVE_TOLERANCE / tol) ** 0.75;
-  const maxRefined = (ADAPTIVE_ANCHOR_COUNT - 1) * (2 ** maxDepth - 1);
-  return Math.round(ADAPTIVE_ANCHOR_COUNT + Math.min(refined, maxRefined));
+  const probedSegments = Math.min(
+    segments + 2 * refined,
+    segments * (2 ** maxDepth - 1),
+  );
+  return Math.round(
+    ADAPTIVE_ANCHOR_COUNT + ADAPTIVE_PROBE_FRACTIONS.length * probedSegments,
+  );
 }
 
 function gamutBoundaryPathAdaptive(

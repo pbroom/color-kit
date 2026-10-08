@@ -291,7 +291,7 @@ describe('scheduler golden telemetry keys', () => {
   );
 });
 
-describe('scheduler budgets follow the traced point counts', () => {
+describe('scheduler budgets follow the traced work', () => {
   const plane = definePlane({ fixed: { h: 250 } });
   const red = fromHex('#ff0000');
   const blue = fromHex('#0000ff');
@@ -335,7 +335,7 @@ describe('scheduler budgets follow the traced point counts', () => {
     ).toBe(2);
   });
 
-  it('estimates adaptive sampling from its tolerance instead of steps', () => {
+  it('estimates adaptive sampling as probe searches instead of steps', () => {
     for (const adaptiveTolerance of [undefined, 0.004, 0.00025, 0.0000625]) {
       for (const kind of ['gamutBoundary', 'chromaBand'] as const) {
         const query = {
@@ -347,11 +347,13 @@ describe('scheduler budgets follow the traced point counts', () => {
         const budget = getPlaneQuerySpec(kind).budget(query);
         const points = pointCount(query);
         expect(budget).toBeLessThan(500);
-        expect(budget).toBeGreaterThan(points * 0.5);
-        expect(budget).toBeLessThan(points * 2);
+        // Three probe searches per visited segment: work outgrows points.
+        expect(budget).toBeGreaterThan(points * 3);
+        expect(budget).toBeLessThan(points * 7);
       }
     }
-    // A shallow depth caps the estimate even at a tiny tolerance.
+    // A shallow depth caps the estimate even at a tiny tolerance: 11
+    // anchors plus three probes on each of the 10 depth-0 segments.
     expect(
       getPlaneQuerySpec('gamutBoundary').budget({
         kind: 'gamutBoundary',
@@ -359,7 +361,62 @@ describe('scheduler budgets follow the traced point counts', () => {
         adaptiveTolerance: 1e-9,
         adaptiveMaxDepth: 1,
       }),
-    ).toBe(21);
+    ).toBe(41);
+  });
+
+  it('buckets adaptive queries by their search work', () => {
+    const lc: PlaneDefinition = {
+      model: 'oklch',
+      x: { channel: 'l', range: [0, 1] },
+      y: { channel: 'c', range: [0, 0.4] },
+      fixed: { h: 250 },
+    };
+    const cases: Array<{ query: PlaneQuery; budget: number; bucket: string }> =
+      [
+        {
+          query: { kind: 'gamutBoundary', samplingMode: 'adaptive' },
+          budget: 77,
+          bucket: 'sm',
+        },
+        {
+          query: {
+            kind: 'chromaBand',
+            requestedChroma: 0.1,
+            samplingMode: 'adaptive',
+          },
+          budget: 77,
+          bucket: 'sm',
+        },
+        {
+          query: {
+            kind: 'gamutBoundary',
+            samplingMode: 'adaptive',
+            adaptiveTolerance: 0.0000625,
+          },
+          budget: 329,
+          bucket: 'md',
+        },
+        {
+          query: {
+            kind: 'chromaBand',
+            requestedChroma: 0.1,
+            samplingMode: 'adaptive',
+            adaptiveTolerance: 0.0000625,
+          },
+          budget: 329,
+          bucket: 'md',
+        },
+      ];
+    for (const { query, budget, bucket } of cases) {
+      expect(getPlaneQuerySpec(query.kind).budget(query)).toBe(budget);
+      const response = createPlaneComputeScheduler().run({
+        plane: lc,
+        queries: [query],
+      });
+      expect(response.schedule?.bucketKey).toBe(
+        `${query.kind}|gamutRegion:none|contrast:none|priority:idle|quality:medium|profile:balanced|budget:${bucket}`,
+      );
+    }
   });
 });
 
