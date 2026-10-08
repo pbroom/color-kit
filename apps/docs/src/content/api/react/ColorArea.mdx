@@ -1,0 +1,23 @@
+## Edge cases
+
+- **Give it a size.** The area renders a plain `div` with no dimensions of
+  its own; children such as `ColorPlane` fill it. A zero-height area renders
+  nothing to drag.
+- **Axes must differ.** Both axes on the same channel throw outside
+  production builds. Production builds warn once and swap the y axis to
+  another channel instead. Y values increase upward.
+- **One thumb.** A `<Thumb>` child (found through nested elements) or the
+  `thumb` prop replaces the default thumb; the prop wins when both are
+  present. More than one throws outside production builds and is reduced to
+  the first with a warning in production. Use the `thumb` prop when the
+  thumb is wrapped in your own component, memoized, or comes from another
+  module, since the area cannot see a `<Thumb>` inside another component's
+  render. `showDefaultThumb={false}` renders none.
+- **Provider or props.** Without a `<Color>` ancestor the area needs both
+  `requested` and `onChangeRequested`; with neither it throws. The props win
+  over a provider when both are present.
+- **Disabling mid-drag.** Setting `disabled` while a drag is in progress
+  cancels it and drops the pending update, so the value cannot change after
+  the area is disabled.
+- **Clicks focus the thumb.** Pointer down moves focus to the thumb, so
+  arrow keys continue from where the pointer left off.

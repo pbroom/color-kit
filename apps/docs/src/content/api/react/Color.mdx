@@ -1,0 +1,21 @@
+## Edge cases
+
+- **The provider does not re-render.** `<Color>` passes a stable store
+  through context and never re-renders its children on a color change. Each
+  primitive subscribes to the slice it reads. Reading the context with
+  `useContext(ColorContext)` gives that stable store and the setters, not
+  live fields; use [`useColorContext`](/api/react/useColorContext) for a live
+  snapshot or [`useColorStoreSelector`](/api/react/useColorStoreSelector) for
+  one field.
+- **Controlled updates compose.** With `state` and `onChange`, `onChange`
+  fires synchronously inside each setter call, once per effective update and
+  never for a no-op. Several setter calls in one event build on each other
+  even before your new `state` arrives. After React re-renders, the next
+  update starts from the `state` you passed, so an update you chose to drop
+  is not carried forward.
+- **`defaultColor` is read once.** Changing it after mount has no effect, as
+  with any uncontrolled input; pass `state` to drive the color from outside,
+  or remount with a `key`.
+- **Defaults.** Without `defaultColor` the color is
+  `oklch(0.6 0.2 250)`; the active gamut defaults to `'display-p3'` and the
+  view to `'oklch'`.
