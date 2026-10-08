@@ -26,7 +26,7 @@ export function isColorStringInputValueValid(value: string): boolean {
   return parseColorStringInputValue(value) !== null;
 }
 
-const OKLCH_FUNCTION = /^oklch\((.*)\)$/;
+const OKLCH_FUNCTION = /^oklch\(([\s\S]*)\)$/;
 
 /**
  * True when `input` is an `oklch()` string whose hue component is stated

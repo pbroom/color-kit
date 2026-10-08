@@ -124,6 +124,27 @@ describe('setColorRequested with achromatic input', () => {
     });
   });
 
+  it.each(['\n', '\r', '\r\n', '\t', '\f'])(
+    'keeps explicit hues and carries over none with %j whitespace',
+    (whitespace) => {
+      for (const [hue, expected] of [
+        ['200', 200],
+        ['0', 0],
+        ['0.5turn', 180],
+        ['none', 250],
+      ] as const) {
+        const css = `oklch(${whitespace}0.5${whitespace}0${whitespace}${hue}${whitespace}/${whitespace}50%${whitespace})`;
+        expect(hasExplicitOklchHue(css)).toBe(hue !== 'none');
+        expect(setFromCss(BLUE, css)).toEqual({
+          l: 0.5,
+          c: 0,
+          h: expected,
+          alpha: 0.5,
+        });
+      }
+    },
+  );
+
   it('carries the hue for black and white strings', () => {
     expect(setFromCss(BLUE, '#000').h).toBe(250);
     expect(setFromCss(BLUE, '#fff').h).toBe(250);
