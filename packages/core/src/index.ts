@@ -207,6 +207,7 @@ export {
   gamutBoundaryPath,
   chromaBand,
 } from './gamut/index.js';
+export { assertGamutTarget } from './gamut/target.js';
 export type {
   GamutTarget,
   GamutMapMethod,

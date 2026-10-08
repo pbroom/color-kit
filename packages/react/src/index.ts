@@ -79,20 +79,13 @@ export { ColorArea } from './color-area.js';
 export type { ColorAreaProps } from './color-area.js';
 export { Thumb } from './thumb.js';
 export type { ThumbProps } from './thumb.js';
-export {
-  ColorPlane,
-  BENCHMARK_SELECTED_COLOR_PLANE_RENDERER,
-} from './color-plane.js';
+export { ColorPlane } from './color-plane.js';
 export type {
   ColorPlaneEdgeBehavior,
   ColorPlaneProps,
   ColorPlaneRenderer,
   ColorPlaneSource,
 } from './color-plane.js';
-export {
-  COLOR_PLANE_FRAGMENT_SHADER_SOURCE,
-  COLOR_PLANE_VERTEX_SHADER_SOURCE,
-} from './color-plane-shaders.js';
 export { OutOfGamutLayer } from './out-of-gamut-layer.js';
 export type { OutOfGamutLayerProps } from './out-of-gamut-layer.js';
 export { Layer } from './layer.js';
