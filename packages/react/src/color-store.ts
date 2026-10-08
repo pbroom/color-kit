@@ -1,7 +1,6 @@
 import {
   useCallback,
   useInsertionEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -100,13 +99,11 @@ export function useLatestSnapshot<T>(committed: T): LatestSnapshot<T> {
   const [committedToken, setCommittedToken] = useState(0);
 
   // Insertion effects run for the whole tree before any layout effect, so a
-  // descendant that updates from its own layout effect already reads this
-  // render's `committed` (a layout effect here would run after the child's).
+  // descendant that updates from its own layout effect already sees this
+  // commit: the current `committed`, and no pending write that this commit
+  // closed (a layout effect here would run after the child's).
   useInsertionEffect(() => {
     committedRef.current = committed;
-  }, [committed]);
-
-  useLayoutEffect(() => {
     const pending = pendingRef.current;
     if (
       pending &&
