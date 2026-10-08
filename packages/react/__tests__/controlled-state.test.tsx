@@ -102,6 +102,56 @@ function LayoutEffectParent(props: {
   );
 }
 
+function RejectingColorParent(props: {
+  onChange: (event: ColorUpdateEvent) => void;
+  onReady: (value: UseColorReturn) => void;
+}) {
+  const [state] = useState(createInitialColorState);
+  const [trigger, setTrigger] = useState(false);
+  const color = useColor({
+    state,
+    onChange: (event) => {
+      props.onChange(event);
+      setTrigger(true);
+    },
+  });
+  props.onReady(color);
+  return <LayoutEffectSetter trigger={trigger} setChannel={color.setChannel} />;
+}
+
+function MultiLayoutEffectSetter(props: {
+  trigger: boolean;
+  setChannel: UseMultiColorReturn['setChannel'];
+}) {
+  const { trigger, setChannel } = props;
+  const fired = useRef(false);
+  useLayoutEffect(() => {
+    if (!trigger || fired.current) return;
+    fired.current = true;
+    setChannel('base', 'h', 90);
+  }, [trigger, setChannel]);
+  return null;
+}
+
+function RejectingMultiParent(props: {
+  onChange: (event: MultiColorUpdateEvent) => void;
+  onReady: (value: UseMultiColorReturn) => void;
+}) {
+  const [state] = useState(createInitialMultiState);
+  const [trigger, setTrigger] = useState(false);
+  const multi = useMultiColor({
+    state,
+    onChange: (event) => {
+      props.onChange(event);
+      setTrigger(true);
+    },
+  });
+  props.onReady(multi);
+  return (
+    <MultiLayoutEffectSetter trigger={trigger} setChannel={multi.setChannel} />
+  );
+}
+
 function MultiProbe(props: {
   mode: Mode;
   onReady: (value: UseMultiColorReturn) => void;
@@ -382,6 +432,56 @@ describe('useColor update semantics', () => {
     const second = get();
     expect(second.requested).toBe(first.requested);
     expect(second.rgb).toBe(first.rgb);
+  });
+});
+
+describe('rejected updates and descendant layout effects', () => {
+  // The parent rejects l = 0.9 (keeps its state); on that commit a
+  // descendant's layout effect sets h = 90, which must start from the
+  // state the parent kept, not from the rejected pending update.
+  it('useColor: does not compose onto a rejected update', () => {
+    const events: ColorUpdateEvent[] = [];
+    let api: UseColorReturn | null = null;
+    render(
+      <RejectingColorParent
+        onChange={(event) => events.push(event)}
+        onReady={(value) => {
+          api = value;
+        }}
+      />,
+    );
+
+    act(() => {
+      api?.setChannel('l', 0.9);
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[0].next.requested.l).toBe(0.9);
+    expect(events[1].next.requested).toMatchObject({ l: INITIAL.l, h: 90 });
+  });
+
+  it('useMultiColor: does not compose onto a rejected update', () => {
+    const events: MultiColorUpdateEvent[] = [];
+    let api: UseMultiColorReturn | null = null;
+    render(
+      <RejectingMultiParent
+        onChange={(event) => events.push(event)}
+        onReady={(value) => {
+          api = value;
+        }}
+      />,
+    );
+
+    act(() => {
+      api?.setChannel('base', 'l', 0.9);
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[0].next.colors.base.requested.l).toBe(0.9);
+    expect(events[1].next.colors.base.requested).toMatchObject({
+      l: INITIAL.l,
+      h: 90,
+    });
   });
 });
 
