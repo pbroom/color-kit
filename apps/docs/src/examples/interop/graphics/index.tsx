@@ -1,7 +1,13 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { CodeBlock } from '@/components/code-block';
 import { DeferredMount } from '@/components/deferred-mount';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Callout } from '@/components/ui/callout';
+import { CodeBlock } from '@/components/ui/code-block';
+
+function Skeleton({ height }: { height: number }) {
+  return (
+    <div className="demo-skeleton" style={{ height }} aria-hidden="true" />
+  );
+}
 
 const LinearMixDemoImpl = lazy(() => import('./linear-mix-demo.js'));
 const MixIntoDemoImpl = lazy(() => import('./mix-into-demo.js'));
@@ -14,12 +20,7 @@ function Lazy({
   minHeight: number;
   children: ReactNode;
 }) {
-  const fallback = (
-    <Skeleton
-      className="not-prose my-6 w-full rounded-xl"
-      style={{ height: minHeight }}
-    />
-  );
+  const fallback = <Skeleton height={minHeight} />;
   return (
     <DeferredMount minHeight={minHeight} fallback={fallback}>
       <Suspense fallback={fallback}>{children}</Suspense>
@@ -54,20 +55,22 @@ export function WebglGradientDemo() {
 // The demos' color-kit logic lives in these files; the page shows them
 // verbatim so the visible code is the code that runs.
 const SOURCES = {
-  'linear-mix.ts': () => import('./linear-mix.ts?raw'),
-  'mix-into-loop.ts': () => import('./mix-into-loop.ts?raw'),
-  'webgl-gradient.ts': () => import('./webgl-gradient.ts?raw'),
+  'linear-mix.ts': () => import('./linear-mix.ts?highlighted'),
+  'mix-into-loop.ts': () => import('./mix-into-loop.ts?highlighted'),
+  'webgl-gradient.ts': () => import('./webgl-gradient.ts?highlighted'),
 } as const;
 
 export type DemoSourceFile = keyof typeof SOURCES;
 
 function DemoSourceLoader({ file }: { file: DemoSourceFile }) {
-  const [source, setSource] = useState<string | null>(null);
+  const [source, setSource] = useState<{ html: string; code: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
-    void SOURCES[file]().then(({ default: text }) => {
-      if (!cancelled) setSource(text.replace(/\r\n/g, '\n').trimEnd());
+    void SOURCES[file]().then(({ default: html, code }) => {
+      if (!cancelled) setSource({ html, code });
     });
     return () => {
       cancelled = true;
@@ -75,11 +78,9 @@ function DemoSourceLoader({ file }: { file: DemoSourceFile }) {
   }, [file]);
 
   if (source == null) {
-    return <Skeleton className="not-prose my-6 h-40 w-full rounded-lg" />;
+    return <Skeleton height={160} />;
   }
-  return (
-    <CodeBlock code={source} language="ts" label={`Demo source: ${file}`} />
-  );
+  return <CodeBlock html={source.html} code={source.code} filename={file} />;
 }
 
 export function Recommendation({
@@ -90,10 +91,9 @@ export function Recommendation({
   children: ReactNode;
 }) {
   return (
-    <aside className="my-6 rounded-lg border border-l-4 border-emerald-600/30 border-l-emerald-600 bg-emerald-600/5 px-4 py-1 text-sm">
-      <p className="font-semibold">Recommendation: {verdict}</p>
+    <Callout tone="tip" title={`Recommendation: ${verdict}`}>
       {children}
-    </aside>
+    </Callout>
   );
 }
 

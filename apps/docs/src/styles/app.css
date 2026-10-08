@@ -1,0 +1,38 @@
+/*
+ * Docs styles. Tokens come from the generated `tokens.css`; Tailwind is only
+ * a layout utility layer over them (no default palette, fonts or shadows).
+ */
+@layer theme, base, components, utilities;
+
+@import './tokens.css';
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --spacing: 4px;
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 60rem;
+  --breakpoint-xl: 80rem;
+}
+
+/* Semantic aliases so utility classes can only reach tokens. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--bg-subtle);
+  --color-muted: var(--bg-subtle);
+  --color-muted-foreground: var(--fg-3);
+  --color-accent: var(--bg-hover);
+  --color-border: var(--line);
+  --radius-sm: 4px;
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
+}
+
+@import './base.css' layer(base);
+@import './shell.css' layer(components);
+@import './prose.css' layer(components);
+@import './components.css' layer(components);

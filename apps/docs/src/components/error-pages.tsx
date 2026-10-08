@@ -1,12 +1,9 @@
 import { Component, type ReactNode } from 'react';
-import { AlertTriangle, ArrowLeft, Home } from 'lucide-react';
-import { Link, useLocation } from 'react-router';
-import { ThemeSwitcher } from './theme-switcher.js';
-import { Button } from './ui/button.js';
+import { useLocation } from 'react-router';
+import { PrefetchLink } from './prefetch-link';
 
 interface ErrorPageContentProps {
   status?: string;
-  eyebrow?: string;
   title: string;
   description: string;
   primaryAction?: string;
@@ -15,18 +12,8 @@ interface ErrorPageContentProps {
   secondaryLink?: string;
 }
 
-interface RouteErrorBoundaryProps {
-  children: ReactNode;
-  resetKey: string;
-}
-
-interface RouteErrorBoundaryState {
-  error?: Error;
-}
-
 export function ErrorPageContent({
   status,
-  eyebrow = 'Error',
   title,
   description,
   primaryAction = 'Go home',
@@ -35,72 +22,42 @@ export function ErrorPageContent({
   secondaryLink,
 }: ErrorPageContentProps) {
   return (
-    <section className="mx-auto flex min-h-[55vh] w-full max-w-2xl flex-col justify-center py-16 text-center">
-      <div className="mx-auto mb-6 flex size-12 items-center justify-center rounded-2xl border border-border/70 bg-background/75 text-muted-foreground shadow-sm">
-        <AlertTriangle aria-hidden="true" className="size-5" />
-      </div>
-      <div className="mb-3 flex items-center justify-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
-        {status ? <span>{status}</span> : null}
-        {status ? <span aria-hidden="true">/</span> : null}
-        <span>{eyebrow}</span>
-      </div>
-      <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-        {title}
-      </h1>
-      <p className="mx-auto mt-4 max-w-lg text-pretty text-sm leading-6 text-muted-foreground md:text-base">
-        {description}
-      </p>
-      <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <Button asChild>
-          <Link to={primaryLink}>
-            <Home aria-hidden="true" className="size-4" />
-            {primaryAction}
-          </Link>
-        </Button>
+    <section className="error-page">
+      {status ? <p className="error-page__status">{status}</p> : null}
+      <h1 className="error-page__title">{title}</h1>
+      <p className="error-page__description">{description}</p>
+      <p className="error-page__actions">
+        <PrefetchLink className="button" data-variant="solid" to={primaryLink}>
+          {primaryAction}
+        </PrefetchLink>
         {secondaryAction && secondaryLink ? (
-          <Button asChild variant="outline">
-            <Link to={secondaryLink}>
-              <ArrowLeft aria-hidden="true" className="size-4" />
-              {secondaryAction}
-            </Link>
-          </Button>
+          <PrefetchLink className="button" to={secondaryLink}>
+            {secondaryAction}
+          </PrefetchLink>
         ) : null}
-      </div>
+      </p>
     </section>
   );
 }
 
-export function StandaloneErrorPage(props: ErrorPageContentProps) {
-  return (
-    <div className="ck-shell-bg min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 w-full max-w-[1560px] items-center justify-between gap-4 px-4">
-          <Link to="/" className="docs-brand">
-            <span className="docs-brand-dot" />
-            Color Kit
-          </Link>
-          <ThemeSwitcher />
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-[1560px] px-4">
-        <ErrorPageContent {...props} />
-      </main>
-    </div>
-  );
+interface BoundaryProps {
+  children: ReactNode;
+  resetKey: string;
 }
 
-class AppRouteErrorBoundary extends Component<
-  RouteErrorBoundaryProps,
-  RouteErrorBoundaryState
-> {
-  state: RouteErrorBoundaryState = {};
+interface BoundaryState {
+  error?: Error;
+}
 
-  static getDerivedStateFromError(error: Error): RouteErrorBoundaryState {
+class AppRouteErrorBoundary extends Component<BoundaryProps, BoundaryState> {
+  state: BoundaryState = {};
+
+  static getDerivedStateFromError(error: Error): BoundaryState {
     return { error };
   }
 
-  componentDidUpdate(previousProps: RouteErrorBoundaryProps) {
-    if (this.state.error && previousProps.resetKey !== this.props.resetKey) {
+  componentDidUpdate(previous: BoundaryProps) {
+    if (this.state.error && previous.resetKey !== this.props.resetKey) {
       this.setState({ error: undefined });
     }
   }
@@ -108,26 +65,22 @@ class AppRouteErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <StandaloneErrorPage
-          status="500"
-          eyebrow="Route error"
-          title="Something went wrong"
-          description="The docs app hit an unexpected rendering error. Try another page or return home."
-          primaryAction="Go home"
-          primaryLink="/"
-          secondaryAction="Open docs"
-          secondaryLink="/docs/introduction"
+        <ErrorPageContent
+          status="Error"
+          title="This page failed to render"
+          description="Something in this page threw while rendering. Other pages still work; try another route or reload."
+          secondaryAction="API reference"
+          secondaryLink="/api"
         />
       );
     }
-
     return this.props.children;
   }
 }
 
+/** Contains a route's render error to the content area; resets on navigation. */
 export function RouteErrorBoundary({ children }: { children: ReactNode }) {
   const location = useLocation();
-
   return (
     <AppRouteErrorBoundary resetKey={location.pathname}>
       {children}

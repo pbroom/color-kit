@@ -1,0 +1,365 @@
+/* ---------- CodeBlock ---------- */
+
+.code-block {
+  margin-inline: 0;
+  position: relative;
+  overflow: hidden;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+}
+
+.code-block__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border-bottom: var(--hairline) solid var(--line);
+}
+
+.code-block__name {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.code-block__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 26px;
+  min-width: 26px;
+  justify-content: center;
+  padding: 0 var(--space-1);
+  border-radius: 4px;
+  color: var(--fg-4);
+  font-size: 12px;
+  transition:
+    background-color var(--duration-1) var(--ease-out),
+    color var(--duration-1) var(--ease-out);
+}
+
+.code-block__copy:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.code-block__copied:empty {
+  display: none;
+}
+
+.code-block__body pre {
+  margin: 0;
+  overflow-x: auto;
+  padding: var(--space-4);
+  background: transparent !important;
+  color: var(--shiki-foreground);
+  font-size: var(--text-1);
+  line-height: var(--leading-code);
+  tab-size: 2;
+}
+
+.code-block__body pre:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Syntax is ink weight, not hue: keywords and declarations carry weight. */
+.code-block__body [style*='--shiki-token-keyword'],
+.code-block__body [style*='--shiki-token-function'] {
+  font-weight: 560;
+}
+
+/* Without a filename there is no tab; Copy floats in the corner. */
+.code-block[data-bare] {
+  position: relative;
+}
+
+.code-block[data-bare] .code-block__bar {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  height: auto;
+  padding: 0;
+  border: 0;
+}
+
+.code-block[data-bare] pre {
+  padding-right: var(--space-12);
+}
+
+/* ---------- InstallLine ---------- */
+
+.install-line {
+  overflow: hidden;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+}
+
+.install-line__managers {
+  display: flex;
+  gap: 2px;
+  padding: var(--space-1);
+  border-bottom: var(--hairline) solid var(--line);
+}
+
+.install-line__manager {
+  height: 24px;
+  padding: 0 var(--space-2);
+  border-radius: 4px;
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition:
+    background-color var(--duration-1) var(--ease-out),
+    color var(--duration-1) var(--ease-out);
+}
+
+.install-line__manager:hover {
+  color: var(--fg);
+}
+
+.install-line__manager[aria-pressed='true'] {
+  background: var(--bg-active);
+  color: var(--fg);
+}
+
+.install-line__command {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-1) var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-1);
+}
+
+.install-line__command code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.install-line__prompt {
+  color: var(--fg-4);
+  user-select: none;
+}
+
+/* ---------- Callout ---------- */
+
+.callout {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--radius);
+  font-size: var(--text-2);
+}
+
+.callout[data-tone='warning'],
+.callout[data-tone='caution'] {
+  border-color: var(--control);
+  background: var(--bg-subtle);
+}
+
+.callout__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-1);
+  color: var(--fg);
+  font-size: var(--text-1);
+  font-weight: 600;
+}
+
+.callout__body > * + * {
+  margin-top: var(--space-3);
+}
+
+/* ---------- Swatch & GamutBadge ---------- */
+
+.swatch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-inline: 0;
+}
+
+.swatch__chip {
+  display: flex;
+  width: 112px;
+  height: 56px;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 var(--hairline) var(--line);
+}
+
+.swatch__half {
+  flex: 1;
+}
+
+.swatch:not([data-split]) .swatch__half + .swatch__half {
+  display: none;
+}
+
+.swatch__caption {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-1);
+}
+
+.swatch__label {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.swatch__value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.swatch__key {
+  min-width: 10ch;
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.swatch__value code {
+  color: var(--fg);
+  font-size: 12px;
+}
+
+.gamut-badge {
+  display: inline-block;
+  padding: 0 5px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.gamut-badge[data-status='out-of-p3'],
+.gamut-badge[data-status='mapped'] {
+  border-style: dashed;
+}
+
+/* ---------- Example ---------- */
+
+.example {
+  overflow: hidden;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+}
+
+.example__live {
+  padding: var(--space-6);
+}
+
+.example__source {
+  border: 0;
+  border-top: var(--hairline) solid var(--line);
+  border-radius: 0;
+}
+
+/* ---------- Signature & params ---------- */
+
+.signature {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.signature__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.signature__kind {
+  padding: 0 5px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.signature__kind[data-deprecated] {
+  border-style: dashed;
+}
+
+.signature__source {
+  margin-left: auto;
+  color: var(--fg-3);
+  font-size: var(--text-1);
+}
+
+.signature__label {
+  margin-right: var(--space-2);
+  color: var(--fg-4);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.params {
+  border-top: var(--hairline) solid var(--line);
+}
+
+.params__row {
+  padding: var(--space-3) 0;
+  border-bottom: var(--hairline) solid var(--line);
+}
+
+.params__row dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-1);
+}
+
+.params__name {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.params__type,
+.params__default {
+  color: var(--fg-3);
+}
+
+.params__row dd {
+  margin: var(--space-1) 0 0;
+}
+
+/* ---------- Demos (moved graphics demos) ---------- */
+
+.demo-frame {
+  padding: var(--space-4);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+}
+
+.demo-frame__label {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-4);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.demo-skeleton {
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+}

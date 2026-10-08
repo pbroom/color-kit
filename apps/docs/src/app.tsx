@@ -1,115 +1,97 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router';
-import {
-  ErrorPageContent,
-  RouteErrorBoundary,
-  StandaloneErrorPage,
-} from './components/error-pages.js';
-import { ThemeProvider } from './components/theme-context.js';
+import { Suspense, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router';
+import { RouteErrorBoundary } from './components/error-pages';
+import { PageOutline } from './components/shell/page-outline';
+import { RouteSkeleton, RouteView } from './components/shell/route-view';
+import { SiteFooter } from './components/shell/site-footer';
+import { SiteHeader } from './components/shell/site-header';
+import { SiteNav } from './components/shell/site-nav';
+import { documentTitle, matchRoute, type SiteRoute } from './site/routes';
+import { useThemeSync } from './site/theme';
 
-const HomePage = lazy(() =>
-  import('./routes/index.js').then((module) => ({
-    default: module.HomePage,
-  })),
-);
-const DocsLayout = lazy(() =>
-  import('./components/docs-layout.js').then((module) => ({
-    default: module.DocsLayout,
-  })),
-);
-const DocsPage = lazy(() =>
-  import('./routes/docs.js').then((module) => ({
-    default: module.DocsPage,
-  })),
-);
-const ComponentDocRoute = lazy(() =>
-  import('./routes/component-doc.js').then((module) => ({
-    default: module.ComponentDocRoute,
-  })),
-);
+/**
+ * After client-side navigation: scroll to the top (or the hash target) and
+ * move focus to `<main>` so keyboard and screen-reader users start at the new
+ * content. Skipped on the initial load, where the browser owns both.
+ */
+function useNavigationFocus(pathname: string, hash: string) {
+  const previous = useRef<string | null>(null);
+  useEffect(() => {
+    if (previous.current === null) {
+      previous.current = pathname;
+      return;
+    }
+    if (previous.current === pathname) {
+      return;
+    }
+    previous.current = pathname;
+    const target = hash ? document.getElementById(hash.slice(1)) : null;
+    if (target) {
+      target.scrollIntoView();
+    } else {
+      window.scrollTo(0, 0);
+    }
+    document.getElementById('main')?.focus({ preventScroll: true });
+  }, [pathname, hash]);
+}
 
-function RouteFallback() {
-  return <div className="ck-shell-bg min-h-screen" />;
+function DocsLayout({ route }: { route: SiteRoute }) {
+  const articleRef = useRef<HTMLElement>(null);
+  const indexable = route.kind !== 'not-found';
+  return (
+    <div className="docs-layout">
+      <div className="docs-layout__nav">
+        <SiteNav currentPath={route.path} />
+      </div>
+      <main id="main" tabIndex={-1} className="docs-layout__main">
+        <article
+          ref={articleRef}
+          className="doc"
+          data-kind={route.kind}
+          data-pagefind-body={indexable ? '' : undefined}
+        >
+          <Suspense fallback={<RouteSkeleton />}>
+            <RouteView route={route} />
+          </Suspense>
+        </article>
+      </main>
+      <PageOutline articleRef={articleRef} pathname={route.path} />
+    </div>
+  );
 }
 
 export function App() {
+  const { pathname, hash } = useLocation();
+  const route = matchRoute(pathname);
+  useThemeSync();
+  useNavigationFocus(pathname, hash);
+  useEffect(() => {
+    document.title = documentTitle(route);
+  }, [route]);
+
   return (
-    <ThemeProvider>
+    <>
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+      <SiteHeader currentPath={route.path} />
       <RouteErrorBoundary>
-        <Routes>
-          <Route
-            index
-            element={
-              <Suspense fallback={<RouteFallback />}>
-                <HomePage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="docs"
-            element={
-              <Suspense fallback={<RouteFallback />}>
-                <DocsLayout />
-              </Suspense>
-            }
+        {route.kind === 'home' ? (
+          <main
+            id="main"
+            tabIndex={-1}
+            className="home-main"
+            data-pagefind-body=""
           >
-            <Route
-              path="components/:slug"
-              element={
-                <Suspense fallback={<RouteFallback />}>
-                  <ComponentDocRoute />
-                </Suspense>
-              }
-            />
-            <Route
-              path=":slug"
-              element={
-                <Suspense fallback={<RouteFallback />}>
-                  <DocsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path=":category/:slug"
-              element={
-                <Suspense fallback={<RouteFallback />}>
-                  <DocsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="*"
-              element={
-                <ErrorPageContent
-                  status="404"
-                  eyebrow="Not found"
-                  title="That docs page does not exist"
-                  description="The documentation route you opened is not in the docs registry. Check the URL or start from the docs introduction."
-                  primaryAction="Open docs"
-                  primaryLink="/docs/introduction"
-                  secondaryAction="Go home"
-                  secondaryLink="/"
-                />
-              }
-            />
-          </Route>
-          <Route
-            path="*"
-            element={
-              <StandaloneErrorPage
-                status="404"
-                eyebrow="Not found"
-                title="This page does not exist"
-                description="The page you opened is not part of Color Kit docs. You can head home or jump into the documentation."
-                primaryAction="Go home"
-                primaryLink="/"
-                secondaryAction="Open docs"
-                secondaryLink="/docs/introduction"
-              />
-            }
-          />
-        </Routes>
+            <Suspense fallback={<RouteSkeleton />}>
+              <RouteView route={route} />
+            </Suspense>
+          </main>
+        ) : (
+          <DocsLayout route={route} />
+        )}
       </RouteErrorBoundary>
-    </ThemeProvider>
+      <SiteFooter />
+    </>
   );
 }
