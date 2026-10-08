@@ -1,6 +1,6 @@
 import { PassThrough } from 'node:stream';
 import { prerenderToNodeStream } from 'react-dom/static';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { renderApp } from '../entry-server';
 import { matchRoute, navigation, notFoundRoute, routes } from './routes';
 
@@ -75,7 +75,19 @@ describe('route registry', () => {
   });
 });
 
-describe('prerender smoke', () => {
+/**
+ * The first render of a route kind pulls in its module graph (MDX compile,
+ * content frame, API data) through Vite's transform pipeline. That cold
+ * start takes seconds locally and more on CI runners, so warm every route
+ * module once up front and give the suite a budget sized for a cold runner.
+ */
+const COLD_START_TIMEOUT_MS = 30_000;
+
+describe('prerender smoke', { timeout: COLD_START_TIMEOUT_MS }, () => {
+  beforeAll(async () => {
+    await Promise.all([...routes, notFoundRoute].map((route) => route.load()));
+  }, COLD_START_TIMEOUT_MS);
+
   it.each([...routes, notFoundRoute].map((route) => [route.path, route]))(
     '%s renders one <h1> with its landmarks',
     async (path) => {
