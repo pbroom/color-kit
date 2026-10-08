@@ -111,8 +111,11 @@ export default function LinearMixDemo() {
                       <span>
                         <code data-testid="midpoint-hex">{stats.hex}</code>
                         {stats.inSrgb ? null : (
-                          <span className="block text-[10px] text-amber-600 dark:text-amber-400">
-                            out of sRGB
+                          <span
+                            className="gamut-badge mt-1 block w-fit"
+                            data-status="out-of-p3"
+                          >
+                            outside sRGB
                           </span>
                         )}
                       </span>

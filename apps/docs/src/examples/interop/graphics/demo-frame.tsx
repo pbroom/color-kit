@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react';
 
+/**
+ * A demo's label and body. Demos render inside `<Example>`, which draws the
+ * frame, so this adds no border of its own.
+ */
 export function DemoFrame({
   label,
   children,
@@ -8,8 +12,8 @@ export function DemoFrame({
   children: ReactNode;
 }) {
   return (
-    <div className="demo-frame">
-      <p className="demo-frame__label">{label}</p>
+    <div className="example-demo">
+      <p className="example-demo__label">{label}</p>
       {children}
     </div>
   );
