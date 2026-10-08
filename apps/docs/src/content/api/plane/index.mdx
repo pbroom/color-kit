@@ -1,0 +1,49 @@
+`color-kit/plane` turns color questions into geometry. A plane fixes every
+channel of a color model but two and maps those two to normalized `x` and
+`y`. Queries against it return points and paths you can draw, hit-test or
+cache. It powers `ColorArea` overlays, but nothing in it depends on a UI.
+
+## Domains
+
+- **Definition and mapping.** [`definePlane`](/api/plane/definePlane) and
+  [`definePlaneFromColor`](/api/plane/definePlaneFromColor) resolve axes,
+  ranges and fixed channels for `oklch`, `oklab`, `rgb`, `hsl`, `hsv`, `hct`
+  or `display-p3`. [`planeToColor`](/api/plane/planeToColor) and
+  [`colorToPlane`](/api/plane/colorToPlane) project between the two.
+- **Queries.** [`sense`](/api/plane/sense) binds `gamutRegion`,
+  `gamutBoundary`, `contrastRegion`, `contrastBoundary`, `chromaBand`,
+  `fallbackPoint` and `gradient` to a plane;
+  [`runPlaneQuery`](/api/plane/runPlaneQuery) and
+  [`runPlaneQueries`](/api/plane/runPlaneQueries) take the same queries as
+  data.
+- **Output and caching.** [`toSvgPath`](/api/plane/toSvgPath) and
+  [`toSvgCompoundPath`](/api/plane/toSvgCompoundPath) write SVG path data;
+  [`PlaneQueryCache`](/api/plane/PlaneQueryCache) memoizes results.
+- **Regions.** [`containsPoint`](/api/plane/containsPoint) and
+  [`nearestPointOnPath`](/api/plane/nearestPointOnPath) test geometry;
+  [`unionRegions`](/api/plane/unionRegions),
+  [`intersectRegions`](/api/plane/intersectRegions) and
+  [`differenceRegions`](/api/plane/differenceRegions) combine regions on a
+  raster, so their edges are approximate; transforms move regions within and
+  between planes.
+- **Tracing.** [`inspectPlaneQuery`](/api/plane/inspectPlaneQuery) returns a
+  result with the solver's trace.
+
+```ts title="hit-test.ts"
+import { parse } from 'color-kit';
+import {
+  colorToPlane,
+  containsPoint,
+  definePlane,
+  sense,
+} from 'color-kit/plane';
+
+const plane = definePlane({ fixed: { h: 290 } }); // OKLCH lightness × chroma
+const srgb = sense(plane).gamutRegion({ gamut: 'srgb' });
+const brand = parse('oklch(0.62 0.24 290)');
+
+colorToPlane(plane, brand); // → { x: 0.62, y: ≈ 0.4 }
+containsPoint(srgb.visibleRegion, colorToPlane(plane, brand)); // → false
+```
+
+See [Planes and queries](/concepts/planes-and-queries) for the model.

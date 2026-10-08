@@ -1,0 +1,77 @@
+---
+title: Accessible, contrast-aware palettes
+navTitle: Contrast-aware palettes
+description: Build lightness ramps whose contrast you can predict, and use contrast regions to see which steps work as text on which background.
+order: 30
+---
+
+import ContrastPaletteDemo from '@/examples/guides/contrast-palette-demo.tsx';
+import paletteSource, {
+  code as paletteCode,
+} from '@/examples/guides/contrast-palette.ts?highlighted';
+
+## Ramp in lightness, map by chroma
+
+Contrast is set by luminance, and in OKLCH luminance closely tracks
+lightness. A ramp that varies only `l` at a fixed hue and chroma therefore
+orders its steps by contrast. [`lightnessScale`](/api/core/lightnessScale) builds one,
+copying chroma, hue and alpha from the base color.
+
+The extremes of such a ramp leave the gamut: a near-white blue cannot keep
+chroma `0.16`. Map every step with [`toSrgbGamut`](/api/core/toSrgbGamut).
+Its default method lowers chroma only, so each step keeps the lightness, and
+roughly the contrast, the ramp gave it. The `'css'` method would move
+lightness and break that ordering (see
+[Requested vs displayed](/concepts/requested-vs-displayed)).
+
+```ts title="ramp.ts"
+import { contrastRatio, lightnessScale, parse, toSrgbGamut } from 'color-kit';
+
+const white = parse('#fff');
+const ramp = lightnessScale(parse('oklch(0.6 0.15 250)'), 5, [0.2, 0.9]).map(
+  (step) => toSrgbGamut(step),
+);
+ramp.map((step) => contrastRatio(step, white).toFixed(2));
+// → ['18.11', '10.23', '4.85', '2.43', '1.34']
+```
+
+## Read pass/fail off the plane
+
+Checking each step with [`contrastRatio`](/api/core/contrastRatio) tells you
+which steps pass. A contrast region tells you why, and where the edge is
+for every chroma at once: the plane's `contrastRegion` query returns the
+contour of the area that meets a level against a reference.
+Against white, everything darker than the contour passes; against black,
+everything lighter. A step inside a region passes the matching check exactly,
+because the region solver and `contrastRatio` measure the same displayed
+luminance (see [Contrast](/concepts/contrast#regions-agree-with-checks)).
+
+Some consequences you can see in the example below:
+
+- **Text on both.** AA against white needs relative luminance at most
+  0.1833; AA against black needs at least 0.175. The two edges nearly touch,
+  and most ramps have no step between them.
+- **Mapped steps sit on the gamut edge.** Where the ramp's chroma does not
+  fit, the step lands on the sRGB boundary at its own lightness instead of at
+  the ramp's chroma.
+- **APCA.** Pass `metric: 'apca'` with an `apcaPreset` (`'body'`,
+  `'large-text'` or `'ui'`) to draw APCA regions instead; `apcaPolarity` and
+  `apcaRole` choose the direction.
+
+In React, [`ContrastRegionLayer`](/api/react/ContrastRegionLayer) draws the
+same region over a `ColorArea`, so a picker can show the passing area live.
+
+## The palette
+
+Nine steps at one hue and chroma. Each dot is a step on the hue's
+lightness-by-chroma plane. The solid line is the AA edge against white, the
+dashed line the edge against black. Below, `W` and `B` are each step's ratio
+against white and black.
+
+<Example
+  of={ContrastPaletteDemo}
+  source={paletteSource}
+  code={paletteCode}
+  filename="contrast-palette.ts"
+  minHeight={380}
+/>

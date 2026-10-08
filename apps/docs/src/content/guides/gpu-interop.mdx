@@ -1,0 +1,113 @@
+---
+title: GPU and three.js interop
+navTitle: GPU and three.js
+description: Write exact, unclamped floats in a renderer's color space, one color at a time or packed into one typed array.
+order: 40
+---
+
+import PackInspector from '@/examples/guides/pack-inspector.tsx';
+import inspectorSource, {
+  code as inspectorCode,
+} from '@/examples/guides/pack-inspector.tsx?highlighted';
+
+## Floats, not strings
+
+Renderers take color as flat floats in a known space, usually linear sRGB: a
+three.js `Color` or `BufferAttribute`, a WebGL `uniform3fv`, a WebGPU storage
+buffer. A CSS string is the wrong bridge. `toCss` and `toRgb` quantize to 8
+bits and clip each channel to sRGB, which bands smooth ramps and shifts the
+hue of wide-gamut colors. `color-kit/interop` writes the exact values
+instead.
+
+## One color
+
+`to<Space>Array(color, out?, offset?, options?)` writes three channels;
+`to<Space>Array4` adds alpha as a fourth, matching `vec3` and `vec4`. Spaces
+are `linearSrgb`, `srgb`, `linearP3`, `display-p3`, `oklab` and `oklch`.
+`from<Space>Array(array, offset?)` reads them back. Pass a typed array as
+`out` and nothing is allocated.
+
+```ts title="one.ts"
+import { parse, toSrgbGamut } from 'color-kit';
+import { toLinearSrgbArray } from 'color-kit/interop';
+
+const green = parse('oklch(0.7 0.25 150)'); // outside sRGB
+toLinearSrgbArray(green); // → ≈ [-0.0937, 0.5598, 0.0385]
+toLinearSrgbArray(toSrgbGamut(green)); // → ≈ [0.0000484, 0.5137, 0.0970]
+```
+
+Output is unclamped, which HDR and linear-light pipelines expect; the
+negative red above is the real color. `{ clamp: true }` clips RGB channels to
+`[0, 1]`, which shifts hue and lightness. To fit a gamut and keep the hue,
+compose a mapping instead, as on the second line.
+
+## Many colors
+
+[`packColors`](/api/interop/packColors) writes a list into one
+`Float32Array` (or your own array), with `alpha`, `stride` and `offset`
+options for interleaved layouts. [`unpackColors`](/api/interop/unpackColors)
+reads it back. Float32 storage rounds each channel to single precision, which
+is well below anything visible; pass a `Float64Array` as `out` when you need
+doubles.
+
+## three.js
+
+`THREE.Color` stores linear sRGB (its default working color space is
+`'srgb-linear'`), so linear floats go straight in, exact and unclamped:
+
+```ts title="three.ts"
+import * as THREE from 'three';
+import {
+  fromLinearSrgbArray,
+  packColors,
+  toLinearSrgbArray,
+} from 'color-kit/interop';
+
+material.color.fromArray(toLinearSrgbArray(color));
+const back = fromLinearSrgbArray(material.color.toArray());
+
+// Per-vertex colors: one buffer for the whole mesh.
+geometry.setAttribute(
+  'color',
+  new THREE.BufferAttribute(packColors(colors, 'linearSrgb'), 3),
+);
+```
+
+`material.color.setStyle(toCss(color))` still works, but goes through an
+8-bit, clipped sRGB string.
+
+## WebGL and WebGPU
+
+```ts title="gpu.ts"
+import { packColors, toLinearSrgbArray } from 'color-kit/interop';
+
+// WebGL: reuse one scratch array per uniform.
+const scratch = new Float32Array(3);
+gl.uniform3fv(location, toLinearSrgbArray(color, scratch));
+
+// WebGPU: array<vec4f> has a 16-byte stride, so pack four floats per color.
+device.queue.writeBuffer(
+  buffer,
+  0,
+  packColors(colors, 'linearSrgb', undefined, { alpha: true }),
+);
+```
+
+A WGSL `array<vec3f>` also has a 16-byte stride; pack it with `stride: 4`. For
+shaders that redo the conversion math, the root package exports the CSS
+Color 4 matrices: [`OKLAB_TO_LMS`](/api/core/OKLAB_TO_LMS),
+[`LMS_TO_LINEAR_SRGB`](/api/core/LMS_TO_LINEAR_SRGB) and
+[`LINEAR_SRGB_TO_LINEAR_P3`](/api/core/LINEAR_SRGB_TO_LINEAR_P3).
+
+## Try it
+
+Three colors packed in each space: pure red, a green outside sRGB, and a
+half-transparent blue. Switch to **mapped to sRGB** to see the green's
+negative channel disappear without clipping.
+
+<Example
+  of={PackInspector}
+  source={inspectorSource}
+  code={inspectorCode}
+  filename="pack-inspector.tsx"
+/>

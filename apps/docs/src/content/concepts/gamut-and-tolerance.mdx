@@ -1,0 +1,85 @@
+---
+title: Gamut and tolerance
+description: How color-kit decides whether a display can show a color, how much floating-point slack it allows, and why the identifier is 'display-p3'.
+order: 40
+---
+
+import GamutProbe from '@/examples/guides/gamut-probe.tsx';
+import exampleSource, {
+  code as exampleCode,
+} from '@/examples/guides/gamut-probe.tsx?highlighted';
+
+## Two gamuts
+
+Every gamut option takes a [`GamutTarget`](/api/core/GamutTarget):
+`'srgb'` or `'display-p3'`. Display P3 contains sRGB and reaches further,
+most visibly in greens and reds: sRGB chroma peaks around `0.32`, P3 around
+`0.37`. A color can fit P3 and not sRGB.
+
+```ts title="gamuts.ts"
+import { inP3Gamut, inSrgbGamut, parse } from 'color-kit';
+
+const green = parse('oklch(0.75 0.22 150)');
+inSrgbGamut(green); // → false
+inP3Gamut(green); // → true
+```
+
+## Membership reads unclamped channels
+
+[`inSrgbGamut`](/api/core/inSrgbGamut) converts OKLCH to linear sRGB without
+clamping and checks each channel against `[0, 1]`.
+[`inP3Gamut`](/api/core/inP3Gamut) does the same in linear Display P3. A
+check that clamped first, the way [`toRgb`](/api/core/toRgb) must, would call
+every color in gamut. For loops that already hold linear channels,
+[`isLinearRgbInGamut`](/api/core/isLinearRgbInGamut) is the same test without
+the conversion.
+
+## `GAMUT_EPSILON`
+
+Matrix math leaves near-zero negative channels on colors that are really in
+gamut, so the check allows a little slack:
+[`GAMUT_EPSILON`](/api/core/GAMUT_EPSILON) is `0.000075` on the
+gamma-encoded channels, the CSS Color 4 and colorjs.io convention. In linear
+light that is [`GAMUT_LINEAR_MIN`](/api/core/GAMUT_LINEAR_MIN) to
+[`GAMUT_LINEAR_MAX`](/api/core/GAMUT_LINEAR_MAX), about `-5.805e-6` to
+`1.0001706`.
+
+The slack is applied in encoded space on purpose. The same `0.000075` in
+linear light is about `0.00097` encoded near black, wide enough to accept
+`oklch(0.028 0.066 131)`, whose true boundary chroma is near `0.008`.
+
+These bounds are shared: `inSrgbGamut`, `inP3Gamut`, the plane
+`gamutRegion` field and the contrast-region solver all classify a boundary
+color the same way. Gamut mapping uses the slack only to return colors that
+are already in gamut unchanged; while reducing chroma it accepts only colors
+strictly inside.
+
+## `'display-p3'`, never `'p3'`
+
+Display P3 is spelled `'display-p3'` everywhere: gamut options, the plane
+model, `mix` spaces, `toCss` formats, the interop array spaces, and the
+driver's and React's active gamut. The old `'p3'` spelling was removed
+without an alias, and passing it throws a `TypeError` that says so.
+
+```ts title="p3.ts"
+import { maxChromaAt } from 'color-kit';
+
+maxChromaAt(0.5, 30, { gamut: 'p3' });
+// TypeError: maxChromaAt(): unknown gamut "p3". 'p3' is not supported; use 'display-p3'
+```
+
+Validate your own options the same way with
+[`assertGamutTarget`](/api/plane/assertGamutTarget).
+
+## Try it
+
+Push chroma past each edge and watch a linear channel leave `[0, 1]`. The max
+chroma rows come from [`maxChromaAt`](/api/core/maxChromaAt) at the same
+lightness and hue.
+
+<Example
+  of={GamutProbe}
+  source={exampleSource}
+  code={exampleCode}
+  filename="gamut-probe.tsx"
+/>

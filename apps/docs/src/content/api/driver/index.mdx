@@ -1,0 +1,44 @@
+`color-kit/driver` is the logic of a color picker without a view. It holds
+picker state as plain data, maps pointer and keyboard input to colors, and
+produces the strings a view paints. `color-kit/react` is built on it; a Vue,
+Svelte or web-component binding can be too.
+
+## Domains
+
+- **State.** [`createColorState`](/api/driver/createColorState) keeps the
+  requested color apart from its sRGB and Display P3 mappings. Reducers such
+  as [`setColorRequested`](/api/driver/setColorRequested) return the same
+  object for a no-op. The multi-color reducers
+  ([`createMultiColorModel`](/api/driver/createMultiColorModel) and friends)
+  manage named palettes.
+- **Area and slider geometry.** Pointer normalization, position-to-color and
+  color-to-thumb mappings for 2D areas and 1D sliders, plus area overlays
+  ([`getColorAreaGamutBoundaryPoints`](/api/driver/getColorAreaGamutBoundaryPoints),
+  [`getColorAreaContrastRegionPaths`](/api/driver/getColorAreaContrastRegionPaths)).
+- **Keyboard and ARIA.** Arrow, Page and Home/End models, and
+  `aria-valuetext` strings.
+- **Drag.** [`createPointerDragController`](/api/driver/createPointerDragController)
+  coalesces pointer moves to one commit per frame.
+- **Painting and text.** Slider gradients, swatch styles with an sRGB
+  fallback, and parsing and formatting for channel and string inputs.
+
+```ts title="state.ts"
+import { parse, toCss } from 'color-kit';
+import {
+  createColorState,
+  getColorAreaThumbPosition,
+  getColorAreaValueText,
+  resolveColorAreaAxes,
+} from 'color-kit/driver';
+
+const state = createColorState(parse('oklch(0.7 0.25 150)'));
+state.meta.outOfGamut; // → { srgb: true, p3: false }
+toCss(state.displayed.srgb, 'hex'); // → '#00be58'
+
+const axes = resolveColorAreaAxes(); // x: lightness, y: chroma
+getColorAreaThumbPosition(state.requested, axes); // → { x: 0.7, y: 0.375 }
+getColorAreaValueText(state.requested, axes); // → 'Lightness 70%, Chroma 0.25'
+```
+
+The guide [A headless color picker](/guides/headless-picker) builds a full
+picker from these pieces.
