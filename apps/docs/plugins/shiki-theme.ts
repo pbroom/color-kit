@@ -12,6 +12,7 @@ const VARIABLES = [
   'background',
   'token-keyword',
   'token-function',
+  'token-type',
   'token-constant',
   'token-parameter',
   'token-string',
@@ -66,18 +67,20 @@ export const cssVariablesTheme: ThemeRegistrationRaw = {
       settings: { foreground: placeholder['token-keyword'] },
     },
     {
+      scope: ['entity.name.function', 'support.function', 'meta.function-call'],
+      settings: { foreground: placeholder['token-function'] },
+    },
+    {
       scope: [
-        'entity.name.function',
-        'support.function',
-        'meta.function-call',
         'entity.name.type',
         'entity.name.class',
         'support.class',
+        'support.type',
         'entity.other.inherited-class',
         'entity.name.tag',
         'support.class.component',
       ],
-      settings: { foreground: placeholder['token-function'] },
+      settings: { foreground: placeholder['token-type'] },
     },
     {
       scope: [

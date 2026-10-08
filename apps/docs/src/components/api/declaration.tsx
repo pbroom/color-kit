@@ -396,7 +396,7 @@ function TokenView({ token }: { token: Token }) {
 export function Declaration({ symbol }: { symbol: ApiSymbol }) {
   const blocks = declarationLines(symbol);
   return (
-    <pre className="decl" tabIndex={0}>
+    <pre className="decl" data-kind={symbol.kind} tabIndex={0}>
       <code>
         {blocks.map((lines, blockIndex) => (
           <span key={blockIndex} className="decl__block">

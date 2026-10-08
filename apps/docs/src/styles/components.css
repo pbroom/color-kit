@@ -64,12 +64,6 @@
   outline-offset: -2px;
 }
 
-/* Syntax is ink weight, not hue: keywords and declarations carry weight. */
-.code-block__body [style*='--shiki-token-keyword'],
-.code-block__body [style*='--shiki-token-function'] {
-  font-weight: 560;
-}
-
 /* Without a filename there is no tab; Copy floats in the corner. */
 .code-block[data-bare] {
   position: relative;

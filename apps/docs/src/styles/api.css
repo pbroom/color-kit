@@ -174,16 +174,21 @@
 
 .tok-keyword {
   color: var(--shiki-token-keyword);
-  font-weight: 560;
 }
 
 .tok-decl {
-  color: var(--fg);
+  color: var(--shiki-token-function);
   font-weight: 640;
 }
 
+.decl[data-kind='class'] .tok-decl,
+.decl[data-kind='interface'] .tok-decl,
+.decl[data-kind='type'] .tok-decl {
+  color: var(--shiki-token-type);
+}
+
 .tok-name {
-  color: var(--fg-2);
+  color: var(--shiki-token-parameter);
 }
 
 a.tok-name {
@@ -212,7 +217,7 @@ a.tok-name:hover {
 }
 
 .tok-ref {
-  color: var(--fg);
+  color: var(--shiki-token-type);
 }
 
 .type-link {
