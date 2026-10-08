@@ -598,15 +598,18 @@ describe('ColorInput', () => {
     );
 
     rerender(
-      <ColorInput
-        model="oklch"
-        channel="c"
-        requested={parse('#ff0000')}
-        onChangeRequested={vi.fn()}
-        aria-labelledby="chroma-label"
-      />,
+      <>
+        <span id="chroma-label">Accent chroma</span>
+        <ColorInput
+          model="oklch"
+          channel="c"
+          requested={parse('#ff0000')}
+          onChangeRequested={vi.fn()}
+          aria-labelledby="chroma-label"
+        />
+      </>,
     );
-    const input = screen.getByRole('spinbutton');
+    const input = screen.getByRole('spinbutton', { name: 'Accent chroma' });
     expect(input.getAttribute('aria-labelledby')).toBe('chroma-label');
     expect(input.hasAttribute('aria-label')).toBe(false);
     expect(container.querySelectorAll('[aria-labelledby]')).toHaveLength(1);

@@ -112,13 +112,16 @@ describe('ColorStringInput', () => {
     );
 
     rerender(
-      <ColorStringInput
-        requested={parse('#ff0000')}
-        onChangeRequested={vi.fn()}
-        aria-labelledby="brand-label"
-      />,
+      <>
+        <span id="brand-label">Brand color</span>
+        <ColorStringInput
+          requested={parse('#ff0000')}
+          onChangeRequested={vi.fn()}
+          aria-labelledby="brand-label"
+        />
+      </>,
     );
-    const input = screen.getByRole('textbox');
+    const input = screen.getByRole('textbox', { name: 'Brand color' });
     expect(input.getAttribute('aria-labelledby')).toBe('brand-label');
     expect(input.hasAttribute('aria-label')).toBe(false);
     expect(container.querySelectorAll('[aria-labelledby]')).toHaveLength(1);
