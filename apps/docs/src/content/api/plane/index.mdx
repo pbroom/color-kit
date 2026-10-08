@@ -10,6 +10,8 @@ cache. It powers `ColorArea` overlays, but nothing in it depends on a UI.
   ranges and fixed channels for `oklch`, `oklab`, `rgb`, `hsl`, `hsv`, `hct`
   or `display-p3`. [`planeToColor`](/api/plane/planeToColor) and
   [`colorToPlane`](/api/plane/colorToPlane) project between the two.
+  [`planeHue`](/api/plane/planeHue) reports a plane's hue in OKLCH, converting
+  the fixed color on `hsl`, `hsv` and `hct` planes.
 - **Queries.** [`sense`](/api/plane/sense) binds `gamutRegion`,
   `gamutBoundary`, `contrastRegion`, `contrastBoundary`, `chromaBand`,
   `fallbackPoint` and `gradient` to a plane;
