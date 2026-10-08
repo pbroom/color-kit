@@ -4,6 +4,7 @@ import {
   allGroupIds,
   buildTree,
   DEFAULT_FILTER,
+  filterShowingEntry,
   defaultExpanded,
   layoutTree,
   ledgerRows,
@@ -143,5 +144,35 @@ describe('API map model', () => {
       reexports: 1,
       kinds: { function: 2, class: 1 },
     });
+  });
+});
+
+describe('filterShowingEntry', () => {
+  it('keeps a filter whose tree already shows the entry', () => {
+    const filter: MapFilter = { ...DEFAULT_FILTER, query: 'parse' };
+    expect(filterShowingEntry(ENTRIES, filter, 'core')).toBe(filter);
+  });
+
+  it('clears entry, name and kind filters that hide the entry', () => {
+    const other = ENTRIES.find((e) => e.slug !== 'core')!.slug;
+    for (const filter of [
+      { ...DEFAULT_FILTER, entry: other },
+      { ...DEFAULT_FILTER, query: 'zzz' },
+      {
+        ...DEFAULT_FILTER,
+        reexports: false,
+        query: 'definePlane',
+        entry: 'core',
+      },
+    ] satisfies MapFilter[]) {
+      const next = filterShowingEntry(ENTRIES, filter, 'core');
+      expect(next.entry).toBeNull();
+      expect(next.query).toBe('');
+      expect(next.kinds.size).toBe(0);
+      expect(next.reexports).toBe(filter.reexports);
+      expect(
+        buildTree(ENTRIES, next).children?.some((child) => child.id === 'core'),
+      ).toBe(true);
+    }
   });
 });
