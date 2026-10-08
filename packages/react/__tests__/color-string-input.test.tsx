@@ -83,4 +83,44 @@ describe('ColorStringInput', () => {
     expect(onChangeRequested).not.toHaveBeenCalled();
     expect(onInvalidCommit).toHaveBeenCalledWith('not-a-color');
   });
+
+  it('renders a consumer aria-label once, on the input only', () => {
+    const { container } = render(
+      <ColorStringInput
+        requested={parse('#ff0000')}
+        onChangeRequested={vi.fn()}
+        aria-label="Brand color"
+      />,
+    );
+
+    expect(container.querySelectorAll('[aria-label]')).toHaveLength(1);
+    expect(screen.getByRole('textbox').getAttribute('aria-label')).toBe(
+      'Brand color',
+    );
+    expect(screen.getByRole('textbox', { name: 'Brand color' })).toBeTruthy();
+  });
+
+  it('keeps the default label and forwards aria-labelledby to the input', () => {
+    const { container, rerender } = render(
+      <ColorStringInput
+        requested={parse('#ff0000')}
+        onChangeRequested={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('textbox').getAttribute('aria-label')).toBe(
+      'Color value',
+    );
+
+    rerender(
+      <ColorStringInput
+        requested={parse('#ff0000')}
+        onChangeRequested={vi.fn()}
+        aria-labelledby="brand-label"
+      />,
+    );
+    const input = screen.getByRole('textbox');
+    expect(input.getAttribute('aria-labelledby')).toBe('brand-label');
+    expect(input.hasAttribute('aria-label')).toBe(false);
+    expect(container.querySelectorAll('[aria-labelledby]')).toHaveLength(1);
+  });
 });

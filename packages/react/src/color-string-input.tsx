@@ -20,7 +20,10 @@ import {
 } from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
 
-/** Props for {@link ColorStringInput}; other attributes go to the wrapper `div`. */
+/**
+ * Props for {@link ColorStringInput}. `aria-label` and `aria-labelledby` go
+ * to the text `input`; other attributes go to the wrapper `div`.
+ */
 export interface ColorStringInputProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
@@ -49,7 +52,10 @@ export interface ColorStringInputProps extends Omit<
  * and reverts. An achromatic entry (a gray, black or white) keeps the
  * current hue unless it is an `oklch()` string with a hue other than
  * `none`. Renders a `div` (`data-color-string-input`, `data-format`,
- * `data-valid`, `data-editing`) around an unstyled text `input`.
+ * `data-valid`, `data-editing`) around an unstyled text `input`. The input
+ * is the only labelled element: it takes `aria-label` (default
+ * `'Color value'`) and `aria-labelledby`, which are not repeated on the
+ * wrapper.
  *
  * @throws {Error} When there is neither a `<Color>` ancestor nor both
  *   `requested` and `onChangeRequested`.
@@ -78,6 +84,8 @@ export const ColorStringInput = forwardRef<
     requested: requestedProp,
     onChangeRequested: onChangeRequestedProp,
     onInvalidCommit,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
     ...props
   },
   ref,
@@ -188,7 +196,11 @@ export const ColorStringInput = forwardRef<
       <input
         type="text"
         value={currentValue}
-        aria-label={props['aria-label'] ?? 'Color value'}
+        aria-label={
+          ariaLabel ??
+          (ariaLabelledBy === undefined ? 'Color value' : undefined)
+        }
+        aria-labelledby={ariaLabelledBy}
         spellCheck={false}
         autoComplete="off"
         onFocus={handleFocus}
