@@ -12,12 +12,36 @@ import type {
 import { withFiniteHue } from './shared.js';
 
 /**
- * Maps a color into the requested gamut and returns its projected plane point.
+ * Gamut-maps a color into the target gamut and returns where the mapped color
+ * lands on the plane.
  *
- * @param planeDefinition Plane definition used to project the mapped color.
- * @param query Fallback mapping input.
- * @param query.color Input color to map into gamut.
- * @param query.gamut Target gamut (`srgb` or `display-p3`).
+ * Uses the default mapping of {@link toSrgbGamut} / {@link toP3Gamut}
+ * (OKLCH chroma reduction). Useful for marking the in-gamut
+ * fallback of an out-of-gamut selection. A non-finite (powerless) hue on the
+ * input is treated as `0`. The point is clamped to the plane window.
+ *
+ * @param planeDefinition - Plane to project onto; a {@link Plane} or any
+ * {@link PlaneDefinition}.
+ * @param query - The `color` to map and the target `gamut`.
+ * @returns A new result with the gamut and the plane point, including the
+ * mapped color.
+ * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`.
+ * @see {@link sense} for the fluent form.
+ *
+ * @example
+ * ```ts
+ * import { parse, toHex } from 'color-kit';
+ * import { definePlane, getPlaneFallbackPoint } from 'color-kit/plane';
+ *
+ * const plane = definePlane({ fixed: { h: 264 } });
+ * const { point } = getPlaneFallbackPoint(plane, {
+ *   color: parse('oklch(0.7 0.3 264)'),
+ *   gamut: 'srgb',
+ * });
+ * point.x; // → 0.7
+ * point.y.toFixed(3); // → '0.609'
+ * toHex(point.color); // → '#6c9aff'
+ * ```
  */
 export function getPlaneFallbackPoint(
   planeDefinition: PlaneDefinition,

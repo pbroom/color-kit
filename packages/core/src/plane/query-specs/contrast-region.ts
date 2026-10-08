@@ -19,18 +19,44 @@ import {
 import { countPlanePaths, toPlaneBoundaryPoint } from './shared.js';
 
 /**
- * Computes one or more filled contrast regions projected into the target plane.
+ * Traces the contour lines that bound the colors of one hue meeting a
+ * contrast threshold against a reference color, projected onto the plane.
  *
- * Returns an empty path list when the plane is not a lightness/chroma pairing.
+ * Each side of the reference (darker and lighter) that has passing colors
+ * yields one line, sorted longest first. A line runs between the chroma axis,
+ * the gamut edge and `maxChroma`, and every point on it passes the threshold
+ * and is in the target gamut. Points carry OKLCH `l`/`c` and plane `x`/`y`;
+ * stroke the lines with {@link toSvgCompoundPath}.
  *
- * @param planeDefinition Plane definition used to project the result points.
- * @param query Contrast region configuration.
- * @param query.reference Reference color used for the contrast test.
- * @param query.hue Optional hue override; falls back to the plane's hue.
- * @param query.metric Contrast metric to evaluate (for example WCAG/APCA).
- * @param query.level Named threshold level for the selected metric.
- * @param query.threshold Explicit contrast threshold override.
- * @param query.gamut Optional gamut clamp for region search.
+ * Only OKLCH lightness × chroma planes produce geometry (see
+ * {@link usesLightnessAndChroma}); any other plane returns an empty list, after
+ * the same option validation.
+ *
+ * @param planeDefinition - Plane to project onto; a {@link Plane} or any
+ * {@link PlaneDefinition}.
+ * @param query - Contrast options: `reference` color, optional `hue`
+ * override, and the metric, threshold and sampling options of
+ * `ContrastRegionPathOptions` (WCAG `'AA'` against sRGB by default).
+ * @param trace - Internal trace hook; leave it out and use
+ * {@link inspectPlaneQuery} to capture a trace.
+ * @returns A new result with the resolved hue and contour lines.
+ * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`, or an
+ * option removed with an earlier solver (such as `lightnessSteps`) is set.
+ * @throws {Error} When the threshold or a sampling option is out of range.
+ * @see {@link sense} for the fluent form.
+ *
+ * @example
+ * ```ts
+ * import { parse } from 'color-kit';
+ * import { definePlane, getPlaneContrastRegion } from 'color-kit/plane';
+ *
+ * const plane = definePlane({ fixed: { h: 264 } });
+ * const { paths } = getPlaneContrastRegion(plane, {
+ *   reference: parse('#ffffff'),
+ *   metric: 'apca',
+ * });
+ * paths.map((path) => path.length); // → [43]
+ * ```
  */
 export function getPlaneContrastRegion(
   planeDefinition: PlaneDefinition,

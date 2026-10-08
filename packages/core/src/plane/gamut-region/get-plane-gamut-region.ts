@@ -37,6 +37,51 @@ import {
   simplifyPlanePaths,
 } from './viewport-geometry.js';
 
+/**
+ * Computes the in-gamut area of a plane: the visible region to fill and the
+ * gamut boundary lines to stroke.
+ *
+ * Works on every plane model and axis pair. The solver is chosen from the
+ * plane and gamut and reported as `solver`: `'domain-edge'` when the whole
+ * model domain is in gamut (RGB, HSL and HSV planes, Display P3 planes with a
+ * `'display-p3'` target), analytic solvers for OKLCH lightness × chroma
+ * (`'analytic-lc'`), OKLCH hue × chroma (`'analytic-hc'`) and HCT hue/tone ×
+ * chroma (`'analytic-hct'`, sRGB only), and an adaptive marching-squares
+ * contour of the gamut field (`'implicit-contour'`) for everything else.
+ *
+ * The result reports how the gamut relates to the plane window in
+ * `viewportRelation` (`'inside'`, `'outside'` or `'intersects'`), the gamut
+ * edge as polylines in `boundaryPaths`, and the fillable in-gamut area as
+ * closed outlines in `visibleRegion.paths`, all in normalized plane
+ * coordinates. The visible region is always clipped to the plane window;
+ * with `scope: 'full'`, `boundaryPaths` instead cover the whole channel
+ * domain, so they can extend outside `[0, 1]`. In-gamut membership follows
+ * {@link inSrgbGamut} / {@link inP3Gamut}.
+ *
+ * @param planeDefinition - Plane to analyze; a {@link Plane} or any
+ * {@link PlaneDefinition}.
+ * @param query - Region options; see {@link PlaneGamutRegionQuery}.
+ * @param trace - Internal trace hook; leave it out and use
+ * {@link inspectPlaneQuery} to capture a trace.
+ * @returns A new result with the gamut, scope, solver, viewport relation,
+ * boundary paths and visible region.
+ * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`
+ * (including the removed `'p3'`).
+ * @see {@link toSvgCompoundPath} to draw the region.
+ * @see {@link sense} for the fluent form.
+ *
+ * @example
+ * ```ts
+ * import { definePlane, getPlaneGamutRegion } from 'color-kit/plane';
+ *
+ * const region = getPlaneGamutRegion(definePlane({ fixed: { h: 264 } }));
+ * region.solver; // → 'analytic-lc'
+ * region.viewportRelation; // → 'intersects'
+ * region.visibleRegion.paths.length; // → 1
+ *
+ * getPlaneGamutRegion(definePlane({ model: 'rgb' })).viewportRelation; // → 'inside'
+ * ```
+ */
 export function getPlaneGamutRegion(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneGamutRegionQuery, 'kind'> = {},

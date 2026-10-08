@@ -2,7 +2,23 @@ import type { Rgb, Hsv } from '../types.js';
 import { normalizeHue } from '../utils/index.js';
 import { RGB_GRAY_DELTA } from './hsl.js';
 
-/** Convert sRGB (0-255, fractional values allowed) to HSV */
+/**
+ * Convert sRGB (`0-255`, fractional values allowed) to HSV/HSB (hue in
+ * degrees `[0, 360)`, saturation and value `0-100`). Grays get hue and
+ * saturation `0`.
+ *
+ * @param rgb - sRGB color
+ * @returns A new {@link Hsv}
+ * @see {@link hsvToRgb}
+ * @see {@link toHsv}
+ *
+ * @example
+ * ```ts
+ * import { rgbToHsv } from 'color-kit';
+ *
+ * rgbToHsv({ r: 255, g: 0, b: 0, alpha: 1 }); // → { h: 0, s: 100, v: 100, alpha: 1 }
+ * ```
+ */
 export function rgbToHsv(rgb: Rgb): Hsv {
   const r = rgb.r / 255;
   const g = rgb.g / 255;
@@ -93,7 +109,23 @@ export function hsvToRgbUnrounded(hsv: Hsv): Rgb {
   };
 }
 
-/** Convert HSV to sRGB (0-255, rounded to 8-bit channels) */
+/**
+ * Convert HSV/HSB (hue in degrees, saturation and value `0-100`) to 8-bit
+ * sRGB (`0-255`, each channel rounded to an integer). Any finite hue is
+ * accepted and wrapped.
+ *
+ * @param hsv - HSV color
+ * @returns A new {@link Rgb} with integer channels
+ * @see {@link rgbToHsv}
+ * @see {@link fromHsv}
+ *
+ * @example
+ * ```ts
+ * import { hsvToRgb } from 'color-kit';
+ *
+ * hsvToRgb({ h: 210, s: 50, v: 80, alpha: 1 }); // → { r: 102, g: 153, b: 204, alpha: 1 }
+ * ```
+ */
 export function hsvToRgb(hsv: Hsv): Rgb {
   const rgb = hsvToRgbUnrounded(hsv);
   return {

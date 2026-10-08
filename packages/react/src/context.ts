@@ -5,8 +5,33 @@ import { getActiveDisplayedColor, type ColorState } from '@color-kit/driver';
 import { useColorStoreSelector } from './color-store.js';
 import type { UseColorReturn } from './use-color.js';
 
+/** Value shared by a {@link Color} provider; the same shape {@link useColor} returns. */
 export type ColorContextValue = UseColorReturn;
 
+/**
+ * React context that a {@link Color} provider fills with its shared color
+ * state; `null` outside a provider.
+ *
+ * Prefer {@link useColorContext} to read it: the provider's value is not
+ * reactive (children subscribe to its `store` instead), so reading the
+ * context directly only gives a stable `store` and setters, not live
+ * color fields.
+ *
+ * @example
+ * ```tsx
+ * import { useContext } from 'react';
+ * import { ColorContext, useColorStoreSelector } from 'color-kit/react';
+ *
+ * function ActiveGamutBadge() {
+ *   const context = useContext(ColorContext);
+ *   const gamut = useColorStoreSelector(
+ *     context?.store ?? null,
+ *     (state) => state?.activeGamut ?? null,
+ *   );
+ *   return <span>{gamut ?? 'no provider'}</span>;
+ * }
+ * ```
+ */
 export const ColorContext = createContext<ColorContextValue | null>(null);
 
 function withStateSnapshot(
@@ -38,13 +63,39 @@ function withStateSnapshot(
 }
 
 /**
- * Access the nearest Color provider state.
+ * Returns the nearest {@link Color} provider's state as a live
+ * {@link UseColorReturn} snapshot (requested/displayed colors, conversions
+ * and setters).
  *
- * This hook intentionally subscribes to the complete ColorState because it
- * returns a complete UseColorReturn snapshot. Any state update may rerender
- * the consumer; component internals should prefer focused store selectors.
+ * This hook intentionally subscribes to the complete `ColorState` because it
+ * returns a complete snapshot: any state update rerenders the consumer.
+ * Components that only need a slice should use
+ * {@link useColorStoreSelector} on the context's `store` instead.
  *
- * Throws if used outside a Color.
+ * @returns The provider's color state and setters.
+ * @throws {Error} When called outside a `<Color>` provider.
+ * @see {@link useColor}
+ *
+ * @example
+ * ```tsx
+ * import { Color, useColorContext } from 'color-kit/react';
+ *
+ * function Swatch() {
+ *   const { displayedCss, setChannel } = useColorContext();
+ *   return (
+ *     <button
+ *       style={{ background: displayedCss() }}
+ *       onClick={() => setChannel('h', 30)}
+ *     />
+ *   );
+ * }
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <Swatch />
+ *   </Color>
+ * );
+ * ```
  */
 export function useColorContext(): ColorContextValue {
   const context = useContext(ColorContext);

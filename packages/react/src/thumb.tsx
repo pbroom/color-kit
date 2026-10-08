@@ -22,15 +22,20 @@ import { useColorAreaContext } from './color-area-context.js';
 import { useOptionalColorContext } from './context.js';
 import { useFocusVisible } from './use-focus-visible.js';
 
+/** Props for {@link Thumb}; other `div` attributes are forwarded. */
 export interface ThumbProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
 > {
-  /** Arrow-key step as a ratio of the axis range. @default 0.01 */
+  /**
+   * Arrow-key step as a ratio of the axis range.
+   * @defaultValue 0.01
+   */
   stepRatio?: number;
   /**
    * PageUp/PageDown (y axis) and Shift+Arrow step as a ratio of the axis
-   * range. @default 0.1
+   * range.
+   * @defaultValue 0.1
    */
   largeStepRatio?: number;
   /**
@@ -41,10 +46,13 @@ export interface ThumbProps extends Omit<
 }
 
 /**
- * The primary interactive selector for ColorArea.
+ * The focusable selector of a {@link ColorArea}, positioned at the requested
+ * color and painted with the displayed color.
  *
  * Thumb owns keyboard and focus semantics. Pointer interaction is handled by
- * the root ColorArea, which focuses the thumb on pointerdown.
+ * the root ColorArea, which focuses the thumb on pointerdown. A ColorArea
+ * renders a default Thumb unless you pass one as a child or via its `thumb`
+ * prop; it accepts only one. Must be rendered inside a ColorArea.
  *
  * Semantics: a single focusable `role="slider"` with
  * `aria-roledescription="2D slider"`. `aria-valuenow`/`min`/`max` describe the
@@ -54,6 +62,30 @@ export interface ThumbProps extends Omit<
  * Keyboard: Arrow keys step x/y by `stepRatio` (Shift: `largeStepRatio`),
  * PageUp/PageDown step y by `largeStepRatio`, Home/End jump x to its range
  * ends. Hue axes wrap around.
+ *
+ * Styling hooks: `data-color-area-thumb`, `data-focus-visible`,
+ * `data-disabled`, `data-out-of-gamut` (requested color outside the active
+ * gamut), `data-gamut`, and `data-x` / `data-y` (normalized position).
+ *
+ * @throws {Error} When rendered outside a `<ColorArea>`.
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorArea, ColorPlane, Thumb } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane />
+ *       <Thumb
+ *         aria-label="Lightness and chroma"
+ *         stepRatio={0.005}
+ *         style={{ width: 16, height: 16, borderRadius: 8, border: '2px solid #fff' }}
+ *       />
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export const Thumb = forwardRef<HTMLDivElement, ThumbProps>(function Thumb(
   {

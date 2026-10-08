@@ -51,56 +51,60 @@ function getSliderPositionInset(element: HTMLElement): number {
   return Number.isFinite(inset) ? inset : 0;
 }
 
+/** Props for {@link ColorSlider}; other `div` attributes are forwarded. */
 export interface ColorSliderProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
 > {
   /**
-   * Which color channel the slider controls.
+   * Which OKLCH channel of the requested color the slider controls (`l`,
+   * `c`, `h` or `alpha`).
    */
   channel: ColorSliderChannel;
   /**
-   * Value range for the channel.
+   * Value range for the channel; the first value maps to the start (left or
+   * bottom) of the rail.
    * Defaults: l=[0,1], c=[0,0.4], h=[0,360], alpha=[0,1]
    */
   range?: [number, number];
   /**
    * Slider orientation.
-   * @default 'horizontal'
+   * @defaultValue 'horizontal'
    */
   orientation?: ColorSliderOrientation;
-  /** Standalone requested color value (alternative to Color) */
+  /** Standalone requested color, used instead of a `<Color>` provider. */
   requested?: Color;
-  /** Standalone change handler (alternative to Color) */
+  /** Standalone change handler, used instead of a `<Color>` provider. */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /**
    * Skip pointer updates when the normalized delta is not larger than this.
-   * @default 0.0005
+   * @defaultValue 0.0005
    */
   dragEpsilon?: number;
   /**
    * Maximum pointer-driven update frequency while dragging (updates/second).
-   * @default 60
+   * @defaultValue 60
    */
   maxUpdateHz?: number;
   /**
    * Arrow-key step as a ratio of the range.
-   * @default 0.01
+   * @defaultValue 0.01
    */
   stepRatio?: number;
   /**
    * PageUp/PageDown and Shift+Arrow step as a ratio of the range.
-   * @default 0.1
+   * @defaultValue 0.1
    */
   largeStepRatio?: number;
   /**
    * Wrap keyboard steps around the range ends instead of clamping.
-   * @default true for `h`, false otherwise
+   * @defaultValue true for `h`, false otherwise
    */
   wrap?: boolean;
   /**
    * Disables pointer and keyboard interaction and removes the slider from the
    * tab order. Sets `aria-disabled` and `data-disabled`.
+   * @defaultValue false
    */
   disabled?: boolean;
   /**
@@ -111,10 +115,16 @@ export interface ColorSliderProps extends Omit<
 }
 
 /**
- * A 1D color slider for a single color channel.
+ * A 1D color slider for a single OKLCH channel of the requested color.
  *
- * Renders as a plain `<div>` with a draggable thumb (`<div>`).
- * Completely unstyled -- use data attributes and CSS to style it.
+ * Renders as a plain `<div role="slider">` with a positioned thumb
+ * (`<div>`), and reads and writes the nearest `<Color>` provider or the
+ * standalone `requested` / `onChangeRequested` props. Completely unstyled --
+ * use data attributes and CSS to style it (paint the rail yourself, e.g.
+ * with `getSliderGradientStyles` from `color-kit/driver`). The
+ * `--ck-slider-position-inset` CSS variable insets the thumb's travel from
+ * both rail ends. Children (e.g. {@link SliderMarker},
+ * {@link ChromaMarkers}) render inside the rail.
  *
  * Data attributes on the root:
  * - `[data-color-slider]` - always present
@@ -131,6 +141,22 @@ export interface ColorSliderProps extends Omit<
  * Data attributes on the thumb (first child):
  * - `[data-color-slider-thumb]` - always present
  * - `[data-value]` - normalized position (0-1)
+ *
+ * @throws {Error} When there is neither a `<Color>` ancestor nor both
+ *   `requested` and `onChangeRequested`.
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorSlider } from 'color-kit/react';
+ *
+ * export const Sliders = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorSlider channel="h" aria-label="Hue" style={{ height: 16 }} />
+ *     <ColorSlider channel="c" range={[0, 0.37]} style={{ height: 16 }} />
+ *     <ColorSlider channel="alpha" style={{ height: 16 }} />
+ *   </Color>
+ * );
+ * ```
  */
 export const ColorSlider = forwardRef<HTMLDivElement, ColorSliderProps>(
   function ColorSlider(

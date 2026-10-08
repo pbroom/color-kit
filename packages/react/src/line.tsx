@@ -1,10 +1,14 @@
 import { forwardRef, type SVGAttributes } from 'react';
 
+/** A {@link Line} vertex in normalized area coordinates (0-1 from the top-left). */
 export interface LinePoint {
+  /** Normalized x, from the left edge. */
   x: number;
+  /** Normalized y, from the top edge. */
   y: number;
 }
 
+/** Props for {@link Line}; other `svg` attributes are forwarded. */
 export interface LineProps extends Omit<
   SVGAttributes<SVGSVGElement>,
   'children' | 'points'
@@ -22,6 +26,7 @@ export interface LineProps extends Omit<
   cornerRadius?: number;
   /**
    * When true and cornerRadius is set, path is treated as closed and the closing vertex is rounded.
+   * @defaultValue false
    */
   closed?: boolean;
 }
@@ -173,7 +178,33 @@ export function pathWithRoundedCorners(
 }
 
 /**
- * Vector path primitive anchored to ColorArea normalized coordinates.
+ * SVG path overlay drawn in normalized area coordinates: x and y in [0,1]
+ * from the top-left corner, stretched to fill the container.
+ *
+ * Builds the path from `points` (straight segments, or rounded corners with
+ * `cornerRadius`) unless explicit `d` is given; `d` is in the `0 0 100 100`
+ * viewBox, which is stretched with `preserveAspectRatio="none"`. Without
+ * `d`, renders nothing for fewer than two points. Style the stroke through `pathProps`;
+ * `vectorEffect: 'non-scaling-stroke'` keeps stroke widths in CSS pixels.
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorArea, ColorPlane, Layer, Line } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane />
+ *       <Layer kind="overlay">
+ *         <Line
+ *           points={[{ x: 0, y: 1 }, { x: 0.5, y: 0.2 }, { x: 1, y: 1 }]}
+ *           pathProps={{ fill: 'none', stroke: '#fff', vectorEffect: 'non-scaling-stroke' }}
+ *         />
+ *       </Layer>
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export const Line = forwardRef<SVGSVGElement, LineProps>(function Line(
   {

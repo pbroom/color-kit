@@ -44,36 +44,42 @@ function isProductionEnvironment(): boolean {
   return maybeProcess?.env?.NODE_ENV === 'production';
 }
 
+/** Props for {@link ColorArea}; other `div` attributes are forwarded. */
 export interface ColorAreaProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
 > {
   /**
-   * Axis descriptors for the color plane.
-   * @default { x: { channel: 'l' }, y: { channel: 'c' } }
+   * OKLCH channel and value range for each axis. The two channels must
+   * differ (`l`, `c` or `h`); omitted ranges use the channel defaults
+   * (`l` [0, 1], `c` [0, 0.4], `h` [0, 360]). Y values increase upward.
+   * @defaultValue `{ x: { channel: 'l' }, y: { channel: 'c' } }`
    */
   axes?: ColorAreaAxes;
-  /** Standalone requested color (alternative to Color) */
+  /** Standalone requested color, used instead of a `<Color>` provider. */
   requested?: Color;
-  /** Standalone change handler (alternative to Color) */
+  /** Standalone change handler, used instead of a `<Color>` provider. */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /**
-   * Runtime quality/performance profile.
-   * @default 'auto'
+   * Runtime quality/performance profile. Except for `'quality'`, the area
+   * lowers its quality level (raster resolution and layer sampling) while
+   * pointer updates are slow and raises it again when they recover.
+   * @defaultValue 'auto'
    */
   performanceProfile?: ColorAreaPerformanceProfile;
   /**
    * Maximum pointer-driven update frequency while dragging (updates/second).
-   * @default 60
+   * @defaultValue 60
    */
   maxUpdateHz?: number;
   /**
    * Skip pointer updates when the normalized delta is not larger than this.
-   * @default 0.0005
+   * @defaultValue 0.0005
    */
   dragEpsilon?: number;
   /**
-   * Called after each committed pointer interaction frame.
+   * Called after each committed pointer interaction frame with timing and
+   * quality stats (for profiling).
    */
   onInteractionFrame?: (stats: ColorAreaInteractionFrameStats) => void;
   /**
@@ -86,12 +92,13 @@ export interface ColorAreaProps extends Omit<
   /**
    * Render the default thumb when no explicit `thumb` prop or `<Thumb />` child
    * is provided.
-   * @default true
+   * @defaultValue true
    */
   showDefaultThumb?: boolean;
   /**
    * Disables pointer and keyboard interaction. The thumb leaves the tab order
    * and gets `aria-disabled`; the root and thumb get `data-disabled`.
+   * @defaultValue false
    */
   disabled?: boolean;
 }
@@ -244,9 +251,55 @@ function pruneAllThumbs(children: ReactNode): ReactNode {
 }
 
 /**
- * A bounded, interactive 2D color UI plane host.
+ * Interactive 2D color picker surface that maps two OKLCH channels (by
+ * default lightness on x and chroma on y) to a rectangle.
  *
- * ColorArea owns geometry and pointer interaction. Child primitives render visuals and semantics.
+ * ColorArea owns geometry and pointer interaction: dragging anywhere sets
+ * the two axis channels of the requested color and keeps the third. Child
+ * primitives render visuals and semantics: {@link ColorPlane} rasterizes the
+ * color plane, layers such as {@link GamutBoundaryLayer} draw overlays, and
+ * a single {@link Thumb} (rendered by default) provides keyboard and screen
+ * reader access. Reads and writes the nearest `<Color>` provider, or
+ * the standalone `requested` / `onChangeRequested` props. Give it a size;
+ * it is otherwise unstyled.
+ *
+ * Styling hooks on the root: `data-color-area`, `data-dragging`,
+ * `data-disabled`, `data-performance-profile`, `data-quality-level`.
+ *
+ * @throws {Error} When there is neither a `<Color>` ancestor nor both
+ *   `requested` and `onChangeRequested`. Outside production builds, also
+ *   when both axes use the same channel or more than one thumb is supplied
+ *   (production builds fall back to distinct axes and a single thumb, with
+ *   a console warning).
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   Background,
+ *   Color,
+ *   ColorArea,
+ *   ColorPlane,
+ *   GamutBoundaryLayer,
+ *   Thumb,
+ * } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorArea
+ *       axes={{ x: { channel: 'l' }, y: { channel: 'c', range: [0, 0.37] } }}
+ *       style={{ width: 280, height: 200, borderRadius: 8 }}
+ *     >
+ *       <Background checkerboard />
+ *       <ColorPlane />
+ *       <GamutBoundaryLayer
+ *         gamut="srgb"
+ *         pathProps={{ stroke: '#fff', vectorEffect: 'non-scaling-stroke' }}
+ *       />
+ *       <Thumb style={{ width: 14, height: 14, borderRadius: 7, border: '2px solid #fff' }} />
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
   function ColorArea(

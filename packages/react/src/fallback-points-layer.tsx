@@ -6,17 +6,52 @@ import { useColorAreaContext } from './color-area-context.js';
 import { Layer, type LayerProps } from './layer.js';
 import { Point } from './point.js';
 
+/** Props for {@link FallbackPointsLayer}; other {@link LayerProps} are forwarded. */
 export interface FallbackPointsLayerProps extends LayerProps {
+  /**
+   * Show the sRGB fallback marker.
+   * @defaultValue true
+   */
   showSrgb?: boolean;
+  /**
+   * Show the Display P3 fallback marker.
+   * @defaultValue true
+   */
   showP3?: boolean;
+  /** Props for the sRGB marker `div` (its `style` is merged over the defaults). */
   srgbPointProps?: Omit<HTMLAttributes<HTMLDivElement>, 'onChange'>;
+  /** Props for the P3 marker `div` (its `style` is merged over the defaults). */
   p3PointProps?: Omit<HTMLAttributes<HTMLDivElement>, 'onChange'>;
+  /** Overrides the computed sRGB marker position (normalized, top-left origin) and color. */
   srgbPoint?: { x: number; y: number; color?: Color };
+  /** Overrides the computed P3 marker position (normalized, top-left origin) and color. */
   p3Point?: { x: number; y: number; color?: Color };
 }
 
 /**
- * Precomposed Layer wrapper that renders realized display-p3 and sRGB markers.
+ * Annotation {@link Layer} with two markers showing where the requested
+ * color lands after gamut mapping into sRGB and into Display P3.
+ *
+ * Each 10 px marker sits at the mapped color's position on the area and is
+ * filled with that color; for an in-gamut color both coincide with the
+ * thumb. The layer stacks just below the thumb by default. Must be rendered
+ * inside a {@link ColorArea}.
+ *
+ * @throws {Error} When rendered outside a `<ColorArea>`.
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorArea, ColorPlane, FallbackPointsLayer } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="oklch(0.7 0.3 150)">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane />
+ *       <FallbackPointsLayer showP3={false} />
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export function FallbackPointsLayer({
   showSrgb = true,

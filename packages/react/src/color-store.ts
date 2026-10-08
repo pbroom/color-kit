@@ -14,11 +14,39 @@ import type { ColorState } from '@color-kit/driver';
  * `useColorStoreSelector` so provider renders stay cheap.
  */
 export interface ColorStore {
+  /** Returns the current state. */
   get: () => ColorState;
+  /** Replaces the state and notifies listeners; a no-op when `next` is the current state object. */
   set: (next: ColorState) => void;
+  /** Registers a change listener and returns its unsubscribe function. */
   subscribe: (listener: () => void) => () => void;
 }
 
+/**
+ * Creates a minimal external store holding a `ColorState`.
+ *
+ * `set` compares by reference: passing the current state object does not
+ * notify. Listeners run synchronously in subscription order. This is the
+ * store {@link useColor} and {@link Color} use internally; create one
+ * yourself to share color state outside React or across roots.
+ *
+ * @param initial - The initial state, e.g. from `createColorState`.
+ * @returns A store with `get`, `set` and `subscribe`.
+ * @see {@link useColorStoreSelector}
+ *
+ * @example
+ * ```ts
+ * import { createColorStore } from 'color-kit/react';
+ * import { createColorState } from 'color-kit/driver';
+ * import { parse, toHex } from 'color-kit';
+ *
+ * const store = createColorStore(createColorState(parse('#3b82f6')));
+ * const unsubscribe = store.subscribe(() => console.log('changed'));
+ * store.set(createColorState(parse('#ff6600'))); // logs 'changed'
+ * toHex(store.get().requested); // → '#ff6600'
+ * unsubscribe();
+ * ```
+ */
 export function createColorStore(initial: ColorState): ColorStore {
   let state = initial;
   const listeners = new Set<() => void>();
@@ -46,11 +74,34 @@ export function createColorStore(initial: ColorState): ColorStore {
 const noopSubscribe = () => () => {};
 
 /**
- * Subscribes to a slice of a (possibly absent) color store.
+ * Subscribes a component to a slice of a (possibly absent) color store and
+ * returns the selected value.
  *
- * The selector must return a referentially stable value for an unchanged
- * state (primitives or sub-objects of the immutable ColorState), because
- * snapshots are compared with Object.is between renders.
+ * The component rerenders only when the selected value changes. The
+ * selector must return a referentially stable value for an unchanged state
+ * (primitives or sub-objects of the immutable `ColorState`), because
+ * snapshots are compared with `Object.is` between renders. With a `null`
+ * store the selector receives `null` and nothing is subscribed.
+ *
+ * @param store - The store to read, or `null` (e.g. outside a provider).
+ * @param selector - Maps the state (or `null`) to the slice to return.
+ * @returns The selected slice.
+ * @see {@link createColorStore}
+ *
+ * @example
+ * ```tsx
+ * import { useContext } from 'react';
+ * import { ColorContext, useColorStoreSelector } from 'color-kit/react';
+ *
+ * function HueLabel() {
+ *   const context = useContext(ColorContext);
+ *   const hue = useColorStoreSelector(
+ *     context?.store ?? null,
+ *     (state) => state?.requested.h ?? null,
+ *   );
+ *   return <span>{hue === null ? '–' : `${Math.round(hue)}°`}</span>;
+ * }
+ * ```
  */
 export function useColorStoreSelector<T>(
   store: ColorStore | null,

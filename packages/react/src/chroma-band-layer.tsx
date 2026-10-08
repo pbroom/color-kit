@@ -24,18 +24,53 @@ import {
 import type { LinePoint } from './line.js';
 import type { PlaneQueryWorkerResponse } from './workers/plane-query-client.js';
 
+/**
+ * How a {@link ChromaBandLayer} follows the requested chroma across
+ * lightness: `'closest'` keeps the requested chroma where it is in gamut
+ * and clamps to the boundary elsewhere; `'percentage'` keeps the requested
+ * chroma's fraction of the maximum in-gamut chroma at the requested
+ * lightness.
+ */
 export type ChromaBandLayerMode = 'closest' | 'percentage';
 
+/** Props for {@link ChromaBandLayer}; other {@link LayerProps} are forwarded. */
 export interface ChromaBandLayerProps extends LayerProps {
+  /**
+   * How the band follows the requested chroma across lightness.
+   * @defaultValue 'closest'
+   */
   mode?: ChromaBandLayerMode;
+  /**
+   * Gamut the band is kept inside.
+   * @defaultValue 'srgb'
+   */
   gamut?: GamutTarget;
+  /** Hue of the band in degrees. Defaults to the requested hue. */
   hue?: number;
+  /**
+   * Band samples at `high` quality; lower quality levels scale this down
+   * (minimum 8).
+   * @defaultValue 48
+   */
   steps?: number;
+  /**
+   * Sampling quality. `'auto'` follows the area's adaptive quality level.
+   * @defaultValue 'auto'
+   */
   quality?: ColorAreaLayerQuality;
   /** 'uniform' (default) or 'adaptive' band sampling */
   samplingMode?: 'uniform' | 'adaptive';
+  /**
+   * Adaptive-sampling error tolerance; derived from the area's pixel size
+   * when omitted. Only used with `samplingMode: 'adaptive'`.
+   */
   adaptiveTolerance?: number;
+  /**
+   * Adaptive-sampling maximum refinement depth; derived from the area's
+   * pixel size when omitted. Only used with `samplingMode: 'adaptive'`.
+   */
   adaptiveMaxDepth?: number;
+  /** Props for the band `<path>` (stroke, dash, etc.); `fill` defaults to `'none'`. */
   pathProps?: SVGAttributes<SVGPathElement>;
   /** Optional precomputed path points (for plane-driven overlays). */
   points?: LinePoint[];
@@ -53,7 +88,34 @@ function toLinePointsFromBand(result: PlaneChromaBandResult): LinePoint[] {
 }
 
 /**
- * Precomposed Layer wrapper for drawing an in-gamut chroma band path.
+ * Overlay {@link Layer} that draws the requested chroma as a path across
+ * lightness, kept inside the gamut (a tonal strip for the current hue).
+ *
+ * Draws only when the area's axes are lightness and chroma (in either
+ * order); other axis pairs render an empty layer. Computed synchronously
+ * while idle and in a shared Web Worker during drags (when workers are
+ * available). Must be rendered inside a {@link ColorArea}.
+ *
+ * @throws {Error} When rendered outside a `<ColorArea>`.
+ * @see {@link GamutBoundaryLayer}
+ *
+ * @example
+ * ```tsx
+ * import { ChromaBandLayer, Color, ColorArea, ColorPlane } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane />
+ *       <ChromaBandLayer
+ *         mode="percentage"
+ *         gamut="display-p3"
+ *         pathProps={{ stroke: '#fff', vectorEffect: 'non-scaling-stroke' }}
+ *       />
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export function ChromaBandLayer({
   mode = 'closest',

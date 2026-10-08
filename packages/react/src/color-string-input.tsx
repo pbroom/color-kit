@@ -20,28 +20,54 @@ import {
 } from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
 
+/** Props for {@link ColorStringInput}; other attributes go to the wrapper `div`. */
 export interface ColorStringInputProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
 > {
   /**
-   * Color format displayed in the input.
-   * @default 'hex'
+   * Color format displayed in the input. Committed text may use any format
+   * `parse` accepts.
+   * @defaultValue 'hex'
    */
   format?: ColorStringInputFormat;
-  /** Standalone requested color value (alternative to Color) */
+  /** Standalone requested color, used instead of a `<Color>` provider. */
   requested?: Color;
-  /** Standalone change handler (alternative to Color) */
+  /** Standalone change handler, used instead of a `<Color>` provider. */
   onChangeRequested?: (requested: Color, options?: SetRequestedOptions) => void;
   /** Called when invalid text is committed via Enter or blur. */
   onInvalidCommit?: (draft: string) => void;
 }
 
 /**
- * Legacy free-form color-string input for hex/rgb/hsl/oklch editing.
+ * Text input that shows the requested color as a CSS string and sets it
+ * from typed text.
  *
- * An achromatic entry (a gray, black or white) keeps the current hue unless
- * it is an `oklch()` string with a hue other than `none`.
+ * Shows the requested color in `format` while not focused. Text is
+ * committed on Enter or blur; Escape reverts. Valid text sets the requested
+ * color (interaction `'text-input'`), invalid text calls `onInvalidCommit`
+ * and reverts. An achromatic entry (a gray, black or white) keeps the
+ * current hue unless it is an `oklch()` string with a hue other than
+ * `none`. Renders a `div` (`data-color-string-input`, `data-format`,
+ * `data-valid`, `data-editing`) around an unstyled text `input`.
+ *
+ * @throws {Error} When there is neither a `<Color>` ancestor nor both
+ *   `requested` and `onChangeRequested`.
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorStringInput } from 'color-kit/react';
+ *
+ * export const Field = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorStringInput
+ *       format="oklch"
+ *       aria-label="Color"
+ *       onInvalidCommit={(draft) => console.warn(`Not a color: ${draft}`)}
+ *     />
+ *   </Color>
+ * );
+ * ```
  */
 export const ColorStringInput = forwardRef<
   HTMLDivElement,

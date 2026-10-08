@@ -13,6 +13,10 @@ interface ResolvedTraceOptions {
   includeScalarGrid: boolean;
 }
 
+/**
+ * Mutable state behind one query's trace: resolved options, the running
+ * summary, recorded stages and the start timestamp. Internal to the solvers.
+ */
 export interface InternalPlaneTraceContext {
   options: ResolvedTraceOptions;
   summary: PlaneQueryTraceSummary;
@@ -27,12 +31,16 @@ type TraceTimingKey =
     ? TimingKey & string
     : never;
 
+/** Returns a millisecond timestamp (`performance.now()` when available, else `Date.now()`). */
 export function traceNowMs(): number {
   return typeof performance === 'undefined' ? Date.now() : performance.now();
 }
 
 /**
  * Creates a mutable trace context for one query of the given kind.
+ *
+ * Resolves defaults: `level` `'stages'`, `maxStageEntries` 128 (clamped to
+ * `[8, 512]`), and `includeScalarGrid` on only at `'full'` level.
  */
 export function createTraceContext(
   queryKind: PlaneQueryKind,
@@ -68,24 +76,28 @@ export function createTraceContext(
   };
 }
 
+/** Returns whether stage records should be captured (`level` is not `'summary'`). */
 export function shouldTraceStages(
   trace: InternalPlaneTraceContext | null | undefined,
 ): trace is InternalPlaneTraceContext {
   return !!trace && trace.options.level !== 'summary';
 }
 
+/** Returns whether full-detail data such as marching-squares cell events should be captured. */
 export function shouldTraceFull(
   trace: InternalPlaneTraceContext | null | undefined,
 ): trace is InternalPlaneTraceContext {
   return !!trace && trace.options.level === 'full';
 }
 
+/** Returns whether sampled scalar-grid values should be captured. */
 export function shouldTraceScalarGrid(
   trace: InternalPlaneTraceContext | null | undefined,
 ): trace is InternalPlaneTraceContext {
   return !!trace && trace.options.includeScalarGrid;
 }
 
+/** Appends a stage record when stage tracing is enabled; otherwise does nothing. */
 export function recordTraceStage(
   trace: InternalPlaneTraceContext | null | undefined,
   stage: PlaneQueryTraceStage,
@@ -94,6 +106,7 @@ export function recordTraceStage(
   trace.stages.push(stage);
 }
 
+/** Sets one summary field when tracing is enabled (any level). */
 export function setTraceSummaryField<Key extends keyof PlaneQueryTraceSummary>(
   trace: InternalPlaneTraceContext | null | undefined,
   key: Key,
@@ -103,6 +116,7 @@ export function setTraceSummaryField<Key extends keyof PlaneQueryTraceSummary>(
   trace.summary[key] = value;
 }
 
+/** Adds `amount` to a summary counter when tracing is enabled; non-finite amounts are ignored. */
 export function incrementTraceSummary(
   trace: InternalPlaneTraceContext | null | undefined,
   key:
@@ -118,6 +132,7 @@ export function incrementTraceSummary(
   trace.summary[key] += amount;
 }
 
+/** Accumulates a duration into `summary.timings[key]`; non-finite durations are ignored. */
 export function addTraceTiming(
   trace: InternalPlaneTraceContext | null | undefined,
   key: TraceTimingKey,
@@ -128,6 +143,10 @@ export function addTraceTiming(
   trace.summary.timings[key] = (trace.summary.timings[key] ?? 0) + durationMs;
 }
 
+/**
+ * Runs `fn` and, when tracing is enabled, adds its wall-clock duration to
+ * `summary.timings[key]`. Returns `fn`'s result either way.
+ */
 export function measureTraceTiming<T>(
   trace: InternalPlaneTraceContext | null | undefined,
   key: TraceTimingKey,
@@ -140,6 +159,10 @@ export function measureTraceTiming<T>(
   return result;
 }
 
+/**
+ * Returns at most `maxStageEntries` items for a stage record, or `undefined`
+ * when stage tracing is off.
+ */
 export function limitTraceEntries<T>(
   trace: InternalPlaneTraceContext | null | undefined,
   values: T[],
@@ -148,6 +171,10 @@ export function limitTraceEntries<T>(
   return values.slice(0, trace.options.maxStageEntries);
 }
 
+/**
+ * Returns at most `maxStageEntries` paths, each truncated to at most
+ * `maxStageEntries` points, or `undefined` when stage tracing is off.
+ */
 export function limitTracePaths(
   trace: InternalPlaneTraceContext | null | undefined,
   paths: PlanePoint[][],

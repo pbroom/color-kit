@@ -43,10 +43,18 @@ import {
   type ColorStore,
 } from './color-store.js';
 
+/** Options for {@link useColor} and the `<Color>` provider. */
 export interface UseColorOptions {
-  /** Initial color value (CSS string, hex, or Color object) */
+  /**
+   * Initial requested color in uncontrolled mode: any CSS color string
+   * `parse` accepts, or an OKLCH `Color` object. Ignored when `state` is set.
+   * @defaultValue `{ l: 0.6, c: 0.2, h: 250, alpha: 1 }`
+   */
   defaultColor?: string | Color;
-  /** Controlled full state value */
+  /**
+   * Controlled full state. When set, the hook renders this state and reports
+   * updates through `onChange` instead of storing them.
+   */
   state?: ColorState;
   /**
    * Called when a setter produces a new state. Fires synchronously inside the
@@ -59,15 +67,31 @@ export interface UseColorOptions {
    * into the next one.
    */
   onChange?: (event: ColorUpdateEvent) => void;
-  /** Initial active display gamut in uncontrolled mode */
+  /**
+   * Initial active display gamut in uncontrolled mode.
+   * @defaultValue 'display-p3'
+   */
   defaultGamut?: GamutTarget;
-  /** Initial active view model in uncontrolled mode */
+  /**
+   * Initial active view model in uncontrolled mode.
+   * @defaultValue 'oklch'
+   */
   defaultView?: ViewModel;
 }
 
+/** Options for the {@link UseColorReturn} and {@link UseMultiColorReturn} setters. */
 export interface SetRequestedOptions {
+  /** Channel reported as `changedChannel` on the update event. */
   changedChannel?: ColorChannel;
+  /**
+   * Input that caused the update, reported on the update event.
+   * @defaultValue 'programmatic' (`'text-input'` for `setFromString`)
+   */
   interaction?: ColorInteraction;
+  /**
+   * Source recorded in `state.meta.source`. Defaults to `'user'` for pointer,
+   * keyboard and text-input interactions and `'programmatic'` otherwise.
+   */
   source?: ColorSource;
   /**
    * Whether the new color's hue is an OKLCH hue the caller stated. When
@@ -82,17 +106,30 @@ export interface SetRequestedOptions {
   explicitHue?: boolean;
 }
 
+/** Color state, conversions and setters returned by {@link useColor} and {@link useColorContext}. */
 export interface UseColorReturn {
   /** Subscribable store backing this hook; child components subscribe to slices. */
   store: ColorStore;
+  /** The full current state. */
   state: ColorState;
+  /** The requested (user-intended) OKLCH color; may be out of gamut. */
   requested: Color;
+  /** The requested color gamut-mapped into `activeGamut`. */
   displayed: Color;
+  /** The requested color gamut-mapped into sRGB. */
   displayedSrgb: Color;
+  /** The requested color gamut-mapped into Display P3. */
   displayedP3: Color;
+  /** Gamut that `displayed` and `displayedCss()` target. */
   activeGamut: GamutTarget;
+  /** View model the UI is presenting (`oklch`, `rgb`, `hex`, ...). */
   activeView: ViewModel;
+  /** Sets the requested OKLCH color. */
   setRequested: (requested: Color, options?: SetRequestedOptions) => void;
+  /**
+   * Sets one OKLCH channel (`l`, `c`, `h` or `alpha`) of the requested
+   * color; reports `channel` as the event's `changedChannel`.
+   */
   setChannel: (
     channel: ColorChannel,
     value: number,
@@ -105,18 +142,36 @@ export interface UseColorReturn {
    * `setFromRgb`, `setFromHsl` and `setFromHsv`.
    */
   setFromString: (css: string, options?: SetRequestedOptions) => void;
+  /** Sets the requested color from sRGB channels (0-255, alpha 0-1). */
   setFromRgb: (rgb: Rgb, options?: SetRequestedOptions) => void;
+  /** Sets the requested color from HSL. */
   setFromHsl: (hsl: Hsl, options?: SetRequestedOptions) => void;
+  /** Sets the requested color from HSV. */
   setFromHsv: (hsv: Hsv, options?: SetRequestedOptions) => void;
+  /** Sets the active display gamut; `source` defaults to `'user'`. */
   setActiveGamut: (gamut: GamutTarget, source?: ColorSource) => void;
+  /** Sets the active view model; `source` defaults to `'user'`. */
   setActiveView: (view: ViewModel, source?: ColorSource) => void;
-  /** Requested color conversions; computed lazily on first access and cached per requested color. */
+  /**
+   * Requested color as hex. This and the other requested-color conversions
+   * (`rgb`, `hsl`, `hsv`, `oklch`) are computed lazily on first access and
+   * cached per requested color.
+   */
   hex: string;
+  /** Requested color as sRGB (computed lazily). */
   rgb: Rgb;
+  /** Requested color as HSL (computed lazily). */
   hsl: Hsl;
+  /** Requested color as HSV (computed lazily). */
   hsv: Hsv;
+  /** Requested color as OKLCH (computed lazily). */
   oklch: Oklch;
+  /** Formats the requested color as CSS; `format` defaults to `'hex'`. */
   requestedCss: (format?: CssColorFormat) => string;
+  /**
+   * Formats the displayed color as CSS. Defaults to `'display-p3'` when the
+   * active gamut is Display P3 and `'hex'` otherwise.
+   */
   displayedCss: (format?: CssColorFormat) => string;
 }
 
@@ -172,6 +227,40 @@ function resolveInitialColor(defaultColor?: string | Color): Color {
   return defaultColor;
 }
 
+/**
+ * Holds one color as requested/displayed state and returns it with
+ * conversions and setters.
+ *
+ * `requested` is the exact OKLCH color the user asked for and may be out of
+ * gamut; `displayed` is that color gamut-mapped into the active gamut
+ * (`displayedSrgb` / `displayedP3` hold both). Works uncontrolled
+ * (`defaultColor`) or controlled (`state` + `onChange`). Setters always build
+ * on the latest state, so several calls in one event handler compose. To
+ * share the state with color components, use the `<Color>` provider
+ * instead.
+ *
+ * @param options - Initial or controlled state and the change callback.
+ * @returns The current state, derived conversions and setters.
+ * @see {@link useMultiColor}
+ *
+ * @example
+ * ```tsx
+ * import { useColor } from 'color-kit/react';
+ *
+ * function Swatch() {
+ *   const color = useColor({ defaultColor: '#3b82f6' });
+ *   color.hex; // → '#3b82f6'
+ *   color.requestedCss('oklch'); // → 'oklch(0.6231 0.188 259.81)'
+ *
+ *   return (
+ *     <button
+ *       style={{ background: color.displayedCss() }}
+ *       onClick={() => color.setChannel('h', 30)}
+ *     />
+ *   );
+ * }
+ * ```
+ */
 export function useColor(options: UseColorOptions = {}): UseColorReturn {
   const {
     defaultColor,
