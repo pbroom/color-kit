@@ -1,0 +1,114 @@
+/*
+ * Sidebar fixes and the API symbol tree (sidebar-tree.tsx). Loaded with
+ * the nav in the components layer, after shell.css.
+ */
+
+/* Grid tracks default to `auto`, which sizes to the longest unbreakable
+   label and scrolls the whole sidebar sideways. Pin the track to the nav
+   width so labels truncate instead. */
+.site-nav__list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.nav-link {
+  min-width: 0;
+}
+
+.nav-link .kind-glyph {
+  width: 16px;
+  height: 16px;
+  align-self: center;
+  border-radius: 3px;
+  font-size: 9px;
+}
+
+.nav-link[data-symbol] {
+  gap: 6px;
+  padding-left: 6px;
+}
+
+/* ---------- Domains ---------- */
+
+.sidebar-domain + .sidebar-domain {
+  margin-top: 1px;
+}
+
+.sidebar-domain__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 26px;
+  padding: 3px var(--space-2) 3px 6px;
+  border-radius: var(--radius);
+  color: var(--fg-3);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  transition:
+    background-color var(--duration-1) var(--ease-out),
+    color var(--duration-1) var(--ease-out);
+}
+
+.sidebar-domain__toggle:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.sidebar-domain__toggle:disabled {
+  cursor: default;
+}
+
+/* A CSS chevron, so the shell bundle carries no icon for it. */
+.sidebar-domain__chevron {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  margin: 0 3px 0 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.7;
+  transform: rotate(-45deg);
+  transition: transform var(--duration-1) var(--ease-out);
+}
+
+.sidebar-domain__toggle[aria-expanded='true'] .sidebar-domain__chevron {
+  transform: rotate(45deg);
+}
+
+.sidebar-domain__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-domain__count {
+  margin-left: auto;
+  flex: none;
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-domain__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  margin: 1px 0 var(--space-1) 11px;
+  padding-left: 4px;
+  border-left: var(--hairline) solid var(--line);
+}
+
+/* The "you are here" dot sits on the domain rule. */
+.sidebar-domain__list .nav-link[aria-current='page']::before {
+  left: -7px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-domain__chevron {
+    transition: none;
+  }
+}
