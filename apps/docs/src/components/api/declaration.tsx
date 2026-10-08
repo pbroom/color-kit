@@ -207,7 +207,9 @@ function memberLines(member: ApiMember): Line[] {
   ];
   const name: Token = {
     kind: 'name',
-    text: member.name,
+    text: member.indexParameter
+      ? `[${member.indexParameter.name}: ${member.indexParameter.type.text}]`
+      : member.name,
     anchor: memberAnchor(member.name),
   };
   if (member.kind === 'method' && member.signatures?.length) {
@@ -259,6 +261,7 @@ export function declarationLines(symbol: ApiSymbol): Line[][] {
       return symbol.signatures.map((signature, overload) =>
         signatureLines([kw('function '), name], signature, {
           overload,
+          linked: !(symbol.propsType && signature.params.length === 1),
           terminator: ';',
         }),
       );

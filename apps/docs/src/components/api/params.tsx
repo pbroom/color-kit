@@ -116,7 +116,9 @@ export function Members({ members }: { members: ApiMember[] }) {
           key={member.name}
           row={{
             id: memberAnchor(member.name),
-            name: member.name,
+            name: member.indexParameter
+              ? `[${member.indexParameter.name}: ${member.indexParameter.type.text}]`
+              : member.name,
             type: member.type,
             optional: member.optional,
             flags: [

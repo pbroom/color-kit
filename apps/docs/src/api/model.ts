@@ -175,6 +175,8 @@ export interface ApiParam {
 export interface ApiMember {
   name: string;
   kind: 'property' | 'method' | 'accessor' | 'constructor' | 'index';
+  /** Index signatures retain their key name/type independently of the value. */
+  indexParameter?: { name: string; type: TypeRef };
   type: TypeRef;
   optional: boolean;
   readonly: boolean;

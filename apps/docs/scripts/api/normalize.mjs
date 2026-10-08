@@ -452,6 +452,28 @@ export function normalize({ project, entries, highlight }) {
     };
   };
 
+  const buildMembers = (declaration) => [
+    ...(declaration.children ?? [])
+      .filter((child) => child.kind !== KIND.Constructor)
+      .map(buildMember),
+    ...(declaration.indexSignatures ?? []).map((signature) => {
+      const parameter = signature.parameters[0];
+      return {
+        name: `[${parameter.name}]`,
+        kind: 'index',
+        indexParameter: {
+          name: parameter.name,
+          type: types.print(parameter.type),
+        },
+        type: types.print(signature.type),
+        optional: false,
+        readonly: Boolean(signature.flags?.isReadonly),
+        static: false,
+        description: rich(signature.comment?.summary),
+      };
+    }),
+  ];
+
   const kindOf = (decl, entry) => {
     switch (decl.kind) {
       case KIND.Function:
@@ -517,15 +539,13 @@ export function normalize({ project, entries, highlight }) {
     let members = [];
     let propsType;
     if (decl.kind === KIND.Interface || decl.kind === KIND.Class) {
-      members = (decl.children ?? [])
-        .filter((child) => child.kind !== KIND.Constructor)
-        .map(buildMember);
+      members = buildMembers(decl);
     } else if (
       decl.kind === KIND.TypeAlias &&
       decl.type?.type === 'reflection' &&
-      decl.type.declaration?.children
+      decl.type.declaration
     ) {
-      members = decl.type.declaration.children.map(buildMember);
+      members = buildMembers(decl.type.declaration);
     }
     if (kind === 'component') {
       const propsRef = signatureNodes[0]?.parameters?.[0]?.type;
@@ -535,7 +555,7 @@ export function normalize({ project, entries, highlight }) {
           : undefined;
       if (target?.kind === KIND.Interface && target.children?.length) {
         propsType = target.name;
-        members = target.children.map(buildMember);
+        members = buildMembers(target);
       }
     }
     const source = decl.sources?.[0];
