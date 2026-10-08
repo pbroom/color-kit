@@ -257,7 +257,7 @@ if [[ "${#changed_files[@]}" -eq 0 ]]; then
 else
   for file in "${changed_files[@]}"; do
     case "$file" in
-      apps/docs/*|vendor/sandpack/*)
+      apps/docs/*)
         docs_changed=1
         format_changed=1
         needs_browser_smoke_hint=1
