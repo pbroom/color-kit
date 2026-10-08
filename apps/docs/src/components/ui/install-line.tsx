@@ -6,6 +6,7 @@ export type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun';
 const MANAGERS: readonly PackageManager[] = ['pnpm', 'npm', 'yarn', 'bun'];
 const STORAGE_KEY = 'color-kit-docs-package-manager';
 const CHANGE_EVENT = 'color-kit:package-manager';
+let selectedManager: PackageManager | undefined;
 
 const VERBS: Record<PackageManager, string> = {
   pnpm: 'pnpm add',
@@ -15,6 +16,7 @@ const VERBS: Record<PackageManager, string> = {
 };
 
 function readManager(): PackageManager {
+  if (selectedManager !== undefined) return selectedManager;
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (MANAGERS.includes(stored as PackageManager)) {
@@ -27,15 +29,26 @@ function readManager(): PackageManager {
 }
 
 function subscribe(onChange: () => void): () => void {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== null && event.key !== STORAGE_KEY) return;
+    try {
+      if (event.storageArea !== window.localStorage) return;
+    } catch {
+      return;
+    }
+    selectedManager = undefined;
+    onChange();
+  };
   window.addEventListener(CHANGE_EVENT, onChange);
-  window.addEventListener('storage', onChange);
+  window.addEventListener('storage', onStorage);
   return () => {
     window.removeEventListener(CHANGE_EVENT, onChange);
-    window.removeEventListener('storage', onChange);
+    window.removeEventListener('storage', onStorage);
   };
 }
 
 function chooseManager(manager: PackageManager): void {
+  selectedManager = manager;
   try {
     window.localStorage.setItem(STORAGE_KEY, manager);
   } catch {

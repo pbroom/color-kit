@@ -50,9 +50,11 @@ function DocsLayout({ route }: { route: SiteRoute }) {
           data-kind={route.kind}
           data-pagefind-body={indexable ? '' : undefined}
         >
-          <Suspense fallback={<RouteSkeleton />}>
-            <RouteView route={route} />
-          </Suspense>
+          <RouteErrorBoundary>
+            <Suspense fallback={<RouteSkeleton />}>
+              <RouteView route={route} />
+            </Suspense>
+          </RouteErrorBoundary>
         </article>
       </main>
       <PageOutline articleRef={articleRef} pathname={route.path} />
@@ -75,22 +77,22 @@ export function App() {
         Skip to content
       </a>
       <SiteHeader currentPath={route.path} />
-      <RouteErrorBoundary>
-        {route.kind === 'home' ? (
-          <main
-            id="main"
-            tabIndex={-1}
-            className="home-main"
-            data-pagefind-body=""
-          >
+      {route.kind === 'home' ? (
+        <main
+          id="main"
+          tabIndex={-1}
+          className="home-main"
+          data-pagefind-body=""
+        >
+          <RouteErrorBoundary>
             <Suspense fallback={<RouteSkeleton />}>
               <RouteView route={route} />
             </Suspense>
-          </main>
-        ) : (
-          <DocsLayout route={route} />
-        )}
-      </RouteErrorBoundary>
+          </RouteErrorBoundary>
+        </main>
+      ) : (
+        <DocsLayout route={route} />
+      )}
       <SiteFooter />
     </>
   );

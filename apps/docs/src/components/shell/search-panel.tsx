@@ -51,6 +51,10 @@ export default function SearchPanel({
   // After choosing a result, focus belongs to the new page's <main>.
   const navigated = useRef(false);
   const listId = useId();
+  // Keep the navigation flag through final-focus cleanup; reset on reopen.
+  useEffect(() => {
+    if (open) navigated.current = false;
+  }, [open]);
 
   const trimmed = query.trim();
 
@@ -66,9 +70,13 @@ export default function SearchPanel({
         return;
       }
       setProse({ status: 'loading', query: trimmed });
-      const hits = await searchProse(pagefind, trimmed);
-      if (!cancelled && hits) {
-        setProse({ status: 'ready', query: trimmed, hits });
+      try {
+        const hits = await searchProse(pagefind, trimmed);
+        if (!cancelled && hits) {
+          setProse({ status: 'ready', query: trimmed, hits });
+        }
+      } catch {
+        if (!cancelled) setProse({ status: 'unavailable' });
       }
     });
     return () => {
@@ -112,7 +120,7 @@ export default function SearchPanel({
   let status: string | null = null;
   if (trimmed !== '') {
     if (prose.status === 'unavailable') {
-      status = 'Full-text search runs on the built site; titles only here.';
+      status = 'Full-text search is unavailable. Search titles or try again.';
     } else if (prose.status === 'loading' && hits.length === 0) {
       status = 'Searching…';
     } else if (hits.length === 0 && prose.status === 'ready') {
@@ -126,6 +134,9 @@ export default function SearchPanel({
       onOpenChange={(next) => onOpenChange(next)}
       onOpenChangeComplete={(next) => {
         if (!next) {
+          if (navigated.current) {
+            document.getElementById('main')?.focus({ preventScroll: true });
+          }
           setQuery('');
           setActive(0);
         }
@@ -137,10 +148,7 @@ export default function SearchPanel({
           className="search-dialog"
           aria-label="Search the docs"
           finalFocus={() => {
-            if (navigated.current) {
-              navigated.current = false;
-              return false;
-            }
+            if (navigated.current) return false;
             return returnFocusRef.current ?? true;
           }}
         >

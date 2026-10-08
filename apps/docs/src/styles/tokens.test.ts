@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { contrastRatio } from 'color-kit';
+import { contrastRatio, parse } from 'color-kit';
 import {
   CONTRAST_PAIRS,
   GRAY_LIGHTNESS,
@@ -10,6 +10,50 @@ import {
 } from './tokens';
 
 const THEMES: ThemeName[] = ['light', 'dark'];
+const EMITTED_CSS = readFileSync(
+  new URL('./tokens.css', import.meta.url),
+  'utf8',
+);
+
+/** Read one rule from this generated stylesheet, preserving serialized colors. */
+function declarations(css: string, selector: string): Record<string, string> {
+  const body = css.split(`${selector} {`)[1]?.split('}')[0] ?? '';
+  return Object.fromEntries(
+    [...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((match) => [
+      match[1]!,
+      match[2]!.trim(),
+    ]),
+  );
+}
+
+function emittedColors(theme: ThemeName, gamut: 'srgb' | 'display-p3') {
+  const [base, overrides = ''] = EMITTED_CSS.split(
+    '@media (color-gamut: p3) {',
+  );
+  const p3 = gamut === 'display-p3' ? overrides : '';
+  // Explicit dark selectors outrank :root, including the light P3 overrides.
+  const values = {
+    ...declarations(base!, ':root'),
+    ...declarations(p3, ':root'),
+    ...(theme === 'dark'
+      ? {
+          ...declarations(base!, ":root[data-theme='dark']"),
+          ...declarations(p3, ":root[data-theme='dark']"),
+        }
+      : {}),
+  };
+  return (name: string) => {
+    let value = values[name];
+    const seen = new Set<string>();
+    while (value?.startsWith('var(')) {
+      if (seen.has(value)) throw new Error(`Circular token ${name}`);
+      seen.add(value);
+      value = values[value.slice(4, -1)];
+    }
+    if (!value) throw new Error(`Missing emitted color ${name}`);
+    return parse(value);
+  };
+}
 
 describe('design tokens', () => {
   it('tokens.css is generated from tokens.ts', () => {
@@ -33,14 +77,17 @@ describe('design tokens', () => {
   });
 
   for (const theme of THEMES) {
-    describe(`${theme} contrast`, () => {
-      it.each(CONTRAST_PAIRS)('$fg on $bg meets $min:1', ({ fg, bg, min }) => {
-        const ratio = contrastRatio(
-          resolveToken(fg, theme),
-          resolveToken(bg, theme),
+    for (const gamut of ['srgb', 'display-p3'] as const) {
+      describe(`${theme} ${gamut} emitted contrast`, () => {
+        const resolve = emittedColors(theme, gamut);
+        it.each(CONTRAST_PAIRS)(
+          '$fg on $bg meets $min:1',
+          ({ fg, bg, min }) => {
+            const ratio = contrastRatio(resolve(fg), resolve(bg), { gamut });
+            expect(ratio).toBeGreaterThanOrEqual(min);
+          },
         );
-        expect(ratio).toBeGreaterThanOrEqual(min);
       });
-    });
+    }
   }
 });
