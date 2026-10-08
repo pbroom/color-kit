@@ -88,6 +88,19 @@ describe('getColorInputPrecisionFromStep', () => {
     expect(getColorInputPrecisionFromStep(0.1 + 0.2)).toBe(1);
   });
 
+  it('retains small fractional parts on steps greater than one', () => {
+    expect(getColorInputPrecisionFromStep(1.000001)).toBe(6);
+    expect(getColorInputPrecisionFromStep(100.00001)).toBe(5);
+    expect(getColorInputPrecisionFromStep(-100.00001)).toBe(5);
+    expect(getColorInputPrecisionFromStep(1000.0001)).toBe(4);
+  });
+
+  it('ignores floating point noise after scaling', () => {
+    expect(getColorInputPrecisionFromStep(1 + Number.EPSILON)).toBe(0);
+    expect(getColorInputPrecisionFromStep(0.1 + 0.2)).toBe(1);
+    expect(getColorInputPrecisionFromStep(1e-5 + 2e-5)).toBe(5);
+  });
+
   it('keeps decimals for tiny and exponent-notation steps', () => {
     expect(getColorInputPrecisionFromStep(1e-6)).toBe(6);
     expect(getColorInputPrecisionFromStep(2.5e-5)).toBe(6);

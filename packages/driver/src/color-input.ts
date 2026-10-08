@@ -776,12 +776,11 @@ export function getColorInputPrecisionFromStep(step: number): number {
 
   let precision = 0;
   let current = safeStep;
-  // The tolerance is relative to the scaled step, so a step far below 1
-  // (where `current` rounds to 0) keeps adding decimals instead of looking
-  // like a whole number.
+  // Relative tolerance preserves tiny steps that round to zero. Cap it at
+  // the absolute noise tolerance so larger steps retain fractional parts.
   while (
     precision < MAX_COLOR_INPUT_PRECISION &&
-    Math.abs(Math.round(current) - current) > current * 1e-6
+    Math.abs(Math.round(current) - current) > Math.min(1e-7, current * 1e-6)
   ) {
     current *= 10;
     precision += 1;
