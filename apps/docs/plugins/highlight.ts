@@ -81,10 +81,25 @@ export async function highlightToHtml(
  * must be JSON-serializable.
  */
 export function highlightPlugin(): Plugin {
+  const inputs = new Map<string, Set<string>>();
   return {
     name: 'color-kit:highlighted',
     enforce: 'pre',
     ...evalLifecycle(),
+    // The virtual .highlighted suffix bypasses JS import analysis, so watched
+    // files need explicit HMR edges as well as Rollup's addWatchFile entries.
+    handleHotUpdate({ file, modules, server }) {
+      const affected = new Set(modules);
+      for (const [id, dependencies] of inputs) {
+        if (!dependencies.has(file)) continue;
+        const module = server.moduleGraph.getModuleById(id);
+        if (module) {
+          server.moduleGraph.invalidateModule(module);
+          affected.add(module);
+        }
+      }
+      return [...affected];
+    },
     async resolveId(source, importer) {
       const query = source.endsWith(QUERY)
         ? QUERY
@@ -106,10 +121,20 @@ export function highlightPlugin(): Plugin {
       return `${prefix}${resolved.id.split('?')[0]}${SUFFIX}`;
     },
     async load(id) {
+      if (!id.startsWith(BUILD_PREFIX) && !id.startsWith(PREFIX)) return null;
+      const dependencies = new Set<string>();
+      // Keep the last successful graph while evaluating: a broken dependency
+      // must still invalidate this module when the author fixes it.
+      if (!inputs.has(id)) inputs.set(id, dependencies);
+      const watch = (file: string) => {
+        dependencies.add(file);
+        this.addWatchFile(file);
+      };
       if (id.startsWith(BUILD_PREFIX)) {
         const file = id.slice(BUILD_PREFIX.length, -SUFFIX.length);
-        this.addWatchFile(file);
-        const exports = await loadBuildModule(file);
+        watch(file);
+        const exports = await loadBuildModule(file, watch);
+        inputs.set(id, dependencies);
         return Object.entries(exports)
           .map(([name, value]) => {
             const json = JSON.stringify(value);
@@ -124,13 +149,11 @@ export function highlightPlugin(): Plugin {
           })
           .join('\n');
       }
-      if (!id.startsWith(PREFIX)) {
-        return null;
-      }
       const file = id.slice(PREFIX.length, -SUFFIX.length);
-      this.addWatchFile(file);
+      watch(file);
       const source = normalizeSource(await readFile(file, 'utf8'));
-      const code = await evalExample(file, source);
+      const code = await evalExample(file, source, undefined, watch);
+      inputs.set(id, dependencies);
       const lang = LANG_BY_EXTENSION[path.extname(file)] ?? 'text';
       const filename = path.basename(file);
       const html = await highlightToHtml(code, lang, filename);
