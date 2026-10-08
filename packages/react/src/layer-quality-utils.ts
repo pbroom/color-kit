@@ -1,5 +1,9 @@
 import type { ResolvedColorAreaAxes } from '@color-kit/driver';
 
+/**
+ * Sampling quality of a plane-query layer such as `GamutBoundaryLayer`:
+ * `'auto'` follows the ColorArea's adaptive quality level; the others fix it.
+ */
 export type ColorAreaLayerQuality = 'auto' | 'high' | 'medium' | 'low';
 
 export type ResolvedLayerQuality = Exclude<ColorAreaLayerQuality, 'auto'>;

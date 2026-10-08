@@ -34,10 +34,29 @@ export type {
   MultiColorUpdateEvent,
 } from '@color-kit/driver';
 
+/** Options for {@link useMultiColor}. */
 export interface UseMultiColorOptions {
+  /**
+   * Initial entries in uncontrolled mode, as an `{ id: color }` record or an
+   * `[{ id, color }]` array (colors as CSS strings or OKLCH objects).
+   * Duplicate ids keep the first entry.
+   * @defaultValue one entry, `color-1`, set to `{ l: 0.6, c: 0.2, h: 250, alpha: 1 }`
+   */
   defaultColors?: MultiColorInput;
+  /**
+   * Initially selected entry id; falls back to the first entry when missing
+   * or unknown.
+   */
   defaultSelectedId?: string;
+  /**
+   * Initial active display gamut shared by all entries.
+   * @defaultValue 'display-p3'
+   */
   defaultGamut?: GamutTarget;
+  /**
+   * Initial active view model shared by all entries.
+   * @defaultValue 'oklch'
+   */
   defaultView?: ViewModel;
   /** Controlled collection state. */
   state?: MultiColorState;
@@ -54,27 +73,46 @@ export interface UseMultiColorOptions {
   onChange?: (event: MultiColorUpdateEvent) => void;
 }
 
+/** Collection state and operations returned by {@link useMultiColor}. */
 export interface UseMultiColorReturn {
+  /** The full collection state. */
   state: MultiColorState;
+  /** Entry ids in collection order. */
   ids: string[];
+  /** Id of the selected entry, or `null` when the collection is empty. */
   selectedId: string | null;
+  /** State of the selected entry, or `null` when nothing is selected. */
   selected: ColorState | null;
+  /** Sets the requested OKLCH color of entry `id`. */
   setRequested: (
     id: string,
     requested: Color,
     options?: SetRequestedOptions,
   ) => void;
+  /** Sets one OKLCH channel of entry `id`. */
   setChannel: (
     id: string,
     channel: ColorChannel,
     value: number,
     options?: Omit<SetRequestedOptions, 'changedChannel'>,
   ) => void;
+  /** Sets the display gamut shared by all entries; `source` defaults to `'user'`. */
   setActiveGamut: (gamut: GamutTarget, source?: ColorSource) => void;
+  /** Sets the view model shared by all entries; `source` defaults to `'user'`. */
   setActiveView: (view: ViewModel, source?: ColorSource) => void;
+  /** Selects entry `id`; a no-op for unknown or already selected ids. */
   select: (id: string, interaction?: ColorInteraction) => void;
+  /**
+   * Appends an entry (a no-op when `id` exists). Selects it when nothing is
+   * selected.
+   */
   addColor: (id: string, color: Color | string, source?: ColorSource) => void;
+  /** Removes entry `id`; removing the selected entry selects the first remaining one. */
   removeColor: (id: string) => void;
+  /**
+   * Renames entry `id` to `nextId`, keeping its position and selection; a
+   * no-op when `id` is unknown or `nextId` is taken.
+   */
   renameColor: (id: string, nextId: string, source?: ColorSource) => void;
 }
 
@@ -95,6 +133,37 @@ function createUpdateEvent(
   return event;
 }
 
+/**
+ * Manages a named collection of colors that share one display gamut and view
+ * model, plus a selected entry.
+ *
+ * Each entry is a full requested/displayed `ColorState`, as in
+ * {@link useColor}. Works uncontrolled (`defaultColors`) or controlled
+ * (`state` + `onChange`); operations always build on the latest state, so
+ * several calls in one event handler compose.
+ *
+ * @param options - Initial or controlled collection and the change callback.
+ * @returns The collection state and operations.
+ *
+ * @example
+ * ```tsx
+ * import { useMultiColor } from 'color-kit/react';
+ *
+ * function Palette() {
+ *   const palette = useMultiColor({
+ *     defaultColors: { background: '#ffffff', text: '#1f2937' },
+ *   });
+ *   palette.ids; // → ['background', 'text']
+ *   palette.selectedId; // → 'background'
+ *
+ *   return (
+ *     <button onClick={() => palette.addColor('accent', '#3b82f6')}>
+ *       Add accent
+ *     </button>
+ *   );
+ * }
+ * ```
+ */
 export function useMultiColor(
   options: UseMultiColorOptions = {},
 ): UseMultiColorReturn {

@@ -14,9 +14,35 @@ import {
 } from './types.js';
 
 /**
- * Sample the lightness/chroma gamut boundary for a fixed hue.
+ * Samples the OKLCH lightness/chroma gamut boundary at a fixed hue, from
+ * black (`l: 0`) to white (`l: 1`).
  *
- * Returns deterministic points usable for SVG/Canvas overlay paths.
+ * Each point's `c` is {@link maxChromaAt} at that lightness. In `'uniform'`
+ * mode (the default) the path has `steps + 1` evenly spaced points; in
+ * `'adaptive'` mode points are added around the hue cusp and where the
+ * boundary bends. Output is deterministic and usable for SVG/Canvas overlay
+ * paths.
+ *
+ * @param hue - OKLCH hue in degrees.
+ * @param options - Gamut, sampling and search options.
+ * @returns Boundary points ordered by increasing lightness.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {Error} When `steps` is not an integer >= 2 (uniform mode).
+ * @see {@link chromaBand}
+ *
+ * @example
+ * ```ts
+ * import { gamutBoundaryPath } from 'color-kit';
+ *
+ * gamutBoundaryPath(250, { steps: 4 });
+ * // → [
+ * //   { l: 0, c: 0 },
+ * //   { l: 0.25, c: 0.070703125 },
+ * //   { l: 0.5, c: 0.14150390625 },
+ * //   { l: 0.75, c: 0.13369140625 },
+ * //   { l: 1, c: 0 },
+ * // ]
+ * ```
  */
 export function gamutBoundaryPath(
   hue: number,

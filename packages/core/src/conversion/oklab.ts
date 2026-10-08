@@ -17,10 +17,18 @@ import {
  * recalculated in float64 for a consistent D65 reference white.
  * https://bottosson.github.io/posts/oklab/
  *
+ * @param out - Object to write the result into
+ * @param rgb - Linear-light sRGB color (unclamped)
+ * @returns `out`
+ * @see {@link linearRgbToOklab}
+ *
  * @example
  * ```ts
+ * import { linearRgbToOklabInto } from 'color-kit';
+ *
  * const lab = { L: 0, a: 0, b: 0, alpha: 1 };
  * linearRgbToOklabInto(lab, { r: 1, g: 0, b: 0, alpha: 1 });
+ * lab.L; // → ≈ 0.628
  * ```
  */
 export function linearRgbToOklabInto(out: Oklab, rgb: LinearRgb): Oklab {
@@ -50,10 +58,25 @@ export function linearRgbToOklabInto(out: Oklab, rgb: LinearRgb): Oklab {
 }
 
 /**
- * Convert linear sRGB to OKLAB.
+ * Convert linear-light sRGB to OKLab.
+ *
  * Based on Björn Ottosson's OKLab model, using the CSS Color 4 matrices
- * recalculated in float64 for a consistent D65 reference white.
- * https://bottosson.github.io/posts/oklab/
+ * recalculated in float64 for a consistent D65 reference white
+ * (https://bottosson.github.io/posts/oklab/). Inputs are not clamped, so
+ * out-of-gamut linear values convert exactly.
+ *
+ * @param rgb - Linear-light sRGB color
+ * @returns A new {@link Oklab}
+ * @see {@link oklabToLinearRgb}
+ * @see {@link linearRgbToOklabInto}
+ *
+ * @example
+ * ```ts
+ * import { linearRgbToOklab } from 'color-kit';
+ *
+ * linearRgbToOklab({ r: 1, g: 0, b: 0, alpha: 1 });
+ * // → ≈ { L: 0.628, a: 0.2249, b: 0.1258, alpha: 1 }
+ * ```
  */
 export function linearRgbToOklab(rgb: LinearRgb): Oklab {
   return linearRgbToOklabInto({ L: 0, a: 0, b: 0, alpha: 1 }, rgb);
@@ -63,10 +86,18 @@ export function linearRgbToOklab(rgb: LinearRgb): Oklab {
  * Convert OKLAB to linear sRGB, writing into `out` (allocation-free). The
  * result is unclamped, so out-of-gamut colors keep channels outside `[0, 1]`.
  *
+ * @param out - Object to write the result into
+ * @param lab - OKLab color
+ * @returns `out`
+ * @see {@link oklabToLinearRgb}
+ *
  * @example
  * ```ts
+ * import { oklabToLinearRgbInto } from 'color-kit';
+ *
  * const linear = { r: 0, g: 0, b: 0, alpha: 1 };
  * oklabToLinearRgbInto(linear, { L: 0.7, a: 0.1, b: 0.1, alpha: 1 });
+ * linear.r; // → ≈ 0.785
  * ```
  */
 export function oklabToLinearRgbInto(out: LinearRgb, lab: Oklab): LinearRgb {
@@ -98,7 +129,21 @@ export function oklabToLinearRgbInto(out: LinearRgb, lab: Oklab): LinearRgb {
 }
 
 /**
- * Convert OKLAB to linear sRGB.
+ * Convert OKLab to linear-light sRGB. The result is unclamped, so
+ * out-of-gamut colors keep channels outside `[0, 1]`.
+ *
+ * @param lab - OKLab color
+ * @returns A new {@link LinearRgb}
+ * @see {@link linearRgbToOklab}
+ * @see {@link oklabToLinearRgbInto}
+ *
+ * @example
+ * ```ts
+ * import { oklabToLinearRgb } from 'color-kit';
+ *
+ * oklabToLinearRgb({ L: 0.7, a: 0.1, b: 0.1, alpha: 1 });
+ * // → ≈ { r: 0.785, g: 0.2117, b: 0.0769, alpha: 1 }
+ * ```
  */
 export function oklabToLinearRgb(lab: Oklab): LinearRgb {
   return oklabToLinearRgbInto({ r: 0, g: 0, b: 0, alpha: 1 }, lab);

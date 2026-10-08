@@ -20,42 +20,66 @@ import type {
 export const PACKED_PLANE_QUERY_ABI_VERSION = 2;
 
 interface PackedPlaneQueryDescriptorBase<K extends PlaneQueryKind> {
+  /** Query kind this descriptor belongs to. */
   kind: K;
+  /** Index of the query's first path in `pathRanges`. */
   pathStart: number;
+  /** Number of consecutive paths the query owns, starting at `pathStart`. */
   pathCount: number;
 }
 
+/** Packed metadata of a `gamutBoundary` result (one path). */
 export interface PackedGamutBoundaryDescriptor extends PackedPlaneQueryDescriptorBase<'gamutBoundary'> {
+  /** Gamut that was traced. */
   gamut: GamutTarget;
+  /** Hue the boundary was traced at, in degrees. */
   hue: number;
 }
 
+/**
+ * Packed metadata of a `gamutRegion` result: `pathCount` boundary paths
+ * followed by `regionPathCount` visible-region paths.
+ */
 export interface PackedGamutRegionDescriptor extends PackedPlaneQueryDescriptorBase<'gamutRegion'> {
   /** Always `pathStart + pathCount`: visible-region paths follow boundaries. */
   regionPathStart: number;
+  /** Number of visible-region paths. */
   regionPathCount: number;
+  /** Gamut that was analyzed. */
   gamut: GamutTarget;
+  /** Scope the boundary paths were traced in. */
   scope: PlaneGamutRegionScope;
+  /** Solver that produced the geometry. */
   solver: PlaneGamutSolver;
+  /** How the gamut relates to the plane window. */
   viewportRelation: PlaneViewportRelation;
 }
 
+/** Packed metadata of a `contrastBoundary` result (one path). */
 export interface PackedContrastBoundaryDescriptor extends PackedPlaneQueryDescriptorBase<'contrastBoundary'> {
+  /** Hue the contour was traced at, in degrees. */
   hue: number;
 }
 
+/** Packed metadata of a `contrastRegion` result (one path per contour). */
 export interface PackedContrastRegionDescriptor extends PackedPlaneQueryDescriptorBase<'contrastRegion'> {
+  /** Hue the region was traced at, in degrees. */
   hue: number;
 }
 
+/** Packed metadata of a `chromaBand` result (one path). */
 export interface PackedChromaBandDescriptor extends PackedPlaneQueryDescriptorBase<'chromaBand'> {
+  /** Hue the band was sampled at, in degrees. */
   hue: number;
 }
 
+/** Packed metadata of a `fallbackPoint` result (one single-point path). */
 export interface PackedFallbackPointDescriptor extends PackedPlaneQueryDescriptorBase<'fallbackPoint'> {
+  /** Gamut the color was mapped into. */
   gamut: GamutTarget;
 }
 
+/** Packed metadata of a `gradient` result (one path); no extra fields. */
 export type PackedGradientDescriptor =
   PackedPlaneQueryDescriptorBase<'gradient'>;
 
@@ -72,6 +96,7 @@ export type PackedPlaneQueryDescriptor =
   | PackedFallbackPointDescriptor
   | PackedGradientDescriptor;
 
+/** The packed descriptor variant whose `kind` is `K`. */
 export type PackedPlaneQueryDescriptorOf<K extends PlaneQueryKind> = Extract<
   PackedPlaneQueryDescriptor,
   { kind: K }
@@ -90,11 +115,17 @@ export type PackedPlaneQueryDescriptorOf<K extends PlaneQueryKind> = Extract<
  * Descriptors cover the path list contiguously and in order.
  */
 export interface PackedPlaneQueryResult {
+  /** Format version; decoders reject any other value. */
   abiVersion: typeof PACKED_PLANE_QUERY_ABI_VERSION;
+  /** One descriptor per query, in query order. */
   queryDescriptors: PackedPlaneQueryDescriptor[];
+  /** `[startPoint, pointCount]` per path. */
   pathRanges: Uint32Array;
+  /** Plane coordinates, `[x0, y0, x1, y1, ...]`. */
   pointXY: Float32Array;
+  /** OKLCH lightness/chroma per point, `NaN` when the kind has none. */
   pointLC: Float32Array;
+  /** OKLCH color and alpha per point, `NaN` when the kind has none. */
   pointColorLcha: Float32Array;
 }
 

@@ -12,18 +12,38 @@ import type {
 import { countSinglePath, toPlaneBoundaryPoint } from './shared.js';
 
 /**
- * Samples a chroma band and projects the resulting points into the target plane.
+ * Samples a constant-intent chroma band across lightness at one hue and
+ * projects it onto the plane.
  *
- * Returns an empty point list when the plane is not a lightness/chroma pairing.
+ * In `'clamped'` mode (default) each sample uses `requestedChroma`, reduced to
+ * the gamut's maximum where it does not fit; `'proportional'` keeps the
+ * requested/max-chroma ratio measured at `selectedLightness`. Missing
+ * `requestedChroma`, `selectedLightness` and `alpha` come from the plane's
+ * fixed `c`, `l` and `alpha`. Each point carries OKLCH `l`/`c` and plane
+ * `x`/`y`.
  *
- * @param planeDefinition Plane definition used to project the result points.
- * @param query Chroma-band sampling configuration.
- * @param query.hue Optional hue override; falls back to the plane's hue.
- * @param query.requestedChroma Desired chroma target for the band.
- * @param query.selectedLightness Optional selected lightness anchor.
- * @param query.mode Chroma-band sampling mode.
- * @param query.steps Optional fixed sample count.
- * @param query.gamut Optional gamut clamp for band search.
+ * Only OKLCH lightness × chroma planes produce geometry (see
+ * {@link usesLightnessAndChroma}); any other plane returns an empty list, after
+ * the same option validation.
+ *
+ * @param planeDefinition - Plane to project onto; a {@link Plane} or any
+ * {@link PlaneDefinition}.
+ * @param query - Band options; see {@link PlaneChromaBandQuery}.
+ * @returns A new result with the resolved hue and band points.
+ * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {Error} When `steps` is not an integer of at least 2.
+ * @see {@link sense} for the fluent form.
+ *
+ * @example
+ * ```ts
+ * import { definePlane, getPlaneChromaBand } from 'color-kit/plane';
+ *
+ * const plane = definePlane({ fixed: { h: 264 } });
+ * const { points } = getPlaneChromaBand(plane, { requestedChroma: 0.1 });
+ * points.length; // → 13
+ * points[6]; // → { l: 0.5, c: 0.1, x: 0.5, y: ≈ 0.75 }
+ * points[1].c.toFixed(3); // → '0.058' (clamped to the sRGB edge)
+ * ```
  */
 export function getPlaneChromaBand(
   planeDefinition: PlaneDefinition,

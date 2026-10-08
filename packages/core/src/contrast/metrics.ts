@@ -24,19 +24,22 @@ import {
  */
 export type ContrastPrecision = 'exact' | '8bit';
 
-/** Options shared by `relativeLuminance`, `contrastRatio`, `contrastAPCA`. */
+/**
+ * Options shared by {@link relativeLuminance}, {@link contrastRatio},
+ * {@link contrastAPCA}, {@link meetsAA} and {@link meetsAAA}.
+ */
 export interface ContrastOptions {
   /**
    * Display gamut the colors are shown in. Channels are clipped to this
    * gamut before luminance is measured, so out-of-gamut colors are measured
    * as the display would render them by clipping. Contrast regions with
    * `gamut: 'display-p3'` use the same setting.
-   * @default 'srgb'
+   * @defaultValue `'srgb'`
    */
   gamut?: GamutTarget;
   /**
-   * Channel precision; see `ContrastPrecision`.
-   * @default 'exact'
+   * Channel precision; see {@link ContrastPrecision}.
+   * @defaultValue `'exact'`
    */
   precision?: ContrastPrecision;
 }
@@ -103,12 +106,27 @@ function displayedSrgb(
 }
 
 /**
- * Calculate relative luminance of a color per WCAG 2.1.
- * https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
+ * Returns the WCAG 2.1 relative luminance of a color, from 0 (black) to 1
+ * (white).
  *
  * Measured from the unrounded sRGB channels, clipped to the display gamut
  * (`options.gamut`, default sRGB). Pass `{ precision: '8bit' }` to measure
- * the 8-bit hex value instead.
+ * the 8-bit hex value instead. Allocation-free.
+ *
+ * @param color - Color to measure.
+ * @param options - Display gamut and channel precision.
+ * @returns Relative luminance in `[0, 1]`.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`
+ *   (including the removed `'p3'` spelling).
+ * @see https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
+ * @see {@link contrastRatio}
+ *
+ * @example
+ * ```ts
+ * import { parse, relativeLuminance } from 'color-kit';
+ *
+ * relativeLuminance(parse('#777')); // → ≈ 0.1845
+ * ```
  */
 export function relativeLuminance(
   color: Color,
@@ -129,11 +147,29 @@ export function wcagLuminanceOfLinear(r: number, g: number, b: number): number {
 }
 
 /**
- * Calculate WCAG 2.1 contrast ratio between two colors.
- * Returns a value between 1 and 21.
- * https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio
+ * Returns the WCAG 2.1 contrast ratio between two colors, from 1 (identical
+ * luminance) to 21 (black on white).
  *
- * See `relativeLuminance()` for how colors are measured and `options`.
+ * Symmetric in its arguments. Colors are measured as in
+ * {@link relativeLuminance}; the result is unrounded, so black on white is
+ * `20.999999999999986` rather than exactly `21`.
+ *
+ * @param color1 - First color (order does not matter).
+ * @param color2 - Second color.
+ * @param options - Display gamut and channel precision.
+ * @returns Contrast ratio in `[1, 21]`.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @see https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio
+ * @see {@link meetsAA}
+ * @see {@link contrastAPCA}
+ *
+ * @example
+ * ```ts
+ * import { contrastRatio, parse } from 'color-kit';
+ *
+ * contrastRatio(parse('#777'), parse('#fff')); // → ≈ 4.478
+ * contrastRatio(parse('#000'), parse('#fff')).toFixed(2); // → '21.00'
+ * ```
  */
 export function contrastRatio(
   color1: Color,
@@ -202,18 +238,35 @@ export function apcaLuminanceOfEncoded(
 }
 
 /**
- * Calculate APCA (Advanced Perceptual Contrast Algorithm) contrast.
- * Returns a normalized Lc value roughly between -1.08 and 1.06
- * (multiply by 100 for the conventional APCA Lc scale).
- * Positive values = dark text on light background (normal polarity).
- * Negative values = light text on dark background (reverse polarity).
+ * Returns the APCA (Advanced Perceptual Contrast Algorithm) lightness
+ * contrast of text on a background, as a normalized Lc value roughly between
+ * -1.08 and 1.06 (multiply by 100 for the conventional APCA Lc scale).
+ *
+ * Positive values mean dark text on a light background (normal polarity);
+ * negative values mean light text on a dark background (reverse polarity).
+ * Very low contrasts are clipped to `0` (APCA's low-contrast clip), so any
+ * nonzero result has a magnitude of at least 0.073. Unlike
+ * {@link contrastRatio}, argument order matters.
  *
  * Implements APCA-W3 0.0.98G-4g (`APCAcontrast(sRGBtoY(text), sRGBtoY(bg))`).
- * https://github.com/Myndex/apca-w3
- *
  * Colors are measured from unrounded channels clipped to the display gamut,
- * as in `relativeLuminance()`; the result is continuous in the inputs. Pass
- * `{ precision: '8bit' }` to measure the 8-bit hex values instead.
+ * as in {@link relativeLuminance}; the result is continuous in the inputs.
+ * Pass `{ precision: '8bit' }` to measure the 8-bit hex values instead.
+ *
+ * @param textColor - Foreground (text) color.
+ * @param bgColor - Background color.
+ * @param options - Display gamut and channel precision.
+ * @returns Normalized Lc contrast.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @see https://github.com/Myndex/apca-w3
+ *
+ * @example
+ * ```ts
+ * import { contrastAPCA, parse } from 'color-kit';
+ *
+ * contrastAPCA(parse('#777'), parse('#fff')); // → ≈ 0.7111 (Lc 71.1)
+ * contrastAPCA(parse('#fff'), parse('#000')); // → ≈ -1.0788 (reverse polarity)
+ * ```
  */
 export function contrastAPCA(
   textColor: Color,
@@ -256,7 +309,26 @@ export function apcaContrastOfLuminances(txtY: number, bgY: number): number {
   return sapc > -APCA_LO_CLIP ? 0 : sapc + APCA_LO_WOB_OFFSET;
 }
 
-/** Check if contrast ratio meets WCAG AA for normal text (>= 4.5:1) */
+/**
+ * Returns whether two colors meet WCAG 2.1 level AA: a contrast ratio of at
+ * least 4.5:1, or 3:1 when `largeText` is `true`.
+ *
+ * @param color1 - First color (order does not matter).
+ * @param color2 - Second color.
+ * @param largeText - Apply the large-text threshold (3:1).
+ * @param options - Display gamut and channel precision, as for
+ *   {@link contrastRatio}.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @see {@link meetsAAA}
+ *
+ * @example
+ * ```ts
+ * import { meetsAA, parse } from 'color-kit';
+ *
+ * meetsAA(parse('#777'), parse('#fff')); // → false (≈ 4.48:1)
+ * meetsAA(parse('#777'), parse('#fff'), true); // → true
+ * ```
+ */
 export function meetsAA(
   color1: Color,
   color2: Color,
@@ -267,7 +339,27 @@ export function meetsAA(
   return largeText ? ratio >= 3 : ratio >= 4.5;
 }
 
-/** Check if contrast ratio meets WCAG AAA for normal text (>= 7:1) */
+/**
+ * Returns whether two colors meet WCAG 2.1 level AAA: a contrast ratio of at
+ * least 7:1, or 4.5:1 when `largeText` is `true`.
+ *
+ * @param color1 - First color (order does not matter).
+ * @param color2 - Second color.
+ * @param largeText - Apply the large-text threshold (4.5:1).
+ * @param options - Display gamut and channel precision, as for
+ *   {@link contrastRatio}.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @see {@link meetsAA}
+ *
+ * @example
+ * ```ts
+ * import { meetsAAA, parse } from 'color-kit';
+ *
+ * meetsAAA(parse('#595959'), parse('#fff')); // → true
+ * meetsAAA(parse('#666'), parse('#fff')); // → false
+ * meetsAAA(parse('#666'), parse('#fff'), true); // → true
+ * ```
+ */
 export function meetsAAA(
   color1: Color,
   color2: Color,

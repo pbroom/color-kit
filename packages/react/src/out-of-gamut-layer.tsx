@@ -34,47 +34,53 @@ interface ResolvedOutOfGamutLayerConfig {
   };
 }
 
+/**
+ * Props for {@link OutOfGamutLayer}; other `canvas` attributes are
+ * forwarded. Every fill and dot opacity defaults to 0, so set at least one.
+ */
 export interface OutOfGamutLayerProps extends Omit<
   CanvasHTMLAttributes<HTMLCanvasElement>,
   'onChange'
 > {
   /**
-   * Fill color for colors outside Display-P3.
-   * @default '#1f1f1f'
+   * Fill color for colors outside Display-P3 (any CSS color; its alpha is
+   * replaced by `outOfP3FillOpacity`).
+   * @defaultValue '#1f1f1f'
    */
   outOfP3FillColor?: string;
   /**
    * Fill opacity for colors outside Display-P3.
-   * @default 0
+   * @defaultValue 0
    */
   outOfP3FillOpacity?: number;
   /**
    * Fill color for colors inside P3 but outside sRGB.
-   * @default '#1f1f1f'
+   * @defaultValue '#1f1f1f'
    */
   outOfSrgbFillColor?: string;
   /**
    * Fill opacity for colors inside P3 but outside sRGB.
-   * @default 0
+   * @defaultValue 0
    */
   outOfSrgbFillOpacity?: number;
   /**
-   * Dot pattern opacity for out-of-gamut overlays.
-   * @default 0
+   * Opacity of a white dot pattern drawn over both out-of-gamut regions.
+   * @defaultValue 0
    */
   dotPatternOpacity?: number;
   /**
    * Dot pattern square size in pixels.
-   * @default 2
+   * @defaultValue 2
    */
   dotPatternSize?: number;
   /**
    * Dot pattern gap in pixels.
-   * @default 2
+   * @defaultValue 2
    */
   dotPatternGap?: number;
   /**
-   * Extra backing-store scale factor beyond DPR. @default 1
+   * Extra backing-store scale factor beyond DPR.
+   * @defaultValue 1
    */
   resolutionScale?: number;
 }
@@ -234,7 +240,33 @@ function resolutionMultiplier(
 }
 
 /**
- * Dedicated raster layer for out-of-gamut fills and optional dot overlays.
+ * Canvas layer that shades the parts of the {@link ColorArea} plane outside
+ * Display P3 and, separately, inside P3 but outside sRGB.
+ *
+ * Each region gets its own fill color and opacity, plus an optional white
+ * dot pattern; in-gamut pixels stay transparent. Stack it above a
+ * {@link ColorPlane}. Gamut checks use the plane's raw (unmapped) colors.
+ * Must be rendered inside a ColorArea.
+ *
+ * @throws {Error} When rendered outside a `<ColorArea>`.
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorArea, ColorPlane, OutOfGamutLayer } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane />
+ *       <OutOfGamutLayer
+ *         outOfP3FillOpacity={0.6}
+ *         outOfSrgbFillOpacity={0.25}
+ *         dotPatternOpacity={0.3}
+ *       />
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export const OutOfGamutLayer = forwardRef<
   HTMLCanvasElement,

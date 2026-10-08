@@ -42,6 +42,32 @@ function distributeBatchDuration(totalMs: number, weights: number[]): number[] {
   });
 }
 
+/**
+ * Creates a backend that solves plane queries in JavaScript on the calling
+ * thread and packs the results.
+ *
+ * Without `request.trace` it runs `runPlaneQueries`; with it, it runs
+ * `inspectPlaneQueries` and returns per-query traces whose `timings.compute`
+ * and `timings.marshal` split the batch durations across queries (by each
+ * query's own time and result size respectively). The backend is stateless.
+ *
+ * @returns A {@link PlaneComputeBackend} with `kind: 'js'`.
+ * @see {@link runPlaneCompute}
+ * @see {@link createPlaneComputeScheduler}
+ * @example
+ * ```ts
+ * import { createJsPlaneComputeBackend, runPlaneCompute } from 'color-kit/compute';
+ *
+ * const backend = createJsPlaneComputeBackend();
+ * const response = runPlaneCompute(
+ *   { plane: { model: 'oklch', fixed: { h: 250 } }, queries: [{ kind: 'gamutRegion', gamut: 'srgb' }] },
+ *   backend,
+ * );
+ *
+ * backend.kind; // → 'js'
+ * response.backend; // → 'js'
+ * ```
+ */
 export function createJsPlaneComputeBackend(): PlaneComputeBackend {
   return {
     kind: 'js',

@@ -10,10 +10,18 @@ import { assertFinite } from './finite.js';
  * Convert sRGB (0-255) to linear RGB (0-1), writing into `out`
  * (allocation-free). `out` may be the same object as `rgb`.
  *
+ * @param out - Object to write the result into
+ * @param rgb - sRGB color (`0-255`; not clamped)
+ * @returns `out`
+ * @see {@link srgbToLinear}
+ *
  * @example
  * ```ts
+ * import { srgbToLinearInto } from 'color-kit';
+ *
  * const linear = { r: 0, g: 0, b: 0, alpha: 1 };
  * srgbToLinearInto(linear, { r: 255, g: 128, b: 0, alpha: 1 });
+ * linear.g; // → ≈ 0.2159
  * ```
  */
 export function srgbToLinearInto(out: LinearRgb, rgb: Rgb): LinearRgb {
@@ -29,7 +37,23 @@ export function srgbToLinearInto(out: LinearRgb, rgb: Rgb): LinearRgb {
   return out;
 }
 
-/** Convert sRGB (0-255) to linear RGB (0-1) */
+/**
+ * Convert sRGB (`0-255`) to linear-light RGB (`0-1`) with the sRGB transfer
+ * function. Inputs are not clamped; out-of-range values extend the curve.
+ *
+ * @param rgb - sRGB color
+ * @returns A new {@link LinearRgb}
+ * @see {@link linearToSrgb}
+ * @see {@link srgbToLinearChannel}
+ *
+ * @example
+ * ```ts
+ * import { srgbToLinear } from 'color-kit';
+ *
+ * srgbToLinear({ r: 255, g: 128, b: 0, alpha: 1 });
+ * // → ≈ { r: 1, g: 0.2159, b: 0, alpha: 1 }
+ * ```
+ */
 export function srgbToLinear(rgb: Rgb): LinearRgb {
   return srgbToLinearInto({ r: 0, g: 0, b: 0, alpha: 1 }, rgb);
 }
@@ -38,10 +62,18 @@ export function srgbToLinear(rgb: Rgb): LinearRgb {
  * Convert linear RGB (0-1) to sRGB (0-255, rounded and clamped), writing
  * into `out` (allocation-free). `out` may be the same object as `linear`.
  *
+ * @param out - Object to write the result into
+ * @param linear - Linear-light RGB color
+ * @returns `out`
+ * @see {@link linearToSrgb}
+ *
  * @example
  * ```ts
+ * import { linearToSrgbInto } from 'color-kit';
+ *
  * const rgb = { r: 0, g: 0, b: 0, alpha: 1 };
  * linearToSrgbInto(rgb, { r: 1, g: 0.2, b: 0, alpha: 1 });
+ * rgb; // → { r: 255, g: 124, b: 0, alpha: 1 }
  * ```
  */
 export function linearToSrgbInto(out: Rgb, linear: LinearRgb): Rgb {
@@ -57,15 +89,47 @@ export function linearToSrgbInto(out: Rgb, linear: LinearRgb): Rgb {
   return out;
 }
 
-/** Convert linear RGB (0-1) to sRGB (0-255) */
+/**
+ * Convert linear-light RGB (`0-1`) to 8-bit sRGB (`0-255`) with the sRGB
+ * transfer function. Each channel is rounded to an integer and clipped to
+ * `[0, 255]`.
+ *
+ * @param linear - Linear-light RGB color
+ * @returns A new {@link Rgb} with integer channels
+ * @see {@link srgbToLinear}
+ * @see {@link linearToSrgbChannel}
+ *
+ * @example
+ * ```ts
+ * import { linearToSrgb } from 'color-kit';
+ *
+ * linearToSrgb({ r: 1, g: 0.2, b: 0, alpha: 1 }); // → { r: 255, g: 124, b: 0, alpha: 1 }
+ * linearToSrgb({ r: 1.2, g: 0.5, b: -0.1, alpha: 1 }); // → { r: 255, g: 188, b: 0, alpha: 1 }
+ * ```
+ */
 export function linearToSrgb(linear: LinearRgb): Rgb {
   return linearToSrgbInto({ r: 0, g: 0, b: 0, alpha: 1 }, linear);
 }
 
 /**
- * Convert sRGB (0-255) to hex string. Channels are rounded and clamped to
- * `0-255`; non-finite channels or alpha throw a `RangeError` instead of
- * emitting `NaN` digits.
+ * Convert sRGB (`0-255`) to a lowercase hex string: `#rrggbb`, or
+ * `#rrggbbaa` when alpha is below 1. Channels are rounded and clamped to
+ * `0-255`.
+ *
+ * @param rgb - sRGB color; fractional and out-of-range channels are allowed
+ * @returns Hex string with a leading `#`
+ * @throws {RangeError} When any channel or alpha is not finite
+ * @see {@link hexToRgb}
+ * @see {@link toHex}
+ *
+ * @example
+ * ```ts
+ * import { rgbToHex } from 'color-kit';
+ *
+ * rgbToHex({ r: 59, g: 130, b: 246, alpha: 1 }); // → '#3b82f6'
+ * rgbToHex({ r: 59, g: 130, b: 246, alpha: 0.5 }); // → '#3b82f680'
+ * rgbToHex({ r: 300, g: -5, b: 127.6, alpha: 1 }); // → '#ff0080'
+ * ```
  */
 export function rgbToHex(rgb: Rgb): string {
   const { r, g, b, alpha } = rgb;
@@ -79,7 +143,21 @@ const HEX_PATTERN = /^#?(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i;
 
 /**
  * Parse a hex string (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`; the leading
- * `#` is optional) to sRGB. Throws for any other length or non-hex digit.
+ * `#` is optional) to 8-bit sRGB. Alpha is returned as `0-1`.
+ *
+ * @param hex - Hex color string
+ * @returns A new {@link Rgb}
+ * @throws {Error} When `hex` has any other length or a non-hex digit
+ * @see {@link rgbToHex}
+ * @see {@link fromHex}
+ *
+ * @example
+ * ```ts
+ * import { hexToRgb } from 'color-kit';
+ *
+ * hexToRgb('#3b82f6'); // → { r: 59, g: 130, b: 246, alpha: 1 }
+ * hexToRgb('f008'); // → ≈ { r: 255, g: 0, b: 0, alpha: 0.5333 }
+ * ```
  */
 export function hexToRgb(hex: string): Rgb {
   if (!HEX_PATTERN.test(hex)) {

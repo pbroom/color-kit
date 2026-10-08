@@ -190,10 +190,31 @@ function validatePackedPlaneQueryResult(
 /**
  * Decodes a packed plane query payload back into query results.
  *
- * Throws `Invalid packed plane query result: …` when the payload has the
- * wrong ABI version, missing or mistyped buffers, unknown kinds, missing or
+ * The whole payload is validated before any geometry is rebuilt, so it is
+ * safe to call on data received from a worker. Values come back as the
+ * 32-bit floats they were packed as.
+ *
+ * @param packed - Payload from {@link packPlaneQueryResults} or a compute run.
+ * @returns One result per descriptor, in order.
+ * @throws {Error} `Invalid packed plane query result: …` when the payload has
+ * the wrong ABI version, missing or mistyped buffers, unknown kinds, missing or
  * invalid descriptor fields, non-contiguous ranges, or non-finite point data.
  * Nothing is defaulted.
+ * @example
+ * ```ts
+ * import { parse } from 'color-kit';
+ * import { packPlaneQueryResults, unpackPlaneQueryResults } from 'color-kit/compute';
+ * import { runPlaneQueries } from 'color-kit/plane';
+ *
+ * const packed = packPlaneQueryResults(
+ *   runPlaneQueries({ model: 'oklch' }, [
+ *     { kind: 'gradient', from: parse('#000'), to: parse('#fff'), steps: 3 },
+ *   ]),
+ * );
+ * const [gradient] = unpackPlaneQueryResults(packed);
+ *
+ * gradient.kind; // → 'gradient'
+ * ```
  */
 export function unpackPlaneQueryResults(
   packed: PackedPlaneQueryResult,

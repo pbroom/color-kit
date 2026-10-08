@@ -66,13 +66,32 @@ function signedPow(value: number, exponent: number): number {
  * `xyz-d50`. Components accept numbers, percentages, and `none` (a missing
  * component, which CSS treats as `0`; not allowed in legacy comma syntax).
  * Hues accept `deg`, `grad`, `rad` and `turn`, and the result's hue is
- * normalized to `[0, 360)`.
+ * normalized to `[0, 360)`. Input is trimmed and case-insensitive. Colors
+ * outside sRGB (wide-gamut `color()`, `oklch()`, `lab()`, ...) keep their
+ * full chroma; nothing is gamut mapped.
  *
- * Throws an `Error` for anything else, including invalid hex digits or
- * lengths, malformed numbers (`1.2.3`) and values that overflow to
- * `Infinity`, either as written or after conversion; a non-string `input`
- * throws a `TypeError`. Use {@link tryParse} to get `null` instead of an
- * exception.
+ * Use {@link tryParse} to get `null` instead of an exception.
+ *
+ * @param input - CSS color string
+ * @returns A new OKLCH {@link Color}
+ * @throws {Error} When `input` is not a supported, well-formed CSS color:
+ *   unknown names or functions, invalid hex digits or lengths, the wrong
+ *   number of components, malformed numbers (`1.2.3`), units a component
+ *   does not accept, and values that overflow to `Infinity` as written or
+ *   after conversion
+ * @throws {TypeError} When `input` is not a string
+ * @see {@link toCss}
+ *
+ * @example
+ * ```ts
+ * import { parse, toCss, toHex } from 'color-kit';
+ *
+ * parse('oklch(0.7 0.15 30)'); // → { l: 0.7, c: 0.15, h: 30, alpha: 1 }
+ * toCss(parse('rebeccapurple'), 'oklch'); // → 'oklch(0.4403 0.1603 303.37)'
+ * parse('rgb(59 130 246 / 50%)').alpha; // → 0.5
+ * toHex(parse('color(display-p3 1 0 0)')); // → '#ff0000' (clipped by toHex)
+ * parse('not-a-color'); // throws Error: Unable to parse color: "not-a-color"
+ * ```
  */
 export function parse(input: string): Color {
   const str = input.trim().toLowerCase();
@@ -289,12 +308,19 @@ export function parse(input: string): Color {
 
 /**
  * Like {@link parse}, but returns `null` instead of throwing when `input` is
- * not a supported, well-formed CSS color. Never throws.
+ * not a supported, well-formed CSS color (or not a string). Never throws.
+ *
+ * @param input - CSS color string
+ * @returns The parsed {@link Color}, or `null`
+ * @see {@link parse}
  *
  * @example
  * ```ts
- * tryParse('#3b82f6'); // Color
- * tryParse('#gggggg'); // null
+ * import { toHex, tryParse } from 'color-kit';
+ *
+ * const color = tryParse('#3b82f6');
+ * color && toHex(color); // → '#3b82f6'
+ * tryParse('#gggggg'); // → null
  * ```
  */
 export function tryParse(input: string): Color | null {

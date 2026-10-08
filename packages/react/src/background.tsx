@@ -1,15 +1,40 @@
 import { forwardRef } from 'react';
 import { Layer, type LayerProps } from './layer.js';
 
+/** Props for {@link Background}: {@link LayerProps} without `kind`. */
 export interface BackgroundProps extends Omit<LayerProps, 'kind'> {
-  /** Checkerboard background helper. @default false */
+  /**
+   * Paints a checkerboard (for showing transparency behind the plane).
+   * @defaultValue false
+   */
   checkerboard?: boolean;
-  /** Checker square size in px. @default 12 */
+  /**
+   * Checker square size in px.
+   * @defaultValue 12
+   */
   checkerSize?: number;
 }
 
 /**
- * Convenience wrapper for a non-interactive background layer.
+ * Non-interactive `background` {@link Layer}, optionally painted with a
+ * checkerboard so translucent colors read as translucent.
+ *
+ * Always `kind="background"` and never interactive; a `style` prop is merged
+ * over the checkerboard styles.
+ *
+ * @example
+ * ```tsx
+ * import { Background, Color, ColorArea, ColorPlane } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="oklch(0.7 0.15 250 / 0.6)">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <Background checkerboard checkerSize={8} />
+ *       <ColorPlane />
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export const Background = forwardRef<HTMLDivElement, BackgroundProps>(
   function Background(

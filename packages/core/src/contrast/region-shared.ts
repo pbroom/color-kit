@@ -73,18 +73,40 @@ export function rejectRemovedContrastOptions(
   }
 }
 
-/** Sampling options as the contrast-region solver runs them. */
+/**
+ * Sampling options as the contrast-region solver runs them, with defaults
+ * filled in and limits applied; returned by
+ * {@link clampContrastRegionSampling}.
+ */
 export interface ContrastRegionSampling {
+  /** Initial samples per region side, at most 512. */
   initialSamples: number;
+  /** Midpoint-to-chord split threshold in l/c units, at least 1e-6. */
   errorTolerance: number;
+  /** Maximum halvings of an initial sample interval, at most 12. */
   maxDepth: number;
 }
 
 /**
- * The sampling `contrastRegionPaths` actually runs with: defaults filled in,
- * `initialSamples` capped at 512, `maxDepth` at 12, and `errorTolerance`
- * raised to at least 1e-6. It does not validate; values the solver rejects
- * (such as `initialSamples: 1`) are returned unchanged.
+ * Returns the sampling {@link contrastRegionPaths} actually runs with:
+ * defaults filled in (`32`, `0.0015`, `6`), `initialSamples` capped at 512,
+ * `maxDepth` at 12, and `errorTolerance` raised to at least 1e-6.
+ *
+ * It does not validate; values the solver rejects (such as
+ * `initialSamples: 1`) are returned unchanged. Use it to show the effective
+ * fidelity of a contrast overlay or to key a cache.
+ *
+ * @param options - The `initialSamples`, `errorTolerance` and `maxDepth`
+ *   fields of {@link ContrastRegionPathOptions}; other fields are ignored.
+ * @returns A new {@link ContrastRegionSampling} object.
+ *
+ * @example
+ * ```ts
+ * import { clampContrastRegionSampling } from 'color-kit';
+ *
+ * clampContrastRegionSampling({ initialSamples: 1000, errorTolerance: 0 });
+ * // → { initialSamples: 512, errorTolerance: 0.000001, maxDepth: 6 }
+ * ```
  */
 export function clampContrastRegionSampling(
   options: Pick<

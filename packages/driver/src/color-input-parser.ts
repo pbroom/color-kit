@@ -1,6 +1,17 @@
+/** Options for {@link parseColorInputExpression}. */
 export interface ParseColorInputExpressionOptions {
+  /**
+   * Current channel value: the left operand when an expression starts with
+   * an operator (`+10`, `*2`).
+   */
   currentValue: number;
+  /** Channel range `[min, max]`; a `%` number is a fraction of its span. */
   range: [number, number];
+  /**
+   * Accept arithmetic (`+ - * /`, parentheses) and relative input. When
+   * `false`, only a single number is accepted.
+   * @defaultValue false
+   */
   allowExpressions?: boolean;
 }
 
@@ -247,6 +258,39 @@ function parseSimpleNumber(
   return number;
 }
 
+/**
+ * Parses text typed into a channel input into a number in channel units.
+ * Returns `null` for empty or unparseable input. The result is not clamped
+ * or wrapped; {@link resolveColorInputDraftValue} does that.
+ *
+ * Grammar, after trimming whitespace:
+ * - Number: digits with an optional fraction (`12`, `0.5`, `.5`), then an
+ *   optional suffix. `deg` (any case) is ignored; `%` means that percentage
+ *   of the range span, offset by `range[0]` (`50%` on `[100, 200]` is
+ *   `150`). Exponents (`1e3`) are rejected.
+ * - Without `allowExpressions`: one number with an optional leading `+` or
+ *   `-`, nothing else (`-2` is the absolute value `-2`).
+ * - With `allowExpressions`: `+ - * /` with the usual precedence, unary `+`
+ *   and `-`, and parentheses. Input that starts with an operator is relative
+ *   to `currentValue` (`+10`, `-5`, `*2`, `/4`), and there `%` is a plain
+ *   fraction of the span (`+10%` adds 10% of the span). In an absolute
+ *   expression that contains any `%` number, `range[0]` is added once to
+ *   the whole result (`50% + 10` on `[100, 200]` is `160`). Division by zero
+ *   or another non-finite result returns `null`.
+ *
+ * @example
+ * ```ts
+ * import { parseColorInputExpression } from 'color-kit/driver';
+ *
+ * const options = { currentValue: 100, range: [0, 360] as [number, number] };
+ * parseColorInputExpression('50%', options); // → 180
+ * parseColorInputExpression('1+1', options); // → null
+ * const expressions = { ...options, allowExpressions: true };
+ * parseColorInputExpression('2*(3+4)', expressions); // → 14
+ * parseColorInputExpression('+10%', expressions); // → 136
+ * parseColorInputExpression('/4', expressions); // → 25
+ * ```
+ */
 export function parseColorInputExpression(
   input: string,
   options: ParseColorInputExpressionOptions,
