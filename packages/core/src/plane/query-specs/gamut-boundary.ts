@@ -1,4 +1,7 @@
-import { gamutBoundaryPath } from '../../gamut/index.js';
+import {
+  DEFAULT_GAMUT_BOUNDARY_STEPS,
+  gamutBoundaryPath,
+} from '../../gamut/boundary-path.js';
 import { assertGamutTarget } from '../../gamut/target.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
 import { requireGamutField, requireHueField } from '../packed-abi.js';
@@ -9,7 +12,11 @@ import type {
   PlaneGamutBoundaryQuery,
   PlaneGamutBoundaryResult,
 } from '../types.js';
-import { countSinglePath, toPlaneBoundaryPoint } from './shared.js';
+import {
+  boundaryQueryBudget,
+  countSinglePath,
+  toPlaneBoundaryPoint,
+} from './shared.js';
 
 /**
  * Traces the gamut's maximum-chroma edge at one hue and projects it onto the
@@ -85,7 +92,7 @@ export const gamutBoundarySpec: PlaneQuerySpec<'gamutBoundary'> = {
   pointChannels: 'xylc',
   fixedPathCount: 1,
   countGeometry: (result) => countSinglePath(result.points),
-  budget: (query) => query.steps ?? 48,
+  budget: (query) => boundaryQueryBudget(query, DEFAULT_GAMUT_BOUNDARY_STEPS),
   pack(result, writer, label) {
     const pathStart = writer.pathCount;
     writer.appendLCPath(result.points, label);

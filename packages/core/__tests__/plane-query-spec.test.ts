@@ -291,6 +291,78 @@ describe('scheduler golden telemetry keys', () => {
   );
 });
 
+describe('scheduler budgets follow the traced point counts', () => {
+  const plane = definePlane({ fixed: { h: 250 } });
+  const red = fromHex('#ff0000');
+  const blue = fromHex('#0000ff');
+
+  function pointCount(query: PlaneQuery): number {
+    const [result] = runPlaneQueries(plane, [query]);
+    return 'points' in result ? result.points.length : 0;
+  }
+
+  it('uses each solver default when steps is omitted', () => {
+    const cases: PlaneQuery[] = [
+      { kind: 'gamutBoundary' },
+      { kind: 'chromaBand', requestedChroma: 0.1 },
+      { kind: 'gradient', from: red, to: blue },
+    ];
+    for (const query of cases) {
+      const budget = getPlaneQuerySpec(query.kind).budget(query);
+      // Uniform paths have steps + 1 points; a gradient has `steps`.
+      expect(Math.abs(budget - pointCount(query))).toBeLessThanOrEqual(1);
+    }
+    expect(
+      getPlaneQuerySpec('gamutBoundary').budget({ kind: 'gamutBoundary' }),
+    ).toBe(100);
+    expect(getPlaneQuerySpec('chromaBand').budget({ kind: 'chromaBand' })).toBe(
+      12,
+    );
+    expect(
+      getPlaneQuerySpec('gradient').budget({
+        kind: 'gradient',
+        from: red,
+        to: blue,
+      }),
+    ).toBe(16);
+    expect(
+      getPlaneQuerySpec('gradient').budget({
+        kind: 'gradient',
+        from: red,
+        to: blue,
+        steps: 1,
+      }),
+    ).toBe(2);
+  });
+
+  it('estimates adaptive sampling from its tolerance instead of steps', () => {
+    for (const adaptiveTolerance of [undefined, 0.004, 0.00025, 0.0000625]) {
+      for (const kind of ['gamutBoundary', 'chromaBand'] as const) {
+        const query = {
+          kind,
+          samplingMode: 'adaptive',
+          adaptiveTolerance,
+          steps: 500,
+        } as PlaneQuery;
+        const budget = getPlaneQuerySpec(kind).budget(query);
+        const points = pointCount(query);
+        expect(budget).toBeLessThan(500);
+        expect(budget).toBeGreaterThan(points * 0.5);
+        expect(budget).toBeLessThan(points * 2);
+      }
+    }
+    // A shallow depth caps the estimate even at a tiny tolerance.
+    expect(
+      getPlaneQuerySpec('gamutBoundary').budget({
+        kind: 'gamutBoundary',
+        samplingMode: 'adaptive',
+        adaptiveTolerance: 1e-9,
+        adaptiveMaxDepth: 1,
+      }),
+    ).toBe(21);
+  });
+});
+
 describe('achromatic NaN hue inputs', () => {
   const gray = { l: 0.5, c: 0, h: Number.NaN, alpha: 1 };
   const red = { l: 0.6, c: 0.2, h: 30, alpha: 1 };

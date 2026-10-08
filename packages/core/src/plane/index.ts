@@ -59,7 +59,7 @@ export {
   scaleRegion,
   translateRegion,
 } from './transforms.js';
-export type { PlaneSense, PlaneWithSense } from './query.js';
+export type { PlaneSense } from './query.js';
 
 export type {
   Plane,

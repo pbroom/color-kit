@@ -9,7 +9,8 @@ import type {
   MaxChromaAtOptions,
 } from './types.js';
 
-const DEFAULT_CHROMA_BAND_STEPS = 12;
+/** Default `steps` of a uniform {@link chromaBand}. */
+export const DEFAULT_CHROMA_BAND_STEPS = 12;
 const DEFAULT_CHROMA_BAND_SELECTED_LIGHTNESS = 0.5;
 const CHROMA_BAND_CROSSING_EPSILON = 1e-7;
 const CHROMA_BAND_CROSSING_ITERATIONS = 18;

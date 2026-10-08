@@ -14,7 +14,6 @@ import {
 import { resolvePlaneDefinition } from './resolve.js';
 import { createPlaneTraceContext, finalizePlaneTrace } from './trace.js';
 import type {
-  Plane,
   PlaneChromaBandQuery,
   PlaneChromaBandResult,
   PlaneContrastBoundaryResult,
@@ -270,12 +269,6 @@ export interface PlaneSense {
   /** Samples a gradient and projects each sample to plane coordinates. */
   gradient: (query: Omit<PlaneGradientQuery, 'kind'>) => PlaneGradientResult;
 }
-
-/**
- * A resolved {@link Plane} merged with its {@link PlaneSense} helpers, for
- * example `{ ...plane, ...sense(plane) }`.
- */
-export interface PlaneWithSense extends PlaneSense, Plane {}
 
 /**
  * Binds a plane to a set of query helpers, so queries read as

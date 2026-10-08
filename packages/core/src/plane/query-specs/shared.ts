@@ -1,3 +1,4 @@
+import { estimateAdaptiveBoundaryPointCount } from '../../gamut/boundary-path.js';
 import type { Color } from '../../types.js';
 import { colorToPlane } from '../mapping.js';
 import type { PlaneQueryGeometryCount } from '../query-spec.js';
@@ -55,4 +56,25 @@ export function countPlanePaths(
     pathCount: paths.length,
     pointCount: paths.reduce((total, path) => total + path.length, 0),
   };
+}
+
+/**
+ * Scheduler work estimate shared by gamut-boundary and chroma-band queries:
+ * about one `maxChromaAt` search per traced point. Uniform sampling traces
+ * `steps` points (the solver's own default when omitted); adaptive sampling
+ * ignores `steps`, so its count is estimated from the adaptive options.
+ */
+export function boundaryQueryBudget(
+  query: {
+    steps?: number;
+    samplingMode?: 'uniform' | 'adaptive';
+    adaptiveTolerance?: number;
+    adaptiveMaxDepth?: number;
+  },
+  defaultSteps: number,
+): number {
+  if (query.samplingMode === 'adaptive') {
+    return estimateAdaptiveBoundaryPointCount(query);
+  }
+  return query.steps ?? defaultSteps;
 }
