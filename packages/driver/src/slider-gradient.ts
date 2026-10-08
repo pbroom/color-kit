@@ -178,7 +178,9 @@ function resolveSteps(steps?: number): number {
   const resolved = steps ?? DEFAULT_STEPS;
 
   if (!Number.isFinite(resolved) || resolved < 2) {
-    throw new Error('sampleSliderGradient() requires steps >= 2');
+    throw new RangeError(
+      `sampleSliderGradient() requires steps >= 2, got ${resolved}`,
+    );
   }
 
   return Math.round(resolved);
@@ -350,7 +352,7 @@ function toActiveStopCss(color: Color, colorSpace: SliderColorSpace): string {
  * sampled color is then gamut-mapped twice: into `colorSpace` (`activeColor`,
  * `activeCss`) and into sRGB (`srgbColor`, `srgbCss`).
  *
- * @throws {Error} When `steps` is non-finite or below 2.
+ * @throws {RangeError} When `steps` is non-finite or below 2.
  * @see {@link getSliderGradientStyles}
  *
  * @example
@@ -416,7 +418,7 @@ export function sampleSliderGradient(
  * `srgbBackgroundImage` and `srgbBackgroundColor` are sRGB fallbacks for
  * browsers or displays without Display P3.
  *
- * @throws {Error} When `steps` is non-finite or below 2.
+ * @throws {RangeError} When `steps` is non-finite or below 2.
  *
  * @example
  * ```ts

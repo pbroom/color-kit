@@ -17,6 +17,7 @@ import {
   setColorChannel,
   setColorRequested,
 } from '../src/color-state.js';
+import { getColorDisplayStyles } from '../src/color-display.js';
 
 const IN_GAMUT: Color = { l: 0.5, c: 0.05, h: 200, alpha: 1 };
 // High-chroma green: outside sRGB, inside P3.
@@ -299,5 +300,45 @@ describe('single-color reducers', () => {
     expect(setColorActiveView(base, 'oklch', 'programmatic')).toBe(base);
     expect(setColorActiveGamut(base, 'display-p3', 'user')).not.toBe(base);
     expect(setColorActiveView(base, 'oklch', 'user')).not.toBe(base);
+  });
+});
+
+describe('gamut validation', () => {
+  const unknownGamuts: unknown[] = ['p3', 'rec2020', '', null];
+
+  it('rejects unknown active gamuts in createColorState', () => {
+    for (const gamut of unknownGamuts) {
+      expect(() =>
+        createColorState(IN_GAMUT, { activeGamut: gamut as 'srgb' }),
+      ).toThrow(TypeError);
+    }
+    expect(() =>
+      createColorState(IN_GAMUT, { activeGamut: 'p3' as 'srgb' }),
+    ).toThrow(/createColorState\(\): unknown gamut "p3".*use 'display-p3'/);
+    expect(createColorState(IN_GAMUT).activeGamut).toBe('display-p3');
+    expect(
+      createColorState(IN_GAMUT, { activeGamut: 'srgb' }).activeGamut,
+    ).toBe('srgb');
+  });
+
+  it('rejects unknown and missing gamuts in setColorActiveGamut', () => {
+    const base = createColorState(IN_GAMUT);
+    for (const gamut of [...unknownGamuts, undefined]) {
+      expect(() => setColorActiveGamut(base, gamut as 'srgb', 'user')).toThrow(
+        TypeError,
+      );
+    }
+    expect(() => setColorActiveGamut(base, 'p3' as 'srgb', 'user')).toThrow(
+      "use 'display-p3'",
+    );
+  });
+
+  it('rejects unknown gamuts in getColorDisplayStyles', () => {
+    expect(() =>
+      getColorDisplayStyles(IN_GAMUT, IN_GAMUT, 'p3' as 'srgb'),
+    ).toThrow(TypeError);
+    expect(
+      getColorDisplayStyles(IN_GAMUT, IN_GAMUT, 'srgb').background,
+    ).toMatch(/^#/);
   });
 });

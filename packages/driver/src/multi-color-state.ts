@@ -1,6 +1,7 @@
 import type { Color, GamutMapMethod } from '@color-kit/core';
 import { parse } from '@color-kit/core';
 import {
+  assertActiveGamut,
   createColorState,
   resolveIncomingRequested,
   type ColorChannel,
@@ -101,7 +102,8 @@ export interface CreateMultiColorModelOptions {
    */
   selectedId?: string;
   /**
-   * Gamut every entry renders in.
+   * Gamut every entry renders in. Any value other than `'srgb'` or
+   * `'display-p3'` throws a `TypeError`.
    * @defaultValue 'display-p3'
    */
   activeGamut?: GamutTarget;
@@ -117,8 +119,14 @@ const DEFAULT_ENTRY: MultiColorEntryInput = {
   color: { l: 0.6, c: 0.2, h: 250, alpha: 1 },
 };
 
-function resolveColor(input: Color | string): Color {
-  return typeof input === 'string' ? parse(input) : input;
+function resolveColor(input: Color | string, fn: string): Color {
+  if (typeof input === 'string') return parse(input);
+  if (typeof input !== 'object' || input === null) {
+    throw new TypeError(
+      `${fn}: color must be a Color object or a CSS color string, got ${input === null ? 'null' : typeof input}`,
+    );
+  }
+  return input;
 }
 
 function cloneColor(color: Color): Color {
@@ -127,10 +135,11 @@ function cloneColor(color: Color): Color {
 
 function createEntry(
   input: Color | string,
+  fn: string,
   source: ColorSource = 'programmatic',
 ): MultiColorEntryModel {
   return {
-    requested: cloneColor(resolveColor(input)),
+    requested: cloneColor(resolveColor(input, fn)),
     source,
   };
 }
@@ -152,7 +161,9 @@ function normalizeInputColors(
  * Creates a normalized multi-color model. String colors are parsed; entries
  * start with source `'programmatic'` and the default gamut mapping.
  *
- * @throws {Error} When a color string cannot be parsed.
+ * @throws {TypeError} When `options.activeGamut` is not `'srgb'` or
+ * `'display-p3'`, or a color is neither a string nor an object.
+ * @throws {Error} When a color string cannot be parsed (from `parse`).
  *
  * @example
  * ```ts
@@ -173,6 +184,7 @@ export function createMultiColorModel(
     activeGamut = 'display-p3',
     activeView = 'oklch',
   } = options;
+  assertActiveGamut(activeGamut, 'createMultiColorModel()');
 
   const inputs = normalizeInputColors(colors);
   const order: string[] = [];
@@ -181,7 +193,7 @@ export function createMultiColorModel(
   for (const input of inputs) {
     if (entries[input.id]) continue;
     order.push(input.id);
-    entries[input.id] = createEntry(input.color);
+    entries[input.id] = createEntry(input.color, 'createMultiColorModel()');
   }
 
   const selectedId =
@@ -428,7 +440,9 @@ export function setMultiColorChannel(
 /**
  * Switches the shared display gamut and sets every entry's source to
  * `source`. No-op when the gamut is unchanged, whatever `source` is.
- * `gamut` is not validated (see {@link GamutTarget}).
+ *
+ * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'` (for
+ * example the removed `'p3'` spelling).
  *
  * @example
  * ```ts
@@ -448,6 +462,7 @@ export function setMultiColorActiveGamut(
   gamut: GamutTarget,
   source: ColorSource,
 ): MultiColorModel {
+  assertActiveGamut(gamut, 'setMultiColorActiveGamut()');
   if (model.activeGamut === gamut) return model;
 
   return {
@@ -517,7 +532,9 @@ export function selectMultiColorEntry(
  * was selected. No-op when `id` already exists.
  *
  * @param source - Source of the new entry.
- * @throws {Error} When `color` is a string that cannot be parsed.
+ * @throws {TypeError} When `color` is neither a string nor an object.
+ * @throws {Error} When `color` is a string that cannot be parsed (from
+ * `parse`).
  *
  * @example
  * ```ts
@@ -544,7 +561,7 @@ export function addMultiColorEntry(
     selectedId: model.selectedId ?? id,
     entries: {
       ...model.entries,
-      [id]: createEntry(color, source),
+      [id]: createEntry(color, 'addMultiColorEntry()', source),
     },
   };
 }

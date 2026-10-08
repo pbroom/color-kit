@@ -1,5 +1,6 @@
 import type { Color, GamutMapMethod } from '@color-kit/core';
 import {
+  assertGamutTarget,
   inP3Gamut,
   inSrgbGamut,
   isAchromatic,
@@ -9,8 +10,8 @@ import {
 
 /**
  * Display gamut a color state renders in. The color-state, multi-color and
- * display helpers do not validate it: any value other than `'display-p3'`
- * (including the removed `'p3'` spelling) selects the sRGB color.
+ * display helpers validate it like the core plane queries: any other value,
+ * including the removed `'p3'` spelling, throws a `TypeError`.
  */
 export type GamutTarget = 'srgb' | 'display-p3';
 /** Color model a picker shows its channels or text in. */
@@ -86,10 +87,23 @@ export interface ColorUpdateEvent {
   interaction: ColorInteraction;
 }
 
+/**
+ * Asserts a required active gamut with core's `assertGamutTarget`, also
+ * rejecting `undefined` (which `assertGamutTarget` treats as the sRGB
+ * default). Internal to the driver; not exported from the package.
+ */
+export function assertActiveGamut(
+  gamut: unknown,
+  fn: string,
+): asserts gamut is GamutTarget {
+  assertGamutTarget(gamut === undefined ? 'undefined' : gamut, fn);
+}
+
 /** Options for {@link createColorState}. */
 export interface CreateColorStateOptions {
   /**
-   * Gamut whose displayed color the UI renders.
+   * Gamut whose displayed color the UI renders. Any value other than
+   * `'srgb'` or `'display-p3'` throws a `TypeError`.
    * @defaultValue 'display-p3'
    */
   activeGamut?: GamutTarget;
@@ -165,6 +179,10 @@ export function mapDisplayedColors(
  * `requested` as is (no clamping) and derives the displayed sRGB and P3
  * colors and out-of-gamut flags with {@link mapDisplayedColors}.
  *
+ * @throws {TypeError} When `options.activeGamut` is not `'srgb'` or
+ * `'display-p3'` (for example the removed `'p3'` spelling). The message ends
+ * `'p3' is not supported; use 'display-p3'` for `'p3'`.
+ *
  * @example
  * ```ts
  * import { createColorState } from 'color-kit/driver';
@@ -186,6 +204,7 @@ export function createColorState(
     source = 'programmatic',
     gamutMapMethod = 'chroma-reduction',
   } = options;
+  assertActiveGamut(activeGamut, 'createColorState()');
   const mapped = mapDisplayedColors(requested, { gamutMapMethod });
 
   return {
@@ -437,8 +456,10 @@ export function setColorChannel(
 
 /**
  * Switches the active display gamut without touching requested/displayed
- * values. No-op when both gamut and source are unchanged. `gamut` is not
- * validated (see {@link GamutTarget}).
+ * values. No-op when both gamut and source are unchanged.
+ *
+ * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'` (for
+ * example the removed `'p3'` spelling).
  *
  * @example
  * ```ts
@@ -456,6 +477,7 @@ export function setColorActiveGamut(
   gamut: GamutTarget,
   source: ColorSource,
 ): ColorState {
+  assertActiveGamut(gamut, 'setColorActiveGamut()');
   if (state.activeGamut === gamut && state.meta.source === source) {
     return state;
   }
