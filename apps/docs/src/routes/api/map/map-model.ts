@@ -80,6 +80,22 @@ export const DEFAULT_FILTER: MapFilter = {
   reexports: true,
 };
 
+/**
+ * The filter to use when asking the map to show `slug`: the current filter
+ * if its tree already contains that entry, otherwise one with the entry,
+ * name and kind filters cleared (re-export visibility is kept). Lets the
+ * ledger's "Show on the map" action always reach its entry.
+ */
+export function filterShowingEntry(
+  entries: readonly ApiEntry[],
+  filter: MapFilter,
+  slug: string,
+): MapFilter {
+  const tree = buildTree(entries, filter);
+  if (tree.children?.some((child) => child.id === slug)) return filter;
+  return { ...filter, entry: null, kinds: new Set(), query: '' };
+}
+
 export function importPathOf(entry: string): string {
   return entry === 'core' ? 'color-kit' : `color-kit/${entry}`;
 }

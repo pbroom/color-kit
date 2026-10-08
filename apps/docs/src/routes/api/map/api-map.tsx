@@ -23,6 +23,7 @@ import {
   LABEL_OFFSET,
   type KindGroup,
   type LaidOutNode,
+  filterShowingEntry,
   type MapFilter,
   type MapLayout,
   type MapNode,
@@ -394,19 +395,27 @@ export function ApiMap({ entries }: { entries: readonly ApiEntry[] }) {
   };
 
   const showEntry = (slug: string) => {
+    // Clear filters that would hide the entry, so the action always lands.
+    const nextFilter = filterShowingEntry(entries, filter, slug);
+    const sourceTree =
+      nextFilter === filter ? tree : buildTree(entries, nextFilter);
+    if (nextFilter !== filter) setFilter(nextFilter);
     const next = new Set([...expanded, '', slug]);
     setExpanded(next);
-    const point = layoutTree(tree, next).nodes.find(
+    const point = layoutTree(sourceTree, next).nodes.find(
       (candidate) => candidate.data.id === slug,
     );
     svgRef.current?.scrollIntoView({ block: 'nearest' });
     if (point) {
       setActiveId(slug);
       setHoveredId(null);
-      svgRef.current
-        ?.querySelector<SVGElement>(`[data-node-id="${CSS.escape(slug)}"]`)
-        ?.focus({ preventScroll: true });
       panZoom.reveal(point.x, point.y, true);
+      // The node may only render after this update, so focus next frame.
+      requestAnimationFrame(() => {
+        svgRef.current
+          ?.querySelector<SVGElement>(`[data-node-id="${CSS.escape(slug)}"]`)
+          ?.focus({ preventScroll: true });
+      });
     }
   };
 
