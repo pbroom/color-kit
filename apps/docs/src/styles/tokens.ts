@@ -2,8 +2,9 @@
  * Design tokens for the docs site, generated into `tokens.css` with color-kit.
  *
  * The chrome is achromatic: every neutral sits at OKLCH chroma 0, so a swatch
- * placed on any surface reads true. The only hue is one display-p3 accent,
- * reserved for focus and the current location. sRGB fallbacks come from
+ * placed on any surface reads true. Hue appears in two places only: one
+ * display-p3 accent, reserved for focus and the current location, and the
+ * syntax palette inside code samples. sRGB fallbacks come from
  * `toSrgbGamut` + `toCss`; displays that report `(color-gamut: p3)` get the
  * exact `display-p3` value from `toP3Gamut`.
  *
@@ -45,6 +46,43 @@ export const ACCENT: Record<ThemeName, Color> = {
   dark: oklch(0.7, 0.2, 285),
 };
 
+/** Code token roles that carry hue. Punctuation and comments stay gray. */
+export type SyntaxRole =
+  | 'keyword'
+  | 'function'
+  | 'type'
+  | 'constant'
+  | 'string';
+
+/**
+ * Syntax hues in OKLCH degrees. One lightness and chroma per theme keeps the
+ * palette even; `tokens.test.ts` holds each role to 4.5:1 on `--code-bg`.
+ */
+const SYNTAX_HUE: Record<SyntaxRole, number> = {
+  keyword: 330,
+  function: 255,
+  type: 195,
+  constant: 55,
+  string: 145,
+};
+
+const SYNTAX_TONE: Record<ThemeName, { l: number; c: number }> = {
+  light: { l: 0.5, c: 0.16 },
+  dark: { l: 0.8, c: 0.12 },
+};
+
+export const SYNTAX: Record<ThemeName, Record<SyntaxRole, Color>> = {
+  light: syntaxPalette('light'),
+  dark: syntaxPalette('dark'),
+};
+
+function syntaxPalette(theme: ThemeName): Record<SyntaxRole, Color> {
+  const { l, c } = SYNTAX_TONE[theme];
+  return Object.fromEntries(
+    Object.entries(SYNTAX_HUE).map(([role, h]) => [role, oklch(l, c, h)]),
+  ) as Record<SyntaxRole, Color>;
+}
+
 /** Semantic aliases. Components only read these, never raw ramp steps. */
 export const SEMANTIC_COLORS = {
   '--bg': 'var(--gray-0)',
@@ -62,17 +100,17 @@ export const SEMANTIC_COLORS = {
   '--focus-ring-color': 'var(--accent-color)',
   '--code-bg': 'var(--gray-1)',
   // Shiki CSS-variables theme: one highlighted HTML output serves both themes.
-  // Syntax is ink weight, not hue, so color in code samples is always data.
   '--shiki-foreground': 'var(--gray-12)',
   '--shiki-background': 'var(--gray-1)',
-  '--shiki-token-keyword': 'var(--gray-12)',
-  '--shiki-token-function': 'var(--gray-12)',
-  '--shiki-token-constant': 'var(--gray-11)',
+  '--shiki-token-keyword': 'var(--syntax-keyword)',
+  '--shiki-token-function': 'var(--syntax-function)',
+  '--shiki-token-type': 'var(--syntax-type)',
+  '--shiki-token-constant': 'var(--syntax-constant)',
   '--shiki-token-parameter': 'var(--gray-11)',
-  '--shiki-token-string': 'var(--gray-10)',
-  '--shiki-token-string-expression': 'var(--gray-10)',
+  '--shiki-token-string': 'var(--syntax-string)',
+  '--shiki-token-string-expression': 'var(--syntax-string)',
   '--shiki-token-punctuation': 'var(--gray-10)',
-  '--shiki-token-link': 'var(--gray-11)',
+  '--shiki-token-link': 'var(--syntax-function)',
   '--shiki-token-comment': 'var(--gray-9)',
 } as const;
 
@@ -97,9 +135,19 @@ export const CONTRAST_PAIRS: ReadonlyArray<{
   { fg: '--fg-4', bg: '--bg-subtle', min: 4.5 },
   { fg: '--fg-4', bg: '--bg-hover', min: 4.5 },
   { fg: '--fg-4', bg: '--bg-active', min: 4.5 },
-  { fg: '--shiki-token-comment', bg: '--code-bg', min: 4.5 },
-  { fg: '--shiki-token-string', bg: '--code-bg', min: 4.5 },
-  { fg: '--shiki-foreground', bg: '--code-bg', min: 4.5 },
+  ...(
+    [
+      '--shiki-foreground',
+      '--shiki-token-keyword',
+      '--shiki-token-function',
+      '--shiki-token-type',
+      '--shiki-token-constant',
+      '--shiki-token-parameter',
+      '--shiki-token-string',
+      '--shiki-token-punctuation',
+      '--shiki-token-comment',
+    ] as const
+  ).map((fg) => ({ fg, bg: '--code-bg' as const, min: 4.5 as const })),
   { fg: '--control', bg: '--bg', min: 3 },
   { fg: '--control', bg: '--bg-subtle', min: 3 },
   { fg: '--accent', bg: '--bg', min: 3 },
@@ -118,6 +166,10 @@ export function resolveToken(name: string, theme: ThemeName): Color {
   }
   if (ref === '--accent-color') {
     return ACCENT[theme];
+  }
+  const role = /^--syntax-(\w+)$/.exec(ref)?.[1];
+  if (role != null) {
+    return SYNTAX[theme][role as SyntaxRole];
   }
   const step = /^--gray-(\d+)$/.exec(ref)?.[1];
   if (step == null) {
@@ -184,15 +236,25 @@ function themeColorDeclarations(theme: ThemeName): string[] {
     (l, step) => `--gray-${step}: ${srgbCss(oklch(l))};`,
   );
   lines.push(`--accent-color: ${srgbCss(ACCENT[theme])};`);
+  for (const [role, color] of Object.entries(SYNTAX[theme])) {
+    lines.push(`--syntax-${role}: ${srgbCss(color)};`);
+  }
   return lines;
 }
 
 function p3Overrides(theme: ThemeName): string[] {
-  const color = ACCENT[theme];
-  if (inSrgbGamut(color)) {
-    return [];
-  }
-  return [`--accent-color: ${toCss(toP3Gamut(color), 'display-p3')};`];
+  const colors: Array<[string, Color]> = [
+    ['--accent-color', ACCENT[theme]],
+    ...Object.entries(SYNTAX[theme]).map(([role, color]): [string, Color] => [
+      `--syntax-${role}`,
+      color,
+    ]),
+  ];
+  return colors
+    .filter(([, color]) => !inSrgbGamut(color))
+    .map(
+      ([name, color]) => `${name}: ${toCss(toP3Gamut(color), 'display-p3')};`,
+    );
 }
 
 function rule(selector: string, lines: string[]): string {

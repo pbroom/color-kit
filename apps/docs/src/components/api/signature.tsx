@@ -7,12 +7,6 @@ function sourceLabel(path: string, line: number): string {
   return `${path.split('/').pop()}:${line}`;
 }
 
-/** `import { name } from 'entry'` (or `import type` for type-only exports). */
-export function importStatement(symbol: ApiSymbol): string {
-  const keyword = VALUE_KINDS.has(symbol.kind) ? 'import' : 'import type';
-  return `${keyword} { ${symbol.name} } from '${symbol.importPath}';`;
-}
-
 /**
  * The reference header of a generated symbol: kind and deprecation labels,
  * the import line, a source link at the build commit, then the declaration.
@@ -29,7 +23,18 @@ export function ApiSignature({ symbol }: { symbol: ApiSymbol }) {
         {symbol.deprecated !== undefined ? (
           <ApiLabel deprecated>deprecated</ApiLabel>
         ) : null}
-        <code className="signature__import">{importStatement(symbol)}</code>
+        {/* `import { name } from 'entry'`, or `import type` for type-only exports. */}
+        <code className="signature__import">
+          <span className="tok-keyword">
+            {VALUE_KINDS.has(symbol.kind) ? 'import' : 'import type'}
+          </span>
+          <span className="tok-punct"> {'{'} </span>
+          {symbol.name}
+          <span className="tok-punct"> {'}'} </span>
+          <span className="tok-keyword">from</span>{' '}
+          <span className="tok-literal">'{symbol.importPath}'</span>
+          <span className="tok-punct">;</span>
+        </code>
         {symbol.source ? (
           <a
             className="signature__source"

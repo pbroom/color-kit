@@ -16,6 +16,11 @@
   --gray-11: #333333;
   --gray-12: #161616;
   --accent-color: #816dff;
+  --syntax-keyword: #93398e;
+  --syntax-function: #0961bb;
+  --syntax-type: #007272;
+  --syntax-constant: #974c00;
+  --syntax-string: #00791e;
   --bg: var(--gray-0);
   --bg-subtle: var(--gray-1);
   --bg-hover: var(--gray-2);
@@ -32,14 +37,15 @@
   --code-bg: var(--gray-1);
   --shiki-foreground: var(--gray-12);
   --shiki-background: var(--gray-1);
-  --shiki-token-keyword: var(--gray-12);
-  --shiki-token-function: var(--gray-12);
-  --shiki-token-constant: var(--gray-11);
+  --shiki-token-keyword: var(--syntax-keyword);
+  --shiki-token-function: var(--syntax-function);
+  --shiki-token-type: var(--syntax-type);
+  --shiki-token-constant: var(--syntax-constant);
   --shiki-token-parameter: var(--gray-11);
-  --shiki-token-string: var(--gray-10);
-  --shiki-token-string-expression: var(--gray-10);
+  --shiki-token-string: var(--syntax-string);
+  --shiki-token-string-expression: var(--syntax-string);
   --shiki-token-punctuation: var(--gray-10);
-  --shiki-token-link: var(--gray-11);
+  --shiki-token-link: var(--syntax-function);
   --shiki-token-comment: var(--gray-9);
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
@@ -98,6 +104,11 @@
   --gray-11: #d7d7d7;
   --gray-12: #f3f3f3;
   --accent-color: #968cff;
+  --syntax-keyword: #e9a1e3;
+  --syntax-function: #91c1ff;
+  --syntax-type: #44d6d6;
+  --syntax-constant: #f9a870;
+  --syntax-string: #8bd28d;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -117,21 +128,31 @@
     --gray-11: #d7d7d7;
     --gray-12: #f3f3f3;
     --accent-color: #968cff;
+    --syntax-keyword: #e9a1e3;
+    --syntax-function: #91c1ff;
+    --syntax-type: #44d6d6;
+    --syntax-constant: #f9a870;
+    --syntax-string: #8bd28d;
   }
 }
 
 @media (color-gamut: p3) {
   :root {
     --accent-color: color(display-p3 0.4927 0.4153 0.9999);
+    --syntax-type: color(display-p3 0.0006 0.4548 0.4632);
+    --syntax-constant: color(display-p3 0.5747 0.2977 0);
+    --syntax-string: color(display-p3 0.1975 0.4673 0.168);
   }
   :root[data-theme='dark'] {
     --accent-color: color(display-p3 0.5784 0.5425 0.9998);
+    --syntax-function: color(display-p3 0.5933 0.7509 0.9999);
   }
 }
 
 @media (color-gamut: p3) and (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --accent-color: color(display-p3 0.5784 0.5425 0.9998);
+    --syntax-function: color(display-p3 0.5933 0.7509 0.9999);
   }
 }
 
