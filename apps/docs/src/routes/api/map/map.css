@@ -479,6 +479,9 @@
 }
 
 .map-ledger__scroll {
+  /* Contain the cells' visually hidden labels, or their static position
+     past the scroll edge widens the page on phones. */
+  position: relative;
   border: var(--hairline) solid var(--line);
   border-radius: var(--radius);
 }
