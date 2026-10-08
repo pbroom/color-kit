@@ -120,14 +120,16 @@ const SCRUB_DRAG_START_THRESHOLD_PX = 2;
  * `requested` / `onChangeRequested` props. RGB and HSL edits convert back to
  * the OKLCH requested color; an achromatic result keeps the current hue.
  * Lives on the `@color-kit/react/color-input` subpath because it depends on
- * the optional `@color-kit/control-kit` peer.
+ * the optional `@color-kit/control-kit` peer. The public `color-kit` facade
+ * does not ship `ColorInput` yet; use the workspace `@color-kit/react`
+ * provider with this subpath so both share the same color context.
  *
  * @throws {Error} When there is neither a `<Color>` ancestor nor both
  *   `requested` and `onChangeRequested`.
  *
  * @example
  * ```tsx
- * import { Color } from 'color-kit/react';
+ * import { Color } from '@color-kit/react';
  * import { ColorInput } from '@color-kit/react/color-input';
  *
  * export const Channels = () => (

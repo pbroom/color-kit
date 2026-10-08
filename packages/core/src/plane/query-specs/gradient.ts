@@ -21,6 +21,7 @@ import { countSinglePath, withFiniteHue } from './shared.js';
  * {@link PlaneDefinition}.
  * @param query - Endpoints and sample count; see {@link PlaneGradientQuery}.
  * @returns A new result with one point per sample.
+ * @throws {RangeError} When `steps` is not a finite integer.
  * @see {@link sense} for the fluent form.
  *
  * @example
@@ -44,6 +45,11 @@ export function samplePlaneGradient(
 ): PlaneGradientResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const steps = query.steps ?? 16;
+  if (!Number.isInteger(steps)) {
+    throw new RangeError(
+      `samplePlaneGradient() requires finite integer steps, got ${steps}`,
+    );
+  }
   const colors = generateOklchDefaultScale(
     withFiniteHue(query.from),
     withFiniteHue(query.to),

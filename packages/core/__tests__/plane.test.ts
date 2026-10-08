@@ -15,6 +15,7 @@ import {
   projectRegionBetweenPlanes,
   rotateRegion,
   runCachedPlaneQuery,
+  samplePlaneGradient,
   scaleRegion,
   toHct,
   toHsl,
@@ -895,6 +896,39 @@ describe('plane api', () => {
     expect(pointDistance({ x: 0, y: 0 }, { x: 1, y: 1 })).toBeCloseTo(
       Math.SQRT2,
       6,
+    );
+  });
+});
+
+describe('samplePlaneGradient sample counts', () => {
+  const from = { l: 0.3, c: 0.1, h: 250, alpha: 1 };
+  const to = { l: 0.8, c: 0.2, h: 250, alpha: 1 };
+
+  it.each([2.5, 1.5, NaN, Infinity, -Infinity])(
+    'rejects invalid steps %s before sampling',
+    (steps) => {
+      expect(() => samplePlaneGradient(basePlane, { from, to, steps })).toThrow(
+        RangeError,
+      );
+      expect(() => sense(basePlane).gradient({ from, to, steps })).toThrow(
+        RangeError,
+      );
+    },
+  );
+
+  it.each([-2, 0, 1, 2, 3, 16])(
+    'includes both endpoints for steps %s',
+    (steps) => {
+      const { points } = samplePlaneGradient(basePlane, { from, to, steps });
+      expect(points).toHaveLength(Math.max(2, steps));
+      expect(points[0].color).toEqual(from);
+      expect(points.at(-1)?.color).toEqual(to);
+    },
+  );
+
+  it('defaults to sixteen samples', () => {
+    expect(samplePlaneGradient(basePlane, { from, to }).points).toHaveLength(
+      16,
     );
   });
 });
