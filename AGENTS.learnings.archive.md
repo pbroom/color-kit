@@ -191,6 +191,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 - **2026-09-25 — Docs MDX ledes and demo sources**: Multi-line <p> wrappers in MDX (e.g. docs-lede) get an inner <p> and trigger React nested-<p> errors, so use a <div> wrapper; show demo logic verbatim by importing colocated kernel files with ?raw into CodeBlock so visible code stays the code that runs.
 - **2026-10-06 — Place solver roots at class changes, not value tolerance**: When root-finding a pass/fail field (contrast regions, gamut membership), add a root only where the >= 0 class changes and stop bisection on bracket width; accepting |v| <= eps as a root breaks parity with the boundary classes where the field is flat and splits contours.
 - **2026-10-06 — Contrast truth must clip like the public checks**: Brute-force checks of contrast regions must measure luminance with target-gamut channels clipped to [0, 1], exactly as contrastRatio / contrastAPCA do; an unclipped model disagrees inside the GAMUT_EPSILON slack (e.g. near black) and flags correct contours as wrong.
+- **2026-10-08 — Separate watcher delivery from invalidation recovery**: Chokidar can drop repeated change events for one file inside its 50 ms throttle window without delivering a trailing event. Verify native watching with one edit, then test rapid invalid-to-valid recovery through deterministic watcher change events; do not mask missed events by inflating timeouts.
 
 ### Moved from AGENTS.md (2026-09-25 trim)
 
