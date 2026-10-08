@@ -66,8 +66,12 @@ export function ControlledPicker() {
 
 [`useColor`](/api/react/useColor) takes the same options and returns the
 state with its setters (`setChannel`, `setFromString`, `setActiveGamut`, …)
-for when a provider is more than you need. Every primitive also works on its
-own with `requested` and `onChangeRequested` props. For palettes and gradient
+for when a provider is more than you need. The top-level controls,
+[`ColorArea`](/api/react/ColorArea), [`ColorSlider`](/api/react/ColorSlider)
+and [`ColorStringInput`](/api/react/ColorStringInput), also work on their own
+with `requested` and `onChangeRequested` props. Area children such as
+`ColorPlane`, `Thumb` and the layers read their state from the surrounding
+`ColorArea`, so they always render inside one. For palettes and gradient
 stops, [`useMultiColor`](/api/react/useMultiColor) manages named entries with
 a shared active gamut.
 
