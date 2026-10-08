@@ -218,6 +218,7 @@
 }
 
 .search-dialog__clear {
+  margin-left: auto;
   color: var(--fg-3);
   font-size: 11px;
 }
@@ -245,7 +246,8 @@
   }
 
   .search-dialog__esc,
-  .search-dialog__footer {
+  .search-dialog__keys,
+  .search-dialog__footer:not(:has(.search-dialog__clear)) {
     display: none;
   }
 
@@ -262,8 +264,10 @@
   }
 }
 
+/* Touch: no keyboard hints, but keep Clear recent reachable. */
 @media (hover: none) {
-  .search-dialog__footer {
+  .search-dialog__keys,
+  .search-dialog__footer:not(:has(.search-dialog__clear)) {
     display: none;
   }
 }
