@@ -25,6 +25,7 @@ for (const path of PAGES) {
 
 test('⌘K opens search and Escape closes it', async ({ page }) => {
   await page.goto('/start');
+  await page.waitForLoadState('networkidle');
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
