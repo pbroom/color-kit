@@ -87,6 +87,9 @@ export function bindPicker(
     const { x, y } = getColorAreaThumbPosition(requested, axes);
     el.thumb.style.left = `${x * 100}%`;
     el.thumb.style.top = `${y * 100}%`;
+    // A slider exposes one number, so valuenow is the x axis (lightness);
+    // valuetext names both axes.
+    el.thumb.setAttribute('aria-valuenow', String(requested[axes.x.channel]));
     el.thumb.setAttribute(
       'aria-valuetext',
       getColorAreaValueText(requested, axes),
@@ -144,19 +147,33 @@ export function bindPicker(
     handler: (e: HTMLElementEventMap[K]) => void,
   ) => target.addEventListener(type, handler, { signal: listeners.signal });
 
+  // Each drag follows the pointer that started it: a second finger is
+  // ignored until that pointer lifts, and capture keeps its moves coming
+  // after it leaves the element.
   for (const [target, drag] of [
     [el.area, areaDrag],
     [el.hue, hueDrag],
   ] as const) {
+    let activePointer: number | null = null;
+    const finish = (e: PointerEvent, cancel: boolean) => {
+      if (e.pointerId !== activePointer) return;
+      activePointer = null;
+      if (cancel) drag.cancel();
+      else drag.end();
+    };
     on(target, 'pointerdown', (e) => {
+      if (activePointer !== null) return;
+      activePointer = e.pointerId;
       target.setPointerCapture(e.pointerId);
       drag.start(e);
     });
     on(target, 'pointermove', (e) => {
-      if (drag.isActive()) drag.move(e);
+      if (e.pointerId === activePointer) drag.move(e);
     });
-    on(target, 'pointerup', () => drag.end());
-    on(target, 'pointercancel', () => drag.cancel());
+    on(target, 'pointerup', (e) => finish(e, false));
+    on(target, 'pointercancel', (e) => finish(e, true));
+    // Capture can be lost without a pointerup (e.g. the element is hidden).
+    on(target, 'lostpointercapture', (e) => finish(e, false));
   }
 
   // Arrow keys step 1% of the range, Shift steps 10%.
@@ -185,6 +202,11 @@ export function bindPicker(
       commit(next);
     }
   });
+
+  const [xMin, xMax] = axes.x.range;
+  el.thumb.setAttribute('aria-roledescription', '2D slider');
+  el.thumb.setAttribute('aria-valuemin', String(Math.min(xMin, xMax)));
+  el.thumb.setAttribute('aria-valuemax', String(Math.max(xMin, xMax)));
 
   el.hue.style.background = getSliderGradientStyles({
     model: 'oklch',
