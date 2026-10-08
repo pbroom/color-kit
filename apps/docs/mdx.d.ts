@@ -21,3 +21,12 @@ declare module '*?highlighted' {
   /** Basename, for the code block tab. */
   export const filename: string;
 }
+
+/**
+ * `plugins/highlight.ts`: a module run in Node at build time, its exports
+ * inlined as JSON. Cast to the producing module's types.
+ */
+declare module '*?build' {
+  const value: unknown;
+  export default value;
+}

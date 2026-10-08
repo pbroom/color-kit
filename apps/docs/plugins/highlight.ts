@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHighlighter, type Highlighter } from 'shiki';
 import type { Plugin } from 'vite';
+import { evalExample, evalLifecycle, loadBuildModule } from './eval-example';
 import {
   codeMetaTransformer,
   cssVariablesColorReplacements,
@@ -10,6 +11,8 @@ import {
 
 const QUERY = '?highlighted';
 const PREFIX = '\0color-kit-highlighted:';
+const BUILD_QUERY = '?build';
+const BUILD_PREFIX = '\0color-kit-build:';
 // The virtual id must not end in a source extension, or the MDX and React
 // plugins (which strip queries before filtering) would transform it again.
 const SUFFIX = '.highlighted';
@@ -61,37 +64,73 @@ export async function highlightToHtml(
 }
 
 /**
+ * Build-time source and data imports for docs examples.
+ *
  * `import html, { code, lang, filename } from './file.tsx?highlighted'`
  *
  * Resolves the file like any other import, reads it from disk, and returns
  * build-time Shiki HTML (CSS-variables theme) as the default export. No
- * highlighter ships to the browser. Types live in `src/highlighted.d.ts`.
+ * highlighter ships to the browser. Types live in `mdx.d.ts`. When the
+ * file has `// →` markers, they are evaluated first (see
+ * `plugins/eval-example.ts`), so `html` and `code` show computed results.
+ *
+ * `import value, { named } from './data.ts?build'`
+ *
+ * Runs the module in Node at build time and inlines its exports as JSON:
+ * the computation and its dependencies never reach the browser. Exports
+ * must be JSON-serializable.
  */
 export function highlightPlugin(): Plugin {
   return {
     name: 'color-kit:highlighted',
     enforce: 'pre',
+    ...evalLifecycle(),
     async resolveId(source, importer) {
-      if (!source.endsWith(QUERY)) {
+      const query = source.endsWith(QUERY)
+        ? QUERY
+        : source.endsWith(BUILD_QUERY)
+          ? BUILD_QUERY
+          : null;
+      if (!query) {
         return null;
       }
       const resolved = await this.resolve(
-        source.slice(0, -QUERY.length),
+        source.slice(0, -query.length),
         importer,
         { skipSelf: true },
       );
       if (!resolved) {
         return null;
       }
-      return `${PREFIX}${resolved.id.split('?')[0]}${SUFFIX}`;
+      const prefix = query === QUERY ? PREFIX : BUILD_PREFIX;
+      return `${prefix}${resolved.id.split('?')[0]}${SUFFIX}`;
     },
     async load(id) {
+      if (id.startsWith(BUILD_PREFIX)) {
+        const file = id.slice(BUILD_PREFIX.length, -SUFFIX.length);
+        this.addWatchFile(file);
+        const exports = await loadBuildModule(file);
+        return Object.entries(exports)
+          .map(([name, value]) => {
+            const json = JSON.stringify(value);
+            if (json === undefined) {
+              throw new Error(
+                `${file}: export \`${name}\` is not JSON-serializable`,
+              );
+            }
+            return name === 'default'
+              ? `export default ${json};`
+              : `export const ${name} = ${json};`;
+          })
+          .join('\n');
+      }
       if (!id.startsWith(PREFIX)) {
         return null;
       }
       const file = id.slice(PREFIX.length, -SUFFIX.length);
       this.addWatchFile(file);
-      const code = normalizeSource(await readFile(file, 'utf8'));
+      const source = normalizeSource(await readFile(file, 'utf8'));
+      const code = await evalExample(file, source);
       const lang = LANG_BY_EXTENSION[path.extname(file)] ?? 'text';
       const filename = path.basename(file);
       const html = await highlightToHtml(code, lang, filename);

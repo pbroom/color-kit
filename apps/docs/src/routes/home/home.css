@@ -1,0 +1,137 @@
+/* ---------- Home ---------- */
+
+/* Declare the site's layer order first: this stylesheet can load before
+   app.css, and the first @layer statement fixes the order. */
+@layer theme, base, components, utilities;
+
+@layer components {
+  .home {
+    max-width: var(--wide-w);
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-4) var(--space-24);
+  }
+
+  @media (min-width: 48rem) {
+    .home {
+      padding: var(--space-16) var(--space-10) var(--space-24);
+    }
+  }
+
+  .home-intro {
+    margin-bottom: var(--space-12);
+  }
+
+  .home-intro__title {
+    margin: 0;
+    max-width: 16ch;
+    color: var(--fg);
+    font-size: clamp(2.25rem, 1.5rem + 3vw, var(--text-6));
+    font-weight: 600;
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-display);
+    text-wrap: balance;
+  }
+
+  .home-intro__lede {
+    max-width: 58ch;
+    margin: var(--space-5) 0 0;
+    color: var(--fg-3);
+    font-size: var(--text-3);
+    text-wrap: pretty;
+  }
+
+  .home-install {
+    max-width: 520px;
+    margin-top: var(--space-12);
+  }
+
+  .home-section-title {
+    margin: 0 0 var(--space-5);
+    color: var(--fg);
+    font-size: var(--text-3);
+    font-weight: 600;
+    letter-spacing: var(--tracking-heading);
+  }
+
+  /* ---------- What you can ask ---------- */
+
+  .home-asks {
+    margin-top: var(--space-24);
+  }
+
+  .home-asks__list {
+    display: grid;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  @media (min-width: 48rem) {
+    .home-asks__list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .home-asks__list > li + li {
+      border-left: var(--hairline) solid var(--line);
+    }
+
+    .home-asks__list > li + li .home-ask {
+      padding-left: var(--space-5);
+    }
+  }
+
+  .home-ask {
+    display: grid;
+    gap: var(--space-2);
+    height: 100%;
+    padding: var(--space-5) var(--space-5) var(--space-6) 0;
+    border-bottom: var(--hairline) solid var(--line);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .home-ask__question {
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  .home-ask__call {
+    overflow-wrap: anywhere;
+    color: var(--fg-2);
+    font-size: 12.5px;
+  }
+
+  .home-ask__where {
+    margin-top: var(--space-2);
+    color: var(--fg-4);
+    font-size: var(--text-1);
+    transition: color var(--duration-1) var(--ease-out);
+  }
+
+  .home-ask:hover .home-ask__where,
+  .home-ask:focus-visible .home-ask__where {
+    color: var(--fg);
+  }
+
+  .home-ask:hover .home-ask__question {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  /* ---------- Hero source ---------- */
+
+  .home-source {
+    margin-top: var(--space-24);
+  }
+
+  .home-source__note {
+    max-width: 64ch;
+    margin: calc(var(--space-2) * -1) 0 var(--space-6);
+    color: var(--fg-3);
+    text-wrap: pretty;
+  }
+
+  .home-source__note code {
+    color: var(--fg-2);
+    font-size: 0.9em;
+  }
+}

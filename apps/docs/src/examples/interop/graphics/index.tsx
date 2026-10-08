@@ -1,7 +1,30 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { DeferredMount } from '@/components/deferred-mount';
+import { Example } from '@/components/example/example';
 import { Callout } from '@/components/ui/callout';
 import { CodeBlock } from '@/components/ui/code-block';
+import * as linearMixSource from './linear-mix.ts?highlighted';
+import * as mixIntoSource from './mix-into-loop.ts?highlighted';
+import * as webglGradientSource from './webgl-gradient.ts?highlighted';
+
+/**
+ * Graphics and performance demos for `color-kit/interop` and the
+ * allocation-free core APIs.
+ *
+ * In MDX, use the `*Example` components: each is an `<Example>` that runs
+ * the demo (mounted when scrolled near, with its WebGL/rAF work in effects)
+ * over the color-kit file it calls, so the visible code is the code that
+ * runs:
+ *
+ * ```mdx
+ * import { LinearMixExample } from '@/examples/interop/graphics';
+ *
+ * <LinearMixExample />
+ * ```
+ *
+ * The bare demos, `DemoSource` and `Recommendation` remain for custom
+ * layouts.
+ */
 
 function Skeleton({ height }: { height: number }) {
   return (
@@ -52,36 +75,48 @@ export function WebglGradientDemo() {
   );
 }
 
+/** `mix()` across interpolation spaces, over `linear-mix.ts`. */
+export function LinearMixExample() {
+  return (
+    <Example
+      of={LinearMixDemo}
+      source={linearMixSource}
+      title="mix(a, b, t, options) in each interpolation space"
+    />
+  );
+}
+
+/** A per-frame `mixInto` loop with one reused `out`, over `mix-into-loop.ts`. */
+export function MixIntoExample() {
+  return (
+    <Example
+      of={MixIntoDemo}
+      source={mixIntoSource}
+      title="mixInto(out, a, b, t) on every animation frame"
+    />
+  );
+}
+
+/** `packColors` into WebGL2 vertex colors, over `webgl-gradient.ts`. */
+export function WebglGradientExample() {
+  return (
+    <Example
+      of={WebglGradientDemo}
+      source={webglGradientSource}
+      title="packColors into a WebGL2 vertex buffer"
+    />
+  );
+}
+
 // The demos' color-kit logic lives in these files; the page shows them
 // verbatim so the visible code is the code that runs.
 const SOURCES = {
-  'linear-mix.ts': () => import('./linear-mix.ts?highlighted'),
-  'mix-into-loop.ts': () => import('./mix-into-loop.ts?highlighted'),
-  'webgl-gradient.ts': () => import('./webgl-gradient.ts?highlighted'),
+  'linear-mix.ts': linearMixSource,
+  'mix-into-loop.ts': mixIntoSource,
+  'webgl-gradient.ts': webglGradientSource,
 } as const;
 
 export type DemoSourceFile = keyof typeof SOURCES;
-
-function DemoSourceLoader({ file }: { file: DemoSourceFile }) {
-  const [source, setSource] = useState<{ html: string; code: string } | null>(
-    null,
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    void SOURCES[file]().then(({ default: html, code }) => {
-      if (!cancelled) setSource({ html, code });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [file]);
-
-  if (source == null) {
-    return <Skeleton height={160} />;
-  }
-  return <CodeBlock html={source.html} code={source.code} filename={file} />;
-}
 
 export function Recommendation({
   verdict,
@@ -97,10 +132,8 @@ export function Recommendation({
   );
 }
 
+/** One demo source on its own (prefer the `*Example` components). */
 export function DemoSource({ file }: { file: DemoSourceFile }) {
-  return (
-    <DeferredMount minHeight={160}>
-      <DemoSourceLoader file={file} />
-    </DeferredMount>
-  );
+  const source = SOURCES[file];
+  return <CodeBlock html={source.default} code={source.code} filename={file} />;
 }

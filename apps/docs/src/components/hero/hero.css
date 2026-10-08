@@ -1,0 +1,340 @@
+/* ---------- Plane hero: an instrument, not an illustration ---------- */
+
+/* Declare the site's layer order first: this stylesheet can load before
+   app.css, and the first @layer statement fixes the order. */
+@layer theme, base, components, utilities;
+
+@layer components {
+  .hero {
+    --hero-ink: var(--fg);
+    --hero-paper: var(--bg);
+    --hero-axis: 28px;
+    display: grid;
+    gap: var(--space-8);
+    margin: 0;
+  }
+
+  @media (min-width: 52rem) {
+    .hero {
+      grid-template-columns: minmax(0, 1fr) 248px;
+      align-items: start;
+      gap: var(--space-10);
+    }
+  }
+
+  /* The theme picks the contrast reference: text on white in light mode,
+     on black in dark mode. Both are prerendered; CSS shows one. */
+  :root[data-theme='dark'] .hero [data-reference='white'],
+  :root:not([data-theme='dark']) .hero [data-reference='black'] {
+    display: none;
+  }
+
+  /* ---------- Plot: plane plus axes ---------- */
+
+  .hero__plot {
+    display: grid;
+    grid-template-columns: var(--hero-axis) minmax(0, 1fr);
+    grid-template-rows: auto var(--hero-axis);
+    max-width: 600px;
+  }
+
+  .hero__axis {
+    position: relative;
+    color: var(--fg-4);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .hero__axis--y {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .hero__axis--x {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .hero__tick {
+    position: absolute;
+    white-space: nowrap;
+  }
+
+  .hero__axis--y .hero__tick {
+    right: var(--space-2);
+    transform: translateY(-50%);
+  }
+
+  .hero__axis--x .hero__tick {
+    top: var(--space-2);
+    transform: translateX(-50%);
+  }
+
+  .hero__axis--x .hero__tick:first-child {
+    transform: none;
+  }
+
+  .hero__axis--x .hero__tick:nth-last-child(2) {
+    transform: translateX(-100%);
+  }
+
+  .hero__axis-name {
+    position: absolute;
+    color: var(--fg-3);
+    font-weight: 600;
+  }
+
+  .hero__axis--y .hero__axis-name {
+    top: 50%;
+    right: var(--space-2);
+    transform: translateY(-50%);
+  }
+
+  .hero__axis--x .hero__axis-name {
+    top: var(--space-2);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .hero__plane {
+    position: relative;
+    grid-column: 2;
+    grid-row: 1;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border: var(--hairline) solid var(--line-strong);
+    /* Graph paper at the axis ticks; shows wherever P3 ends. */
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(to right, var(--line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+    background-position: -1px -1px;
+    background-size: 25% 25%;
+    cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
+  }
+
+  .hero__plane:active {
+    cursor: grabbing;
+  }
+
+  .hero__canvas,
+  .hero__svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero__canvas {
+    opacity: 0;
+    transition: opacity var(--duration-3) var(--ease-out);
+  }
+
+  .hero__plane[data-loaded] .hero__canvas {
+    opacity: 1;
+  }
+
+  .hero__svg {
+    overflow: visible;
+  }
+
+  .hero__svg path:not(.hero__aa-area),
+  .hero__glyph line {
+    fill: none;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .hero__halo {
+    stroke: var(--hero-paper);
+    stroke-width: 4px;
+    stroke-opacity: 0.6;
+  }
+
+  .hero__srgb {
+    stroke: var(--hero-ink);
+    stroke-width: 1.5px;
+  }
+
+  .hero__p3 {
+    stroke: var(--hero-ink);
+    stroke-width: 1.5px;
+    stroke-dasharray: 5 4;
+  }
+
+  .hero__aa-line {
+    stroke: var(--hero-ink);
+    stroke-width: 1px;
+  }
+
+  /* Hatch in the reference color (the page paper): the AA region holds the
+     colors that read against it, so paper-colored lines show on exactly the
+     colors they mark. */
+  .hero__hatch {
+    stroke: var(--hero-paper);
+    stroke-width: 0.22;
+    stroke-opacity: 0.7;
+  }
+
+  /* ---------- Panel: control, legend, readouts ---------- */
+
+  .hero__panel {
+    display: grid;
+    gap: var(--space-6);
+    align-content: start;
+  }
+
+  .hero__control {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    row-gap: var(--space-3);
+  }
+
+  .hero__label {
+    color: var(--fg);
+    font-size: var(--text-1);
+    font-weight: 600;
+  }
+
+  .hero__value {
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: var(--text-1);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hero__slider {
+    --thumb: 18px;
+    grid-column: 1 / -1;
+    width: 100%;
+    height: var(--thumb);
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+    appearance: none;
+  }
+
+  /* A fixed-lightness hue ramp: the track is data, like everything colored. */
+  .hero__slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(
+      to right in oklch longer hue,
+      oklch(0.72 0.13 0),
+      oklch(0.72 0.13 359.9)
+    );
+    box-shadow: inset 0 0 0 var(--hairline)
+      color-mix(in oklch, var(--fg) 12%, transparent);
+  }
+
+  .hero__slider::-moz-range-track {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(
+      to right in oklch longer hue,
+      oklch(0.72 0.13 0),
+      oklch(0.72 0.13 359.9)
+    );
+  }
+
+  .hero__slider::-webkit-slider-thumb {
+    width: var(--thumb);
+    height: var(--thumb);
+    margin-top: calc((6px - var(--thumb)) / 2);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    background: var(--fg);
+    box-shadow: 0 0 0 var(--hairline) var(--fg);
+    appearance: none;
+  }
+
+  .hero__slider::-moz-range-thumb {
+    width: calc(var(--thumb) - 4px);
+    height: calc(var(--thumb) - 4px);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    background: var(--fg);
+    box-shadow: 0 0 0 var(--hairline) var(--fg);
+  }
+
+  .hero__slider:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 4px;
+  }
+
+  .hero__legend {
+    display: grid;
+    margin: 0;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .hero__key {
+    padding: var(--space-3) 0;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .hero__key dt {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--fg);
+    font-size: var(--text-1);
+    font-weight: 500;
+  }
+
+  .hero__key dd {
+    margin: var(--space-1) 0 0 32px;
+    color: var(--fg-3);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hero__glyph {
+    width: 24px;
+    height: 12px;
+    flex: none;
+    overflow: visible;
+  }
+
+  .hero__glyph--hatch {
+    display: block;
+    border-radius: 2px;
+    background: repeating-linear-gradient(
+        -45deg,
+        var(--hero-paper) 0 1px,
+        transparent 1px 4px
+      )
+      var(--hero-ink);
+  }
+
+  .hero__stats {
+    margin: 0;
+    color: var(--fg-4);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hero__stats span {
+    display: block;
+  }
+
+  .hero__stats strong {
+    color: var(--fg-3);
+    font-weight: 400;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__canvas {
+      transition: none;
+    }
+  }
+}

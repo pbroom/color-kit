@@ -42,6 +42,14 @@ export default tseslint.config(
     },
   },
   {
+    // Docs `// →` snippets end on the expression whose value the build
+    // prints (apps/docs/src/examples/README.md).
+    files: ['apps/docs/src/examples/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unused-expressions': 'off',
+    },
+  },
+  {
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
