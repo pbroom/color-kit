@@ -18,9 +18,8 @@ const GRID = 160;
 /** Degrees of hue per plane width when dragging. */
 const DRAG_DEGREES = 180;
 
-// The axis name sits where the middle tick would (L 0.5, C 0.2).
-const C_TICKS = [0, 0.1, 0.3, 0.4];
-const L_TICKS = [1, 0.75, 0.25, 0];
+const C_TICKS = [0, 0.1, 0.2, 0.3, 0.4];
+const L_TICKS = [1, 0.75, 0.5, 0.25, 0];
 
 let enginePromise: Promise<Engine> | null = null;
 
@@ -134,8 +133,10 @@ export function PlaneHero() {
   return (
     <figure className="hero" aria-label="Live OKLCH plane">
       <div className="hero__plot">
+        <p className="hero__axis-title hero__axis-title--y" aria-hidden="true">
+          <b>L</b> lightness
+        </p>
         <div className="hero__axis hero__axis--y" aria-hidden="true">
-          <span className="hero__axis-name">L</span>
           {L_TICKS.map((tick) => (
             <span
               key={tick}
@@ -227,8 +228,10 @@ export function PlaneHero() {
               {tick}
             </span>
           ))}
-          <span className="hero__axis-name">C</span>
         </div>
+        <p className="hero__axis-title hero__axis-title--x" aria-hidden="true">
+          chroma <b>C</b>
+        </p>
       </div>
 
       <p id={summaryId} className="visually-hidden">
