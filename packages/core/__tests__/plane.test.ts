@@ -17,6 +17,7 @@ import {
   projectRegionBetweenPlanes,
   rotateRegion,
   runCachedPlaneQuery,
+  samplePlaneGradient,
   scaleRegion,
   toHct,
   toHsl,
