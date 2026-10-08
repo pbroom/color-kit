@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm run docs:api && vite",
     "build": "pnpm run docs:api && vite build && vite build --ssr src/entry-server.tsx --outDir .ssr && node scripts/prerender.mjs && pagefind --site dist && node scripts/check-bundle.mjs",
-    "docs:api": "node scripts/generate-api-reference.mjs",
+    "docs:api": "vite-node scripts/api/generate.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",

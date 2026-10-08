@@ -1,7 +1,13 @@
-import type { ReactNode } from 'react';
+import { lazy, type ReactNode } from 'react';
+import { ApiLabel } from '@/components/api/kind-glyph';
+import { routes } from '@/site/routes';
 import { CodeBlock } from './code-block';
 
-/** One parameter row in the `<Params>` definition list. */
+const GeneratedSignature = lazy(
+  () => import('@/components/api/generated-signature'),
+);
+
+/** One parameter row in a hand-written `<Signature params>` list. */
 export interface SignatureParam {
   name: string;
   /** Type as written in the declaration. */
@@ -13,19 +19,20 @@ export interface SignatureParam {
 }
 
 /**
- * `<Signature />`: the reference header for one exported symbol.
+ * `<Signature />`: the declaration of an exported symbol.
  *
- * Contract (S2 builds the full version from `src/generated/api.json`):
- * - `name` + `kind` (`function`, `interface`, `type`, `class`, `variable`,
- *   `enum`) head the block; `entry` is the canonical entry slug.
- * - `declarationHtml`: Shiki HTML (CSS-variables theme) of the TS
- *   declaration, one parameter per line when long. `declaration` is the
- *   plain-text fallback. Param names in the declaration anchor to
- *   `#param-<name>` in the params list below.
- * - `params`, `returns`, `throws`, `deprecated` render after the
- *   declaration; `sourceUrl` links the source at the build commit.
- * - Cross-entry type links (`<TypeLink>`) are S2's; this stub prints types
- *   as code.
+ * Contract:
+ * - **Generated (preferred):** `<Signature name="sense" entry="plane" />`
+ *   renders the symbol's declaration from `src/generated/api` exactly as its
+ *   reference page does: one parameter per line when long, named types
+ *   linked across entries, kind and deprecated labels, import line and
+ *   source link, followed by its parameters. `entry` defaults to the first
+ *   entry (package order) with a page for `name`. `params={false}` shows the
+ *   declaration only.
+ * - **Hand-written:** pass `declaration` (plain text) or `declarationHtml`
+ *   (Shiki HTML, CSS-variables theme) plus optional `params`, `returns`,
+ *   `throws`, `deprecated`, `sourceUrl`, `kind`. Use this only for code that
+ *   has no generated page.
  * - Breaks out to the 920 px column.
  */
 export interface SignatureProps {
@@ -34,16 +41,24 @@ export interface SignatureProps {
   entry?: string;
   declarationHtml?: string;
   declaration?: string;
-  params?: SignatureParam[];
+  params?: SignatureParam[] | false;
   returns?: { type: string; description?: ReactNode };
   throws?: ReactNode[];
   deprecated?: boolean | string;
   sourceUrl?: string;
 }
 
+function resolveEntry(name: string, entry?: string): string | undefined {
+  if (entry) return entry;
+  return routes.find(
+    (route) => route.kind === 'api-symbol' && route.symbol === name,
+  )?.entry;
+}
+
 export function Signature({
   name,
   kind,
+  entry,
   declarationHtml,
   declaration,
   params,
@@ -52,17 +67,24 @@ export function Signature({
   deprecated,
   sourceUrl,
 }: SignatureProps) {
+  const manual = Boolean(declarationHtml || declaration || params);
+  const generatedEntry = manual ? undefined : resolveEntry(name, entry);
+  if (generatedEntry) {
+    return (
+      <GeneratedSignature
+        name={name}
+        entry={generatedEntry}
+        showParams={params !== false}
+      />
+    );
+  }
   return (
     <section className="signature breakout" aria-label={`${name} signature`}>
       <header className="signature__head">
-        {kind ? <span className="signature__kind">{kind}</span> : null}
-        {deprecated ? (
-          <span className="signature__kind" data-deprecated="">
-            deprecated
-          </span>
-        ) : null}
+        {kind ? <ApiLabel>{kind}</ApiLabel> : null}
+        {deprecated ? <ApiLabel deprecated>deprecated</ApiLabel> : null}
         {sourceUrl ? (
-          <a className="signature__source" href={sourceUrl}>
+          <a className="signature__source" href={sourceUrl} rel="noreferrer">
             Source
           </a>
         ) : null}
@@ -82,14 +104,17 @@ export function Signature({
               className="params__row"
             >
               <dt>
-                <code className="params__name">
+                <span className="params__name">
                   {param.name}
-                  {param.optional ? '?' : ''}
-                </code>
+                  {param.optional ? (
+                    <span className="params__optional">?</span>
+                  ) : null}
+                </span>
                 <code className="params__type">{param.type}</code>
                 {param.defaultValue ? (
                   <span className="params__default">
-                    = <code>{param.defaultValue}</code>
+                    <span className="params__default-label">default</span>{' '}
+                    <code>{param.defaultValue}</code>
                   </span>
                 ) : null}
               </dt>
@@ -99,10 +124,12 @@ export function Signature({
         </dl>
       ) : null}
       {returns ? (
-        <p className="signature__returns">
+        <p className="api-returns">
           <span className="signature__label">Returns</span>
-          <code>{returns.type}</code>
-          {returns.description ? <> {returns.description}</> : null}
+          <code className="api-returns__type">{returns.type}</code>
+          {returns.description ? (
+            <span className="api-returns__text">{returns.description}</span>
+          ) : null}
         </p>
       ) : null}
       {throws && throws.length > 0 ? (

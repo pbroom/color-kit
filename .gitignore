@@ -39,8 +39,7 @@ coverage/
 # Vite
 apps/docs/.vite/
 
-# Generated API reference (pnpm docs:api; rebuilt by the docs build)
-apps/docs/public/reference/
+# Generated API reference data (pnpm docs:api; rebuilt by the docs build)
 apps/docs/.typedoc/
 apps/docs/src/generated/
 
