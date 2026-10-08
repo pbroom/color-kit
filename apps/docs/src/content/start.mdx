@@ -55,7 +55,9 @@ contrastRatio(shown, parse('#fff')).toFixed(2); // → '2.90'
 ```
 
 2.90:1 fails WCAG AA for body text (4.5:1) and for large text (3:1). Try
-your own colors:
+your own colors. The example paints hex, so it measures with
+`{ precision: '8bit' }`, and it blends a translucent color over each
+background before measuring, since `contrastRatio` ignores alpha:
 
 <Example
   of={QuickStart}

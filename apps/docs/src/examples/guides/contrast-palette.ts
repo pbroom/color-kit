@@ -17,7 +17,10 @@ const BLACK = parse('#000000');
 
 export interface Step {
   color: Color;
-  /** WCAG ratios against white and black text backgrounds. */
+  /**
+   * WCAG ratios against white and black text backgrounds, measured on the
+   * 8-bit hex the swatch paints so a label agrees with what is on screen.
+   */
   onWhite: number;
   onBlack: number;
   /** Position on the hue's lightness × chroma plane, 0–100. */
@@ -45,8 +48,8 @@ export function contrastPalette(hue: number, chroma: number, steps = 9) {
     const { x, y } = colorToPlane(plane, color);
     return {
       color,
-      onWhite: contrastRatio(color, WHITE),
-      onBlack: contrastRatio(color, BLACK),
+      onWhite: contrastRatio(color, WHITE, { precision: '8bit' }),
+      onBlack: contrastRatio(color, BLACK, { precision: '8bit' }),
       x: x * 100,
       y: y * 100,
     };

@@ -26,6 +26,8 @@ export default function ContrastAgreement() {
     metric,
     ...(metric === 'wcag' ? { level: 'AA' } : { apcaPreset: 'body' }),
   });
+  // Unrounded on purpose: the contour is exact, so check it before any
+  // rounding to 8 bits (the default `precision: 'exact'`).
   const measure = (color: Color) =>
     metric === 'wcag'
       ? contrastRatio(color, reference)
@@ -82,6 +84,7 @@ export default function ContrastAgreement() {
       </div>
       <Readout
         rows={[
+          ['measured', 'before rounding to 8 bits'],
           ['contour points', String(points.length)],
           ['pass the check', `${passing.length} of ${points.length}`],
         ]}
