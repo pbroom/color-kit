@@ -1,8 +1,15 @@
 /* global console, fetch, process, setTimeout, URL */
 
+// Drags the "ColorArea with ColorPlane" example on /api/react and checks the
+// thumb follows continuously (not only on release). Starts a docs dev server
+// on a free port unless COLOR_AREA_DRAG_TEST_URL points at a running page.
+
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { chromium } from 'playwright';
+
+const EXAMPLE = 'ColorArea with ColorPlane';
+const PAGE_PATH = '/api/react';
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -94,7 +101,7 @@ async function main() {
   try {
     if (!url) {
       const port = await findOpenPort();
-      url = `http://127.0.0.1:${port}/docs/components/color-area`;
+      url = `http://127.0.0.1:${port}${PAGE_PATH}`;
       const pnpmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
       devServer = spawn(
         pnpmBin,
@@ -126,11 +133,12 @@ async function main() {
 
     await page.goto(url, { waitUntil: 'networkidle' });
 
-    const area = page.locator('[data-color-area]').first();
+    const example = page.getByRole('figure', { name: EXAMPLE });
+    const area = example.locator('[data-color-area]').first();
     await area.waitFor();
     await area.scrollIntoViewIfNeeded();
 
-    const thumb = page.locator('[data-color-area-thumb]').first();
+    const thumb = example.locator('[data-color-area-thumb]').first();
     const box = await area.boundingBox();
     if (!box) {
       throw new Error('Could not resolve color area geometry.');
@@ -162,6 +170,7 @@ async function main() {
     const movedDuringDrag = changedEnough(samples);
     const summary = {
       url: String(url),
+      example: EXAMPLE,
       uniqueThumbPositions: uniqueCount,
       movedDuringDrag,
       first: samples[0] ?? null,
