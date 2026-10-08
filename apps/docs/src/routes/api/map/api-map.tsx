@@ -100,10 +100,13 @@ function MapNodes({
           const node = point.data;
           const group = node.children !== undefined;
           const open = point.children !== undefined;
+          const siblings = point.parent?.children;
           const common = {
             'data-node-id': node.id,
             role: 'treeitem',
             'aria-level': point.depth + 1,
+            'aria-posinset': (siblings?.indexOf(point) ?? 0) + 1,
+            'aria-setsize': siblings?.length ?? 1,
             'aria-label': nodeAriaLabel(node),
             tabIndex: node.id === activeId ? 0 : -1,
             onFocus: () => onActive(node.id),

@@ -146,6 +146,12 @@ export function usePanZoom(svgRef: RefObject<SVGSVGElement | null>) {
 
   const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (!pointers.current.has(event.pointerId) || !gesture.current) return;
+    if (event.pointerType === 'mouse' && event.buttons === 0) {
+      // Released outside before capture began: drop the stale gesture.
+      pointers.current.delete(event.pointerId);
+      if (pointers.current.size === 0) gesture.current = null;
+      return;
+    }
     pointers.current.set(event.pointerId, {
       x: event.clientX,
       y: event.clientY,
