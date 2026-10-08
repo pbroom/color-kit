@@ -3,6 +3,7 @@ import ts from 'typescript';
 import {
   createServer,
   type Alias,
+  type ModuleNode,
   type Plugin,
   type ResolvedConfig,
   type ViteDevServer,
@@ -29,7 +30,11 @@ import {
 const ARROW = '→';
 const MARKER = /^\/\/\s*→/;
 
-type Loader = (id: string) => Promise<Record<string, unknown>>;
+type WatchDependency = (file: string) => void;
+type Loader = (
+  id: string,
+  watchDependency?: WatchDependency,
+) => Promise<Record<string, unknown>>;
 
 let aliases: Alias[] = [];
 let root = process.cwd();
@@ -71,20 +76,32 @@ async function closeEvalServer(): Promise<void> {
   }
 }
 
-const load: Loader = async (id) => {
+const load: Loader = async (id, watchDependency) => {
   const server = await evalServer();
   if (isServe) {
     // The eval server does not watch files; start every dev eval fresh.
     server.moduleGraph.invalidateAll();
   }
-  return (await server.ssrLoadModule(id)) as Record<string, unknown>;
+  const exports = (await server.ssrLoadModule(id)) as Record<string, unknown>;
+  // The evaluator has no watcher. Register its whole input graph with the
+  // caller so Vite invalidates the virtual output when an input changes.
+  const visited = new Set<ModuleNode>();
+  const visit = (module: ModuleNode | undefined) => {
+    if (!module || visited.has(module)) return;
+    visited.add(module);
+    if (module.file) watchDependency?.(module.file);
+    for (const dependency of module.importedModules) visit(dependency);
+  };
+  visit(server.moduleGraph.getModuleById(id));
+  return exports;
 };
 
 /** Import `file` at build time and return its exports. */
 export function loadBuildModule(
   file: string,
+  watchDependency?: WatchDependency,
 ): Promise<Record<string, unknown>> {
-  return load(file);
+  return load(file, watchDependency);
 }
 
 // ---------------------------------------------------------------------------
@@ -295,6 +312,7 @@ export async function evalExample(
   file: string,
   code: string,
   loader: Loader = load,
+  watchDependency?: WatchDependency,
 ): Promise<string> {
   if (!code.includes(`// ${ARROW}`) && !code.includes(`//${ARROW}`)) {
     return code;
@@ -310,7 +328,7 @@ export async function evalExample(
   virtualModules.set(id, instrumented);
   let results: unknown[];
   try {
-    const module = await loader(id);
+    const module = await loader(id, watchDependency);
     results = await Promise.all(module.__ckResults as unknown[]);
   } catch (error) {
     throw new Error(

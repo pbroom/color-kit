@@ -25,7 +25,10 @@ let enginePromise: Promise<Engine> | null = null;
 
 /** `color-kit/plane` and the painter, loaded once after hydration. */
 function loadEngine(): Promise<Engine> {
-  enginePromise ??= import('@/examples/plane/hero');
+  enginePromise ??= import('@/examples/plane/hero').catch((error: unknown) => {
+    enginePromise = null;
+    throw error;
+  });
   return enginePromise;
 }
 
@@ -66,6 +69,7 @@ export function PlaneHero() {
   const [frame, setFrame] = useState<HueQuery>(INITIAL);
   const [stats, setStats] = useState<FrameStats | null>(null);
   const [engine, setEngine] = useState<Engine | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const targetRef = useRef<PaintTarget | null>(null);
   const dragRef = useRef<{ x: number; hue: number; width: number } | null>(
@@ -79,9 +83,14 @@ export function PlaneHero() {
 
   useEffect(() => {
     let live = true;
-    void loadEngine().then((module) => {
-      if (live) setEngine(module);
-    });
+    void loadEngine().then(
+      (module) => {
+        if (live) setEngine(module);
+      },
+      () => {
+        if (live) setLoadFailed(true);
+      },
+    );
     return () => {
       live = false;
     };
@@ -109,7 +118,7 @@ export function PlaneHero() {
   }, [engine, hue]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
+    if (!engine || event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       x: event.clientX,
@@ -264,6 +273,7 @@ export function PlaneHero() {
             max={359}
             step={1}
             value={hue}
+            disabled={!engine}
             aria-valuetext={`Hue ${hue}°`}
             onChange={(event) => setHue(Number(event.target.value))}
           />
@@ -322,25 +332,39 @@ export function PlaneHero() {
           </div>
         </dl>
 
-        <p className="hero__stats" aria-hidden="true">
-          {stats ? (
-            <>
-              <span>
-                <strong>{fmt(stats.ms, 1)} ms</strong> queries + paint
-              </span>
-              <span>
-                <strong>{stats.colorSpace}</strong> canvas, {GRID}² cells
-              </span>
-            </>
-          ) : (
-            <>
-              <span>
-                <strong>prerendered</strong> at build time
-              </span>
-              <span>canvas loading</span>
-            </>
-          )}
-        </p>
+        {loadFailed ? (
+          <p className="hero__stats" role="status">
+            Live colors could not load. Showing hue {INITIAL.hue}°.{' '}
+            <button
+              type="button"
+              onClick={() => {
+                window.location.reload();
+              }}
+            >
+              Reload to retry
+            </button>
+          </p>
+        ) : (
+          <p className="hero__stats" aria-hidden="true">
+            {stats ? (
+              <>
+                <span>
+                  <strong>{fmt(stats.ms, 1)} ms</strong> queries + paint
+                </span>
+                <span>
+                  <strong>{stats.colorSpace}</strong> canvas, {GRID}² cells
+                </span>
+              </>
+            ) : (
+              <>
+                <span>
+                  <strong>prerendered</strong> at build time
+                </span>
+                <span>canvas loading</span>
+              </>
+            )}
+          </p>
+        )}
       </div>
     </figure>
   );
