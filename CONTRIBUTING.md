@@ -45,8 +45,8 @@ Node 20+ and pnpm are required.
 
 These are self-contained, well-scoped ways to get familiar with the codebase. Issues labelled `good first issue` are another place to start.
 
-- **Improve doc comments on public exports.** The [generated API reference](apps/docs/scripts/generate-api-reference.mjs) is built from TSDoc comments, so a clearer summary, `@param`, or `@example` on an exported function shows up there directly. Run `pnpm docs:api` and open `apps/docs/public/reference/index.html` to check the result.
-- **Write a hand-written API page** for an entry point that only has generated docs today, such as `color-kit/interop`, `color-kit/hct`, or the interpolation helpers. Add an MDX file under `apps/docs/src/content/api/` and a nav entry in `apps/docs/src/content/docs-registry.ts`.
+- **Improve doc comments on public exports.** The [generated API reference](apps/docs/scripts/api/) is built from TSDoc comments, so a clearer summary, `@param`, or `@example` on an exported function shows up on its `/api/<entry>/<Symbol>` page directly. Run `pnpm dev` and open the symbol's page to check the result.
+- **Add notes to an API page.** `apps/docs/src/content/api/<entry>/index.mdx` is an entry point's narrative and `apps/docs/src/content/api/<entry>/<Symbol>.mdx` adds edge cases to one symbol's page; both are picked up without registering anything.
 - **Extend reference-accuracy coverage.** `packages/core/__tests__/reference-accuracy.test.ts` compares conversions and contrast against colorjs.io. More color spaces, edge cases (achromatic colors, hue wrap, out-of-gamut inputs), or metrics are welcome.
 - **Add property-based tests** with `fast-check` (already a core dev dependency) for invariants such as round trips (`fromX(toX(c)) ≈ c`) and gamut mapping always landing in gamut.
 - **Add a docs recipe** that shows one engine capability end to end, for example drawing a contrast-safe region with `sense(plane).contrastRegion()` and `toSvgPath()`.

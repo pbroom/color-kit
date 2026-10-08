@@ -9,6 +9,7 @@ import {
 import { Dialog } from '@base-ui/react/dialog';
 import { useNavigate } from 'react-router';
 import { Search } from 'lucide-react';
+import '@/api/search';
 import { prefetchHref } from '@/lib/prefetch';
 import {
   loadPagefind,

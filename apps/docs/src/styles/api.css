@@ -1,0 +1,669 @@
+/*
+ * Generated API reference: signatures, params, entry and index pages.
+ * Global (not route CSS) so prerendered API pages paint styled before any
+ * route chunk loads. Owned by S2; components live in src/components/api.
+ */
+
+/* ---------- Labels and glyphs ---------- */
+
+.api-label,
+.signature__kind {
+  display: inline-block;
+  flex: none;
+  padding: 0 5px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.api-label[data-deprecated],
+.signature__kind[data-deprecated] {
+  border-style: dashed;
+  border-color: var(--control);
+  color: var(--fg-2);
+}
+
+.kind-glyph {
+  display: inline-grid;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+/* Runtime values are filled; type-only exports are outlined. */
+.kind-glyph[data-value] {
+  border-color: transparent;
+  background: var(--bg-active);
+  color: var(--fg-2);
+}
+
+/* ---------- Signature ---------- */
+
+.signature {
+  display: block;
+  overflow: hidden;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+}
+
+.signature__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: var(--space-1) var(--space-3);
+  border-bottom: var(--hairline) solid var(--line);
+}
+
+.signature__import {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-3);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signature__source {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+  transition: color var(--duration-1) var(--ease-out);
+}
+
+.signature__source:hover {
+  color: var(--fg);
+}
+
+.signature .code-block {
+  border: 0;
+  border-radius: 0;
+}
+
+.signature__deprecated,
+.signature__throws,
+.signature > .params,
+.signature > .api-returns {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--hairline) solid var(--line);
+  background: var(--bg);
+}
+
+.signature__label {
+  margin-right: var(--space-2);
+  color: var(--fg-4);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.signature__params {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.signature__more {
+  margin: 0;
+  font-size: var(--text-1);
+}
+
+/* ---------- Declaration ---------- */
+
+.decl {
+  margin: 0;
+  padding: var(--space-4);
+  overflow-x: auto;
+  color: var(--shiki-foreground);
+  font-size: var(--text-1);
+  line-height: var(--leading-code);
+  tab-size: 2;
+}
+
+.decl:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Soft breaks: one line when wide, one parameter per line when narrow. */
+.decl__br,
+.decl__narrow {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .decl__br {
+    display: block;
+  }
+
+  .decl__narrow {
+    display: inline;
+  }
+
+  .decl__wide {
+    display: none;
+  }
+
+  .signature__import {
+    flex-basis: 100%;
+    order: 3;
+  }
+}
+
+.tok-keyword {
+  color: var(--shiki-token-keyword);
+  font-weight: 560;
+}
+
+.tok-decl {
+  color: var(--fg);
+  font-weight: 640;
+}
+
+.tok-name {
+  color: var(--fg-2);
+}
+
+a.tok-name {
+  border-radius: 2px;
+  text-decoration: none;
+}
+
+a.tok-name:hover {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--control);
+  text-underline-offset: 3px;
+}
+
+.tok-literal {
+  color: var(--shiki-token-string);
+}
+
+.tok-punct,
+.tok-text {
+  color: var(--shiki-token-punctuation);
+}
+
+.tok-param {
+  color: var(--shiki-token-parameter);
+}
+
+.tok-ref {
+  color: var(--fg);
+}
+
+.type-link {
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-1) var(--ease-out);
+}
+
+.type-link:hover {
+  text-decoration-color: var(--fg);
+}
+
+/* ---------- Params and members ---------- */
+
+.params {
+  margin: 0;
+  border-top: var(--hairline) solid var(--line);
+}
+
+.params__row {
+  padding: var(--space-3) 0;
+  border-bottom: var(--hairline) solid var(--line);
+  transition:
+    background-color var(--duration-2) var(--ease-out),
+    box-shadow var(--duration-2) var(--ease-out);
+}
+
+/* Highlight the row a declaration name jumped to, bleeding past the rules. */
+.params__row:target {
+  background: var(--bg-hover);
+  box-shadow:
+    calc(var(--space-2) * -1) 0 0 var(--bg-hover),
+    var(--space-2) 0 0 var(--bg-hover);
+}
+
+.params__row dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-1);
+  line-height: 1.5;
+}
+
+.params__name {
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.params__name:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--control);
+  text-underline-offset: 3px;
+}
+
+.params__path,
+.params__optional {
+  color: var(--fg-4);
+  font-weight: 400;
+}
+
+.params__type {
+  min-width: 0;
+  color: var(--fg-3);
+  overflow-wrap: anywhere;
+}
+
+.params__default {
+  color: var(--fg-3);
+}
+
+.params__default-label {
+  color: var(--fg-4);
+  font-size: 11px;
+}
+
+.params__default code {
+  color: var(--fg-2);
+}
+
+.params__row dd {
+  margin: var(--space-1) 0 0;
+  color: var(--fg-2);
+  font-size: var(--text-2);
+  line-height: var(--leading-body);
+}
+
+.params__deprecated {
+  margin: 0 0 var(--space-1);
+  color: var(--fg);
+}
+
+.rich-compact > * + * {
+  margin-top: var(--space-2);
+}
+
+.rich-compact ul {
+  padding-left: var(--space-5);
+  list-style: disc;
+}
+
+.params :where(dd, .rich-compact) code:not(.params__type, .params__type *) {
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: var(--bg-active);
+  color: var(--fg);
+  font-size: 0.875em;
+}
+
+/* ---------- Symbol page ---------- */
+
+.prose.api-prose h2 {
+  margin-top: var(--space-10);
+  font-size: var(--text-3);
+  letter-spacing: 0;
+}
+
+.prose .api-returns__text code,
+.prose .api-caption code {
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: var(--bg-active);
+  color: var(--fg);
+  font-size: 0.875em;
+}
+
+.api-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.api-eyebrow__link {
+  color: var(--fg-3);
+  transition: color var(--duration-1) var(--ease-out);
+}
+
+.api-eyebrow__link:hover {
+  color: var(--fg);
+}
+
+.api-returns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.api-returns__type {
+  color: var(--fg);
+  font-size: var(--text-1);
+}
+
+.api-throws,
+.api-also {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.api-throws li {
+  padding-left: var(--space-4);
+  position: relative;
+}
+
+.api-throws li::before {
+  content: '';
+  position: absolute;
+  top: 0.75em;
+  left: 2px;
+  width: 6px;
+  height: 1px;
+  background: var(--fg-4);
+}
+
+.api-also li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  color: var(--fg-3);
+  font-size: var(--text-1);
+}
+
+.api-also__link {
+  color: var(--fg);
+}
+
+.api-caption,
+.api-note {
+  color: var(--fg-3);
+  font-size: var(--text-1);
+}
+
+.prose .api-caption + .code-block {
+  margin-top: var(--space-2);
+}
+
+.api-see ul {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* ---------- Entry page ---------- */
+
+.entry-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-5) 0 0;
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.entry-facts code {
+  color: var(--fg-3);
+}
+
+.domain-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.domain-index__link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 3px var(--space-2);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  color: var(--fg-2);
+  font-size: var(--text-1);
+  transition:
+    background-color var(--duration-1) var(--ease-out),
+    border-color var(--duration-1) var(--ease-out);
+}
+
+.domain-index__link:hover {
+  border-color: var(--line-strong);
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.domain-index__count {
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.prose .domain h2,
+.prose .api-h2 {
+  margin-top: var(--space-10);
+  font-size: var(--text-3);
+}
+
+.prose .domain h2 + .symbol-list {
+  margin-top: var(--space-3);
+}
+
+.symbol-list {
+  border-top: var(--hairline) solid var(--line);
+}
+
+.symbol-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: 7px var(--space-2);
+  border-bottom: var(--hairline) solid var(--line);
+  transition: background-color var(--duration-1) var(--ease-out);
+}
+
+.symbol-row .kind-glyph {
+  align-self: center;
+}
+
+.symbol-row:hover {
+  background: var(--bg-hover);
+}
+
+.prose .symbol-row__name {
+  min-width: 0;
+  padding: 0;
+  background: none;
+  color: var(--fg);
+  font-size: var(--text-1);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.symbol-row__summary {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--fg-3);
+  font-size: var(--text-1);
+  line-height: 1.45;
+}
+
+.symbol-row__summary:empty {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .symbol-row {
+    grid-template-columns: 18px minmax(0, 15rem) minmax(0, 1fr);
+  }
+
+  .symbol-row__summary {
+    grid-column: 3;
+    display: block;
+  }
+
+  .symbol-row__summary .api-label {
+    margin-right: var(--space-2);
+  }
+}
+
+.reexports {
+  display: grid;
+  border-top: var(--hairline) solid var(--line);
+}
+
+.reexports__group {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: var(--hairline) solid var(--line);
+}
+
+@media (min-width: 48rem) {
+  .reexports__group {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+.reexports__group dt {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-1);
+}
+
+.reexports__entry {
+  color: var(--fg);
+}
+
+.reexports__count {
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.reexports__group dd {
+  margin: 0;
+}
+
+.reexports__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.reexports__link {
+  color: var(--fg-3);
+  transition: color var(--duration-1) var(--ease-out);
+}
+
+.reexports__link:hover {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- /api index ---------- */
+
+.entry-index {
+  border-top: var(--hairline) solid var(--line);
+}
+
+.entry-index__link {
+  display: grid;
+  gap: var(--space-1) var(--space-6);
+  padding: var(--space-4) var(--space-2);
+  border-bottom: var(--hairline) solid var(--line);
+  transition: background-color var(--duration-1) var(--ease-out);
+}
+
+.entry-index__link:hover {
+  background: var(--bg-hover);
+}
+
+.prose .entry-index__name {
+  padding: 0;
+  background: none;
+  color: var(--fg);
+  font-size: var(--text-2);
+  font-weight: 500;
+}
+
+.entry-index__text {
+  color: var(--fg-2);
+}
+
+.entry-index__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.entry-index__domains {
+  color: var(--fg-4);
+  font-size: var(--text-1);
+}
+
+@media (min-width: 48rem) {
+  .entry-index__link {
+    grid-template-columns: 13rem minmax(0, 1fr);
+    align-items: baseline;
+  }
+
+  .entry-index__meta {
+    grid-column: 1;
+    grid-row: 2;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .entry-index__domains {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+/* Dense lists: rows carry their own rhythm, not prose list spacing. */
+.prose :where(.symbol-list, .entry-index, .reexports__list, .api-also) li + li {
+  margin-top: 0;
+}
