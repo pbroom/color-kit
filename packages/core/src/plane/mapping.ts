@@ -1,7 +1,13 @@
 import type { Color } from '../types.js';
-import { clamp, normalizeHue } from '../utils/index.js';
+import { maxHctChromaForHue } from '../hct/index.js';
+import { clamp, isAchromatic, normalizeHue } from '../utils/index.js';
 import { isFiniteNumber, planeModelSpec, readChannel } from './model-specs.js';
-import type { Plane, PlaneModelColor, PlanePoint } from './types.js';
+import type {
+  Plane,
+  PlaneModel,
+  PlaneModelColor,
+  PlanePoint,
+} from './types.js';
 
 /**
  * Converts a channel value into normalized plane space [0..1].
@@ -185,18 +191,39 @@ export function usesLightnessAndChroma(resolvedPlane: Plane): boolean {
 }
 
 /**
- * Resolves the hue angle a plane query runs at.
+ * Most saturated color of a hue model's fixed hue (the same peaks the static
+ * slider hue ramps use), used when the plane's fixed color is achromatic and
+ * its OKLCH hue carries no information. HCT uses the per-call `'direct'`
+ * peak search to avoid building the 4096-entry LUT for one lookup.
+ */
+const SATURATED_HUE_SAMPLES: Partial<
+  Record<PlaneModel, (h: number) => PlaneModelColor>
+> = {
+  hsl: (h) => ({ h, s: 100, l: 50, alpha: 1 }),
+  hsv: (h) => ({ h, s: 100, v: 100, alpha: 1 }),
+  hct: (h) => ({
+    h,
+    ...maxHctChromaForHue(h, { method: 'direct' }),
+    alpha: 1,
+  }),
+};
+
+/**
+ * Resolves the OKLCH hue angle a plane query runs at.
  *
- * Resolution order: the explicit `hue` override, then the plane's fixed `h`
- * channel, then the OKLCH hue of the color made from the plane's fixed
- * channels. Note that the fixed `h` is in the plane model's own hue space, so
- * for `hsl`, `hsv` and `hct` planes it is that model's hue rather than an
- * OKLCH hue.
+ * Resolution order: the explicit `hue` override, then the fixed `h` of an
+ * OKLCH plane, then the OKLCH hue of the color made from the plane's fixed
+ * channels. On `hsl`, `hsv` and `hct` planes the fixed `h` is in the model's
+ * own hue space, so it is converted rather than returned as is (HSL red,
+ * `h: 0`, resolves to OKLCH ≈ 29.2). When that fixed color is achromatic
+ * (the default `s: 0` / `c: 0`), the hue comes from the most saturated
+ * color of the model hue instead: `s 100 / l 50` (HSL), `s 100 / v 100`
+ * (HSV) or the HCT peak-chroma tone.
  *
  * @param resolvedPlane - Plane from {@link definePlane}.
- * @param hue - Optional explicit hue override in degrees; ignored unless
- * finite.
- * @returns Hue in degrees, wrapped into `[0, 360)`.
+ * @param hue - Optional explicit OKLCH hue override in degrees; ignored
+ * unless finite.
+ * @returns OKLCH hue in degrees, wrapped into `[0, 360)`.
  *
  * @example
  * ```ts
@@ -207,17 +234,27 @@ export function usesLightnessAndChroma(resolvedPlane: Plane): boolean {
  * planeHue(definePlane({ fixed: { h: 264 } }), -30); // → 330
  * planeHue(definePlaneFromColor(parse('#7c3aed'), { model: 'rgb' }));
  * // → ≈ 293.0 (OKLCH hue of the fixed color)
+ * planeHue(definePlane({ model: 'hsl', fixed: { h: 0 } }));
+ * // → ≈ 29.2 (OKLCH hue of HSL red, not the HSL hue 0)
  * ```
  */
 export function planeHue(resolvedPlane: Plane, hue?: number): number {
   if (isFiniteNumber(hue)) {
     return normalizeHue(hue);
   }
-  const fixedHue = resolvedPlane.fixed.h;
-  if (isFiniteNumber(fixedHue)) {
-    return normalizeHue(fixedHue);
+  const { model, fixed } = resolvedPlane;
+  if (model === 'oklch' && isFiniteNumber(fixed.h)) {
+    return normalizeHue(fixed.h);
   }
-  return normalizeHue(
-    planeModelSpec(resolvedPlane.model).toColor(resolvedPlane.fixed).h,
-  );
+  const modelSpec = planeModelSpec(model);
+  const color = modelSpec.toColor(fixed);
+  const saturatedSample = SATURATED_HUE_SAMPLES[model];
+  if (
+    saturatedSample &&
+    isFiniteNumber(fixed.h) &&
+    (isAchromatic(color.c) || !isFiniteNumber(color.h))
+  ) {
+    return normalizeHue(modelSpec.toColor(saturatedSample(fixed.h)).h);
+  }
+  return normalizeHue(color.h);
 }

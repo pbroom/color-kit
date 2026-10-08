@@ -9,6 +9,7 @@ import {
   mix,
   invert,
   grayscale,
+  parse,
 } from '../src/index.js';
 import type { Color } from '../src/index.js';
 
@@ -70,8 +71,23 @@ describe('saturate()', () => {
     expect(result.c).toBeCloseTo(0.2 + 0.25 * 0.4, 10);
   });
 
-  it('clamps chroma at 0.4', () => {
-    expect(saturate(blue, 1).c).toBe(0.4);
+  it('does not cap chroma at 0.4', () => {
+    expect(saturate(blue, 1).c).toBeCloseTo(0.6, 10);
+  });
+
+  it('never reduces the chroma of wide-gamut colors', () => {
+    // Rec. 2020 green sits at OKLCH chroma ≈ 0.47, above the old 0.4 cap.
+    const rec2020Green = parse('color(rec2020 0 1 0)');
+    expect(rec2020Green.c).toBeGreaterThan(0.4);
+    expect(saturate(rec2020Green, 0.1).c).toBeCloseTo(
+      rec2020Green.c + 0.04,
+      10,
+    );
+    expect(saturate(rec2020Green, 0)).toEqual(rec2020Green);
+  });
+
+  it('clamps chroma below at 0', () => {
+    expect(saturate(blue, -1).c).toBe(0);
   });
 
   it('preserves lightness, hue, and alpha', () => {
@@ -94,6 +110,12 @@ describe('desaturate()', () => {
 
   it('is a no-op at amount 0', () => {
     expect(desaturate(blue, 0)).toEqual(blue);
+  });
+
+  it('scales wide-gamut chroma above 0.4 instead of clamping it', () => {
+    const vivid = { l: 0.7, c: 0.5, h: 140, alpha: 1 };
+    expect(desaturate(vivid, 0)).toEqual(vivid);
+    expect(desaturate(vivid, 0.1).c).toBeCloseTo(0.45, 10);
   });
 });
 

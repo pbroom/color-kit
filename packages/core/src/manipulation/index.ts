@@ -56,14 +56,24 @@ export function darken(color: Color, amount: number): Color {
 }
 
 /**
- * Increase chroma by an absolute fraction of the chroma range:
- * adds `amount * 0.4`, clamped to `[0, 0.4]`. Note this is not the
- * relative scaling that {@link desaturate} applies. The result is not gamut
- * mapped, and a color whose chroma already exceeds `0.4` is clamped down to
- * `0.4`.
+ * OKLCH chroma span that {@link saturate} scales `amount` by: the default
+ * chroma range of OKLCH planes and sliders (`0-0.4`), which covers Display
+ * P3 (peak ≈ 0.37). It is a step size, not a cap.
+ */
+const SATURATE_CHROMA_SPAN = 0.4;
+
+/**
+ * Increase chroma by an absolute fraction of the OKLCH chroma range:
+ * adds `amount * 0.4`, clamped below at `0`. Note this is not the relative
+ * scaling that {@link desaturate} applies. Like {@link lighten}, only the
+ * channel's own domain is enforced: chroma has no upper bound, so wide-gamut
+ * colors (Display P3, Rec. 2020) keep or gain chroma beyond `0.4`. The
+ * result is not gamut mapped; pass it to `toSrgbGamut` or `toP3Gamut` to
+ * fit a display.
  *
  * @param color - Color to saturate
- * @param amount - Fraction of the `0-0.4` chroma range to add
+ * @param amount - Fraction of the `0-0.4` chroma range to add (negative
+ * values remove chroma)
  * @returns A new Color
  * @see {@link desaturate}
  *
@@ -72,19 +82,21 @@ export function darken(color: Color, amount: number): Color {
  * import { parse, saturate } from 'color-kit';
  *
  * saturate(parse('oklch(0.7 0.1 250)'), 0.25); // → { l: 0.7, c: 0.2, h: 250, alpha: 1 }
+ * saturate(parse('oklch(0.85 0.36 145)'), 0.25).c; // → ≈ 0.46 (not capped at 0.4)
  * ```
  */
 export function saturate(color: Color, amount: number): Color {
   return {
     ...color,
-    c: clamp(color.c + amount * 0.4, 0, 0.4),
+    c: Math.max(0, color.c + amount * SATURATE_CHROMA_SPAN),
   };
 }
 
 /**
- * Decrease chroma by a relative amount: `c * (1 - amount)`, clamped to
- * `[0, 0.4]` (so a color whose chroma exceeds `0.4` is also clamped to
- * `0.4`). Lightness, hue and alpha are unchanged.
+ * Decrease chroma by a relative amount: `c * (1 - amount)`, clamped below at
+ * `0`. There is no upper cap, so `amount = 0` returns the input chroma
+ * unchanged even for wide-gamut colors above `0.4`. Lightness, hue and
+ * alpha are unchanged.
  *
  * @param color - Color to desaturate
  * @param amount - Fraction of the chroma to remove (`0-1`)
@@ -102,7 +114,7 @@ export function saturate(color: Color, amount: number): Color {
 export function desaturate(color: Color, amount: number): Color {
   return {
     ...color,
-    c: clamp(color.c - amount * color.c, 0, 0.4),
+    c: Math.max(0, color.c - amount * color.c),
   };
 }
 
