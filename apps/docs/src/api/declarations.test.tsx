@@ -46,6 +46,31 @@ describe('generated API declaration fidelity', () => {
     );
   });
 
+  it('documents forwardRef primitives as components with their props', () => {
+    for (const name of ['-color-area', '-thumb', '-color-slider']) {
+      const symbol = readSymbol('react', `${name}.json`);
+      expect(symbol.kind).toBe('component');
+      expect(symbol.signatures).toHaveLength(1);
+      expect(symbol.signatures[0]!.params[0]!.type.text).toContain(
+        'RefAttributes<HTMLDivElement>',
+      );
+      expect(symbol.propsType).toBe(`${symbol.name}Props`);
+      expect(symbol.members.length).toBeGreaterThan(0);
+      const html = renderToStaticMarkup(
+        <MemoryRouter>
+          <SymbolReference symbol={symbol} />
+        </MemoryRouter>,
+      );
+      expect(html).toContain('id="members"');
+      expect(html).toContain('>Props</a>');
+    }
+    const thumb = readSymbol('react', '-thumb.json');
+    expect(
+      thumb.members.find((member) => member.name === 'stepRatio')?.default,
+    ).toBe('0.01');
+    expect(readSymbol('react', '-color-context.json').kind).toBe('const');
+  });
+
   it('every component declaration parameter link has a rendered target', () => {
     const components = readdirSync(path.join(symbolsDir, 'react'))
       .map((file) => readSymbol('react', file))
