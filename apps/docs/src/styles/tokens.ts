@@ -30,7 +30,7 @@ function oklch(l: number, c = 0, h = 0): Color {
  */
 export const GRAY_LIGHTNESS: Record<ThemeName, readonly number[]> = {
   light: [
-    0.995, 0.979, 0.963, 0.944, 0.92, 0.885, 0.79, 0.69, 0.6, 0.53, 0.45, 0.32,
+    0.995, 0.979, 0.963, 0.944, 0.92, 0.885, 0.79, 0.69, 0.6, 0.52, 0.45, 0.32,
     0.2,
   ],
   dark: [
@@ -96,6 +96,7 @@ export const CONTRAST_PAIRS: ReadonlyArray<{
   { fg: '--fg-4', bg: '--bg', min: 4.5 },
   { fg: '--fg-4', bg: '--bg-subtle', min: 4.5 },
   { fg: '--fg-4', bg: '--bg-hover', min: 4.5 },
+  { fg: '--fg-4', bg: '--bg-active', min: 4.5 },
   { fg: '--shiki-token-comment', bg: '--code-bg', min: 4.5 },
   { fg: '--shiki-token-string', bg: '--code-bg', min: 4.5 },
   { fg: '--shiki-foreground', bg: '--code-bg', min: 4.5 },

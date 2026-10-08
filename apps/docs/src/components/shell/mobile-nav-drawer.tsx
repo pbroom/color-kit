@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { Drawer } from '@base-ui/react/drawer';
 import { X } from 'lucide-react';
 import { SiteNav } from './site-nav';
@@ -22,10 +22,22 @@ export default function MobileNavDrawer({
   // After following a link, focus belongs to the new page's <main>, not the
   // menu button.
   const navigated = useRef(false);
+  // Keep the navigation flag through final-focus cleanup; reset on reopen.
+  useEffect(() => {
+    if (open) navigated.current = false;
+  }, [open]);
   return (
     <Drawer.Root
       open={open}
       onOpenChange={(next) => onOpenChange(next)}
+      onOpenChangeComplete={(next) => {
+        if (
+          !next &&
+          (navigated.current || !returnFocusRef.current?.offsetParent)
+        ) {
+          document.getElementById('main')?.focus({ preventScroll: true });
+        }
+      }}
       swipeDirection="left"
     >
       <Drawer.Portal>
@@ -34,10 +46,8 @@ export default function MobileNavDrawer({
           <Drawer.Popup
             className="mobile-nav__popup"
             finalFocus={() => {
-              if (navigated.current) {
-                navigated.current = false;
+              if (navigated.current || !returnFocusRef.current?.offsetParent)
                 return false;
-              }
               return returnFocusRef.current ?? true;
             }}
           >
