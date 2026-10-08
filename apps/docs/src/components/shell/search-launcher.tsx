@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useIsApplePlatform } from '@/site/media';
+import '@/components/search/search.css';
 
-const loadPanel = () => import('./search-panel');
+const loadPanel = () => import('@/components/search/search-panel');
 const SearchPanel = lazy(loadPanel);
 
 function isTypingTarget(target: EventTarget | null): boolean {
