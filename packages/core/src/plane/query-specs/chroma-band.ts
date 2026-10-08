@@ -23,15 +23,16 @@ import { countSinglePath, toPlaneBoundaryPoint } from './shared.js';
  * `x`/`y`.
  *
  * Only OKLCH lightness × chroma planes produce geometry (see
- * {@link usesLightnessAndChroma}); any other plane returns an empty list, after
- * the same option validation.
+ * {@link usesLightnessAndChroma}); any other plane validates `gamut`, then
+ * returns an empty list without validating the remaining query options.
  *
  * @param planeDefinition - Plane to project onto; a {@link Plane} or any
  * {@link PlaneDefinition}.
  * @param query - Band options; see {@link PlaneChromaBandQuery}.
  * @returns A new result with the resolved hue and band points.
  * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`.
- * @throws {Error} When `steps` is not an integer of at least 2.
+ * @throws {Error} On an OKLCH lightness × chroma plane with uniform sampling,
+ * when `steps` is not an integer of at least 2.
  * @see {@link sense} for the fluent form.
  *
  * @example
