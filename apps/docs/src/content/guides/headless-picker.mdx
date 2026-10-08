@@ -64,7 +64,10 @@ arrows, Page Up/Down and Home/End, wrapping hue and clamping the rest. They
 return `null` for keys they do not handle, so call `preventDefault` only when
 they return a color. [`getColorAreaValueText`](/api/driver/getColorAreaValueText)
 and [`getColorSliderValueText`](/api/driver/getColorSliderValueText) produce
-`aria-valuetext` such as `Lightness 60%, Chroma 0.1` and `Hue 213°`.
+`aria-valuetext` such as `Lightness 60%, Chroma 0.1` and `Hue 213°`. A
+slider exposes one number, so the area thumb, like the React `Thumb`, sets
+`aria-valuenow`, `aria-valuemin` and `aria-valuemax` from the x axis and
+`aria-roledescription="2D slider"`; the value text names both axes.
 
 ## Drag throttling
 
@@ -74,6 +77,11 @@ commit per animation frame. Moves within `dragEpsilon` (default `0.0005`) are
 skipped and commits are capped at `maxUpdateHz` (default 60); a rate-limited
 point is retried on the next frame, never dropped. Pass a frame scheduler as
 the second argument to drive drags deterministically in tests.
+
+The controller tracks one drag, not one pointer. The binding records the
+`pointerId` that started the drag, captures it, and ignores other pointers
+until that one lifts or is cancelled, so a second finger cannot steer or end
+the drag.
 
 ## Typed input
 
