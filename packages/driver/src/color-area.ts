@@ -1,5 +1,6 @@
 import type { Color } from '@color-kit/core';
 import {
+  assertGamutTarget,
   clamp,
   definePlane,
   PLANE_MODEL_DEFAULT_RANGES,
@@ -10,7 +11,6 @@ import {
   type ContrastRegionPathOptions,
   type GamutTarget,
 } from '@color-kit/core';
-import { assertGamutTarget } from '@color-kit/core/plane';
 import {
   DEFAULT_LARGE_STEP_RATIO,
   getChannelValueText,
