@@ -17,6 +17,9 @@ import { parseColorInputExpression } from './color-input-parser.js';
 import { resolveIncomingRequested } from './color-state.js';
 import type { ParseColorInputExpressionOptions } from './color-input-parser.js';
 
+/** Most decimals a channel input shows or derives from its step. */
+const MAX_COLOR_INPUT_PRECISION = 6;
+
 export { parseColorInputExpression } from './color-input-parser.js';
 export type { ParseColorInputExpressionOptions } from './color-input-parser.js';
 
@@ -747,8 +750,11 @@ export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
 
 /**
  * Number of decimal places needed to show values on a `step` grid: the count
- * of decimals in `|step|`, capped at 6. A zero or non-finite step returns
- * `2`.
+ * of decimals in `|step|`, capped at 6 (the most
+ * {@link formatColorInputChannelValue} shows), so steps finer than `1e-6`,
+ * including exponent-notation steps such as `1e-9`, return `6`. Floating
+ * point noise is ignored (`0.1 + 0.2` counts as one decimal). A zero or
+ * non-finite step returns `2`.
  *
  * @example
  * ```ts
@@ -757,6 +763,8 @@ export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
  * getColorInputPrecisionFromStep(1); // → 0
  * getColorInputPrecisionFromStep(0.01); // → 2
  * getColorInputPrecisionFromStep(0.005); // → 3
+ * getColorInputPrecisionFromStep(2.5e-5); // → 6
+ * getColorInputPrecisionFromStep(1e-9); // → 6
  * getColorInputPrecisionFromStep(0); // → 2
  * ```
  */
@@ -768,7 +776,13 @@ export function getColorInputPrecisionFromStep(step: number): number {
 
   let precision = 0;
   let current = safeStep;
-  while (precision < 6 && Math.abs(Math.round(current) - current) > 0.0000001) {
+  // The tolerance is relative to the scaled step, so a step far below 1
+  // (where `current` rounds to 0) keeps adding decimals instead of looking
+  // like a whole number.
+  while (
+    precision < MAX_COLOR_INPUT_PRECISION &&
+    Math.abs(Math.round(current) - current) > current * 1e-6
+  ) {
     current *= 10;
     precision += 1;
   }
@@ -793,7 +807,10 @@ export function formatColorInputChannelValue(
   value: number,
   precision: number,
 ): string {
-  const safePrecision = Math.max(0, Math.min(6, Math.round(precision)));
+  const safePrecision = Math.max(
+    0,
+    Math.min(MAX_COLOR_INPUT_PRECISION, Math.round(precision)),
+  );
   return formatPrimitiveValue(value, safePrecision, true);
 }
 

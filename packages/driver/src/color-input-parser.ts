@@ -5,7 +5,10 @@ export interface ParseColorInputExpressionOptions {
    * an operator (`+10`, `*2`).
    */
   currentValue: number;
-  /** Channel range `[min, max]`; a `%` number is a fraction of its span. */
+  /**
+   * Channel range `[min, max]`. An absolute `%` number is a position in it
+   * (`range[0] + p * span`); a relative one is a fraction of its span.
+   */
   range: [number, number];
   /**
    * Accept arithmetic (`+ - * /`, parentheses) and relative input. When
@@ -33,12 +36,9 @@ interface ParenToken {
 
 type ExpressionToken = NumberToken | OperatorToken | ParenToken;
 
-function tokenizeExpression(
-  input: string,
-): { tokens: ExpressionToken[]; hasPercent: boolean } | null {
+function tokenizeExpression(input: string): ExpressionToken[] | null {
   const tokens: ExpressionToken[] = [];
   let index = 0;
-  let hasPercent = false;
 
   while (index < input.length) {
     const char = input[index];
@@ -99,7 +99,6 @@ function tokenizeExpression(
         cursor += 3;
       } else if (input[cursor] === '%') {
         isPercent = true;
-        hasPercent = true;
         cursor += 1;
       }
 
@@ -116,15 +115,18 @@ function tokenizeExpression(
     return null;
   }
 
-  return {
-    tokens,
-    hasPercent,
-  };
+  return tokens;
 }
 
+/**
+ * Evaluates tokens. `percentOrigin` is added to every `%` number: `range[0]`
+ * for absolute expressions (a percent is a position in the range, like a lone
+ * `50%`) and `0` for relative ones (a percent is a fraction of the span).
+ */
 function parseExpressionTokens(
   tokens: ExpressionToken[],
   range: [number, number],
+  percentOrigin: number,
 ): number | null {
   let index = 0;
   const span = range[1] - range[0];
@@ -201,7 +203,7 @@ function parseExpressionTokens(
     if (token.type === 'number') {
       index += 1;
       if (token.isPercent) {
-        return (token.value / 100) * span;
+        return percentOrigin + (token.value / 100) * span;
       }
       return token.value;
     }
@@ -274,9 +276,10 @@ function parseSimpleNumber(
  *   and `-`, and parentheses. Input that starts with an operator is relative
  *   to `currentValue` (`+10`, `-5`, `*2`, `/4`), and there `%` is a plain
  *   fraction of the span (`+10%` adds 10% of the span). In an absolute
- *   expression that contains any `%` number, `range[0]` is added once to
- *   the whole result (`50% + 10` on `[100, 200]` is `160`). Division by zero
- *   or another non-finite result returns `null`.
+ *   expression every `%` number is a position in the range, exactly like a
+ *   lone `50%`: on `[100, 200]`, `50% + 10` is `150 + 10 = 160` and
+ *   `50% * 2` is `300`. Division by zero or another non-finite result
+ *   returns `null`.
  *
  * @example
  * ```ts
@@ -288,6 +291,9 @@ function parseSimpleNumber(
  * const expressions = { ...options, allowExpressions: true };
  * parseColorInputExpression('2*(3+4)', expressions); // → 14
  * parseColorInputExpression('+10%', expressions); // → 136
+ * const offset = { ...expressions, range: [100, 200] as [number, number] };
+ * parseColorInputExpression('50% + 10', offset); // → 160
+ * parseColorInputExpression('50% * 2', offset); // → 300
  * parseColorInputExpression('/4', expressions); // → 25
  * ```
  */
@@ -307,18 +313,18 @@ export function parseColorInputExpression(
   const isRelative = /^[+\-*/]/.test(trimmed);
   const expression = isRelative ? `${options.currentValue}${trimmed}` : trimmed;
 
-  const tokenized = tokenizeExpression(expression);
-  if (!tokenized) {
+  const tokens = tokenizeExpression(expression);
+  if (!tokens) {
     return parseSimpleNumber(expression, options.range);
   }
 
-  const evaluated = parseExpressionTokens(tokenized.tokens, options.range);
+  const evaluated = parseExpressionTokens(
+    tokens,
+    options.range,
+    isRelative ? 0 : options.range[0],
+  );
   if (evaluated === null) {
     return parseSimpleNumber(expression, options.range);
-  }
-
-  if (!isRelative && tokenized.hasPercent) {
-    return evaluated + options.range[0];
   }
   return evaluated;
 }
