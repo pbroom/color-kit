@@ -1,28 +1,86 @@
 ---
-title: Build a picker in React
+title: Building with color-kit/react
 navTitle: React
-description: Compose the headless color-kit/react primitives into a picker that keeps requested and displayed color in sync.
+description: Compose unstyled React primitives into a picker, then choose between uncontrolled and controlled state.
 order: 20
 ---
 
-## The smallest picker
+import ReactPicker from '@/examples/guides/react-picker.tsx';
+import pickerSource, {
+  code as pickerCode,
+} from '@/examples/guides/react-picker.tsx?highlighted';
 
-`Color` owns the state; `ColorArea` and `ColorStringInput` read and write it.
-The primitives ship unstyled, so the size and look come from you.
+## The pieces
 
-```tsx title="picker.tsx"
-import { Color, ColorArea, ColorStringInput } from 'color-kit/react';
+`color-kit/react` is a thin binding over [`color-kit/driver`](/guides/headless-picker).
+Its primitives own behavior and accessibility and ship with no styles; size
+and look are yours, through `className`, `style` and `data-*` attributes.
 
-export function Picker() {
+- [`Color`](/api/react/Color) provides shared state to everything inside it.
+- [`ColorArea`](/api/react/ColorArea) maps two OKLCH channels to a rectangle
+  (lightness by chroma by default). Its children draw:
+  [`ColorPlane`](/api/react/ColorPlane) rasterizes the colors, layers such as
+  [`GamutBoundaryLayer`](/api/react/GamutBoundaryLayer) and
+  [`ContrastRegionLayer`](/api/react/ContrastRegionLayer) draw plane queries
+  over it, and one [`Thumb`](/api/react/Thumb) handles keyboard and screen
+  readers. A default thumb renders if you omit it.
+- [`ColorSlider`](/api/react/ColorSlider) controls one channel: `l`, `c`, `h`
+  or `alpha`. Paint its rail with
+  [`getSliderGradientStyles`](/api/driver/getSliderGradientStyles) and style
+  its thumb through `[data-color-slider-thumb]`.
+- [`ColorStringInput`](/api/react/ColorStringInput) shows the requested color
+  as text and accepts any CSS color on Enter or blur.
+
+## Uncontrolled
+
+`<Color defaultColor="…">` keeps the state itself. The provider does not
+re-render on color changes: each primitive subscribes to the slice it reads,
+so a drag re-renders only what depends on it.
+[`useColorContext`](/api/react/useColorContext) returns the full snapshot and
+setters, and re-renders on every update; for one field, select it from the
+store with [`useColorStoreSelector`](/api/react/useColorStoreSelector).
+
+## Controlled
+
+Pass `state` and `onChange` to own the state. `onChange` fires synchronously
+inside the setter, once per effective update and never for a no-op. Several
+setter calls in one event compose, each building on the last.
+
+```tsx title="controlled.tsx"
+import { useState } from 'react';
+import { parse } from 'color-kit';
+import { createColorState } from 'color-kit/driver';
+import { Color, ColorArea, ColorPlane } from 'color-kit/react';
+
+export function ControlledPicker() {
+  const [state, setState] = useState(() => createColorState(parse('#3b82f6')));
   return (
-    <Color defaultColor="#3b82f6">
-      <ColorArea style={{ width: 200, height: 200 }} />
-      <ColorStringInput format="oklch" />
+    <Color state={state} onChange={(event) => setState(event.next)}>
+      <ColorArea style={{ width: 240, height: 160 }}>
+        <ColorPlane />
+      </ColorArea>
     </Color>
   );
 }
 ```
 
-<Callout tone="tip">
-  The full guide adds sliders, the gamut toggle, and contrast-aware thumbs.
-</Callout>
+[`useColor`](/api/react/useColor) takes the same options and returns the
+state with its setters (`setChannel`, `setFromString`, `setActiveGamut`, …)
+for when a provider is more than you need. Every primitive also works on its
+own with `requested` and `onChangeRequested` props. For palettes and gradient
+stops, [`useMultiColor`](/api/react/useMultiColor) manages named entries with
+a shared active gamut.
+
+## The picker
+
+The default color is outside sRGB. The dashed line is the sRGB edge; check
+**Preview in sRGB** and the thumb's fill and the displayed readout switch to
+the sRGB mapping while the requested color stays put.
+
+<Example
+  of={ReactPicker}
+  source={pickerSource}
+  code={pickerCode}
+  filename="react-picker.tsx"
+  minHeight={340}
+/>

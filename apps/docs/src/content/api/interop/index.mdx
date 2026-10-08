@@ -1,0 +1,34 @@
+`color-kit/interop` moves colors into and out of flat number arrays: the
+`vec3`/`vec4` floats that three.js, WebGL uniforms and WebGPU buffers expect.
+It replaces CSS strings as the bridge to a renderer, so values stay exact
+and unclamped instead of being rounded to 8 bits and clipped to sRGB.
+
+## Domains
+
+- **Writers.** `to<Space>Array(color, out?, offset?, options?)` writes three
+  channels; the `*Array4` variants add alpha. Pass a typed array as `out` and
+  nothing is allocated.
+- **Readers.** `from<Space>Array(array, offset?)` and `from<Space>Array4`
+  read colors back.
+- **Batches.** [`packColors`](/api/interop/packColors) writes a list of
+  colors into one `Float32Array` (or your own array) with optional alpha,
+  stride and offset; [`unpackColors`](/api/interop/unpackColors) reverses it.
+
+Spaces are `linearSrgb` (three.js's working space), `srgb`, `linearP3`,
+`display-p3`, `oklab` and `oklch`. Output is unclamped by default; `clamp`
+clips RGB channels. Gamut mapping is composed rather than an option:
+`toLinearSrgbArray(toSrgbGamut(color), out)`.
+
+```ts title="vertex-colors.ts"
+import { parse } from 'color-kit';
+import { packColors } from 'color-kit/interop';
+
+const colors = [parse('#3b82f6'), parse('oklch(0.7 0.25 150)')];
+const buffer = packColors(colors, 'linearSrgb', undefined, { alpha: true });
+buffer.length; // → 8 (two vec4s)
+Array.from(buffer.subarray(4, 7), (v) => +v.toFixed(4));
+// → [-0.0937, 0.5598, 0.0385]: negative red, outside sRGB, kept as is
+```
+
+The guide [GPU and three.js interop](/guides/gpu-interop) covers layouts and
+recipes.

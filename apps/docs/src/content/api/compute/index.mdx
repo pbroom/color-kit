@@ -1,0 +1,49 @@
+`color-kit/compute` runs batches of plane queries and returns the results
+packed into typed arrays, ready to post from a worker without copying. Use
+it when queries are heavy or frequent enough to leave the main thread, or
+when you want timing telemetry about them.
+
+## Domains
+
+- **Running.** [`runPlaneCompute`](/api/compute/runPlaneCompute) takes a
+  plane, a list of queries and an optional trace request, and returns packed
+  results with compute and marshal times.
+  [`runPackedPlaneQueries`](/api/compute/runPackedPlaneQueries) returns only
+  the packed results. Both run synchronously on the calling thread.
+- **Packing.** [`packPlaneQueryResults`](/api/compute/packPlaneQueryResults)
+  and [`unpackPlaneQueryResults`](/api/compute/unpackPlaneQueryResults)
+  convert between query results and the packed layout;
+  [`getPackedPlaneQueryTransferables`](/api/compute/getPackedPlaneQueryTransferables)
+  lists the buffers to transfer.
+- **Scheduling and telemetry.**
+  [`createPlaneComputeScheduler`](/api/compute/createPlaneComputeScheduler)
+  routes requests to a backend and records timings;
+  [`runScheduledPlaneCompute`](/api/compute/runScheduledPlaneCompute) uses a
+  shared scheduler whose snapshot
+  [`getDefaultPlaneComputeTelemetrySnapshot`](/api/compute/getDefaultPlaneComputeTelemetrySnapshot)
+  reads. The built-in backend is JavaScript
+  ([`createJsPlaneComputeBackend`](/api/compute/createJsPlaneComputeBackend)).
+
+```ts title="plane-worker.ts"
+import { parse } from 'color-kit';
+import {
+  getPackedPlaneQueryTransferables,
+  runPlaneCompute,
+} from 'color-kit/compute';
+
+const { result } = runPlaneCompute({
+  plane: { model: 'oklch', fixed: { h: 250 } },
+  queries: [
+    { kind: 'gamutRegion', gamut: 'srgb' },
+    { kind: 'contrastRegion', reference: parse('#fff'), level: 'AA' },
+  ],
+});
+result.queryDescriptors.map((query) => query.kind);
+// → ['gamutRegion', 'contrastRegion']
+self.postMessage(result, {
+  transfer: getPackedPlaneQueryTransferables(result),
+});
+```
+
+On the main thread, `unpackPlaneQueryResults(result)` restores the query
+results.

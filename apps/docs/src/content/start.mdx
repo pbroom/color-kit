@@ -1,57 +1,75 @@
 ---
 title: Start
 navTitle: Start
-description: Install color-kit, parse a color, and ask it the two questions every color tool needs answered.
+description: Install color-kit, parse a color, and answer the two questions every color tool asks of it.
 order: 0
 ---
+
+import QuickStart from '@/examples/guides/quick-start.tsx';
+import quickSource, {
+  code as quickCode,
+} from '@/examples/guides/quick-start.tsx?highlighted';
 
 ## Install
 
 <InstallLine />
 
-color-kit is published under the `next` tag until 1.0. The package has no
-runtime dependencies on React; `color-kit/react` is an optional entry point.
+color-kit is published under the `next` tag until 1.0. React is optional:
+only `color-kit/react` needs it.
 
 ## Parse a color
 
-Every value in color-kit is an OKLCH `Color`: lightness `l` from 0 to 1,
-chroma `c`, hue `h` in degrees, and `alpha`. `parse` accepts any CSS Color 4
-string.
+Every value is an OKLCH [`Color`](/api/core/Color): lightness `l` from 0 to
+1, chroma `c`, hue `h` in degrees, and `alpha`. [`parse`](/api/core/parse)
+reads any CSS Color 4 string.
 
 ```ts title="parse.ts"
 import { parse } from 'color-kit';
 
 const coral = parse('oklch(0.7 0.25 30)');
-// { l: 0.7, c: 0.25, h: 30, alpha: 1 }
+// → { l: 0.7, c: 0.25, h: 30, alpha: 1 }
 ```
 
 ## Can a display show it?
 
 `coral` is outside sRGB and outside Display P3. color-kit keeps the color you
-asked for and maps a separate copy for the display, reducing chroma only so
-lightness and hue hold still.
+asked for and maps a copy for the display, reducing chroma only, so lightness
+and hue hold still.
 
 ```ts title="gamut.ts"
 import { inSrgbGamut, toCss, toSrgbGamut } from 'color-kit';
 
-inSrgbGamut(coral); // false
-toCss(toSrgbGamut(coral), 'oklch'); // 'oklch(0.7 0.1915 30)'
+inSrgbGamut(coral); // → false
+const shown = toSrgbGamut(coral);
+toCss(shown, 'oklch'); // → 'oklch(0.7 0.1915 30)'
 ```
-
-<Swatch color="oklch(0.7 0.25 30)" label="Requested and displayed" />
 
 ## Is it readable?
 
-Contrast is measured on the color the display will actually show.
+Measure contrast on the color you paint.
 
 ```ts title="contrast.ts"
-import { contrastRatio, parse, toSrgbGamut } from 'color-kit';
+import { contrastRatio, parse } from 'color-kit';
 
-contrastRatio(toSrgbGamut(coral), parse('white')); // 2.90
+contrastRatio(shown, parse('#fff')).toFixed(2); // → '2.90'
 ```
 
-<Callout tone="warning">
-  2.90:1 fails WCAG AA for body text (4.5:1) and for large text (3:1). The same
-  hue at a lower lightness passes; the contrast concept page shows how to find
-  that edge as a region instead of by trial.
-</Callout>
+2.90:1 fails WCAG AA for body text (4.5:1) and for large text (3:1). Try
+your own colors:
+
+<Example
+  of={QuickStart}
+  source={quickSource}
+  code={quickCode}
+  filename="quick-start.tsx"
+/>
+
+## Next
+
+- [OKLCH-canonical colors](/concepts/oklch-canonical) and
+  [Requested vs displayed](/concepts/requested-vs-displayed) explain the
+  model.
+- [Contrast](/concepts/contrast) shows how to find the readable edge as a
+  region instead of by trial.
+- Building a picker? Start with [React](/guides/react) or the framework-free
+  [headless picker](/guides/headless-picker).
