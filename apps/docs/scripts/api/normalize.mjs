@@ -474,7 +474,30 @@ export function normalize({ project, entries, highlight }) {
     }),
   ];
 
+  // TypeDoc preserves forwardRef's external React type instead of creating
+  // declaration signatures. Restrict this to React's actual wrapper type so
+  // contexts and other capitalized constants do not become components.
+  const forwardRefProps = (decl, entry) =>
+    entry.slug === 'react' &&
+    decl.kind === KIND.Variable &&
+    decl.type?.type === 'reference' &&
+    decl.type.package === '@types/react' &&
+    decl.type.qualifiedName === 'React.ForwardRefExoticComponent'
+      ? decl.type.typeArguments?.[0]
+      : undefined;
+
+  const propsDeclaration = (type) => {
+    if (type?.type === 'intersection') {
+      return type.types.map(propsDeclaration).find(Boolean);
+    }
+    if (type?.type !== 'reference' || typeof type.target !== 'number')
+      return undefined;
+    const target = resolveReference(byId.get(type.target));
+    return target?.kind === KIND.Interface ? target : undefined;
+  };
+
   const kindOf = (decl, entry) => {
+    if (forwardRefProps(decl, entry)) return 'component';
     switch (decl.kind) {
       case KIND.Function:
         return entry.slug === 'react' && /^[A-Z]/.test(decl.name)
@@ -527,8 +550,16 @@ export function normalize({ project, entries, highlight }) {
     const kind = kindOf(decl, entry);
     const file = fileOf(decl);
     const domain = domainOf(file, entry);
-    const signatureNodes =
-      decl.kind === KIND.Class
+    const forwardedProps = forwardRefProps(decl, entry);
+    const signatureNodes = forwardedProps
+      ? [
+          {
+            parameters: [{ name: 'props', type: forwardedProps }],
+            // The call contract of React.ForwardRefExoticComponent<P>.
+            type: { type: 'reference', name: 'ReactNode' },
+          },
+        ]
+      : decl.kind === KIND.Class
         ? ((decl.children ?? []).find(
             (child) => child.kind === KIND.Constructor,
           )?.signatures ?? [])
@@ -549,10 +580,7 @@ export function normalize({ project, entries, highlight }) {
     }
     if (kind === 'component') {
       const propsRef = signatureNodes[0]?.parameters?.[0]?.type;
-      const target =
-        propsRef?.type === 'reference' && typeof propsRef.target === 'number'
-          ? resolveReference(byId.get(propsRef.target))
-          : undefined;
+      const target = propsDeclaration(propsRef);
       if (target?.kind === KIND.Interface && target.children?.length) {
         propsType = target.name;
         members = buildMembers(target);
