@@ -20,10 +20,12 @@ has no React dependency. `color-kit/core` is an alias of this entry.
   ([`contrastAPCA`](/api/core/contrastAPCA)) and contrast regions
   ([`contrastRegionPaths`](/api/core/contrastRegionPaths)).
 - **Mixing and scales.** [`mix`](/api/core/mix),
-  [`interpolate`](/api/core/interpolate),
-  [`generateScale`](/api/core/generateScale) and
-  [`lightnessScale`](/api/core/lightnessScale), in OKLCH by default or any CSS
-  `color-mix()` space.
+  [`interpolate`](/api/core/interpolate) and
+  [`generateScale`](/api/core/generateScale) use OKLCH by default. Their
+  `space` option accepts `'oklch'`, `'oklab'`, `'srgb'`, `'linear-srgb'`,
+  `'display-p3'` and `'linear-p3'`.
+  [`lightnessScale`](/api/core/lightnessScale) varies OKLCH lightness while
+  keeping chroma, hue and alpha fixed; it has no space option.
 - **Manipulation and harmony.** [`lighten`](/api/core/lighten),
   [`adjustHue`](/api/core/adjustHue),
   [`complementary`](/api/core/complementary) and friends, all immutable.
@@ -47,7 +49,9 @@ const brand = parse('oklch(0.62 0.24 290)');
 inSrgbGamut(brand); // → false
 const shown = toSrgbGamut(brand); // chroma reduced, lightness and hue kept
 toCss(shown, 'hex'); // → '#8a62ff'
-contrastRatio(shown, parse('#fff')).toFixed(2); // → '3.98'
+// Measure the hex you ship: 8-bit channels, not the unrounded color.
+const white = parse('#fff');
+contrastRatio(shown, white, { precision: '8bit' }).toFixed(2); // → '3.98'
 ```
 
 Start with [OKLCH-canonical colors](/concepts/oklch-canonical) and

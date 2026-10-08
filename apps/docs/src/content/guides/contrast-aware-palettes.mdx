@@ -31,6 +31,7 @@ const white = parse('#fff');
 const ramp = lightnessScale(parse('oklch(0.6 0.15 250)'), 5, [0.2, 0.9]).map(
   (step) => toSrgbGamut(step),
 );
+// Measured before rounding to hex (the default 'exact' precision).
 ramp.map((step) => contrastRatio(step, white).toFixed(2));
 // → ['18.11', '10.23', '4.85', '2.43', '1.34']
 ```
@@ -43,8 +44,8 @@ for every chroma at once: the plane's `contrastRegion` query returns the
 contour of the area that meets a level against a reference.
 Against white, everything darker than the contour passes; against black,
 everything lighter. A step inside a region passes the matching check exactly,
-because the region solver and `contrastRatio` measure the same displayed
-luminance (see [Contrast](/concepts/contrast#regions-agree-with-checks)).
+because the region solver and `contrastRatio` measure the same displayed,
+unrounded luminance (see [Contrast](/concepts/contrast#regions-agree-with-checks)).
 
 Some consequences you can see in the example below:
 
@@ -66,7 +67,10 @@ same region over a `ColorArea`, so a picker can show the passing area live.
 Nine steps at one hue and chroma. Each dot is a step on the hue's
 lightness-by-chroma plane. The solid line is the AA edge against white, the
 dashed line the edge against black. Below, `W` and `B` are each step's ratio
-against white and black.
+against white and black, measured on the hex its swatch paints
+(`{ precision: '8bit' }`) so the `AA` label matches what is on screen. The
+edges are unrounded, so a step within rounding distance of one can read on
+the other side of 4.5.
 
 <Example
   of={ContrastPaletteDemo}

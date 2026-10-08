@@ -87,7 +87,10 @@ Every returned point passes the public check and is in gamut per
 ## Try it
 
 The contour is re-checked here with the public functions. Each sample is a
-contour point painted on the reference, labelled with its measured contrast.
+contour point painted on the reference, labelled with its contrast measured
+before rounding (the default `'exact'` precision). Rounded to hex, a point
+this close to the edge can land on either side of the threshold; see
+[Unrounded by default](#unrounded-by-default).
 
 <Example
   of={ContrastAgreement}

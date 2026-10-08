@@ -3,15 +3,32 @@ import {
   contrastRatio,
   inP3Gamut,
   inSrgbGamut,
+  mix,
   parse,
   toCss,
   toSrgbGamut,
   tryParse,
+  type Color,
 } from 'color-kit';
 import { Chip, Readout } from './controls';
 
 const WHITE = parse('#fff');
 const BLACK = parse('#000');
+
+/**
+ * Contrast of `color` painted over an opaque `background`. A translucent
+ * color shows the background through it, so composite first: source-over in
+ * gamma-encoded sRGB, the way browsers blend by default, is a plain sRGB mix
+ * from the background toward the opaque color by its alpha. The chip paints
+ * hex, so measure 8-bit channels to match what is on screen.
+ */
+function contrastOver(color: Color, background: Color): string {
+  const painted = mix(background, { ...color, alpha: 1 }, color.alpha, {
+    space: 'srgb',
+  });
+  const ratio = contrastRatio(painted, background, { precision: '8bit' });
+  return `${ratio.toFixed(2)}:1`;
+}
 
 export default function QuickStart() {
   const [input, setInput] = useState('oklch(0.7 0.25 30)');
@@ -36,8 +53,8 @@ export default function QuickStart() {
               ['inSrgbGamut', String(inSrgbGamut(color))],
               ['inP3Gamut', String(inP3Gamut(color))],
               ['toSrgbGamut', toCss(shown, 'oklch')],
-              ['vs white', `${contrastRatio(shown, WHITE).toFixed(2)}:1`],
-              ['vs black', `${contrastRatio(shown, BLACK).toFixed(2)}:1`],
+              ['vs white', contrastOver(shown, WHITE)],
+              ['vs black', contrastOver(shown, BLACK)],
             ]}
           />
         </div>
