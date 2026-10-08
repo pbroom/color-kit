@@ -8,7 +8,7 @@
   .hero {
     --hero-ink: var(--fg);
     --hero-paper: var(--bg);
-    --hero-axis: 28px;
+    --hero-axis: 36px;
     display: grid;
     gap: var(--space-8);
     margin: 0;
@@ -34,7 +34,7 @@
   .hero__plot {
     display: grid;
     grid-template-columns: var(--hero-axis) minmax(0, 1fr);
-    grid-template-rows: auto var(--hero-axis);
+    grid-template-rows: auto auto 24px auto;
     max-width: 600px;
   }
 
@@ -50,12 +50,12 @@
 
   .hero__axis--y {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 2;
   }
 
   .hero__axis--x {
     grid-column: 2;
-    grid-row: 2;
+    grid-row: 3;
   }
 
   .hero__tick {
@@ -77,32 +77,42 @@
     transform: none;
   }
 
-  .hero__axis--x .hero__tick:nth-last-child(2) {
+  .hero__axis--x .hero__tick:last-child {
     transform: translateX(-100%);
   }
 
-  .hero__axis-name {
-    position: absolute;
-    color: var(--fg-3);
+  /* Axis titles sit outside the tick rows: lightness above the y axis,
+     chroma under the right end of the x axis. */
+  .hero__axis-title {
+    margin: 0;
+    color: var(--fg-4);
+    font-size: 12px;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .hero__axis-title b {
+    color: var(--fg-2);
+    font-family: var(--font-mono);
     font-weight: 600;
   }
 
-  .hero__axis--y .hero__axis-name {
-    top: 50%;
-    right: var(--space-2);
-    transform: translateY(-50%);
+  .hero__axis-title--y {
+    grid-column: 2;
+    grid-row: 1;
+    margin-bottom: var(--space-3);
   }
 
-  .hero__axis--x .hero__axis-name {
-    top: var(--space-2);
-    left: 50%;
-    transform: translateX(-50%);
+  .hero__axis-title--x {
+    grid-column: 2;
+    grid-row: 4;
+    text-align: right;
   }
 
   .hero__plane {
     position: relative;
     grid-column: 2;
-    grid-row: 1;
+    grid-row: 2;
     aspect-ratio: 1;
     overflow: hidden;
     border: var(--hairline) solid var(--line-strong);
