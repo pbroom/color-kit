@@ -1,0 +1,190 @@
+import ColorAreaExample from '@/examples/react/color-area.tsx';
+import colorAreaSource, {
+  code as colorAreaCode,
+} from '@/examples/react/color-area.tsx?highlighted';
+import ColorSliderExample from '@/examples/react/color-slider.tsx';
+import colorSliderSource, {
+  code as colorSliderCode,
+} from '@/examples/react/color-slider.tsx?highlighted';
+import ColorStringInputExample from '@/examples/react/color-string-input.tsx';
+import colorStringInputSource, {
+  code as colorStringInputCode,
+} from '@/examples/react/color-string-input.tsx?highlighted';
+import ControlledColor from '@/examples/react/color-provider.tsx';
+import controlledSource, {
+  code as controlledCode,
+} from '@/examples/react/color-provider.tsx?highlighted';
+import ContrastRegionExample from '@/examples/react/contrast-region.tsx';
+import contrastSource, {
+  code as contrastCode,
+} from '@/examples/react/contrast-region.tsx?highlighted';
+
+`color-kit/react` is a set of headless React primitives built on
+[`color-kit/driver`](/api/driver). The driver holds the picker logic as plain
+data and functions; this entry binds it to React state, pointer and keyboard
+events, and ARIA. Nothing ships with styles: give each part a size and a look
+with `className`, `style` and the `data-*` attributes it sets.
+
+## State: one provider, two hooks
+
+[`Color`](/api/react/Color) holds one color and shares it with every primitive
+inside it. It takes the same options as [`useColor`](/api/react/useColor),
+which returns that state with conversions and setters (`setChannel`,
+`setFromString`, `setActiveGamut`, …) when a provider is more than you need.
+The provider itself never re-renders on a color change: each primitive
+subscribes to the slice it reads, so a drag re-renders only what depends on
+it. In your own components, [`useColorContext`](/api/react/useColorContext)
+returns the full snapshot and re-renders on every update;
+[`useColorStoreSelector`](/api/react/useColorStoreSelector) subscribes to one
+field of the provider's store instead.
+
+[`useMultiColor`](/api/react/useMultiColor) manages a named collection, such
+as a palette or gradient stops, with one selected entry and a display gamut
+and view shared by all entries. Its operations build on the latest state, so
+several calls in one event handler compose.
+
+## Requested and displayed
+
+Every state keeps two colors apart. `requested` is the exact OKLCH color the
+user chose and may sit outside any screen's gamut; it is never clamped.
+`displayed` is that color mapped into the active gamut (`'display-p3'` unless
+you pass `defaultGamut="srgb"`), and `displayedSrgb` and `displayedP3` hold
+both mappings. Thumbs sit at the requested color and paint the displayed one,
+so a thumb never jumps when a color leaves the gamut. The concept page
+[Requested vs displayed](/concepts/requested-vs-displayed) explains why.
+
+## ColorArea and ColorPlane
+
+[`ColorArea`](/api/react/ColorArea) maps two OKLCH channels to a rectangle:
+lightness across and chroma up unless you pass `axes`. It owns pointer input;
+its children draw. [`ColorPlane`](/api/react/ColorPlane) rasterizes the plane
+with WebGL (falling back to a 2D canvas), layers such as
+[`GamutBoundaryLayer`](/api/react/GamutBoundaryLayer) draw plane queries over
+it, and one [`Thumb`](/api/react/Thumb) carries focus and keyboard input. A
+default thumb renders when you omit it.
+
+<Example
+  of={ColorAreaExample}
+  source={colorAreaSource}
+  code={colorAreaCode}
+  filename="color-area.tsx"
+  title="ColorArea with ColorPlane"
+  minHeight={360}
+/>
+
+## ColorSlider
+
+[`ColorSlider`](/api/react/ColorSlider) edits one channel: `l`, `c`, `h` or
+`alpha`. It paints no rail; [`getSliderGradientStyles`](/api/driver/getSliderGradientStyles)
+samples one in Display P3 with an sRGB fallback. Sampled from the current
+color, each rail previews what dragging it would do.
+
+<Example
+  of={ColorSliderExample}
+  source={colorSliderSource}
+  code={colorSliderCode}
+  filename="color-slider.tsx"
+  title="ColorSlider"
+  minHeight={120}
+/>
+
+## ColorStringInput
+
+[`ColorStringInput`](/api/react/ColorStringInput) shows the requested color as
+text in one `format` and accepts any CSS color `parse` understands. It commits
+on Enter or blur, reverts on Escape, and reports text it cannot parse through
+`onInvalidCommit`.
+
+<Example
+  of={ColorStringInputExample}
+  source={colorStringInputSource}
+  code={colorStringInputCode}
+  filename="color-string-input.tsx"
+  title="ColorStringInput"
+  minHeight={250}
+/>
+
+<Callout tone="note" title="ColorInput">
+  The channel input `ColorInput` (scrubbing, steps, arithmetic like `+10`) lives
+  on the `@color-kit/react/color-input` subpath because it depends on
+  `@color-kit/control-kit`. It is not part of the published `color-kit` package
+  until control-kit is published, so it has no page here yet.
+</Callout>
+
+## Controlled or uncontrolled
+
+Uncontrolled, `<Color defaultColor="…">` keeps the state itself. Controlled,
+you pass `state` and `onChange`, and the provider only reports updates.
+`onChange` fires synchronously inside the setter, once per effective update
+and never for a no-op, and the event names the `interaction` (`pointer`,
+`keyboard`, `text-input`, `programmatic`) and the `changedChannel`. Build the
+initial state with [`createColorState`](/api/driver/createColorState).
+`ColorArea`, `ColorSlider` and `ColorStringInput` also work without a
+provider through their `requested` and `onChangeRequested` props. The area's
+children (`ColorPlane`, `Thumb` and the query layers) have no such props: they read the
+`ColorArea` around them and throw outside one.
+
+<Example
+  of={ControlledColor}
+  source={controlledSource}
+  code={controlledCode}
+  filename="color-provider.tsx"
+  title="A controlled Color provider"
+  minHeight={330}
+/>
+
+## Contrast regions
+
+Layers draw [`color-kit/plane`](/api/plane) queries in the area's
+coordinates. [`ContrastRegionLayer`](/api/react/ContrastRegionLayer) outlines
+the colors of the current hue that reach a contrast level against a
+reference, with WCAG 2 or APCA, and
+[`ContrastRegionFill`](/api/react/ContrastRegionFill) fills it. Pick a
+background and a level, then drag the thumb in and out of the region.
+
+<Example
+  of={ContrastRegionExample}
+  source={contrastSource}
+  code={contrastCode}
+  filename="contrast-region.tsx"
+  title="ContrastRegionLayer"
+  minHeight={380}
+/>
+
+## Accessibility
+
+- **Roles.** [`Thumb`](/api/react/Thumb) is a single `role="slider"` with
+  `aria-roledescription="2D slider"`. `aria-valuenow` describes the x axis,
+  and `aria-valuetext` announces both, such as "Lightness 60%, Chroma 0.2".
+  [`ColorSlider`](/api/react/ColorSlider) is a `role="slider"` whose value
+  text names the channel and unit ("Hue 213°"). Both take `getValueText` to
+  reword it; label them with `aria-label`.
+- **Keyboard.** Arrow keys step by `stepRatio` of the range (1% by default),
+  Shift+Arrow and PageUp/PageDown by `largeStepRatio` (10%), and Home/End jump
+  to the ends. Hue wraps around. The area's thumb takes focus on pointer
+  down, so a click followed by arrow keys fine-tunes.
+- **Disabled.** `disabled` on `ColorArea` or `ColorSlider` stops pointer and
+  keyboard input, takes the focusable element (the area's thumb, or the
+  slider) out of the tab order, and sets
+  `aria-disabled` and `data-disabled` for styling.
+- **Focus.** The area's `Thumb` and the slider set `data-focus-visible` only
+  for keyboard focus, so a focus ring can follow the keyboard and not the
+  mouse.
+
+## Performance
+
+- Pointer updates are coalesced to one per animation frame and capped by
+  `maxUpdateHz` (60 by default); moves smaller than `dragEpsilon` are
+  skipped.
+- `ColorArea`'s `performanceProfile` (`'auto'` by default) lowers raster
+  resolution and layer sampling while updates are slow and raises them
+  again when they recover; `'quality'` never degrades. `onInteractionFrame`
+  reports the timing of each committed frame.
+- `ContrastRegionLayer` solves synchronously at rest and in a shared Web
+  Worker while dragging, keeping the last region on screen until a fresh one
+  arrives.
+- Read single fields with `useColorStoreSelector` rather than
+  `useColorContext` in components that re-render often.
+
+The guide [Building with color-kit/react](/guides/react) assembles these parts
+into one picker.

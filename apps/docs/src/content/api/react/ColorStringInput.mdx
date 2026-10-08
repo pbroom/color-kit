@@ -1,0 +1,20 @@
+## Edge cases
+
+- **Out-of-gamut colors.** `format="hex"` shows the sRGB mapping of the
+  requested color (chroma reduced), so a vivid P3 color reads as its nearest
+  sRGB hex. `rgb` and `hsl` clip each channel instead, and `oklch` shows the
+  requested color exactly. Focusing and leaving the field without editing
+  commits nothing, so the requested color is not replaced by its mapped text.
+- **Hue of grays.** Typing a gray, black or white keeps the current hue, so
+  raising chroma later resumes it. Only an `oklch()` string with a hue other
+  than `none` sets the hue of an achromatic color.
+- **Invalid text.** Enter or blur with text that does not parse calls
+  `onInvalidCommit(draft)` and shows the last valid value again. Escape
+  always reverts without committing.
+- **Editing is local.** While the field has focus it shows the draft, not
+  the live color, so a drag elsewhere does not overwrite what is being typed.
+- **Labels.** `aria-label` and `aria-labelledby` go to the inner `input`
+  (default label "Color value"); every other attribute goes to the wrapper
+  `div`, which carries `data-format`, `data-valid` and `data-editing`.
+- **Provider or props.** Without a `<Color>` ancestor the input needs both
+  `requested` and `onChangeRequested`; with neither it throws.
