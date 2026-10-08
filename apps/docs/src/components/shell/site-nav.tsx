@@ -1,6 +1,11 @@
-import { useId, useState } from 'react';
+import { lazy, Suspense, useId, useState } from 'react';
 import { PrefetchLink } from '@/components/prefetch-link';
 import { navigation, type NavGroup, type NavItem } from '@/site/routes';
+import './sidebar.css';
+
+// API symbol trees (domains, kind glyphs) are their own chunk: the home page
+// never shows one, so it never pays for it.
+const SidebarSymbols = lazy(() => import('./sidebar-tree'));
 
 /** Groups that hold one page render as a plain top-level link. */
 const SOLO_GROUPS = new Set(['start', 'map']);
@@ -42,7 +47,7 @@ interface NavLinkProps {
 
 function NavLink({ item, currentPath, onNavigate, label }: NavLinkProps) {
   const current = currentPath === item.path;
-  const mono = item.kind === 'api-entry' || item.kind === 'api-symbol';
+  const mono = item.kind === 'api-entry';
   return (
     <PrefetchLink
       to={item.path}
@@ -52,7 +57,6 @@ function NavLink({ item, currentPath, onNavigate, label }: NavLinkProps) {
       onClick={onNavigate}
     >
       <span className="nav-link__label">{label ?? item.title}</span>
-      {item.meta ? <span className="nav-link__meta">{item.meta}</span> : null}
     </PrefetchLink>
   );
 }
@@ -128,17 +132,14 @@ export function SiteNav({ currentPath, onNavigate }: SiteNavProps) {
                       onNavigate={onNavigate}
                     />
                     {expanded ? (
-                      <ul className="site-nav__list site-nav__list--nested">
-                        {item.children!.map((child) => (
-                          <li key={child.path}>
-                            <NavLink
-                              item={child}
-                              currentPath={currentPath}
-                              onNavigate={onNavigate}
-                            />
-                          </li>
-                        ))}
-                      </ul>
+                      <Suspense>
+                        <SidebarSymbols
+                          items={item.children!}
+                          currentPath={currentPath}
+                          filtering={!!query}
+                          onNavigate={onNavigate}
+                        />
+                      </Suspense>
                     ) : null}
                   </li>
                 );
