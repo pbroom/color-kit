@@ -335,6 +335,20 @@ describe('scheduler budgets follow the traced work', () => {
     ).toBe(2);
   });
 
+  it.each([2.5, -0.5, Number.NaN, Infinity, -Infinity])(
+    'rejects invalid gradient budget steps %s before clamping',
+    (steps) => {
+      expect(() =>
+        getPlaneQuerySpec('gradient').budget({
+          kind: 'gradient',
+          from: red,
+          to: blue,
+          steps,
+        }),
+      ).toThrow(RangeError);
+    },
+  );
+
   it('estimates adaptive sampling as probe searches instead of steps', () => {
     for (const adaptiveTolerance of [undefined, 0.004, 0.00025, 0.0000625]) {
       for (const kind of ['gamutBoundary', 'chromaBand'] as const) {
