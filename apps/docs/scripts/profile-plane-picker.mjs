@@ -1,25 +1,26 @@
 /* global console, process, requestAnimationFrame, PerformanceObserver, window, performance, MutationObserver, Element, document */
 
-// Profiles ColorArea drags on the /api/react examples page.
+// Profiles plane-picker drags on the /api/react examples page.
 //
 // Two scenarios, each a 220-step diagonal drag across one example's area:
-// - `requested`: "ColorArea with ColorPlane" (plane + two gamut boundaries)
-// - `analysis`: "ContrastRegionLayer" (plane + a contrast region solved in a
+// - `requested`: "A plane picker from hooks" (useColorPlaneRenderer + two
+//   useGamutBoundary overlays)
+// - `analysis`: "useContrastRegion" (plane + a contrast region solved in a
 //   worker while dragging)
 //
 // The page is measured from outside, so the examples stay plain user code:
 // an init script records every animation frame's duration, long tasks, and
 // the latency from each pointer move to the thumb's next position change.
 //
-//   COLOR_AREA_PROFILE_URL  page to profile (default: dev server /api/react)
-//   COLOR_AREA_PROFILE_OUT  JSON output path
+//   PLANE_PICKER_PROFILE_URL  page to profile (default: dev server /api/react)
+//   PLANE_PICKER_PROFILE_OUT  JSON output path
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const SCENARIOS = [
-  { name: 'requested', example: 'ColorArea with ColorPlane' },
-  { name: 'analysis', example: 'ContrastRegionLayer' },
+  { name: 'requested', example: 'A plane picker from hooks' },
+  { name: 'analysis', example: 'useContrastRegion' },
 ];
 
 function percentile(values, p) {
@@ -97,7 +98,7 @@ function installProbes() {
       records.some(
         (record) =>
           record.target instanceof Element &&
-          record.target.hasAttribute('data-color-area-thumb'),
+          record.target.hasAttribute('data-picker-thumb'),
       )
     ) {
       probe.latencies.push(performance.now() - probe.pendingMove);
@@ -124,7 +125,7 @@ async function loadPlaywright() {
 async function collectScenario(page, { name, example }) {
   const area = page
     .getByRole('figure', { name: example })
-    .locator('[data-color-area]')
+    .locator('[data-picker-area]')
     .first();
   await area.waitFor();
   await area.scrollIntoViewIfNeeded();
@@ -177,10 +178,10 @@ async function collectScenario(page, { name, example }) {
 
 async function main() {
   const url =
-    process.env.COLOR_AREA_PROFILE_URL ?? 'http://localhost:5173/api/react';
+    process.env.PLANE_PICKER_PROFILE_URL ?? 'http://localhost:5173/api/react';
   const outputPath =
-    process.env.COLOR_AREA_PROFILE_OUT ??
-    path.resolve('apps/docs/bench/results.color-area.docs.json');
+    process.env.PLANE_PICKER_PROFILE_OUT ??
+    path.resolve('apps/docs/bench/results.plane-picker.docs.json');
 
   const { chromium } = await loadPlaywright();
   const browser = await chromium.launch({ headless: true });

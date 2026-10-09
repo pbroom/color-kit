@@ -65,8 +65,8 @@ return `null` for keys they do not handle, so call `preventDefault` only when
 they return a color. [`getColorAreaValueText`](/api/driver/getColorAreaValueText)
 and [`getColorSliderValueText`](/api/driver/getColorSliderValueText) produce
 `aria-valuetext` such as `Lightness 60%, Chroma 0.1` and `Hue 213°`. A
-slider exposes one number, so the area thumb, like the React `Thumb`, sets
-`aria-valuenow`, `aria-valuemin` and `aria-valuemax` from the x axis and
+slider exposes one number, so the area thumb sets `aria-valuenow`,
+`aria-valuemin` and `aria-valuemax` from the x axis and
 `aria-roledescription="2D slider"`; the value text names both axes.
 
 ## Drag throttling
