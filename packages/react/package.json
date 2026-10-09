@@ -2,7 +2,7 @@
   "name": "@color-kit/react",
   "version": "0.1.0",
   "private": true,
-  "description": "Headless React primitives for building color interfaces",
+  "description": "React state hooks and headless plane hooks for color-kit",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -17,16 +17,6 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
-    },
-    "./color-input": {
-      "import": {
-        "types": "./dist/color-input.d.ts",
-        "default": "./dist/color-input.js"
-      },
-      "require": {
-        "types": "./dist/color-input.d.cts",
-        "default": "./dist/color-input.cjs"
-      }
     }
   },
   "files": [
@@ -39,15 +29,15 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "bench:color-plane": "node bench/color-plane-renderer-bench.mjs",
-    "bench:color-area": "node bench/color-area-interaction-bench.mjs"
+    "bench:plane-interaction": "node bench/plane-interaction-bench.mjs"
   },
   "keywords": [
     "color-picker",
     "react",
+    "react-hooks",
     "headless",
-    "ui-components",
-    "accessibility",
-    "oklch"
+    "oklch",
+    "webgl"
   ],
   "author": "pbroom",
   "license": "MIT",
@@ -65,23 +55,14 @@
     "@color-kit/driver": "workspace:*"
   },
   "peerDependencies": {
-    "@color-kit/control-kit": "*",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
   },
-  "peerDependenciesMeta": {
-    "@color-kit/control-kit": {
-      "optional": true
-    }
-  },
   "devDependencies": {
-    "@color-kit/control-kit": "github:pbroom/control-kit#e5aebdf2ff5a00c0b34af6b4176358ab93181bba",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
-    "axe-core": "^4.14.0",
     "jsdom": "^26.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

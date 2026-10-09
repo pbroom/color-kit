@@ -36,7 +36,7 @@ import {
   qualityStepMultiplier,
   REGION_QUALITY_MAX_DEPTH,
   REGION_QUALITY_STEP_MULTIPLIERS,
-} from './layer-quality-utils.js';
+} from './plane-quality.js';
 import {
   useStablePlane,
   type ColorPlaneQueryOptions,

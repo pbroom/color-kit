@@ -2,13 +2,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { useState } from 'react';
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react';
+import { act, cleanup, render } from '@testing-library/react';
 import { isAchromatic, parse, type Color as ColorValue } from '@color-kit/core';
 import {
   createColorState,
@@ -16,9 +10,6 @@ import {
   type ColorUpdateEvent,
   type MultiColorState,
 } from '@color-kit/driver';
-import { Color } from '../src/color.js';
-import { ColorInput } from '../src/color-input.js';
-import { ColorStringInput } from '../src/color-string-input.js';
 import { useColor, type UseColorReturn } from '../src/use-color.js';
 import {
   useMultiColor,
@@ -146,15 +137,7 @@ function MultiProbe(props: {
       : { defaultColors: { base: BLUE } },
   );
   props.onReady(multi);
-  const requested = multi.state.colors.base?.requested ?? BLUE;
-  return (
-    <ColorStringInput
-      requested={requested}
-      onChangeRequested={(color, options) =>
-        multi.setRequested('base', color, options)
-      }
-    />
-  );
+  return null;
 }
 
 describe.each<Mode>(['uncontrolled', 'controlled'])(
@@ -191,123 +174,5 @@ describe.each<Mode>(['uncontrolled', 'controlled'])(
       act(() => get().setRequested('base', parse('#808080')));
       expect(baseHue()).toBe(0);
     });
-
-    it('a ColorStringInput gray entry keeps the entry hue', () => {
-      const { baseHue } = renderMulti();
-      const input = screen.getByRole('textbox');
-
-      fireEvent.focus(input);
-      fireEvent.change(input, { target: { value: 'rgb(128 128 128)' } });
-      fireEvent.keyDown(input, { key: 'Enter' });
-      expect(baseHue()).toBe(250);
-
-      fireEvent.focus(input);
-      fireEvent.change(input, { target: { value: 'oklch(0.5 0 30)' } });
-      fireEvent.keyDown(input, { key: 'Enter' });
-      expect(baseHue()).toBe(30);
-    });
   },
 );
-
-describe('ColorInput RGB edits on grays', () => {
-  it('keeps the requested hue when an RGB edit lands on a gray', () => {
-    const events: ColorUpdateEvent[] = [];
-    const start = parse('#808090');
-    render(
-      <Color
-        defaultColor={start}
-        onChange={(event) => {
-          events.push(event);
-        }}
-      >
-        <ColorInput model="rgb" channel="b" aria-label="Blue" />
-        <ColorInput model="rgb" channel="alpha" aria-label="Alpha" />
-      </Color>,
-    );
-
-    const blue = screen.getByRole('spinbutton', { name: 'Blue' });
-    fireEvent.focus(blue);
-    fireEvent.change(blue, { target: { value: '128' } });
-    fireEvent.keyDown(blue, { key: 'Enter' });
-
-    const gray = events.at(-1)?.next.requested;
-    expect(gray && isAchromatic(gray.c)).toBe(true);
-    expect(gray?.h).toBe(start.h);
-
-    // Editing another RGB field of the gray keeps its hue as well.
-    const alpha = screen.getByRole('spinbutton', { name: 'Alpha' });
-    fireEvent.focus(alpha);
-    fireEvent.change(alpha, { target: { value: '0.5' } });
-    fireEvent.keyDown(alpha, { key: 'Enter' });
-
-    expect(events.at(-1)?.next.requested).toMatchObject({
-      h: start.h,
-      alpha: 0.5,
-    });
-  });
-});
-
-describe('ColorInput HSL edits on grays', () => {
-  function hueDistance(a: number, b: number): number {
-    return Math.abs(((((a - b) % 360) + 540) % 360) - 180);
-  }
-
-  function commit(input: HTMLElement, value: string) {
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-    fireEvent.blur(input);
-  }
-
-  function renderHslInputs() {
-    const events: ColorUpdateEvent[] = [];
-    render(
-      <Color
-        defaultColor={BLUE}
-        onChange={(event) => {
-          events.push(event);
-        }}
-      >
-        <ColorInput model="hsl" channel="h" aria-label="Hue" />
-        <ColorInput model="hsl" channel="s" aria-label="Saturation" />
-      </Color>,
-    );
-    return {
-      events,
-      hue: screen.getByRole<HTMLInputElement>('spinbutton', { name: 'Hue' }),
-      saturation: screen.getByRole('spinbutton', { name: 'Saturation' }),
-    };
-  }
-
-  it('resumes the stored hue when saturation rises from 0', () => {
-    const { events, hue, saturation } = renderHslInputs();
-
-    commit(saturation, '0');
-    const gray = events.at(-1)?.next.requested;
-    expect(gray && isAchromatic(gray.c)).toBe(true);
-    expect(gray?.h).toBe(250);
-    // The hue field shows the HSL hue of OKLCH hue 250, not 0.
-    expect(Number.parseFloat(hue.value)).toBeCloseTo(211.2, 0);
-
-    commit(saturation, '50');
-    const next = events.at(-1)?.next.requested;
-    expect(next && isAchromatic(next.c)).toBe(false);
-    expect(next && hueDistance(next.h, 250)).toBeLessThan(2);
-  });
-
-  it('uses a typed HSL hue on a gray', () => {
-    const { events, hue, saturation } = renderHslInputs();
-
-    commit(saturation, '0');
-    commit(hue, '120');
-    const gray = events.at(-1)?.next.requested;
-    expect(gray && isAchromatic(gray.c)).toBe(true);
-    expect(gray && hueDistance(gray.h, 145.5)).toBeLessThan(0.1);
-    expect(Number.parseFloat(hue.value)).toBeCloseTo(120, 1);
-
-    commit(saturation, '50');
-    const next = events.at(-1)?.next.requested;
-    expect(next && isAchromatic(next.c)).toBe(false);
-    expect(next && gray && hueDistance(next.h, gray.h)).toBeLessThan(2);
-  });
-});

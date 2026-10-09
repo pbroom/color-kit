@@ -7,7 +7,7 @@ import {
 import {
   qualityStepMultiplier,
   resolveAdaptiveLineSampling,
-} from './layer-quality-utils.js';
+} from './plane-quality.js';
 import {
   useStablePlane,
   type ColorPlanePixelSize,

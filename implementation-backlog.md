@@ -188,7 +188,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Completed:** Contrast, gamut-region and adaptive sampling were split earlier; the remaining god modules are now split too: `gamut/index.ts` is a barrel over `types`, `membership`, `cubic`, `hue-cusp`, `max-chroma`, `boundary-path` and `chroma-band`; `plane/plane.ts` is a barrel over `model-specs`, `resolve` and `mapping`; and the scheduler shrank below 600 lines by moving per-kind budgets and telemetry signatures into query specs. The contrast engines were then collapsed to one: PR #223 retired the legacy marching-squares engine (and `engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`, the `contrast-legacy-*` trace solvers), and PR #228 replaced the hybrid solver with a ray-based solver in `packages/core/src/contrast/region-solver.ts` that traces each side of a region as one luminance level curve along rays from black. Its options are `initialSamples`, `errorTolerance` and `maxDepth`; `hybridMaxDepth`, `hybridErrorTolerance`, `lightnessSteps`, `chromaSteps`, `tolerance`, `maxIterations` and `degradedReason` are gone. The largest core source file is now `contrast/region-solver.ts` (986 lines, one cohesive solver, under the 1k bar).
 - **Follow-ups (open):**
   - **7 tiny P3 APCA pieces missed by the single-extremum scan.** The ray solver's scan for where a contour piece starts or ends on the gamut edge (`packages/core/src/contrast/region-solver.ts`) misses 7 tiny Display P3 APCA pieces. Widen the scan so every piece is found, then add them as regression cases.
-  - **`ContrastRegionLayer` still gamut-maps its reference.** The core solver measures against the unmapped reference, which the public contrast checks clip. `packages/react/src/contrast-region-layer.tsx` still maps the reference into the display gamut (`mapColorToGamut`) before querying, so the layer can disagree with `contrastRegionPaths` for an out-of-gamut reference. Pass the unmapped reference through and cover it in the layer tests.
+  - **`useContrastRegion` still gamut-maps its reference.** The core solver measures against the unmapped reference, which the public contrast checks clip. `packages/react/src/use-contrast-region.ts` (which replaced `ContrastRegionLayer`) still maps the reference into the display gamut (`mapColorToGamut`) before querying, so the hook can disagree with `contrastRegionPaths` for an out-of-gamut reference. Pass the unmapped reference through and cover it in `plane-geometry-hooks.test.tsx`.
 
 ---
 
@@ -304,7 +304,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-012 — Extract `useColorAreaPointerInteraction` and explicit thumb slot
 
 - **Priority:** P2
-- **Status:** Open
+- **Status:** Closed (superseded): `ColorArea` and `Thumb` were removed from `color-kit/react`. Adaptive quality moved to `useAdaptiveQuality`, and pointer handling belongs to callers through the driver's `createPointerDragController`.
 - **Evidence:**
   - `packages/react/src/color-area.tsx` — 813 lines; ~300 lines of pointer/RAF/coalesced-events logic in one narrative.
   - Adaptive quality from measured frame times; window-level drag continuation — cohesive but dense.

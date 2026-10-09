@@ -88,13 +88,6 @@ export default defineConfig(({ isSsrBuild }) => ({
         find: /^(?:color-kit|@color-kit)\/react$/,
         replacement: resolve(__dirname, '../../packages/react/src/index.ts'),
       },
-      {
-        find: /^@color-kit\/react\/color-input$/,
-        replacement: resolve(
-          __dirname,
-          '../../packages/react/src/color-input.tsx',
-        ),
-      },
     ],
     dedupe: ['@base-ui/react', 'react', 'react-dom', 'react-router'],
   },

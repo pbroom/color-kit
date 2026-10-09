@@ -24,21 +24,6 @@ for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) {
   );
 }
 
-// `color-kit/react/color-input` stays out of the published facade until
-// @color-kit/control-kit is published.
-assert.equal(
-  './react/color-input' in packageJson.exports,
-  false,
-  'color-kit must not export ./react/color-input',
-);
-for (const ext of ['js', 'cjs', 'd.ts', 'd.cts']) {
-  assert.equal(
-    existsSync(path.join(packageRoot, 'dist', 'react', `color-input.${ext}`)),
-    false,
-    `dist/react/color-input.${ext} must not ship in the facade`,
-  );
-}
-
 // Nothing in the facade may import an undeclared or unpublished package:
 // every bare specifier in the built JS/DTS must be the package itself or a
 // declared peer.

@@ -1,12 +1,12 @@
-# ColorPlane Renderer Benchmark
+# Color Plane Benchmarks
 
-This directory contains the committed benchmark gate used to select the default `ColorPlane` renderer.
+This directory contains the committed benchmark gate used to select the default renderer of `useColorPlaneRenderer`, plus an interaction budget for plane drags.
 
 ## Files
 
-- `color-plane-renderer-bench.mjs`: Repeatable benchmark harness.
-- `color-area-interaction-bench.mjs`: Pointer-interaction budget harness for ColorArea drag scenarios.
-- `results.color-plane.json`: Latest captured run output.
+- `color-plane-renderer-bench.mjs`: Repeatable renderer benchmark harness.
+- `plane-interaction-bench.mjs`: Pointer-interaction budget harness for plane drag scenarios (a color update per frame, with and without gamut-boundary and contrast-region overlays).
+- `results.color-plane.json`, `results.plane-interaction.json`: Latest captured run output.
 
 ## Methodology
 
@@ -26,14 +26,14 @@ This directory contains the committed benchmark gate used to select the default 
 
 ## Result
 
-Current baseline selected renderer: `gpu`.
+Current baseline selected renderer: `gpu` (what `renderer: 'auto'` resolves to).
 
-- Benchmarks are directional only and should be paired with interaction traces.
-- `ColorPlane` keeps CPU fallback when GPU setup fails at runtime.
-- `ColorPlane` accepts the legacy alias `canvas2d` and remaps it to `cpu` with a deprecation warning.
+- Benchmarks are directional only and should be paired with interaction traces (`pnpm --filter @color-kit/docs profile:plane-picker`).
+- `useColorPlaneRenderer` keeps the CPU fallback when GPU setup fails or the WebGL context is lost at runtime.
 
 ## Re-run
 
 ```bash
 node packages/react/bench/color-plane-renderer-bench.mjs > packages/react/bench/results.color-plane.json
+node packages/react/bench/plane-interaction-bench.mjs > packages/react/bench/results.plane-interaction.json
 ```

@@ -23,7 +23,7 @@ Everything ships in one npm package, [`color-kit`](./packages/color-kit), split 
 | `color-kit/hct`     | HCT helpers, isolating the bundled Material color utilities solver                                                   |
 | `color-kit/interop` | Tuples and typed arrays for GPU pipelines, three.js, and WebGL/WebGPU                                                |
 | `color-kit/driver`  | Framework-agnostic interaction driver: color state, area/slider/input mapping, expression parsing                    |
-| `color-kit/react`   | Headless React primitives and hooks (optional peers: `react`, `react-dom` 19+)                                       |
+| `color-kit/react`   | React state hooks plus plane renderer and geometry hooks (optional peers: `react`, `react-dom` 19+)                  |
 
 The full generated API reference for every entry point lives in the docs site under **API Reference → Full API (generated)** (build it locally with `pnpm docs:api`).
 
@@ -127,16 +127,44 @@ const gradient = ColorApi.getSliderGradientStyles({
 
 ### React (one binding)
 
-React components and hooks consume the same engine. Other bindings can be built on the framework-agnostic driver layer the same way.
+React hooks consume the same engine: state hooks hold and share a color, and plane hooks paint a color plane into your canvas and return overlay geometry for your SVG. They render nothing, so markup, styling and input handling stay yours (the framework-agnostic driver supplies the picker math). Other bindings can be built on the driver layer the same way.
 
 ```tsx
-import { Color, ColorArea } from 'color-kit/react';
+import {
+  useColor,
+  useColorPlaneRenderer,
+  useGamutBoundary,
+} from 'color-kit/react';
 
-function ColorPicker() {
+function ColorPlane() {
+  const { requested } = useColor({ defaultColor: '#3b82f6' });
+  const { ref, canvasKey } = useColorPlaneRenderer({ color: requested });
+  const srgb = useGamutBoundary({ color: requested }, { gamut: 'srgb' });
   return (
-    <Color defaultColor="#3b82f6">
-      <ColorArea style={{ width: 200, height: 200 }} />
-    </Color>
+    <div style={{ position: 'relative', width: 240, height: 160 }}>
+      <canvas
+        ref={ref}
+        key={canvasKey}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+        }}
+      />
+      <svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        style={{ position: 'absolute', inset: 0 }}
+      >
+        <path
+          d={srgb.path}
+          fill="none"
+          stroke="#fff"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
   );
 }
 ```

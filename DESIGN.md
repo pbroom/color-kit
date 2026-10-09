@@ -147,63 +147,56 @@ During pointer drag, **pointer move** updates a high-frequency preview (requeste
 
 ---
 
-## 4. Component Architecture (React)
+## 4. React Bindings: State and Plane Hooks
 
-### Headless by design
+### Hooks, not components
 
-React primitives are **unstyled** and use **data attributes** (`data-color-area`, `data-color-slider-thumb`, etc.) for styling and testing. No built-in theme or visual design is imposed.
+`color-kit/react` ships **hooks only**: state hooks that hold and share a color, and plane hooks that render a color plane into a caller's canvas and compute overlay geometry. It renders no elements and imposes no markup, styles or input handling.
 
-> **Why:** Consumers bring their own design system. Headless components own semantics and behavior; styling is consumer-owned.
+> **Why:** Consumers bring their own design system and component library. Generic UI controls (planes, sliders, inputs) are not color-specific and belong in a UI kit such as [control-kit](https://github.com/pbroom/control-kit); what is color-specific is the state model, the plane raster and the plane geometry. The former `ColorArea`, `ColorSlider`, `ColorInput`, `ColorStringInput` and layer components were removed rather than moved: apps compose the hooks with their own (or control-kit's) elements, and `color-kit/driver` supplies the framework-agnostic picker math (pointer normalization, drag coalescing, keyboard steps, value text).
 
 ### Color context provider model
 
-The `**<Color>` component wraps the color UI and provides a single source of truth for color state (requested, displayed, activeGamut, activeView). Hooks like `useColor()` and components like `ColorArea` consume this context when used without explicit `color`/`onChange` props.
+The `<Color>` component provides a single source of truth for color state (requested, displayed, activeGamut, activeView) to everything under it; `useColorContext()` reads a snapshot and `useColorStoreSelector()` subscribes to one slice. `useColor()` returns the same state without a provider.
 
-> **Why:** Centralizes state so core controls (area, sliders, inputs) stay in sync. Shared gamut and view settings apply consistently. Multi-color (`useMultiColor`) extends this idea for named collections (e.g. palette entries, gradient stops).
+> **Why:** Centralizes state so every control (plane, sliders, inputs) stays in sync, and shared gamut and view settings apply consistently. Multi-color (`useMultiColor`) extends this idea for named collections (e.g. palette entries, gradient stops).
 
-### Component-specific considerations
+### Plane hooks
 
-Each primitive has a focused role. Summary:
+Every plane hook takes the same plane, `{ color, axes }`: two OKLCH channels mapped to normalized x/y (y down), the third channel from `color`.
 
-| Component            | Role                                                 | Key decisions                                                                             |
-| -------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **ColorArea**        | 2D plane: geometry, coordinate mapping, interaction. | UI plane (0–1), not constrained to gamut; thumb at requested; WebGL for gradient. See §5. |
-| **ColorSlider**      | Single-axis slider for any channel (L, C, H, alpha). | `role="slider"`, arrow keys + shift-step; gradient from model-specific math.              |
-| **ColorInput**       | Numeric channel input (OKLCH, RGB, HSL).             | Parsing/formatting per model; updates requested.                                          |
-| **ColorStringInput** | Free-form string (hex, rgb(), oklch(), etc.).        | Parse on blur/Enter; validate and set requested.                                          |
+| Hook                    | Role                                                          | Key decisions                                                                                                            |
+| ----------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `useColorPlaneRenderer` | Rasterizes the plane into a caller-owned `<canvas>`.          | WebGL shader with CPU fallback and context-loss recovery; returns a callback ref and a `canvasKey` for the GPU/CPU swap. |
+| `useGamutBoundary`      | sRGB / Display P3 boundary for the plane's hue.               | Points plus `toSvgPath` data in a `0 0 100 100` viewBox.                                                                 |
+| `useChromaBand`         | The line the current chroma follows across lightness.         | Clamped or proportional mode, kept inside the gamut.                                                                     |
+| `useContrastRegion`     | Colors meeting a WCAG/APCA level against a reference.         | Contours to stroke and closed polygons to fill; worker-solved while dragging.                                            |
+| `useFallbackPoints`     | Where the color lands after mapping into sRGB and Display P3. | Memoized on color and axes.                                                                                              |
+| `useAdaptiveQuality`    | Lowers a quality level while measured frames are slow.        | Feeds the renderer's resolution and the geometry hooks' sampling.                                                        |
 
-**Accessibility:** All interactive components are keyboard-focusable, use appropriate ARIA roles and labels, and expose human-readable `aria-valuetext` where applicable. Non-interactive overlays are `aria-hidden` and `pointer-events: none`. See §8.
+**Accessibility:** The hooks render nothing, so semantics belong to the caller's elements; the driver provides `getColorAreaValueText`, `colorFromColorAreaKey` and friends so a hand-built thumb can expose a single `role="slider"` with rich `aria-valuetext`. See §8.
 
-**Performance:** Heavy work (gamut boundary, contrast regions, chroma bands) is cached and invalidated only when relevant inputs change (e.g. hue, size, gamut), not on every thumb move.
+**Performance:** Heavy work (gamut boundary, contrast regions, chroma bands) is memoized on channel values and invalidated only when relevant inputs change (e.g. hue, gamut, quality), not on every thumb move.
 
 ---
 
-## 5. ColorArea Deep Dive
+## 5. Plane Rendering Deep Dive
 
 ### Composable scene model
 
-ColorArea is built from **primitives** (ColorPlane, Layer, Line, Point, Thumb, Background) rather than one monolithic component. The host provides the bounded 2D space, coordinate systems (UV ↔ color), and interaction; children provide rendering and overlays.
+A picker is a caller-owned scene: a canvas painted by `useColorPlaneRenderer`, an SVG overlay drawing geometry hook output, and a focusable thumb wired to the driver. The hooks compute; the caller decides which overlays to show, in what order, and how they look.
 
-> **Why:** Composability allows consumers to choose which layers (gamut boundary, contrast regions, fallback points, chroma band) to show and in what order. It keeps responsibilities separated: ColorArea owns space and interaction; ColorPlane owns raster; Layer/Line/Point own overlays; Thumb owns input.
-
-**Contract summary:**
-
-- **ColorArea** — Bounding rect, DPR, UV ↔ color mapping, pointer/keyboard. Does not do color math or render pixels.
-- **ColorPlane** — Rasterized 2D color surface. Redraws when plane config/gamut/size change, not on thumb move.
-- **Layer** — Stacking and renderer type (DOM/SVG/canvas). Structural only.
-- **Line** — Vector path in area coordinates (e.g. gamut boundary, contrast contours).
-- **Point** — Marker at a UV coordinate (e.g. fallback indicators).
-- **Thumb** — Single draggable/focusable control; updates intent; commits on pointer up / Enter.
+> **Why:** Composability lets consumers pick overlays (gamut boundary, contrast regions, fallback points, chroma band) and host them in any component library. Responsibilities stay separated: the renderer owns raster, geometry hooks own paths, the driver owns input math, and the caller owns elements and interaction.
 
 ### UI plane vs mathematical plane
 
-The 2D area is a **UI plane**: normalized (0–1) X and Y map to two color channels (e.g. X=chroma, Y=lightness). The user can place the thumb **anywhere** in this plane, including outside the gamut boundary.
+The 2D area is a **UI plane**: normalized (0–1) X and Y map to two color channels (e.g. X=lightness, Y=chroma). The user can place the thumb **anywhere** in this plane, including outside the gamut boundary.
 
 > **Why:** If the area were constrained to in-gamut positions only, the thumb would jump or be clamped when the user clicked outside the boundary. Allowing out-of-gamut positions keeps the thumb under user control; fallback indicators and displayed color show where the mapped color lands. This matches the “intent is never silently clamped” principle.
 
 ### WebGL rendering
 
-The main gradient surface (ColorPlane / ColorAreaGradient) is rendered with **WebGL** (GPU fragment shader), not Canvas 2D pixel loops.
+The plane surface (`useColorPlaneRenderer`) is rendered with **WebGL** (GPU fragment shader), not Canvas 2D pixel loops, with a CPU rasterizer only as a fallback.
 
 > **Why:** At pointer-move frequency, canvas 2D with per-pixel sampling cannot keep up on typical 2D sizes. WebGL generates pixels from uniforms and UV in the shader, avoiding CPU-side color conversion per pixel. See agent learnings on keeping WebGL paths shader-native.
 
@@ -212,17 +205,10 @@ The main gradient surface (ColorPlane / ColorAreaGradient) is rendered with **We
 Overlays have **different recomputation triggers** than the main plane:
 
 - **Gamut boundary / chroma band** — Depend on hue, gamut target, and optionally axis config. Do not depend on current requested color (except for chroma band anchor).
-- **Contrast region** — Depends on reference color, threshold(s), and plane geometry. Can be offloaded to a worker.
+- **Contrast region** — Depends on reference color, threshold(s), and plane geometry. Offloaded to a worker while dragging.
 - **Fallback points** — Depend on requested color and gamut; update when requested or activeGamut changes.
 
 > **Why:** So that thumb movement does not trigger expensive path or contour recomputation. Only the thumb position and fallback markers need to update at pointer frequency; the rest is cached until its inputs change.
-
-### Layer roles: gamut boundary, contrast region, chroma band, fallback points
-
-- **GamutBoundaryLayer** — Draws the sRGB and/or P3 boundary in area coordinates. Uses `gamutBoundaryPath` from core. Invalidated by hue, gamut, size.
-- **ContrastRegionLayer** — Draws WCAG contrast contours (e.g. 3:1, 4.5:1, 7:1) for a reference color. Uses `contrastRegionPath`/`contrastRegionPaths`. Invalidated by reference color, thresholds, size.
-- **ChromaBandLayer** — Draws a tonal strip (clamped or proportional chroma) for the current hue. Uses `chromaBand`. Invalidated by hue, chroma mode, gamut.
-- **FallbackPointsLayer** — Shows markers for where requested maps to P3 and sRGB when out of gamut. Invalidated by requested color and activeGamut.
 
 ---
 
@@ -230,7 +216,7 @@ Overlays have **different recomputation triggers** than the main plane:
 
 ### API surface: fewer, stable, composable
 
-The public API favors **fewer, stable entry points** and **composition** over large configuration surfaces. New behavior is added via composition (e.g. adding a Layer or Line) or optional props rather than new top-level APIs.
+The public API favors **fewer, stable entry points** and **composition** over large configuration surfaces. New behavior is added via composition (e.g. another geometry hook drawn into the same overlay) or optional options rather than new top-level APIs.
 
 > **Why:** Reduces API churn and keeps the mental model simple. Escape hatches (e.g. custom sampler, custom conversions) are designed in where needed so advanced users don’t have to fork.
 
@@ -292,15 +278,15 @@ Updates at **pointer-move frequency** (e.g. thumb position, requested color) mus
 
 ## 8. Accessibility
 
-### Single-slider pattern for ColorArea (v1)
+### Single-slider pattern for 2D planes (v1)
 
-ColorArea uses **one** `role="slider"` with **rich `aria-valuetext`** (e.g. both axes read together) rather than a composite widget (e.g. two sliders or a gridcell pattern).
+A 2D plane picker uses **one** `role="slider"` thumb with **rich `aria-valuetext`** (e.g. both axes read together, from the driver's `getColorAreaValueText`) rather than a composite widget (e.g. two sliders or a gridcell pattern). color-kit no longer renders the thumb; the documented picker examples follow this pattern.
 
 > **Why:** Simpler for screen readers and consistent with common 2D slider patterns. Revisit composite widget only if usability testing shows material gaps.
 
 ### Keyboard navigation model
 
-Sliders and area use **arrow keys** for increment/decrement; **Shift + arrow** for larger steps. ColorArea maps arrows to the two axes (e.g. Left/Right = x-channel, Up/Down = y-channel). Values clamp to channel ranges.
+Sliders and planes use **arrow keys** for increment/decrement; **Shift + arrow** for larger steps. The driver's `colorFromColorAreaKey` maps arrows to the two plane axes (e.g. Left/Right = x-channel, Up/Down = y-channel); values clamp to channel ranges and hue wraps.
 
 > **Why:** Matches platform slider expectations and extends naturally to 2D. Shift-step gives power users finer control.
 

@@ -1,6 +1,6 @@
 /**
- * Framework-agnostic pointer drag controller shared by ColorSlider and
- * ColorArea.
+ * Framework-agnostic pointer drag controller for channel sliders and 2D
+ * color areas.
  *
  * Pointer moves are coalesced to one commit per animation frame, filtered by a
  * normalized movement epsilon, and capped at `maxUpdateHz`. Rate-limited
