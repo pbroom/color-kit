@@ -116,3 +116,44 @@ export function autoAdaptiveLineMaxDepth(
     Math.max(MIN_AUTO_ADAPTIVE_LINE_DEPTH, computed),
   );
 }
+
+/**
+ * Adaptive line-sampling budget: explicit values win; otherwise both are
+ * derived from the plane's device-pixel size when it is known. Only applies
+ * to `samplingMode: 'adaptive'`.
+ */
+export function resolveAdaptiveLineSampling(options: {
+  samplingMode: 'uniform' | 'adaptive' | undefined;
+  adaptiveTolerance: number | undefined;
+  adaptiveMaxDepth: number | undefined;
+  axes: ResolvedColorAreaAxes;
+  quality: ResolvedLayerQuality;
+  pixelSize: { width: number; height: number } | undefined;
+}): { adaptiveTolerance?: number; adaptiveMaxDepth?: number } {
+  const { samplingMode, adaptiveTolerance, adaptiveMaxDepth, pixelSize } =
+    options;
+  if (samplingMode !== 'adaptive') {
+    return { adaptiveTolerance, adaptiveMaxDepth };
+  }
+  const size =
+    pixelSize != null && pixelSize.width > 0 && pixelSize.height > 0
+      ? pixelSize
+      : null;
+  return {
+    adaptiveTolerance:
+      adaptiveTolerance ??
+      (size
+        ? autoAdaptiveLineTolerance(
+            options.axes,
+            options.quality,
+            size.width,
+            size.height,
+          )
+        : undefined),
+    adaptiveMaxDepth:
+      adaptiveMaxDepth ??
+      (size
+        ? autoAdaptiveLineMaxDepth(options.quality, size.width, size.height)
+        : undefined),
+  };
+}

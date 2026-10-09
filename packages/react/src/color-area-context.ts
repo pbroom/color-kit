@@ -2,6 +2,10 @@ import { createContext, useContext, type MutableRefObject } from 'react';
 import type { Color } from '@color-kit/core';
 import type { ResolvedColorAreaAxes } from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
+import type {
+  ColorPlanePerformanceProfile,
+  ColorPlaneQualityLevel,
+} from './use-adaptive-quality.js';
 
 /**
  * {@link ColorArea} performance profile. `'quality'` always renders at full
@@ -9,14 +13,10 @@ import type { SetRequestedOptions } from './use-color.js';
  * level to measured update cost, with progressively lower resolution and
  * earlier degradation.
  */
-export type ColorAreaPerformanceProfile =
-  | 'auto'
-  | 'quality'
-  | 'balanced'
-  | 'performance';
+export type ColorAreaPerformanceProfile = ColorPlanePerformanceProfile;
 
 /** Current adaptive quality level of a {@link ColorArea}. */
-export type ColorAreaQualityLevel = 'high' | 'medium' | 'low';
+export type ColorAreaQualityLevel = ColorPlaneQualityLevel;
 
 /** Per-frame stats passed to `ColorAreaProps.onInteractionFrame`. */
 export interface ColorAreaInteractionFrameStats {
