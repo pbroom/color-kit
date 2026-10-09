@@ -1,7 +1,7 @@
 ---
 title: Building with color-kit/react
 navTitle: React
-description: Compose unstyled React primitives into a picker, then choose between uncontrolled and controlled state.
+description: Build a picker from color-kit's React hooks and plain elements, then choose between uncontrolled and controlled state.
 order: 20
 ---
 
@@ -9,36 +9,48 @@ import ReactPicker from '@/examples/guides/react-picker.tsx';
 import pickerSource, {
   code as pickerCode,
 } from '@/examples/guides/react-picker.tsx?highlighted';
+import ChannelInputs from '@/examples/react/channel-inputs.tsx';
+import channelInputsSource, {
+  code as channelInputsCode,
+} from '@/examples/react/channel-inputs.tsx?highlighted';
 
 ## The pieces
 
-`color-kit/react` is a thin binding over [`color-kit/driver`](/guides/headless-picker).
-Its primitives own behavior and accessibility and ship with no styles; size
-and look are yours, through `className`, `style` and `data-*` attributes.
+`color-kit/react` renders nothing. It holds state and computes what a picker
+draws; the elements, their styles and their input handling are yours. Build
+them from plain HTML with [`color-kit/driver`](/guides/headless-picker),
+which holds the picker math, or host them in your own components.
 
-- [`Color`](/api/react/Color) provides shared state to everything inside it.
-- [`ColorArea`](/api/react/ColorArea) maps two OKLCH channels to a rectangle
-  (lightness by chroma by default). Its children draw:
-  [`ColorPlane`](/api/react/ColorPlane) rasterizes the colors, layers such as
-  [`GamutBoundaryLayer`](/api/react/GamutBoundaryLayer) and
-  [`ContrastRegionLayer`](/api/react/ContrastRegionLayer) draw plane queries
-  over it, and one [`Thumb`](/api/react/Thumb) handles keyboard and screen
-  readers. A default thumb renders if you omit it.
-- [`ColorSlider`](/api/react/ColorSlider) controls one channel: `l`, `c`, `h`
-  or `alpha`. Paint its rail with
-  [`getSliderGradientStyles`](/api/driver/getSliderGradientStyles) and style
-  its thumb through `[data-color-slider-thumb]`.
-- [`ColorStringInput`](/api/react/ColorStringInput) shows the requested color
-  as text and accepts any CSS color on Enter or blur.
+- [`Color`](/api/react/Color) provides shared state to everything inside it;
+  [`useColorContext`](/api/react/useColorContext) reads it.
+- [`useColorPlaneRenderer`](/api/react/useColorPlaneRenderer) paints a
+  two-channel OKLCH plane (lightness by chroma by default) into your
+  `<canvas>`, with WebGL and a CPU fallback.
+- [`useGamutBoundary`](/api/react/useGamutBoundary),
+  [`useChromaBand`](/api/react/useChromaBand),
+  [`useContrastRegion`](/api/react/useContrastRegion) and
+  [`useFallbackPoints`](/api/react/useFallbackPoints) return overlay geometry
+  as points and SVG path data for the same plane.
+- [`useAdaptiveQuality`](/api/react/useAdaptiveQuality) trades resolution
+  for frame rate while a drag is slow.
+- The driver turns input into colors:
+  [`createPointerDragController`](/api/driver/createPointerDragController)
+  and [`colorFromColorAreaPosition`](/api/driver/colorFromColorAreaPosition)
+  for pointers, [`colorFromColorAreaKey`](/api/driver/colorFromColorAreaKey)
+  for the keyboard, and
+  [`getColorAreaValueText`](/api/driver/getColorAreaValueText) for screen
+  readers.
+
+The [API page](/api/react) builds the `PlanePicker` this guide uses, a canvas,
+an SVG and a thumb wired to those functions, in one file.
 
 ## Uncontrolled
 
 `<Color defaultColor="…">` keeps the state itself. The provider does not
-re-render on color changes: each primitive subscribes to the slice it reads,
-so a drag re-renders only what depends on it.
-[`useColorContext`](/api/react/useColorContext) returns the full snapshot and
-setters, and re-renders on every update; for one field, select it from the
-store with [`useColorStoreSelector`](/api/react/useColorStoreSelector).
+re-render on color changes; [`useColorContext`](/api/react/useColorContext)
+returns the full snapshot and setters and re-renders on every update. For one
+field, select it from the store with
+[`useColorStoreSelector`](/api/react/useColorStoreSelector).
 
 ## Controlled
 
@@ -50,36 +62,40 @@ setter calls in one event compose, each building on the last.
 import { useState } from 'react';
 import { parse } from 'color-kit';
 import { createColorState } from 'color-kit/driver';
-import { Color, ColorArea, ColorPlane } from 'color-kit/react';
+import { Color, useColorContext, useColorPlaneRenderer } from 'color-kit/react';
+
+function Plane() {
+  const { requested } = useColorContext();
+  const { ref, canvasKey } = useColorPlaneRenderer({ color: requested });
+  return (
+    <canvas ref={ref} key={canvasKey} style={{ width: 240, height: 160 }} />
+  );
+}
 
 export function ControlledPicker() {
   const [state, setState] = useState(() => createColorState(parse('#3b82f6')));
   return (
     <Color state={state} onChange={(event) => setState(event.next)}>
-      <ColorArea style={{ width: 240, height: 160 }}>
-        <ColorPlane />
-      </ColorArea>
+      <Plane />
     </Color>
   );
 }
 ```
 
 [`useColor`](/api/react/useColor) takes the same options and returns the
-state with its setters (`setChannel`, `setFromString`, `setActiveGamut`, …)
-for when a provider is more than you need. The top-level controls,
-[`ColorArea`](/api/react/ColorArea), [`ColorSlider`](/api/react/ColorSlider)
-and [`ColorStringInput`](/api/react/ColorStringInput), also work on their own
-with `requested` and `onChangeRequested` props. Area children such as
-`ColorPlane`, `Thumb` and the layers read their state from the surrounding
-`ColorArea`, so they always render inside one. For palettes and gradient
+state with its setters (`setRequested`, `setChannel`, `setFromString`,
+`setActiveGamut`, …) for when a provider is more than you need; the plane
+hooks only need a color, so they work with either. For palettes and gradient
 stops, [`useMultiColor`](/api/react/useMultiColor) manages named entries with
 a shared active gamut.
 
 ## The picker
 
 The default color is outside sRGB. The dashed line is the sRGB edge; check
-**Preview in sRGB** and the thumb's fill and the displayed readout switch to
-the sRGB mapping while the requested color stays put.
+**Preview in sRGB** and the plane and the displayed readout switch to the
+sRGB mapping while the requested color stays put. The hue slider is a native
+range input painted with
+[`getSliderGradientStyles`](/api/driver/getSliderGradientStyles).
 
 <Example
   of={ReactPicker}
@@ -87,4 +103,25 @@ the sRGB mapping while the requested color stays put.
   code={pickerCode}
   filename="react-picker.tsx"
   minHeight={340}
+/>
+
+## Sliders and text
+
+A single channel needs no plane. A native `<input type="range">` already
+handles the keyboard and ARIA; paint its rail with
+[`getSliderGradientStyles`](/api/driver/getSliderGradientStyles), sampled
+from the current color so each rail previews what dragging it would do, and
+write with `setChannel`. For text,
+[`formatColorStringInputValue`](/api/driver/formatColorStringInputValue) and
+[`parseColorStringInputValue`](/api/driver/parseColorStringInputValue)
+convert between the color and a CSS color string. Commit with
+`setFromString` on Enter or blur, and drop text that does not parse.
+
+<Example
+  of={ChannelInputs}
+  source={channelInputsSource}
+  code={channelInputsCode}
+  filename="channel-inputs.tsx"
+  title="Channel sliders and a text field"
+  minHeight={200}
 />

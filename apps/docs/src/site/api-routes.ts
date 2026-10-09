@@ -86,7 +86,7 @@ export const API_ROUTE_FIXTURE: ApiRouteIndex = {
       title: 'color-kit/react',
       importPath: 'color-kit/react',
       summary:
-        'React primitives: ColorArea, ColorSlider, ColorInput and hooks.',
+        'React hooks: color state, a plane renderer and overlay geometry.',
       symbols: [],
     },
   ],

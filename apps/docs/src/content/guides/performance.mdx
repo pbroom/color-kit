@@ -73,15 +73,19 @@ OKLCH 29 ns, OKLab 70 ns, linear sRGB 139 ns, sRGB 243 ns, Display P3 258 ns.
   lists the buffers to transfer from a worker without copying.
 - **Sample coarsely while dragging.** Contrast regions take `initialSamples`
   (default 32), `errorTolerance` (0.0015) and `maxDepth` (6).
-  `ContrastRegionLayer` uses 8, 0.004 and at most 3 for interaction. Contour
+  [`useContrastRegion`](/api/react/useContrastRegion) uses 8, 0.004 and at
+  most 3 for interaction. Contour
   ends are solved exactly either way; coarse settings only draw the curve
   between them with fewer points.
 - **Use the lookup tables.** [`maxChromaForHue`](/api/core/maxChromaForHue)
   interpolates a cached per-hue table by default; `method: 'direct'` solves
   exactly per call.
-- **Let the area adapt.** `ColorArea`'s `performanceProfile="auto"` lowers
-  raster resolution and layer sampling while pointer updates are slow and
-  restores them after. `maxUpdateHz` and `dragEpsilon` cap the commit rate.
+- **Let the picker adapt.** [`useAdaptiveQuality`](/api/react/useAdaptiveQuality)
+  lowers a quality level while measured drag frames are slow and restores it
+  after; pass it to the plane renderer and geometry hooks to lower raster
+  resolution and overlay sampling. The driver's
+  [`createPointerDragController`](/api/driver/createPointerDragController)
+  takes `maxUpdateHz` and `dragEpsilon` to cap the commit rate.
 
 ## Try it
 
