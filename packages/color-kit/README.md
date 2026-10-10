@@ -31,4 +31,4 @@ import { toLinearSrgbArray, packColors } from 'color-kit/interop'; // tuples and
 
 ## Bundle size
 
-The package is side-effect free (`"sideEffects": false`) and ships one module per source file, so bundlers only include what you import, even from the root entry. For example, `import { parse, toHex, contrastRatio } from 'color-kit'` costs roughly 2 kB minified and gzipped; the plane engine, compute scheduler, and bundled Material HCT solver are only included when you use them. Size budgets for common imports are enforced in CI with `pnpm size`.
+The package is side-effect free (`"sideEffects": false`) and ships one module per source file, so bundlers only include what you import, even from the root entry. For example, `import { parse, toHex, contrastRatio } from 'color-kit'` costs roughly 5 kB minified and gzipped (a full CSS Color 4 parser, including the 148 named colors and the `color()` space matrices); the plane engine, compute scheduler, and bundled Material HCT solver are only included when you use them. Size budgets for common imports are enforced in CI with `pnpm size`.
