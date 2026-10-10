@@ -5,15 +5,21 @@ import { useColorAreaContext } from './color-area-context.js';
 import {
   useColorPlaneRenderer,
   type ColorPlaneEdgeBehavior,
-  type ColorPlaneRenderer,
+  type ColorPlaneRenderer as PlaneRendererMode,
   type ColorPlaneSource,
 } from './use-color-plane-renderer.js';
 
 export type {
   ColorPlaneEdgeBehavior,
-  ColorPlaneRenderer,
   ColorPlaneSource,
 } from './use-color-plane-renderer.js';
+
+/**
+ * {@link ColorPlane} rasterizer: `'gpu'` (WebGL), `'cpu'` (2D canvas), or
+ * `'auto'` (WebGL with a CPU fallback). `'canvas2d'` is a deprecated alias
+ * of `'cpu'`.
+ */
+export type ColorPlaneRenderer = PlaneRendererMode | 'canvas2d';
 
 let warnedCanvasAlias = false;
 
@@ -38,7 +44,7 @@ export interface ColorPlaneProps extends Omit<
    * deprecated alias of `'cpu'`.
    * @defaultValue 'auto'
    */
-  renderer?: ColorPlaneRenderer | 'canvas2d';
+  renderer?: ColorPlaneRenderer;
   /**
    * Out-of-gamut behavior for displayed source pixels.
    * - 'transparent': keep out-of-gamut pixels transparent.
@@ -55,9 +61,7 @@ export interface ColorPlaneProps extends Omit<
   resolutionScale?: number;
 }
 
-function resolveRenderer(
-  renderer: ColorPlaneRenderer | 'canvas2d',
-): ColorPlaneRenderer {
+function resolveRenderer(renderer: ColorPlaneRenderer): PlaneRendererMode {
   if (renderer === 'canvas2d') {
     if (!warnedCanvasAlias) {
       warnedCanvasAlias = true;
