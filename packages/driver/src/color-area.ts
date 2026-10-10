@@ -6,12 +6,8 @@ import {
   sense,
   toP3Gamut,
   toSrgbGamut,
-  type ContrastApcaPolarity,
-  type ContrastApcaPreset,
-  type ContrastApcaRole,
-  type ContrastMetric,
   type ChromaBandMode,
-  type ContrastRegionLevel,
+  type ContrastRegionPathOptions,
   type GamutTarget,
 } from '@color-kit/core';
 import {
@@ -120,30 +116,12 @@ export interface ColorAreaFallbackPoint {
   gamut: GamutTarget;
 }
 
-export interface ColorAreaContrastRegionOptions {
-  gamut?: GamutTarget;
-  metric?: ContrastMetric;
-  level?: ContrastRegionLevel;
-  threshold?: number;
-  apcaPreset?: ContrastApcaPreset;
-  apcaPolarity?: ContrastApcaPolarity;
-  apcaRole?: ContrastApcaRole;
-  lightnessSteps?: number;
-  chromaSteps?: number;
-  maxChroma?: number;
-  tolerance?: number;
-  maxIterations?: number;
-  alpha?: number;
-  edgeInterpolation?: 'linear' | 'midpoint';
-  /** RDP simplification tolerance in (l,c) space; omit to disable */
-  simplifyTolerance?: number;
-  /** 'hybrid' (default), 'uniform', or 'adaptive' */
-  samplingMode?: 'hybrid' | 'uniform' | 'adaptive';
-  adaptiveBaseSteps?: number;
-  adaptiveMaxDepth?: number;
-  hybridMaxDepth?: number;
-  hybridErrorTolerance?: number;
-}
+/**
+ * Contrast-region options for a color area: the core
+ * `ContrastRegionPathOptions`, discriminated by `engine` (`'hybrid'` by
+ * default, or `'legacy'` for the marching-squares engine).
+ */
+export type ColorAreaContrastRegionOptions = ContrastRegionPathOptions;
 
 export interface ColorAreaChromaBandOptions {
   gamut?: GamutTarget;
@@ -362,28 +340,10 @@ export function getColorAreaContrastRegionPaths(
   }
 
   const region = sense(toPlaneDefinition(axes, reference)).contrastRegion({
+    ...options,
     reference,
     gamut: options.gamut ?? 'srgb',
     hue,
-    metric: options.metric,
-    level: options.level,
-    threshold: options.threshold,
-    apcaPreset: options.apcaPreset,
-    apcaPolarity: options.apcaPolarity,
-    apcaRole: options.apcaRole,
-    lightnessSteps: options.lightnessSteps,
-    chromaSteps: options.chromaSteps,
-    maxChroma: options.maxChroma,
-    tolerance: options.tolerance,
-    maxIterations: options.maxIterations,
-    alpha: options.alpha,
-    edgeInterpolation: options.edgeInterpolation,
-    simplifyTolerance: options.simplifyTolerance,
-    samplingMode: options.samplingMode,
-    adaptiveBaseSteps: options.adaptiveBaseSteps,
-    adaptiveMaxDepth: options.adaptiveMaxDepth,
-    hybridMaxDepth: options.hybridMaxDepth,
-    hybridErrorTolerance: options.hybridErrorTolerance,
   });
 
   return region.paths.map((path) =>

@@ -33,7 +33,7 @@ import {
   validateSteps,
 } from './region-shared.js';
 import type {
-  ContrastRegionPathOptions,
+  ContrastRegionLegacyOptions,
   ContrastRegionPoint,
 } from './types.js';
 
@@ -74,7 +74,7 @@ function buildContrastContourPaths(
 export function contrastRegionPathsLegacy(
   reference: Color,
   hue: number,
-  options: ContrastRegionPathOptions = {},
+  options: ContrastRegionLegacyOptions,
   trace?: InternalPlaneTraceContext | null,
 ): ContrastRegionPoint[][] {
   const criterion = resolveContrastCriterion(options);
@@ -311,7 +311,7 @@ function contrastRegionPathsAdaptive(
   gamut: GamutTarget,
   mappedReference: Color,
   edgeInterpolation: 'linear' | 'midpoint',
-  options: ContrastRegionPathOptions,
+  options: ContrastRegionLegacyOptions,
   trace?: InternalPlaneTraceContext | null,
 ): Array<ContourSegment<ContrastContourPoint>> {
   const baseSteps = Math.max(

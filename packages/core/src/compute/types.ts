@@ -53,7 +53,6 @@ export interface PlaneComputeResponse {
 
 export interface PlaneComputeBackend {
   kind: PlaneComputeBackendKind;
-  supportsRequest?: (request: PlaneComputeRequest) => boolean;
   run: (request: PlaneComputeRequest) => PlaneComputeResponse;
 }
 
@@ -67,16 +66,16 @@ export interface PlaneComputeDebugTrace {
 }
 
 export interface PlaneComputeSchedulerOptions {
-  preferredBackends?: PlaneComputeBackendKind[];
-  minSamplesForDecision?: number;
-  warmupSamples?: number;
-  baselineProbeInterval?: number;
+  /**
+   * Smoothing factor for the per-bucket moving average of total time.
+   * @default 0.35
+   */
   ewmaAlpha?: number;
-  dragRegressionRatio?: number;
-  idleRegressionRatio?: number;
-  hysteresisTrips?: number;
-  circuitBreakerCooldownMs?: number;
-  backendErrorTripCount?: number;
+  /**
+   * Maximum telemetry buckets kept; the least recently used is evicted.
+   * `0` disables telemetry.
+   * @default 120
+   */
   maxTelemetryBuckets?: number;
 }
 
@@ -95,17 +94,8 @@ export interface PlaneComputeTelemetryBucket {
   >;
 }
 
-export interface PlaneComputeCircuitBreakerState {
-  disabledUntilMs: number;
-  regressionStreak: number;
-  errorStreak: number;
-}
-
 export interface PlaneComputeTelemetrySnapshot {
   buckets: PlaneComputeTelemetryBucket[];
-  circuitBreakers: Partial<
-    Record<PlaneComputeBackendKind, PlaneComputeCircuitBreakerState>
-  >;
 }
 
 export interface PlaneComputeScheduler {

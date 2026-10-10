@@ -82,20 +82,20 @@ console.log(
 console.log('\n--- Contrast region (reference=#fff, hue=200, AA) ---\n');
 
 const ref = fromHex('#ffffff');
-const contrastUniform = () =>
+const contrastHybrid = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
     gamut: 'srgb',
     lightnessSteps: 48,
     chromaSteps: 48,
   });
-for (let i = 0; i < WARMUP; i++) contrastUniform();
+for (let i = 0; i < WARMUP; i++) contrastHybrid();
 const ct1 = [];
-for (let i = 0; i < MEASURE_ROUNDS; i++) ct1.push(timeMs(contrastUniform));
-const cp1 = contrastUniform();
+for (let i = 0; i < MEASURE_ROUNDS; i++) ct1.push(timeMs(contrastHybrid));
+const cp1 = contrastHybrid();
 const total1 = cp1.reduce((s, path) => s + path.length, 0);
 console.log(
-  `uniform 48x48:       paths=${cp1.length} totalPoints=${total1}  median=${median(ct1).toFixed(2)}ms`,
+  `hybrid 48x48:        paths=${cp1.length} totalPoints=${total1}  median=${median(ct1).toFixed(2)}ms`,
 );
 
 const contrastSimplify = () =>
@@ -112,13 +112,33 @@ for (let i = 0; i < MEASURE_ROUNDS; i++) ct2.push(timeMs(contrastSimplify));
 const cp2 = contrastSimplify();
 const total2 = cp2.reduce((s, path) => s + path.length, 0);
 console.log(
-  `uniform+simplify:    paths=${cp2.length} totalPoints=${total2}  median=${median(ct2).toFixed(2)}ms  (tol=0.002)`,
+  `hybrid+simplify:     paths=${cp2.length} totalPoints=${total2}  median=${median(ct2).toFixed(2)}ms  (tol=0.002)`,
+);
+
+const contrastLegacyUniform = () =>
+  contrastRegionPaths(ref, 200, {
+    level: 'AA',
+    gamut: 'srgb',
+    engine: 'legacy',
+    samplingMode: 'uniform',
+    lightnessSteps: 48,
+    chromaSteps: 48,
+  });
+for (let i = 0; i < WARMUP; i++) contrastLegacyUniform();
+const ctLegacy = [];
+for (let i = 0; i < MEASURE_ROUNDS; i++)
+  ctLegacy.push(timeMs(contrastLegacyUniform));
+const cpLegacy = contrastLegacyUniform();
+const totalLegacy = cpLegacy.reduce((s, path) => s + path.length, 0);
+console.log(
+  `legacy uniform 48x48: paths=${cpLegacy.length} totalPoints=${totalLegacy}  median=${median(ctLegacy).toFixed(2)}ms`,
 );
 
 const contrastAdaptive = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
     gamut: 'srgb',
+    engine: 'legacy',
     samplingMode: 'adaptive',
     adaptiveBaseSteps: 16,
     adaptiveMaxDepth: 2,
@@ -129,7 +149,7 @@ for (let i = 0; i < MEASURE_ROUNDS; i++) ct3.push(timeMs(contrastAdaptive));
 const cp3 = contrastAdaptive();
 const total3 = cp3.reduce((s, path) => s + path.length, 0);
 console.log(
-  `adaptive 16 base d=2: paths=${cp3.length} totalPoints=${total3}  median=${median(ct3).toFixed(2)}ms`,
+  `legacy adaptive 16 d=2: paths=${cp3.length} totalPoints=${total3}  median=${median(ct3).toFixed(2)}ms`,
 );
 
 console.log(

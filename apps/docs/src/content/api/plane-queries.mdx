@@ -25,10 +25,8 @@ runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
 
 ## Shared Notes
 
-- `samplingMode` controls contour extraction strategy:
-  - `hybrid` (default for contrast queries) &mdash; direct root solving + adaptive tracing for smoother boundaries.
-  - `uniform` &mdash; fixed stepping across the plane (legacy compatibility).
-  - `adaptive` &mdash; recursive marching refinement (legacy compatibility).
+- `samplingMode` on `gamutBoundary` / `chromaBand` selects `uniform` (fixed lightness stepping) or `adaptive` (recursive refinement).
+- Contrast queries take the same options as [`contrastRegionPaths`](/docs/api/contrast): `engine` selects the default `hybrid` root-tracing solver or the `legacy` marching-squares solver, and legacy-only options (`samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`) require `engine: 'legacy'`.
 - `gamutRegion()` is viewport-first by default:
   - `scope: 'viewport'` returns only boundary fragments that intersect the current plane window.
   - `scope: 'full'` opts into offscreen boundary geometry for exports or overview visualizations.
@@ -138,7 +136,6 @@ const line = query.contrastBoundary({
   apcaPolarity: 'absolute',
   apcaRole: 'sample-text',
   gamut: 'display-p3',
-  samplingMode: 'hybrid',
 });
 ```
 
@@ -157,7 +154,6 @@ const region = query.contrastRegion({
   metric: 'wcag',
   level: 'AA',
   gamut: 'srgb',
-  samplingMode: 'hybrid',
 });
 ```
 

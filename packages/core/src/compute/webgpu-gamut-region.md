@@ -50,6 +50,11 @@ This maps cleanly onto the existing packed transfer format:
 
 ## Scheduler Expectations
 
+The scheduler currently models only the JS backend (`PlaneComputeBackendKind`
+is `'js'`); the multi-backend selection, warmup, and circuit-breaker logic was
+removed until a second backend exists. Adding this backend means
+reintroducing that selection with these expectations:
+
 - Prefer `webgpu` only once telemetry shows that `gamutRegion` buckets beat the
   JS backend for the current `scope` and workload size.
 - Keep the JS implementation as the source-of-truth fallback for:
