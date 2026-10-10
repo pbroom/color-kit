@@ -48,6 +48,16 @@
         "default": "./dist/hct/index.cjs"
       }
     },
+    "./interop": {
+      "import": {
+        "types": "./dist/interop/index.d.ts",
+        "default": "./dist/interop/index.js"
+      },
+      "require": {
+        "types": "./dist/interop/index.d.cts",
+        "default": "./dist/interop/index.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -59,6 +69,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:watch": "vitest",
     "bench:into": "node --expose-gc --min-semi-space-size=256 --max-semi-space-size=256 bench/into-bench.mjs",
     "bench:max-chroma-for-hue": "node bench/max-chroma-for-hue-bench.mjs",
@@ -88,6 +99,7 @@
   },
   "devDependencies": {
     "colorjs.io": "^0.7.1",
+    "three": "^0.186.1",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

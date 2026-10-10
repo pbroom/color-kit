@@ -206,6 +206,31 @@ for (let x = 0; x < width; x++) {
 }
 ```
 
+### Array Interop (GPU, three.js, WebGL/WebGPU)
+
+Also available as `color-kit/interop`.
+
+`to<Space>Array()` `to<Space>Array4()` `from<Space>Array()` `from<Space>Array4()` `packColors()` `unpackColors()`, where `<Space>` is `LinearSrgb`, `Srgb`, `LinearP3`, `P3`, `Oklab`, or `Oklch`.
+
+Writers take `(color, out?, offset = 0, { clamp? })`, write into any `number[]` or typed array without allocating, and emit unclamped floats by default. `*Array4` variants append alpha. To gamut-map instead of clip, compose: `toLinearSrgbArray(toSrgbGamut(color), out)` or `packColors(colors.map(toSrgbGamut), 'linearSrgb')`.
+
+```ts
+import { toLinearSrgbArray, packColors } from 'color-kit/interop';
+
+// three.js stores linear sRGB (its default working color space).
+mesh.material.color.fromArray(toLinearSrgbArray(color));
+
+// WebGL uniform, reusing one scratch buffer.
+gl.uniform3fv(loc, toLinearSrgbArray(color, scratch));
+
+// WebGPU storage buffer: array<vec4f> of linear sRGB + alpha.
+device.queue.writeBuffer(
+  buffer,
+  0,
+  packColors(colors, 'linearSrgb', undefined, { alpha: true }),
+);
+```
+
 ## Development
 
 ```bash

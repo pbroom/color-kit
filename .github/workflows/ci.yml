@@ -33,6 +33,11 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+      # Runs tsc over all package sources, including the `*.typecheck.ts`
+      # type-level assertions that tsup's build and vitest never check.
+      - name: Typecheck packages (including *.typecheck.ts assertions)
+        run: pnpm typecheck
+
       - name: Check bundle size budgets
         run: pnpm size
 

@@ -187,6 +187,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 - **2026-07-14 — Sanitize numeric cache capacities before bounding**: `Math.max` does not recover from `NaN`; normalize non-finite public capacity options to a safe finite default and test beyond that default so malformed config cannot silently disable eviction.
 - **2026-07-15 — LRU presence checks are reads**: When a public cache promises that reads refresh recency, route `has()` through the same touch path as `get()` and cover the next-eviction behavior so presence probes cannot leave hot entries cold.
 - **Generated CSS classes require prefix searches**: Before labeling selectors dead, search for class-name prefixes and template interpolation as well as exact literals; dynamic consumers such as `docs-style-${value.style}` will evade exact-selector grep.
+- **2026-09-25 — Array writers mirror sign for extended transfer**: Unclamped gamma-encoded array writers must use the sign-mirrored sRGB transfer (as colorjs.io and linearP3ToP3 do); utils linearToSrgbChannel alone is linear for negatives and breaks colorjs agreement and invertibility for out-of-gamut floats. Float32 round-trips of far-out-of-P3 colors can lose ~3e-3 deltaE because near-zero LMS amplifies rounding through the cube root, so bound float32 precision tests to in-gamut samples.
 
 ### Moved from AGENTS.md (2026-09-25 trim)
 
