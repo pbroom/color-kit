@@ -10,6 +10,7 @@ import {
   type ContrastRegionPathOptions,
   type GamutTarget,
 } from '@color-kit/core';
+import { assertGamutTarget } from '@color-kit/core/plane';
 import {
   DEFAULT_LARGE_STEP_RATIO,
   getChannelValueText,
@@ -396,6 +397,13 @@ export function getColorAreaChromaBandPoints(
   });
 }
 
+/**
+ * Maps `query.color` into the requested gamut and returns its thumb position.
+ *
+ * @throws {TypeError} When `query.gamut` is missing or is not `'srgb'` or
+ * `'display-p3'` (for example the removed `'p3'` spelling), matching the core
+ * plane queries.
+ */
 export function getColorAreaFallbackPoint(
   axes: ResolvedColorAreaAxes,
   query: {
@@ -403,6 +411,14 @@ export function getColorAreaFallbackPoint(
     gamut: GamutTarget;
   },
 ): ColorAreaFallbackPoint {
+  // assertGamutTarget accepts `undefined` (an omitted optional gamut), but
+  // this query's gamut is required.
+  if (query.gamut === undefined) {
+    throw new TypeError(
+      'getColorAreaFallbackPoint(): gamut is required ("srgb" or "display-p3")',
+    );
+  }
+  assertGamutTarget(query.gamut, 'getColorAreaFallbackPoint()');
   const mapped =
     query.gamut === 'display-p3'
       ? toP3Gamut(query.color)
