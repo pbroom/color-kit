@@ -1,0 +1,61 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store",
+  "buildCommand": "cd ../.. && pnpm build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/docs", "destination": "/", "permanent": true },
+    { "source": "/docs/introduction", "destination": "/", "permanent": true },
+    {
+      "source": "/docs/installation",
+      "destination": "/start",
+      "permanent": true
+    },
+    {
+      "source": "/docs/multi-color-state",
+      "destination": "/api/react",
+      "permanent": true
+    },
+    {
+      "source": "/docs/react-primitives",
+      "destination": "/api/react",
+      "permanent": true
+    },
+    {
+      "source": "/docs/components/:slug*",
+      "destination": "/api/react",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api/:slug(plane-api|plane-queries)",
+      "destination": "/api/plane",
+      "permanent": true
+    },
+    {
+      "source": "/docs/api/:slug(conversion|contrast|gamut|harmony|manipulation|scale)",
+      "destination": "/api/core",
+      "permanent": true
+    },
+    {
+      "source": "/docs/guides/graphics-and-performance",
+      "destination": "/api/interop",
+      "permanent": true
+    },
+    { "source": "/docs/:path*", "destination": "/", "permanent": true },
+    { "source": "/reference", "destination": "/api", "permanent": true },
+    { "source": "/reference/:path*", "destination": "/api", "permanent": true }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}

@@ -6,8 +6,6 @@ dist/
 # Copied from the root LICENSE by packages/color-kit/scripts/build.mjs
 packages/color-kit/LICENSE
 *.tsbuildinfo
-!vendor/sandpack/**/dist/
-!vendor/sandpack/**/dist/**
 
 # Environment
 .env
@@ -44,6 +42,14 @@ apps/docs/.vite/
 # Generated API reference (pnpm docs:api; rebuilt by the docs build)
 apps/docs/public/reference/
 apps/docs/.typedoc/
+apps/docs/src/generated/
+
+# Docs SSR bundle used only by the prerender step
+apps/docs/.ssr/
+
+# Playwright output
+apps/docs/test-results/
+apps/docs/playwright-report/
 
 # Codex local workspace files
 .codex/

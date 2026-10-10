@@ -3,21 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Color Kit - Primitive UI components for color interfaces</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>color-kit</title>
     <meta
       name="description"
-      content="Open-source primitive UI components and tooling for building color interfaces. Built with OKLCH, fully accessible, and headless."
+      content="color-kit is a queryable color engine: OKLCH-canonical conversion, contrast, gamut geometry and plane queries, with React bindings."
     />
+    <!--head-meta-->
     <script>
+      // Pre-paint theme: runs before CSS paints so there is no flash. Keep in
+      // sync with src/site/theme.ts.
       (function () {
         var stored = null;
         try {
           stored = localStorage.getItem('color-kit-docs-theme-preference');
         } catch (error) {}
         var preference =
-          stored === 'light' || stored === 'dark' || stored === 'system'
-            ? stored
-            : 'system';
+          stored === 'light' || stored === 'dark' ? stored : 'system';
         var prefersDark =
           window.matchMedia &&
           window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -34,7 +36,7 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><!--app-html--></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

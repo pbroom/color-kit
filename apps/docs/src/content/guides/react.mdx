@@ -1,0 +1,28 @@
+---
+title: Build a picker in React
+navTitle: React
+description: Compose the headless color-kit/react primitives into a picker that keeps requested and displayed color in sync.
+order: 20
+---
+
+## The smallest picker
+
+`Color` owns the state; `ColorArea` and `ColorStringInput` read and write it.
+The primitives ship unstyled, so the size and look come from you.
+
+```tsx title="picker.tsx"
+import { Color, ColorArea, ColorStringInput } from 'color-kit/react';
+
+export function Picker() {
+  return (
+    <Color defaultColor="#3b82f6">
+      <ColorArea style={{ width: 200, height: 200 }} />
+      <ColorStringInput format="oklch" />
+    </Color>
+  );
+}
+```
+
+<Callout tone="tip">
+  The full guide adds sliders, the gamut toggle, and contrast-aware thumbs.
+</Callout>

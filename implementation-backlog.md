@@ -382,7 +382,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-016 — Split Sandpack file generation from playground UI
 
 - **Priority:** P2
-- **Status:** Open (narrowed 2026-09-25) — the Lab validation playground (`plane-api-playground-lab.demo.tsx`) was removed; only the Plane API quick-start Sandpack remains.
+- **Status:** Closed (2026-10-07) — the docs overhaul deleted Sandpack and `plane-api-playground.sandpack.tsx`; examples now render real files with build-time highlighted source.
 - **Evidence:**
   - `apps/docs/src/components/plane-api-playground.sandpack.tsx` raw-globs selected `packages/core/src` files, rewrites imports with regexes, builds hidden support files, and renders the Sandpack UI.
   - `apps/docs/scripts/check-plane-quick-start-sync.mjs` validates broad text patterns rather than structured sandbox file resolution.

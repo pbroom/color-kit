@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none">
+  <style>
+    svg {
+      color: #252525;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg {
+        color: #f2f2f2;
+      }
+    }
+  </style>
+  <rect
+    x="0.5"
+    y="0.5"
+    width="19"
+    height="19"
+    rx="4.5"
+    stroke="currentColor"
+    stroke-opacity="0.35"
+  />
+  <path
+    d="M10 3v4M10 13v4M3 10h4M13 10h4"
+    stroke="currentColor"
+    stroke-linecap="round"
+  />
+  <circle cx="10" cy="10" r="2" fill="#4263eb" />
+</svg>

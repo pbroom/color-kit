@@ -6,14 +6,21 @@
       "@/*": ["./src/*"],
       "color-kit": ["../../packages/core/src/index.ts"],
       "color-kit/core": ["../../packages/core/src/index.ts"],
+      "color-kit/plane": ["../../packages/core/src/plane/index.ts"],
+      "color-kit/compute": ["../../packages/core/src/compute/index.ts"],
+      "color-kit/hct": ["../../packages/core/src/hct/index.ts"],
+      "color-kit/interop": ["../../packages/core/src/interop/index.ts"],
       "color-kit/driver": ["../../packages/driver/src/index.ts"],
       "color-kit/react": ["../../packages/react/src/index.ts"],
       "@color-kit/core": ["../../packages/core/src/index.ts"],
       "@color-kit/driver": ["../../packages/driver/src/index.ts"],
-      "@color-kit/react": ["../../packages/react/src/index.ts"]
+      "@color-kit/react": ["../../packages/react/src/index.ts"],
+      "@color-kit/react/color-input": [
+        "../../packages/react/src/color-input.tsx"
+      ]
     },
     "types": ["vite/client"]
   },
   "include": ["src/**/*", "*.d.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.test.tsx"]
 }
