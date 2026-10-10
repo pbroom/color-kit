@@ -1,8 +1,9 @@
 ## Edge cases
 
 - **The provider does not re-render.** `<Color>` passes a stable store
-  through context and never re-renders its children on a color change. Each
-  primitive subscribes to the slice it reads. Reading the context with
+  through context and never re-renders its children on a color change;
+  components re-render when the store slice they subscribe to changes.
+  Reading the context with
   `useContext(ColorContext)` gives that stable store and the setters, not
   live fields; use [`useColorContext`](/api/react/useColorContext) for a live
   snapshot or [`useColorStoreSelector`](/api/react/useColorStoreSelector) for

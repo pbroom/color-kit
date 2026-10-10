@@ -1,0 +1,22 @@
+## Edge cases
+
+- **Lightness and chroma only.** The region is solved in the plane's
+  lightness/chroma slice. Axes `l` and `c` work in either order; any other
+  pair (a hue axis, say) returns empty geometry rather than throwing.
+- **The reference defaults to the plane's color.** Without `reference`, every
+  color of the hue is measured against the color being picked, which is
+  rarely what a text-on-background check wants. Pass the fixed background
+  (or text) color explicitly.
+- **Gamut.** Samples and the reference are measured in `gamut` (`'srgb'` by
+  default) and paths stay inside it, so the region never promises a color
+  the target display cannot show.
+- **Thresholds.** `threshold` overrides `level` and `apcaPreset`. With
+  `metric: 'apca'` it is a normalized Lc magnitude: `0.6` means Lc 60.
+- **Stroke `path`, fill `fillPath`.** `paths` are the solver's contours,
+  snapped onto the gamut boundary. `fillPaths` closes each open contour
+  along the boundary on the side that passes, and drops polygons that would
+  contain the reference.
+- **While dragging.** With `isDragging` the region is solved in a shared Web
+  Worker where available, at the sampling of the last idle frame; the last
+  region stays in place until a fresh one arrives, so the outline can trail
+  the thumb by a frame or two.

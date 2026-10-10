@@ -1,14 +1,14 @@
 /* global console, fetch, process, setTimeout, URL */
 
-// Drags the "ColorArea with ColorPlane" example on /api/react and checks the
+// Drags the "A plane picker from hooks" example on /api/react and checks the
 // thumb follows continuously (not only on release). Starts a docs dev server
-// on a free port unless COLOR_AREA_DRAG_TEST_URL points at a running page.
+// on a free port unless PLANE_PICKER_DRAG_TEST_URL points at a running page.
 
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { chromium } from 'playwright';
 
-const EXAMPLE = 'ColorArea with ColorPlane';
+const EXAMPLE = 'A plane picker from hooks';
 const PAGE_PATH = '/api/react';
 
 function toNumber(value) {
@@ -94,7 +94,7 @@ function waitForUrl(url, timeoutMs = 30_000) {
 
 async function main() {
   let devServer = null;
-  let url = process.env.COLOR_AREA_DRAG_TEST_URL;
+  let url = process.env.PLANE_PICKER_DRAG_TEST_URL;
   let browser = null;
   let page = null;
 
@@ -134,14 +134,14 @@ async function main() {
     await page.goto(url, { waitUntil: 'networkidle' });
 
     const example = page.getByRole('figure', { name: EXAMPLE });
-    const area = example.locator('[data-color-area]').first();
+    const area = example.locator('[data-picker-area]').first();
     await area.waitFor();
     await area.scrollIntoViewIfNeeded();
 
-    const thumb = example.locator('[data-color-area-thumb]').first();
+    const thumb = example.locator('[data-picker-thumb]').first();
     const box = await area.boundingBox();
     if (!box) {
-      throw new Error('Could not resolve color area geometry.');
+      throw new Error('Could not resolve the picker area geometry.');
     }
 
     const startX = box.x + box.width * 0.2;
@@ -181,7 +181,7 @@ async function main() {
 
     if (!movedDuringDrag || uniqueCount < 4) {
       throw new Error(
-        'ColorArea drag did not produce continuous thumb movement. ' +
+        'Plane picker drag did not produce continuous thumb movement. ' +
           `unique=${uniqueCount} moved=${movedDuringDrag}`,
       );
     }

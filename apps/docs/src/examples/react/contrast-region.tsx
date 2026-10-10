@@ -1,17 +1,44 @@
 import { useId, useState } from 'react';
-import { parse } from 'color-kit';
-import {
-  Color,
-  ColorArea,
-  ColorPlane,
-  ContrastRegionFill,
-  ContrastRegionLayer,
-  Thumb,
-} from 'color-kit/react';
+import { parse, type Color } from 'color-kit';
+import type { ColorAreaAxes } from 'color-kit/driver';
+import { useColor, useContrastRegion } from 'color-kit/react';
+import { PlanePicker, type PlaneOverlayProps } from './plane-picker';
 
 const BACKGROUNDS = { white: parse('#ffffff'), black: parse('#000000') };
 type Background = keyof typeof BACKGROUNDS;
 type Level = 'AA' | 'AAA';
+
+const AXES: ColorAreaAxes = {
+  x: { channel: 'l' },
+  y: { channel: 'c', range: [0, 0.3] },
+};
+
+/** Text colors of this hue that pass WCAG `level` on `reference`. */
+function ContrastOverlay({
+  color,
+  axes,
+  isDragging,
+  quality,
+  reference,
+  level,
+}: PlaneOverlayProps & { reference: Color; level: Level }) {
+  const region = useContrastRegion(
+    { color, axes },
+    { reference, level, isDragging, quality },
+  );
+  return (
+    <>
+      <path d={region.fillPath} fill="#fff" fillOpacity={0.24} />
+      <path
+        d={region.path}
+        fill="none"
+        stroke="#fff"
+        strokeWidth={1.5}
+        vectorEffect="non-scaling-stroke"
+      />
+    </>
+  );
+}
 
 function Choice<T extends string>({
   label,
@@ -31,7 +58,7 @@ function Choice<T extends string>({
         {label}
       </legend>
       {options.map((option) => (
-        <label key={option} className="flex items-center gap-1">
+        <label key={option} className="flex items-center gap-2">
           <input
             type="radio"
             name={name}
@@ -48,45 +75,39 @@ function Choice<T extends string>({
 export default function ContrastRegionExample() {
   const [background, setBackground] = useState<Background>('white');
   const [level, setLevel] = useState<Level>('AA');
+  const { requested, displayed, setRequested } = useColor({
+    defaultColor: 'oklch(0.5 0.16 150)',
+  });
   return (
-    <Color defaultColor="oklch(0.5 0.16 150)">
-      <div className="grid max-w-96 gap-3">
-        {/* Text colors of this hue that pass WCAG `level` on `background`. */}
-        <ColorArea
-          axes={{ x: { channel: 'l' }, y: { channel: 'c', range: [0, 0.3] } }}
-          className="aspect-[4/3] w-full touch-none overflow-hidden rounded-md"
-        >
-          <ColorPlane />
-          <ContrastRegionLayer
+    <div className="grid max-w-96 gap-3">
+      <PlanePicker
+        color={requested}
+        displayed={displayed}
+        onChange={setRequested}
+        label="Text color lightness and chroma"
+        axes={AXES}
+        className="aspect-[4/3] w-full rounded-md"
+      >
+        {(plane) => (
+          <ContrastOverlay
+            {...plane}
             reference={BACKGROUNDS[background]}
             level={level}
-            pathProps={{
-              stroke: '#fff',
-              strokeWidth: 1.5,
-              vectorEffect: 'non-scaling-stroke',
-            }}
-          >
-            {/* White dots read on both dark and light passing colors. */}
-            <ContrastRegionFill fillOpacity={0} dotOpacity={0.55} />
-          </ContrastRegionLayer>
-          <Thumb
-            aria-label="Text color lightness and chroma"
-            className="size-4 rounded-full border-2 border-[#fff] shadow-[0_0_0_1px_rgb(0_0_0/0.45)]"
           />
-        </ColorArea>
-        <Choice
-          label="Background"
-          options={['white', 'black'] as const}
-          value={background}
-          onChange={setBackground}
-        />
-        <Choice
-          label="Level"
-          options={['AA', 'AAA'] as const}
-          value={level}
-          onChange={setLevel}
-        />
-      </div>
-    </Color>
+        )}
+      </PlanePicker>
+      <Choice
+        label="Background"
+        options={['white', 'black'] as const}
+        value={background}
+        onChange={setBackground}
+      />
+      <Choice
+        label="Level"
+        options={['AA', 'AAA'] as const}
+        value={level}
+        onChange={setLevel}
+      />
+    </div>
   );
 }

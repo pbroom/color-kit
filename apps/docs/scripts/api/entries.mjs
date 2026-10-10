@@ -59,7 +59,7 @@ export const ENTRY_META = {
   react: {
     order: 6,
     summary:
-      'React primitives and hooks on top of the driver: Color, ColorArea, ColorSlider and inputs.',
+      'React state and plane hooks on top of the driver: Color, useColor, useColorPlaneRenderer and geometry hooks.',
   },
 };
 

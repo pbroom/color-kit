@@ -1,0 +1,20 @@
+## Edge cases
+
+- **Use `canvasKey` as the key.** A canvas is locked to the first context
+  kind requested from it, so switching between WebGL and the CPU fallback
+  needs a new element. The hook bumps `canvasKey` when it does; without it
+  as the canvas `key`, the fallback cannot paint and the hook warns once.
+- **Destructure the handle.** Write `const { ref, canvasKey } =
+useColorPlaneRenderer(…)`. Passing `handle.ref` straight to JSX makes the
+  React Compiler treat the whole handle as a ref, so reading
+  `handle.renderer` during render is flagged.
+- **Give the canvas a size.** The backing store follows the canvas's CSS
+  size × device pixel ratio × `resolutionScale` (times the `quality`
+  multiplier), and a zero-sized canvas paints nothing. A `ResizeObserver`
+  repaints on resize.
+- **Context loss.** On `webglcontextlost` the plane switches to the CPU
+  renderer on a fresh canvas, and returns to WebGL when the browser restores
+  the context. GPU resources are freed when the canvas unmounts.
+- **Display gamut.** Without `displayGamut` the pixels follow the nearest
+  `<Color>` provider's active gamut, or `'display-p3'` without one.
+- **Axes must differ.** Both axes on the same channel throw.
