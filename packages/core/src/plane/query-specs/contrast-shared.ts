@@ -1,17 +1,16 @@
+import { REMOVED_CONTRAST_REGION_OPTIONS } from '../../contrast/region.js';
 import type { ContrastRegionPathOptions } from '../../contrast/types.js';
 import type { PlaneContrastQueryOptions } from '../types.js';
 
 /**
- * Picks the contrast solver options out of a plane contrast query. The
- * engine and every engine-specific option are passed through unchanged, so
- * `contrastRegionPaths` validates them (and rejects invalid combinations)
- * exactly as it does for direct calls.
+ * Picks the contrast solver options out of a plane contrast query. Options
+ * removed with the legacy engine are forwarded unchanged, so
+ * `contrastRegionPaths` rejects them exactly as it does for direct calls.
  */
 export function toContrastRegionPathOptions(
   query: PlaneContrastQueryOptions,
 ): ContrastRegionPathOptions {
-  return {
-    engine: query.engine,
+  const options: ContrastRegionPathOptions = {
     gamut: query.gamut,
     metric: query.metric,
     level: query.level,
@@ -26,49 +25,23 @@ export function toContrastRegionPathOptions(
     maxIterations: query.maxIterations,
     alpha: query.alpha,
     simplifyTolerance: query.simplifyTolerance,
-    samplingMode: query.samplingMode,
-    edgeInterpolation: query.edgeInterpolation,
-    adaptiveBaseSteps: query.adaptiveBaseSteps,
-    adaptiveMaxDepth: query.adaptiveMaxDepth,
     hybridMaxDepth: query.hybridMaxDepth,
     hybridErrorTolerance: query.hybridErrorTolerance,
-  } as ContrastRegionPathOptions;
-}
-
-/**
- * Sampling strategy a contrast query runs with: `'hybrid'` for the hybrid
- * engine, or the legacy engine's resolved grid mode.
- */
-function contrastSamplingMode(
-  query: PlaneContrastQueryOptions,
-): 'hybrid' | 'uniform' | 'adaptive' {
-  if (query.engine !== 'legacy') {
-    return 'hybrid';
+  };
+  const source = query as unknown as Record<string, unknown>;
+  const target = options as Record<string, unknown>;
+  for (const name of REMOVED_CONTRAST_REGION_OPTIONS) {
+    if (source[name] !== undefined) {
+      target[name] = source[name];
+    }
   }
-  if (query.samplingMode === 'uniform' || query.samplingMode === 'adaptive') {
-    return query.samplingMode;
-  }
-  return query.adaptiveBaseSteps != null || query.adaptiveMaxDepth != null
-    ? 'adaptive'
-    : 'uniform';
+  return options;
 }
 
 /**
  * Scheduler work estimate shared by contrast boundary and region queries.
  */
 export function contrastQueryBudget(query: PlaneContrastQueryOptions): number {
-  const samplingMode = contrastSamplingMode(query);
-  if (samplingMode === 'uniform') {
-    const lightness = query.lightnessSteps ?? 64;
-    const chroma = query.chromaSteps ?? 64;
-    return lightness * chroma;
-  }
-  if (samplingMode === 'adaptive') {
-    const base = Math.max(8, query.adaptiveBaseSteps ?? 16);
-    const depth = Math.max(0, query.adaptiveMaxDepth ?? 3);
-    const refinementFactor = 1 + depth * 0.85;
-    return Math.round(base * base * refinementFactor);
-  }
   const lightness = query.lightnessSteps ?? 72;
   const chromaBrackets = query.chromaSteps ?? 96;
   const depth = Math.max(0, query.hybridMaxDepth ?? 7);
@@ -94,9 +67,8 @@ export function contrastTelemetrySignature(
   query: PlaneContrastQueryOptions,
 ): string {
   const metric = query.metric ?? 'wcag';
-  const samplingMode = contrastSamplingMode(query);
   if (metric !== 'apca') {
-    return `${metric}:${samplingMode}`;
+    return metric;
   }
-  return `${metric}:${samplingMode}:${query.apcaPolarity ?? 'absolute'}:${query.apcaRole ?? 'sample-text'}`;
+  return `${metric}:${query.apcaPolarity ?? 'absolute'}:${query.apcaRole ?? 'sample-text'}`;
 }

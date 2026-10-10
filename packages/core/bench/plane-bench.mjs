@@ -72,7 +72,7 @@ const boundary = runCase('plane.gamutBoundary adaptive', () =>
   ),
 );
 
-const contrastHybrid = runCase('plane.contrastRegion hybrid', () =>
+const contrast = runCase('plane.contrastRegion 48x48', () =>
   THRESHOLDS.map((threshold) =>
     query.contrastRegion({
       reference,
@@ -83,15 +83,16 @@ const contrastHybrid = runCase('plane.contrastRegion hybrid', () =>
   ),
 );
 
-const contrast = runCase('plane.contrastRegion legacy adaptive', () =>
+// The React ContrastRegionLayer defaults, tuned for interactive use.
+const contrastInteractive = runCase('plane.contrastRegion interactive', () =>
   THRESHOLDS.map((threshold) =>
     query.contrastRegion({
       reference,
       threshold,
-      engine: 'legacy',
-      samplingMode: 'adaptive',
-      lightnessSteps: 48,
-      chromaSteps: 48,
+      lightnessSteps: 12,
+      chromaSteps: 16,
+      hybridMaxDepth: 3,
+      hybridErrorTolerance: 0.003,
     }),
   ),
 );
@@ -105,8 +106,6 @@ const compile = runCase('plane.compile svg', () => {
   const contrastRegion = query.contrastRegion({
     reference,
     threshold: 4.5,
-    engine: 'legacy',
-    samplingMode: 'adaptive',
     lightnessSteps: 48,
     chromaSteps: 48,
   });
@@ -134,13 +133,13 @@ console.log(
       warmup: WARMUP,
       summary: {
         boundaryMedianMs: boundary.medianMs,
-        contrastHybridMedianMs: contrastHybrid.medianMs,
         contrastMedianMs: contrast.medianMs,
+        contrastInteractiveMedianMs: contrastInteractive.medianMs,
         compileMedianMs: compile.medianMs,
         boundaryPointCount,
         contrastPointCount,
       },
-      cases: [boundary, contrastHybrid, contrast, compile],
+      cases: [boundary, contrast, contrastInteractive, compile],
     },
     null,
     2,

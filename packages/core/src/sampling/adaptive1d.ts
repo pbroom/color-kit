@@ -1,7 +1,7 @@
 /**
  * Shared adaptive 1D sampling primitives.
  *
- * The contrast region solvers (legacy adaptive + hybrid) and the adaptive
+ * The contrast-region solver and the adaptive
  * gamut boundary sampler all build a deduped anchor axis (endpoints, cusp,
  * edge probes, uniform interior steps) and refine segments by perpendicular
  * error. These helpers keep that logic defined once.

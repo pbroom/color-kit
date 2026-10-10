@@ -189,6 +189,7 @@ This archive is the source of truth for reusable agent learnings in this reposit
 - **Generated CSS classes require prefix searches**: Before labeling selectors dead, search for class-name prefixes and template interpolation as well as exact literals; dynamic consumers such as `docs-style-${value.style}` will evade exact-selector grep.
 - **2026-09-25 — Array writers mirror sign for extended transfer**: Unclamped gamma-encoded array writers must use the sign-mirrored sRGB transfer (as colorjs.io and linearP3ToP3 do); utils linearToSrgbChannel alone is linear for negatives and breaks colorjs agreement and invertibility for out-of-gamut floats. Float32 round-trips of far-out-of-P3 colors can lose ~3e-3 deltaE because near-zero LMS amplifies rounding through the cube root, so bound float32 precision tests to in-gamut samples.
 - **2026-09-25 — Docs MDX ledes and demo sources**: Multi-line <p> wrappers in MDX (e.g. docs-lede) get an inner <p> and trigger React nested-<p> errors, so use a <div> wrapper; show demo logic verbatim by importing colocated kernel files with ?raw into CodeBlock so visible code stays the code that runs.
+- **2026-10-06 — Place solver roots at class changes, not value tolerance**: When root-finding a pass/fail field (contrast regions, gamut membership), add a root only where the >= 0 class changes and stop bisection on bracket width; accepting |v| <= eps as a root breaks parity with the boundary classes where the field is flat and splits contours.
 
 ### Moved from AGENTS.md (2026-09-25 trim)
 

@@ -12,7 +12,7 @@ import {
 } from '../src/index.js';
 
 /**
- * Regression cases from a brute-force review of the hybrid contrast engine
+ * Regression cases from a brute-force review of the contrast-region solver
  * against the public `contrastRatio` / `contrastAPCA` checks.
  */
 
@@ -124,7 +124,7 @@ function inspectHybrid(testCase: RegressionCase) {
   });
 }
 
-describe('hybrid contrast engine regressions', () => {
+describe('contrast-region solver regressions', () => {
   // Contours with nearly constant lightness jump more than the branch join
   // distance in chroma between lightness samples. Before the root-jump
   // split these left gaps of more than 0.03 against the brute-force
@@ -194,7 +194,7 @@ describe('hybrid contrast engine regressions', () => {
 
   // Regions that are a thin sliver at the top of the lightness range (every
   // in-gamut chroma passes above some L > 0.98) have a vertical boundary
-  // and no chroma roots. The hybrid engine used to report them as degraded
+  // and no chroma roots. The solver used to report them as degraded
   // with no paths; it now traces the boundary from the chroma axis to the
   // gamut edge where the zero-chroma and gamut-edge margins change sign.
   const thinTop: RegressionCase[] = [
@@ -229,7 +229,7 @@ describe('hybrid contrast engine regressions', () => {
   ];
 
   it.each(thinTop.map((testCase) => [testCase.name, testCase] as const))(
-    'traces %s as a vertical boundary that matches the legacy engine',
+    'traces %s as a vertical boundary',
     (_name, testCase) => {
       const evaluate = margin(testCase);
       expect(evaluate(1, 0)).toBeGreaterThan(0);
@@ -251,26 +251,6 @@ describe('hybrid contrast engine regressions', () => {
       // Just below the boundary nothing passes; just above, the axis does.
       expect(evaluate(boundaryL - 1e-4, 0)).toBeLessThan(0);
       expect(evaluate(boundaryL + 1e-4, 0)).toBeGreaterThan(0);
-
-      const legacy = inspectPlaneQuery(
-        definePlane({ fixed: { h: testCase.hue } }),
-        {
-          kind: 'contrastRegion',
-          reference: testCase.reference,
-          hue: testCase.hue,
-          metric: testCase.metric,
-          threshold: testCase.threshold,
-          engine: 'legacy',
-        },
-      );
-      expect(legacy.result.paths.length).toBeGreaterThan(0);
-      for (const point of legacy.result.paths.flat()) {
-        expect(point.l).toBeGreaterThan(0.98);
-      }
-      const legacyL = Math.min(
-        ...legacy.result.paths.flat().map((point) => point.l),
-      );
-      expect(Math.abs(legacyL - boundaryL)).toBeLessThan(1e-3);
     },
   );
 });

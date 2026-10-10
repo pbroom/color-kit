@@ -46,42 +46,6 @@ describe('contrastRegionPaths()', () => {
     }
   });
 
-  it('supports linear edge interpolation for higher contour precision', () => {
-    const reference = fromHex('#ffffff');
-
-    const midpoint = contrastRegionPaths(reference, 203, {
-      level: 'AA',
-      gamut: 'srgb',
-      lightnessSteps: 24,
-      chromaSteps: 24,
-      engine: 'legacy',
-      edgeInterpolation: 'midpoint',
-    });
-    const linear = contrastRegionPaths(reference, 203, {
-      level: 'AA',
-      gamut: 'srgb',
-      lightnessSteps: 24,
-      chromaSteps: 24,
-      engine: 'legacy',
-      edgeInterpolation: 'linear',
-    });
-
-    expect(midpoint.length).toBeGreaterThan(0);
-    expect(linear.length).toBeGreaterThan(0);
-
-    const midpointPath = midpoint[0] ?? [];
-    const linearPath = linear[0] ?? [];
-    const count = Math.min(midpointPath.length, linearPath.length);
-    let maxDelta = 0;
-    for (let index = 0; index < count; index += 1) {
-      const deltaL = Math.abs(midpointPath[index].l - linearPath[index].l);
-      const deltaC = Math.abs(midpointPath[index].c - linearPath[index].c);
-      maxDelta = Math.max(maxDelta, deltaL, deltaC);
-    }
-
-    expect(maxDelta).toBeGreaterThan(0.0001);
-  });
-
   it('tightens the region for stricter WCAG levels', () => {
     const reference = fromHex('#ffffff');
 
@@ -174,110 +138,50 @@ describe('contrastRegionPaths()', () => {
         lightnessSteps: 1,
       }),
     ).toThrow('contrastRegionPaths() lightnessSteps must be an integer >= 2');
-
-    expect(() =>
-      contrastRegionPaths(reference, 200, {
-        engine: 'legacy',
-        edgeInterpolation: 'nearest' as unknown as 'linear',
-      }),
-    ).toThrow(
-      "contrastRegionPaths() edgeInterpolation must be 'linear' or 'midpoint'",
-    );
   });
 
   it.each([
+    ['engine', 'legacy'],
+    ['engine', 'hybrid'],
     ['samplingMode', 'adaptive'],
     ['edgeInterpolation', 'linear'],
     ['adaptiveBaseSteps', 12],
     ['adaptiveMaxDepth', 2],
-  ])(
-    'rejects the legacy-only %s option without engine: legacy',
-    (name, value) => {
-      const options = { level: 'AA', [name]: value } as unknown as Parameters<
-        typeof contrastRegionPaths
-      >[2];
-      expect(() =>
-        contrastRegionPaths(fromHex('#ffffff'), 200, options),
-      ).toThrow(
-        new TypeError(
-          `contrastRegionPaths() option "${name}" requires engine: 'legacy' (the default hybrid engine is tuned with lightnessSteps, chromaSteps, hybridMaxDepth, and hybridErrorTolerance)`,
-        ),
-      );
-    },
-  );
-
-  it.each([
-    ['hybridMaxDepth', 6],
-    ['hybridErrorTolerance', 0.001],
-  ])('rejects the hybrid-only %s option with engine: legacy', (name, value) => {
-    const options = {
-      engine: 'legacy',
-      level: 'AA',
-      [name]: value,
-    } as unknown as Parameters<typeof contrastRegionPaths>[2];
+  ])('rejects the removed legacy-engine option %s', (name, value) => {
+    const options = { level: 'AA', [name]: value } as unknown as Parameters<
+      typeof contrastRegionPaths
+    >[2];
     expect(() => contrastRegionPaths(fromHex('#ffffff'), 200, options)).toThrow(
-      TypeError,
-    );
-  });
-
-  it('rejects unknown engines and legacy sampling modes', () => {
-    const reference = fromHex('#ffffff');
-    expect(() =>
-      contrastRegionPaths(reference, 200, {
-        engine: 'marching' as unknown as 'legacy',
-      }),
-    ).toThrow(
       new TypeError(
-        "contrastRegionPaths() engine must be 'hybrid' or 'legacy'",
+        `contrastRegionPaths() option "${name}" was removed with the legacy contrast-region engine; tune the solver with lightnessSteps, chromaSteps, hybridMaxDepth, and hybridErrorTolerance`,
       ),
     );
-    expect(() =>
-      contrastRegionPaths(reference, 200, {
-        engine: 'legacy',
-        samplingMode: 'hybrid' as unknown as 'uniform',
-      }),
-    ).toThrow(TypeError);
   });
 
-  it('rejects mixed-engine options at the type level', () => {
+  it('rejects removed legacy-engine options at the type level', () => {
     const reference = fromHex('#ffffff');
     expect(() =>
-      // @ts-expect-error samplingMode requires engine: 'legacy'
-      contrastRegionPaths(reference, 200, { samplingMode: 'adaptive' }),
+      // @ts-expect-error engine was removed with the legacy engine
+      contrastRegionPaths(reference, 200, { engine: 'legacy' }),
     ).toThrow(TypeError);
     expect(() =>
-      contrastRegionPaths(reference, 200, {
-        engine: 'legacy',
-        // @ts-expect-error hybridMaxDepth only applies to the hybrid engine
-        hybridMaxDepth: 6,
-      }),
+      // @ts-expect-error samplingMode was removed with the legacy engine
+      contrastRegionPaths(reference, 200, { samplingMode: 'adaptive' }),
     ).toThrow(TypeError);
   });
 
-  it('runs the selected engine and records it in the trace', () => {
+  it('records the solver in the trace', () => {
     const plane = definePlane({ fixed: { h: 200 } });
-    const base = {
-      kind: 'contrastRegion' as const,
+    const summary = inspectPlaneQuery(plane, {
+      kind: 'contrastRegion',
       reference: fromHex('#ffffff'),
-      level: 'AA' as const,
-    };
-    expect(inspectPlaneQuery(plane, base).trace.summary.solver).toBe(
-      'contrast-hybrid',
-    );
-    expect(
-      inspectPlaneQuery(plane, { ...base, engine: 'legacy' }).trace.summary
-        .solver,
-    ).toBe('contrast-legacy-uniform');
-    expect(
-      inspectPlaneQuery(plane, {
-        ...base,
-        engine: 'legacy',
-        adaptiveBaseSteps: 12,
-      }).trace.summary.solver,
-    ).toBe('contrast-legacy-adaptive');
+      level: 'AA',
+    }).trace.summary;
+    expect(summary.solver).toBe('contrast-hybrid');
+    expect(summary.samplingMode).toBe('hybrid');
   });
 
-  it('validates plane query engine options like direct calls', () => {
+  it('rejects removed options in plane queries like direct calls', () => {
     const plane = definePlane({ fixed: { h: 200 } });
     const query = {
       kind: 'contrastRegion',
@@ -285,16 +189,14 @@ describe('contrastRegionPaths()', () => {
       samplingMode: 'adaptive',
     } as unknown as Parameters<typeof inspectPlaneQuery>[1];
     expect(() => inspectPlaneQuery(plane, query)).toThrow(
-      /option "samplingMode" requires engine: 'legacy'/,
+      /option "samplingMode" was removed with the legacy contrast-region engine/,
     );
-    const legacyWithHybridOption = {
-      reference: fromHex('#ffffff'),
-      engine: 'legacy',
-      hybridErrorTolerance: 0.001,
-    } as const;
     expect(() =>
-      // @ts-expect-error hybridErrorTolerance only applies to the hybrid engine
-      sense(plane).contrastBoundary(legacyWithHybridOption),
+      sense(plane).contrastBoundary({
+        reference: fromHex('#ffffff'),
+        // @ts-expect-error engine was removed with the legacy engine
+        engine: 'hybrid',
+      }),
     ).toThrow(TypeError);
   });
 
@@ -320,107 +222,7 @@ describe('contrastRegionPaths()', () => {
     if (rawTotal > 4) expect(simplifiedTotal).toBeLessThan(rawTotal);
   });
 
-  it('adaptive sampling returns deterministic contour paths', () => {
-    const reference = fromHex('#ffffff');
-    const first = contrastRegionPaths(reference, 150, {
-      level: 'AA',
-      gamut: 'srgb',
-      engine: 'legacy',
-      samplingMode: 'adaptive',
-      adaptiveBaseSteps: 12,
-      adaptiveMaxDepth: 2,
-    });
-    const second = contrastRegionPaths(reference, 150, {
-      level: 'AA',
-      gamut: 'srgb',
-      engine: 'legacy',
-      samplingMode: 'adaptive',
-      adaptiveBaseSteps: 12,
-      adaptiveMaxDepth: 2,
-    });
-    expect(first.length).toBe(second.length);
-    for (let i = 0; i < first.length; i += 1) {
-      expect(first[i].length).toBe(second[i].length);
-      for (let j = 0; j < first[i].length; j += 1) {
-        expect(first[i][j].l).toBe(second[i][j].l);
-        expect(first[i][j].c).toBe(second[i][j].c);
-      }
-    }
-  });
-
-  it('adaptive contours are bounded and non-empty when threshold is attainable', () => {
-    const reference = fromHex('#ffffff');
-    const paths = contrastRegionPaths(reference, 200, {
-      level: 'AA',
-      gamut: 'srgb',
-      engine: 'legacy',
-      samplingMode: 'adaptive',
-      adaptiveBaseSteps: 16,
-      adaptiveMaxDepth: 2,
-    });
-    expect(paths.length).toBeGreaterThan(0);
-    for (const path of paths) {
-      expect(path.length).toBeGreaterThan(1);
-      for (const point of path) {
-        expect(point.l).toBeGreaterThanOrEqual(0);
-        expect(point.l).toBeLessThanOrEqual(1);
-        expect(point.c).toBeGreaterThanOrEqual(0);
-        expect(point.c).toBeLessThanOrEqual(0.4);
-      }
-    }
-  });
-
-  it('adaptive mode produces stitched contours with shared vertices within tolerance', () => {
-    const reference = fromHex('#ffffff');
-    const paths = contrastRegionPaths(reference, 200, {
-      level: 'AA',
-      gamut: 'srgb',
-      engine: 'legacy',
-      samplingMode: 'adaptive',
-      adaptiveBaseSteps: 12,
-      adaptiveMaxDepth: 3,
-      edgeInterpolation: 'linear',
-    });
-    expect(paths.length).toBeGreaterThan(0);
-    const totalPoints = paths.reduce((s, p) => s + p.length, 0);
-    expect(totalPoints).toBeGreaterThan(2);
-    for (const path of paths) {
-      for (const point of path) {
-        expect(point.l).toBeGreaterThanOrEqual(0);
-        expect(point.l).toBeLessThanOrEqual(1);
-        expect(point.c).toBeGreaterThanOrEqual(0);
-        expect(point.c).toBeLessThanOrEqual(0.4);
-      }
-    }
-  });
-
-  it('adaptive sampling keeps high-fidelity detail near sharp gamut edges', () => {
-    const reference = { l: 0.0839, c: 0.0158, h: 9, alpha: 1 };
-    const adaptive = contrastRegionPaths(reference, 9, {
-      gamut: 'srgb',
-      threshold: 3,
-      engine: 'legacy',
-      samplingMode: 'adaptive',
-      adaptiveBaseSteps: 8,
-      adaptiveMaxDepth: 2,
-      edgeInterpolation: 'linear',
-    });
-    const uniform = contrastRegionPaths(reference, 9, {
-      gamut: 'srgb',
-      threshold: 3,
-      engine: 'legacy',
-      samplingMode: 'uniform',
-      lightnessSteps: 8,
-      chromaSteps: 8,
-      edgeInterpolation: 'linear',
-    });
-
-    const adaptivePoints = adaptive.reduce((sum, path) => sum + path.length, 0);
-    const uniformPoints = uniform.reduce((sum, path) => sum + path.length, 0);
-    expect(adaptivePoints).toBeGreaterThan(uniformPoints * 4);
-  });
-
-  it('supports APCA criteria in hybrid mode', () => {
+  it('supports APCA criteria', () => {
     const reference = fromHex('#ffffff');
     const paths = contrastRegionPaths(reference, 210, {
       metric: 'apca',
@@ -438,57 +240,6 @@ describe('contrastRegionPaths()', () => {
         expect(point.c).toBeLessThanOrEqual(0.4);
       }
     }
-  });
-
-  it('respects APCA legacy samplingMode overrides', () => {
-    const reference = fromHex('#ffffff');
-    const uniformMidpoint = contrastRegionPaths(reference, 210, {
-      metric: 'apca',
-      threshold: 0.45,
-      apcaPolarity: 'absolute',
-      engine: 'legacy',
-      samplingMode: 'uniform',
-      lightnessSteps: 22,
-      chromaSteps: 22,
-      edgeInterpolation: 'midpoint',
-    });
-    const uniformLinear = contrastRegionPaths(reference, 210, {
-      metric: 'apca',
-      threshold: 0.45,
-      apcaPolarity: 'absolute',
-      engine: 'legacy',
-      samplingMode: 'uniform',
-      lightnessSteps: 22,
-      chromaSteps: 22,
-      edgeInterpolation: 'linear',
-    });
-    const adaptiveMidpoint = contrastRegionPaths(reference, 210, {
-      metric: 'apca',
-      threshold: 0.45,
-      apcaPolarity: 'absolute',
-      engine: 'legacy',
-      samplingMode: 'adaptive',
-      adaptiveBaseSteps: 12,
-      adaptiveMaxDepth: 2,
-      edgeInterpolation: 'midpoint',
-    });
-    const adaptiveLinear = contrastRegionPaths(reference, 210, {
-      metric: 'apca',
-      threshold: 0.45,
-      apcaPolarity: 'absolute',
-      engine: 'legacy',
-      samplingMode: 'adaptive',
-      adaptiveBaseSteps: 12,
-      adaptiveMaxDepth: 2,
-      edgeInterpolation: 'linear',
-    });
-
-    expect(uniformMidpoint.length).toBeGreaterThan(0);
-    expect(uniformLinear.length).toBeGreaterThan(0);
-    expect(adaptiveMidpoint.length).toBeGreaterThan(0);
-    expect(adaptiveLinear.length).toBeGreaterThan(0);
-    expect(uniformMidpoint).not.toEqual(uniformLinear);
-    expect(adaptiveMidpoint).not.toEqual(adaptiveLinear);
   });
 
   it('supports APCA polarity-specific regions', () => {

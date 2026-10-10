@@ -25,10 +25,17 @@ export const LINE_QUALITY_STEP_MULTIPLIERS: QualityStepMultipliers = {
   low: 0.5,
 };
 
-/** Step multipliers for region-style layers (contrast region grids). */
+/** Step multipliers for region-style layers (contrast region sampling). */
 export const REGION_QUALITY_STEP_MULTIPLIERS: QualityStepMultipliers = {
   medium: 0.68,
   low: 0.45,
+};
+
+/** Contrast-region refinement depth per quality level. */
+export const REGION_QUALITY_MAX_DEPTH: Record<ResolvedLayerQuality, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
 };
 
 export function qualityStepMultiplier(
@@ -103,42 +110,5 @@ export function autoAdaptiveLineMaxDepth(
   return Math.min(
     MAX_AUTO_ADAPTIVE_LINE_DEPTH,
     Math.max(MIN_AUTO_ADAPTIVE_LINE_DEPTH, computed),
-  );
-}
-
-const MIN_AUTO_ADAPTIVE_BASE_STEPS = 8;
-const MAX_AUTO_ADAPTIVE_BASE_STEPS = 48;
-const MIN_AUTO_ADAPTIVE_REGION_DEPTH = 1;
-const MAX_AUTO_ADAPTIVE_REGION_DEPTH = 6;
-
-/** Base grid resolution for adaptive region sampling (contrast regions). */
-export function autoAdaptiveRegionBaseSteps(
-  quality: ResolvedLayerQuality,
-  widthPx: number,
-  heightPx: number,
-): number {
-  const targetCellPx = quality === 'high' ? 28 : quality === 'medium' ? 36 : 48;
-  const longestEdge = Math.max(1, Math.max(widthPx, heightPx));
-  const baseSteps = Math.round(longestEdge / targetCellPx);
-  return Math.min(
-    MAX_AUTO_ADAPTIVE_BASE_STEPS,
-    Math.max(MIN_AUTO_ADAPTIVE_BASE_STEPS, baseSteps),
-  );
-}
-
-/** Refinement-depth budget for adaptive region sampling. */
-export function autoAdaptiveRegionMaxDepth(
-  quality: ResolvedLayerQuality,
-  widthPx: number,
-  heightPx: number,
-  baseSteps: number,
-): number {
-  const longestEdge = Math.max(1, Math.max(widthPx, heightPx));
-  const baseCellPx = longestEdge / Math.max(1, baseSteps);
-  const targetLeafPx = quality === 'high' ? 7 : quality === 'medium' ? 9 : 12;
-  const depth = Math.ceil(Math.log2(Math.max(1, baseCellPx / targetLeafPx)));
-  return Math.min(
-    MAX_AUTO_ADAPTIVE_REGION_DEPTH,
-    Math.max(MIN_AUTO_ADAPTIVE_REGION_DEPTH, depth),
   );
 }

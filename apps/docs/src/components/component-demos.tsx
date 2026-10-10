@@ -206,7 +206,6 @@ function pathPointProps(fill: string) {
 }
 
 const COLOR_AREA_LINE_STEPS = 128;
-const COLOR_AREA_CONTRAST_STEPS = 72;
 
 function percentile(values: number[], ratio: number): number {
   if (values.length === 0) {
@@ -238,7 +237,7 @@ interface ContrastMetricSample {
   pointCount: number;
   lightnessSteps: number;
   chromaSteps: number;
-  samplingMode: 'uniform' | 'adaptive';
+  hybridMaxDepth: number;
   contrastMetric: ContrastMetric;
   backend?: 'js';
   scheduleReason?: string;
@@ -419,18 +418,14 @@ function ColorAreaDemoScene({
       performanceProfile: 'auto' as const,
       layerQuality: 'auto' as const,
       lineSteps: COLOR_AREA_LINE_STEPS,
-      contrastSteps: COLOR_AREA_CONTRAST_STEPS,
       contrastMetric: 'wcag' as const,
       contrastApcaPolarity: 'absolute' as const,
       contrastApcaRole: 'sample-text' as const,
-      contrastEdgeInterpolation: 'linear' as const,
       simplifyTolerance: undefined,
       lineSamplingMode: 'adaptive' as const,
-      contrastSamplingMode: 'hybrid' as const,
     },
   };
   const lineSteps = scene.tuning.lineSteps;
-  const contrastSteps = scene.tuning.contrastSteps;
   const layerQuality = scene.tuning.layerQuality;
   const contrastMetric = scene.tuning.contrastMetric;
   const contrastApcaPolarity = scene.tuning.contrastApcaPolarity;
@@ -541,8 +536,6 @@ function ColorAreaDemoScene({
               apcaPolarity={contrastApcaPolarity}
               apcaRole={contrastApcaRole}
               includeSchedulerTelemetry={includeSchedulerTelemetry}
-              lightnessSteps={contrastSteps}
-              chromaSteps={contrastSteps}
               quality={layerQuality}
               simplifyTolerance={simplifyTolerance}
               cornerRadius={cornerRadius}
@@ -573,8 +566,6 @@ function ColorAreaDemoScene({
               apcaPolarity={contrastApcaPolarity}
               apcaRole={contrastApcaRole}
               includeSchedulerTelemetry={includeSchedulerTelemetry}
-              lightnessSteps={contrastSteps}
-              chromaSteps={contrastSteps}
               quality={layerQuality}
               simplifyTolerance={simplifyTolerance}
               cornerRadius={cornerRadius}
@@ -837,8 +828,8 @@ export function ColorAreaDemo({
             {contrastMetrics.map((metric) => (
               <span key={metric.key} className="ck-perf-pill">
                 {contrastMetricLabel(metric.key, metric.contrastMetric)}{' '}
-                {metric.quality} · {metric.contrastMetric.toUpperCase()}/
-                {metric.samplingMode} ·{' '}
+                {metric.quality} · {metric.contrastMetric.toUpperCase()}/ depth{' '}
+                {metric.hybridMaxDepth} ·{' '}
                 {metric.source === 'worker'
                   ? `worker/${metric.backend ?? 'unknown'}`
                   : 'sync/js'}{' '}

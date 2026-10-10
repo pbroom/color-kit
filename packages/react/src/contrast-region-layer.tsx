@@ -19,7 +19,6 @@ import {
   type ContrastApcaRole,
   type ContrastMetric,
   type Color,
-  type ContrastRegionLegacyOptions,
   type ContrastRegionLevel,
   type GamutTarget,
   type PlaneContrastRegionResult,
@@ -40,9 +39,8 @@ import { Layer, type LayerProps } from './layer.js';
 import { Line, pathWithRoundedCorners } from './line.js';
 import { PathPointsOverlay } from './path-points-overlay.js';
 import {
-  autoAdaptiveRegionBaseSteps,
-  autoAdaptiveRegionMaxDepth,
   qualityStepMultiplier,
+  REGION_QUALITY_MAX_DEPTH,
   REGION_QUALITY_STEP_MULTIPLIERS,
   resolveQuality,
   type ColorAreaLayerQuality,
@@ -62,8 +60,8 @@ export interface ContrastRegionLayerMetrics {
   pointCount: number;
   lightnessSteps: number;
   chromaSteps: number;
-  /** Legacy-engine grid strategy the layer ran with. */
-  samplingMode: 'uniform' | 'adaptive';
+  /** Adaptive lightness refinement depth the layer ran with. */
+  hybridMaxDepth: number;
   contrastMetric: ContrastMetric;
   backend?: PlaneComputeBackendKind;
   scheduleReason?: string;
@@ -82,13 +80,33 @@ export interface ContrastRegionLayerProps extends LayerProps {
   apcaPreset?: ColorAreaContrastRegionOptions['apcaPreset'];
   apcaPolarity?: ColorAreaContrastRegionOptions['apcaPolarity'];
   apcaRole?: ColorAreaContrastRegionOptions['apcaRole'];
+  /**
+   * Initial lightness sampling density, scaled by `quality`. The layer's
+   * default is tuned for interactive use; see `contrastRegionPaths`.
+   * @default 12
+   */
   lightnessSteps?: number;
+  /**
+   * Chroma root-bracketing density per lightness sample, scaled by
+   * `quality`.
+   * @default 16
+   */
   chromaSteps?: number;
+  /**
+   * Maximum adaptive lightness refinement depth.
+   * @default 3 at `high` quality, 2 at `medium`, 1 at `low`
+   */
+  hybridMaxDepth?: number;
+  /**
+   * Maximum midpoint root deviation, in chroma units, before an interval
+   * is refined.
+   * @default 0.003
+   */
+  hybridErrorTolerance?: number;
   maxChroma?: number;
   tolerance?: number;
   maxIterations?: number;
   alpha?: number;
-  edgeInterpolation?: ContrastRegionLegacyOptions['edgeInterpolation'];
   quality?: ColorAreaLayerQuality;
   pathProps?: SVGAttributes<SVGPathElement>;
   showPathPoints?: boolean;
@@ -96,15 +114,6 @@ export interface ContrastRegionLayerProps extends LayerProps {
   onMetrics?: (metrics: ContrastRegionLayerMetrics) => void;
   /** RDP simplification tolerance in (l,c) space; omit to disable */
   simplifyTolerance?: number;
-  /**
-   * Grid strategy for contour extraction. The layer always runs the legacy
-   * marching-squares engine (`engine: 'legacy'`), which matches the public
-   * contrast checks closely enough for fills and is faster per region.
-   * @default 'uniform'
-   */
-  samplingMode?: ContrastRegionLegacyOptions['samplingMode'];
-  adaptiveBaseSteps?: number;
-  adaptiveMaxDepth?: number;
   includeSchedulerTelemetry?: boolean;
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
@@ -243,6 +252,24 @@ function toColorAreaContrastRegionPaths(
       y: 1 - point.y,
     })),
   );
+}
+
+/**
+ * Interactive defaults for the contrast-region solver. Tuned against a
+ * brute-force fill check: lower depth drifts past 0.02% mean fill error,
+ * while denser sampling costs more without improving the fill. Steps sit at
+ * the solver's minimum densities.
+ */
+const DEFAULT_LAYER_LIGHTNESS_STEPS = 12;
+const DEFAULT_LAYER_CHROMA_STEPS = 16;
+const DEFAULT_LAYER_ERROR_TOLERANCE = 0.003;
+const MIN_LAYER_LIGHTNESS_STEPS = 12;
+const MIN_LAYER_CHROMA_STEPS = 16;
+
+interface LayerSampling {
+  lightness: number;
+  chroma: number;
+  maxDepth: number;
 }
 
 const CLOSED_PATH_TOLERANCE = 1e-6;
@@ -758,48 +785,41 @@ export function ContrastRegionLayer({
   apcaRole,
   lightnessSteps,
   chromaSteps,
+  hybridMaxDepth,
+  hybridErrorTolerance = DEFAULT_LAYER_ERROR_TOLERANCE,
   maxChroma,
   tolerance,
   maxIterations,
   alpha,
-  edgeInterpolation = 'linear',
   quality = 'auto',
   pathProps,
   showPathPoints = false,
   pointProps,
   onMetrics,
   simplifyTolerance,
-  samplingMode,
-  adaptiveBaseSteps,
-  adaptiveMaxDepth,
   includeSchedulerTelemetry = false,
   cornerRadius,
   paths: pathsProp,
   children,
   ...props
 }: ContrastRegionLayerProps) {
-  const {
-    areaRef,
-    requested,
-    axes,
-    performanceProfile,
-    qualityLevel,
-    isDragging,
-  } = useColorAreaContext();
-  const areaSize = useMeasuredElementSize(areaRef);
+  const { requested, axes, performanceProfile, qualityLevel, isDragging } =
+    useColorAreaContext();
   const resolvedQuality = resolveQuality(quality, qualityLevel);
   const multiplier = qualityStepMultiplier(
     resolvedQuality,
     REGION_QUALITY_STEP_MULTIPLIERS,
   );
   const effectiveLightnessSteps = Math.max(
-    12,
-    Math.round((lightnessSteps ?? 64) * multiplier),
+    MIN_LAYER_LIGHTNESS_STEPS,
+    Math.round((lightnessSteps ?? DEFAULT_LAYER_LIGHTNESS_STEPS) * multiplier),
   );
   const effectiveChromaSteps = Math.max(
-    12,
-    Math.round((chromaSteps ?? 64) * multiplier),
+    MIN_LAYER_CHROMA_STEPS,
+    Math.round((chromaSteps ?? DEFAULT_LAYER_CHROMA_STEPS) * multiplier),
   );
+  const effectiveMaxDepth =
+    hybridMaxDepth ?? REGION_QUALITY_MAX_DEPTH[resolvedQuality];
 
   const resolvedReference = reference ?? requested;
   const resolvedHue = hue ?? requested.h;
@@ -808,78 +828,15 @@ export function ContrastRegionLayer({
     [gamut, resolvedReference],
   );
 
-  const [frozenSteps, setFrozenSteps] = useState<{
-    lightness: number;
-    chroma: number;
-  } | null>(null);
-  const [frozenAdaptive, setFrozenAdaptive] = useState<{
-    baseSteps: number | undefined;
-    maxDepth: number | undefined;
-  } | null>(null);
+  const [frozenSampling, setFrozenSampling] = useState<LayerSampling | null>(
+    null,
+  );
   const [lastStablePaths, setLastStablePaths] = useState<
     ColorAreaContrastRegionPoint[][]
   >([]);
   const [lastStableRegionPathData, setLastStableRegionPathData] = useState('');
   const prevDraggingRef = useRef(false);
-  const lastIdleSamplingRef = useRef<{
-    lightness: number;
-    chroma: number;
-    baseSteps: number | undefined;
-    maxDepth: number | undefined;
-  } | null>(null);
-
-  const resolvedAdaptiveBaseSteps = useMemo(() => {
-    if (samplingMode !== 'adaptive') {
-      return adaptiveBaseSteps;
-    }
-    if (adaptiveBaseSteps != null) {
-      return adaptiveBaseSteps;
-    }
-    if (areaSize.width <= 0 || areaSize.height <= 0) {
-      return undefined;
-    }
-    const widthPx = areaSize.width * areaSize.dpr;
-    const heightPx = areaSize.height * areaSize.dpr;
-    return autoAdaptiveRegionBaseSteps(resolvedQuality, widthPx, heightPx);
-  }, [
-    adaptiveBaseSteps,
-    areaSize.dpr,
-    areaSize.height,
-    areaSize.width,
-    resolvedQuality,
-    samplingMode,
-  ]);
-
-  const resolvedAdaptiveMaxDepth = useMemo(() => {
-    if (samplingMode !== 'adaptive') {
-      return adaptiveMaxDepth;
-    }
-    if (adaptiveMaxDepth != null) {
-      return adaptiveMaxDepth;
-    }
-    if (areaSize.width <= 0 || areaSize.height <= 0) {
-      return undefined;
-    }
-    const widthPx = areaSize.width * areaSize.dpr;
-    const heightPx = areaSize.height * areaSize.dpr;
-    const baseSteps =
-      resolvedAdaptiveBaseSteps ??
-      autoAdaptiveRegionBaseSteps(resolvedQuality, widthPx, heightPx);
-    return autoAdaptiveRegionMaxDepth(
-      resolvedQuality,
-      widthPx,
-      heightPx,
-      baseSteps,
-    );
-  }, [
-    adaptiveMaxDepth,
-    areaSize.dpr,
-    areaSize.height,
-    areaSize.width,
-    resolvedAdaptiveBaseSteps,
-    resolvedQuality,
-    samplingMode,
-  ]);
+  const lastIdleSamplingRef = useRef<LayerSampling | null>(null);
 
   useEffect(() => {
     if (isDragging) {
@@ -888,15 +845,13 @@ export function ContrastRegionLayer({
     lastIdleSamplingRef.current = {
       lightness: effectiveLightnessSteps,
       chroma: effectiveChromaSteps,
-      baseSteps: resolvedAdaptiveBaseSteps,
-      maxDepth: resolvedAdaptiveMaxDepth,
+      maxDepth: effectiveMaxDepth,
     };
   }, [
     effectiveChromaSteps,
     effectiveLightnessSteps,
+    effectiveMaxDepth,
     isDragging,
-    resolvedAdaptiveBaseSteps,
-    resolvedAdaptiveMaxDepth,
   ]);
 
   useEffect(() => {
@@ -904,59 +859,33 @@ export function ContrastRegionLayer({
       const previousIdleSampling = lastIdleSamplingRef.current ?? {
         lightness: effectiveLightnessSteps,
         chroma: effectiveChromaSteps,
-        baseSteps: resolvedAdaptiveBaseSteps,
-        maxDepth: resolvedAdaptiveMaxDepth,
+        maxDepth: effectiveMaxDepth,
       };
-      queueMicrotask(() =>
-        setFrozenAdaptive({
-          baseSteps: previousIdleSampling.baseSteps,
-          maxDepth: previousIdleSampling.maxDepth,
-        }),
-      );
-      queueMicrotask(() =>
-        setFrozenSteps({
-          lightness: previousIdleSampling.lightness,
-          chroma: previousIdleSampling.chroma,
-        }),
-      );
+      queueMicrotask(() => setFrozenSampling(previousIdleSampling));
     }
     if (!isDragging) {
-      queueMicrotask(() => setFrozenSteps(null));
-      queueMicrotask(() => setFrozenAdaptive(null));
+      queueMicrotask(() => setFrozenSampling(null));
     }
     prevDraggingRef.current = isDragging;
   }, [
     isDragging,
     effectiveLightnessSteps,
     effectiveChromaSteps,
-    resolvedAdaptiveBaseSteps,
-    resolvedAdaptiveMaxDepth,
+    effectiveMaxDepth,
   ]);
 
-  const stepsForOptions =
-    isDragging && frozenSteps
-      ? frozenSteps
+  const samplingForOptions: LayerSampling =
+    isDragging && frozenSampling
+      ? frozenSampling
       : {
           lightness: effectiveLightnessSteps,
           chroma: effectiveChromaSteps,
+          maxDepth: effectiveMaxDepth,
         };
-
-  const adaptiveForOptions =
-    isDragging && frozenAdaptive
-      ? {
-          baseSteps: frozenAdaptive.baseSteps,
-          maxDepth: frozenAdaptive.maxDepth,
-        }
-      : {
-          baseSteps: resolvedAdaptiveBaseSteps,
-          maxDepth: resolvedAdaptiveMaxDepth,
-        };
-  const resolvedSamplingMode = samplingMode ?? 'uniform';
   const resolvedContrastMetric = metric ?? 'wcag';
 
   const options = useMemo<ColorAreaContrastRegionOptions>(
     () => ({
-      engine: 'legacy',
       gamut,
       metric,
       threshold,
@@ -964,35 +893,31 @@ export function ContrastRegionLayer({
       apcaPreset,
       apcaPolarity,
       apcaRole,
-      lightnessSteps: stepsForOptions.lightness,
-      chromaSteps: stepsForOptions.chroma,
+      lightnessSteps: samplingForOptions.lightness,
+      chromaSteps: samplingForOptions.chroma,
+      hybridMaxDepth: samplingForOptions.maxDepth,
+      hybridErrorTolerance,
       maxChroma,
       tolerance,
       maxIterations,
       alpha,
-      edgeInterpolation,
       simplifyTolerance,
-      samplingMode: resolvedSamplingMode,
-      adaptiveBaseSteps: adaptiveForOptions.baseSteps,
-      adaptiveMaxDepth: adaptiveForOptions.maxDepth,
     }),
     [
       alpha,
       apcaPolarity,
       apcaPreset,
       apcaRole,
-      edgeInterpolation,
-      stepsForOptions.lightness,
-      stepsForOptions.chroma,
-      adaptiveForOptions.baseSteps,
-      adaptiveForOptions.maxDepth,
+      samplingForOptions.lightness,
+      samplingForOptions.chroma,
+      samplingForOptions.maxDepth,
+      hybridErrorTolerance,
       gamut,
       level,
       maxChroma,
       maxIterations,
       metric,
       simplifyTolerance,
-      resolvedSamplingMode,
       threshold,
       tolerance,
     ],
@@ -1075,9 +1000,11 @@ export function ContrastRegionLayer({
         computeTimeMs: payload.computeTimeMs,
         pathCount: payload.paths.length,
         pointCount: countPathPoints(payload.paths),
-        lightnessSteps: effectiveLightnessSteps,
-        chromaSteps: effectiveChromaSteps,
-        samplingMode: resolvedSamplingMode,
+        // Report the sampling the solver ran with: while dragging this is the
+        // frozen idle sampling, not the current quality level's.
+        lightnessSteps: samplingForOptions.lightness,
+        chromaSteps: samplingForOptions.chroma,
+        hybridMaxDepth: samplingForOptions.maxDepth,
         contrastMetric: resolvedContrastMetric,
         backend: payload.backend,
         scheduleReason: payload.scheduleReason,
@@ -1087,13 +1014,13 @@ export function ContrastRegionLayer({
       });
     },
     [
-      effectiveChromaSteps,
-      effectiveLightnessSteps,
       isDragging,
       onMetrics,
       resolvedContrastMetric,
       resolvedQuality,
-      resolvedSamplingMode,
+      samplingForOptions.chroma,
+      samplingForOptions.lightness,
+      samplingForOptions.maxDepth,
     ],
   );
 
@@ -1209,11 +1136,11 @@ export function ContrastRegionLayer({
     () =>
       getColorAreaGamutBoundaryPoints(resolvedHue, axes, {
         gamut,
-        steps: Math.max(128, stepsForOptions.lightness),
+        steps: Math.max(128, samplingForOptions.lightness),
         samplingMode: 'adaptive',
         simplifyTolerance: simplifyTolerance ?? 0.001,
       }),
-    [axes, gamut, resolvedHue, simplifyTolerance, stepsForOptions.lightness],
+    [axes, gamut, resolvedHue, simplifyTolerance, samplingForOptions.lightness],
   );
 
   const paths = useMemo(

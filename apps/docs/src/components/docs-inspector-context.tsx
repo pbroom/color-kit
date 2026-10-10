@@ -106,15 +106,12 @@ export interface ColorAreaInspectorState {
     performanceProfile: ColorAreaPerformanceProfile;
     layerQuality: ColorAreaLayerQuality;
     lineSteps: number;
-    contrastSteps: number;
     contrastMetric: 'wcag' | 'apca';
     contrastApcaPolarity: 'absolute' | 'positive' | 'negative';
     contrastApcaRole: 'sample-text' | 'sample-background';
-    contrastEdgeInterpolation: 'linear' | 'midpoint';
     /** RDP simplification tolerance; undefined or 0 = off */
     simplifyTolerance?: number;
     lineSamplingMode?: 'uniform' | 'adaptive';
-    contrastSamplingMode?: 'hybrid' | 'uniform' | 'adaptive';
     /** Corner radius in 0-1 for path vertices; undefined = sharp */
     cornerRadius?: number;
   };
@@ -246,14 +243,11 @@ function createRequestedPresetState(): ColorAreaInspectorState {
       performanceProfile: 'auto',
       layerQuality: 'auto',
       lineSteps: 128,
-      contrastSteps: 96,
       contrastMetric: 'wcag',
       contrastApcaPolarity: 'absolute',
       contrastApcaRole: 'sample-text',
-      contrastEdgeInterpolation: 'linear',
       simplifyTolerance: 0.001,
       lineSamplingMode: 'adaptive',
-      contrastSamplingMode: 'hybrid',
       cornerRadius: undefined,
     },
   };
@@ -355,14 +349,11 @@ function createAnalysisPresetState(): ColorAreaInspectorState {
       performanceProfile: 'auto',
       layerQuality: 'auto',
       lineSteps: 128,
-      contrastSteps: 96,
       contrastMetric: 'wcag',
       contrastApcaPolarity: 'absolute',
       contrastApcaRole: 'sample-text',
-      contrastEdgeInterpolation: 'linear',
       simplifyTolerance: 0.001,
       lineSamplingMode: 'adaptive',
-      contrastSamplingMode: 'hybrid',
       cornerRadius: undefined,
     },
   };
@@ -414,10 +405,6 @@ function normalizeColorAreaState(
   next.tuning = {
     ...next.tuning,
     lineSteps: Math.max(8, Math.min(256, Math.round(next.tuning.lineSteps))),
-    contrastSteps: Math.max(
-      8,
-      Math.min(256, Math.round(next.tuning.contrastSteps)),
-    ),
   };
   return next;
 }
