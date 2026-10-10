@@ -9,6 +9,19 @@ import type {
 } from '../types.js';
 import { countSinglePath, withFiniteHue } from './shared.js';
 
+/** Default sample count of {@link samplePlaneGradient}. */
+const DEFAULT_GRADIENT_STEPS = 16;
+
+function resolveGradientSteps(steps: number | undefined): number {
+  const count = steps ?? DEFAULT_GRADIENT_STEPS;
+  if (!Number.isInteger(count)) {
+    throw new RangeError(
+      `samplePlaneGradient() requires finite integer steps, got ${count}`,
+    );
+  }
+  return Math.max(2, count);
+}
+
 /**
  * Samples a two-color gradient and projects each sample onto the plane.
  *
@@ -44,16 +57,10 @@ export function samplePlaneGradient(
   query: Omit<PlaneGradientQuery, 'kind'>,
 ): PlaneGradientResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
-  const steps = query.steps ?? 16;
-  if (!Number.isInteger(steps)) {
-    throw new RangeError(
-      `samplePlaneGradient() requires finite integer steps, got ${steps}`,
-    );
-  }
   const colors = generateOklchDefaultScale(
     withFiniteHue(query.from),
     withFiniteHue(query.to),
-    Math.max(2, steps),
+    resolveGradientSteps(query.steps),
   );
   const points = colors.map((color) => {
     const point = colorToPlane(resolvedPlane, color);
@@ -76,7 +83,8 @@ export const gradientSpec: PlaneQuerySpec<'gradient'> = {
   pointChannels: 'xycolor',
   fixedPathCount: 1,
   countGeometry: (result) => countSinglePath(result.points),
-  budget: (query) => query.steps ?? 48,
+  // One projected sample per step.
+  budget: (query) => resolveGradientSteps(query.steps),
   pack(result, writer, label) {
     const pathStart = writer.pathCount;
     writer.appendColorPath(result.points, label);
