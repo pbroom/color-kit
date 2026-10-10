@@ -1,54 +1,84 @@
 import { PrefetchLink } from '@/components/prefetch-link';
+import { PlaneHero } from '@/components/hero/plane-hero';
+import { CodeBlock } from '@/components/ui/code-block';
 import { InstallLine } from '@/components/ui/install-line';
+import heroHtml, {
+  code as heroCode,
+  filename as heroFilename,
+} from '@/examples/plane/hero.ts?highlighted';
+import './home.css';
 
-/**
- * Home. Placeholder owned by S3, which replaces it with the live OKLCH plane
- * hero (gamut regions, P3 boundary, contrast region) and its source.
- */
-const PATHS = [
+const QUESTIONS = [
   {
-    to: '/start',
-    title: 'Start',
-    text: 'Install, parse a color, check its gamut and contrast.',
-  },
-  {
+    question: 'Can this display show it?',
+    call: 'inP3Gamut(color)',
     to: '/concepts/requested-vs-displayed',
-    title: 'Concepts',
-    text: 'Why color-kit keeps the color you asked for apart from the one a display can show.',
+    where: 'Requested vs displayed',
   },
   {
-    to: '/api',
-    title: 'API',
-    text: 'Every export, by entry point: color-kit, plane, interop, compute, hct, driver, react.',
+    question: 'Where does the gamut end?',
+    call: 'sense(plane).gamutRegion()',
+    to: '/api/plane',
+    where: 'color-kit/plane',
+  },
+  {
+    question: 'Does this text pass AA?',
+    call: 'contrastRatio(text, background)',
+    to: '/api/core',
+    where: 'color-kit',
   },
 ];
 
 export default function HomePage() {
   return (
     <div className="home">
-      <section className="home-intro" aria-labelledby="home-title">
-        <p className="home-intro__eyebrow">color-kit@next</p>
-        <h1 id="home-title" className="home-intro__title">
-          A queryable color engine.
-        </h1>
+      <header className="home-intro">
+        <h1 className="home-intro__title">A queryable OKLCH color engine.</h1>
         <p className="home-intro__lede">
-          OKLCH-canonical conversion, contrast, gamut geometry and plane
-          queries. Ask a color space where its edges are, then draw the answer.
+          Convert, gamut-map and measure color in OKLCH, then ask a color space
+          where its edges are and get geometry back. Everything in the plane
+          below is a color-kit query, recomputed as you turn the hue.
         </p>
+      </header>
+
+      <PlaneHero />
+
+      <div className="home-install">
         <InstallLine />
-      </section>
-      <nav className="home-paths" aria-label="Where to go next">
-        <ul>
-          {PATHS.map((path) => (
-            <li key={path.to}>
-              <PrefetchLink to={path.to} className="home-path">
-                <span className="home-path__title">{path.title}</span>
-                <span className="home-path__text">{path.text}</span>
+      </div>
+
+      <section className="home-asks" aria-labelledby="home-asks-title">
+        <h2 id="home-asks-title" className="home-section-title">
+          What you can ask
+        </h2>
+        <ul className="home-asks__list">
+          {QUESTIONS.map((item) => (
+            <li key={item.call}>
+              <PrefetchLink to={item.to} className="home-ask">
+                <span className="home-ask__question">{item.question}</span>
+                <code className="home-ask__call">{item.call}</code>
+                <span className="home-ask__where">
+                  {item.where}
+                  <span aria-hidden="true"> →</span>
+                </span>
               </PrefetchLink>
             </li>
           ))}
         </ul>
-      </nav>
+      </section>
+
+      <section className="home-source" aria-labelledby="home-source-title">
+        <h2 id="home-source-title" className="home-section-title">
+          This is the code drawing the plane above
+        </h2>
+        <p className="home-source__note">
+          <code>queryHue</code> ran once at build time to prerender the first
+          frame, and runs again in your browser on every hue change.{' '}
+          <code>paintPlane</code> fills the canvas, one allocation-free{' '}
+          <code>toP3Into</code> per cell.
+        </p>
+        <CodeBlock html={heroHtml} code={heroCode} filename={heroFilename} />
+      </section>
     </div>
   );
 }

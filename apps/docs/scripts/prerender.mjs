@@ -57,14 +57,14 @@ async function renderToString(element) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-function closure(manifest, keys) {
+function closure(manifest, keys, field = 'file') {
   const seen = new Set();
   const files = [];
   const visit = (key) => {
     const chunk = manifest[key];
     if (!chunk || seen.has(key)) return;
     seen.add(key);
-    files.push(chunk.file);
+    files.push(...[chunk[field] ?? []].flat());
     for (const child of chunk.imports ?? []) visit(child);
   };
   keys.forEach(visit);
@@ -75,6 +75,17 @@ function closure(manifest, keys) {
 function preloadsFor(manifest, sources) {
   const entry = new Set(closure(manifest, ['index.html']));
   return closure(manifest, sources).filter((file) => !entry.has(file));
+}
+
+/**
+ * Stylesheets imported by the route's chunks (Vite splits CSS per chunk).
+ * Linked up front so prerendered markup paints styled before hydration.
+ */
+function stylesheetsFor(manifest, sources) {
+  const entry = new Set(closure(manifest, ['index.html'], 'css'));
+  return [...new Set(closure(manifest, sources, 'css'))].filter(
+    (file) => !entry.has(file),
+  );
 }
 
 function outputFile(route) {
@@ -108,6 +119,10 @@ async function main() {
       canonical,
       `<meta property="og:title" content="${escapeHtml(documentTitle(route))}" />`,
       `<meta property="og:description" content="${escapeHtml(route.description)}" />`,
+      ...stylesheetsFor(manifest, [
+        route.source,
+        ...(route.alsoLoads ?? []),
+      ]).map((file) => `<link rel="stylesheet" crossorigin href="/${file}" />`),
       ...preloadsFor(manifest, [route.source, ...(route.alsoLoads ?? [])]).map(
         (file) => `<link rel="modulepreload" crossorigin href="/${file}" />`,
       ),
