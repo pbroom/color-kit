@@ -10,6 +10,8 @@ import {
   differenceRegions,
   inspectPlaneQuery,
   intersectRegions,
+  getPlaneGamutBoundary,
+  planeHue,
   planeToColor,
   pointDistance,
   projectRegionBetweenPlanes,
@@ -896,6 +898,45 @@ describe('plane api', () => {
     expect(pointDistance({ x: 0, y: 0 }, { x: 1, y: 1 })).toBeCloseTo(
       Math.SQRT2,
       6,
+    );
+  });
+});
+
+describe('planeHue', () => {
+  const redOklchHue = parse('#ff0000').h;
+
+  it('returns the fixed hue of an OKLCH plane unchanged', () => {
+    expect(planeHue(definePlane({ fixed: { h: 264 } }))).toBe(264);
+    expect(planeHue(definePlane({ fixed: { h: 264 } }), -30)).toBe(330);
+  });
+
+  it('converts the model hue of HSL, HSV and HCT planes to an OKLCH hue', () => {
+    const hsl = definePlane({ model: 'hsl', fixed: { h: 0 } });
+    const hsv = definePlane({ model: 'hsv', fixed: { h: 0 } });
+    expect(planeHue(hsl)).toBeCloseTo(redOklchHue, 6);
+    expect(planeHue(hsv)).toBeCloseTo(redOklchHue, 6);
+
+    // HCT and OKLCH hues of blue differ by ~19°; the HCT peak-chroma sample
+    // lands on the OKLCH hue of blue, not at the HCT hue.
+    const blue = parse('#0000ff');
+    const hctHue = toHct(blue).h;
+    const hct = definePlane({ model: 'hct', fixed: { h: hctHue } });
+    expect(Math.abs(hctHue - blue.h)).toBeGreaterThan(10);
+    expect(Math.abs(planeHue(hct) - blue.h)).toBeLessThan(1);
+    // The query results report the same OKLCH hue.
+    expect(getPlaneGamutBoundary(hsl).hue).toBeCloseTo(redOklchHue, 6);
+  });
+
+  it('uses the anchored color when the fixed channels are chromatic', () => {
+    for (const model of ['hsl', 'hsv', 'hct', 'rgb'] as const) {
+      const anchored = definePlaneFromColor(parse('#ff0000'), { model });
+      expect(planeHue(anchored)).toBeCloseTo(redOklchHue, 6);
+    }
+  });
+
+  it('still prefers an explicit hue override', () => {
+    expect(planeHue(definePlane({ model: 'hsl', fixed: { h: 0 } }), 90)).toBe(
+      90,
     );
   });
 });

@@ -265,7 +265,7 @@ export interface PlaneGamutBoundaryQuery {
    */
   gamut?: GamutTarget;
   /**
-   * Hue in degrees. Defaults to the plane's hue (see {@link planeHue}).
+   * OKLCH hue in degrees. Defaults to the plane's hue (see {@link planeHue}).
    */
   hue?: number;
   /**
@@ -329,7 +329,7 @@ export interface PlaneGamutRegionQuery {
 export type PlaneContrastQueryOptions = ContrastRegionPathOptions & {
   /** Color every sample is measured against. */
   reference: Color;
-  /** Hue in degrees. Defaults to the plane's hue (see {@link planeHue}). */
+  /** OKLCH hue in degrees. Defaults to the plane's hue (see {@link planeHue}). */
   hue?: number;
 };
 
@@ -355,7 +355,7 @@ export interface PlaneChromaBandQuery {
    * @defaultValue 'srgb'
    */
   gamut?: GamutTarget;
-  /** Hue in degrees. Defaults to the plane's hue (see {@link planeHue}). */
+  /** OKLCH hue in degrees. Defaults to the plane's hue (see {@link planeHue}). */
   hue?: number;
   /**
    * `'clamped'` uses `requestedChroma` wherever it fits and the gamut edge
@@ -450,7 +450,7 @@ export interface PlaneGamutBoundaryResult {
   kind: 'gamutBoundary';
   /** Gamut that was traced. */
   gamut: GamutTarget;
-  /** Hue the boundary was traced at, in degrees. */
+  /** OKLCH hue the boundary was traced at, in degrees. */
   hue: number;
   /**
    * Boundary from black to white; empty on planes that are not OKLCH
@@ -482,7 +482,7 @@ export interface PlaneGamutRegionResult {
 /** Result of {@link getPlaneContrastBoundary}. */
 export interface PlaneContrastBoundaryResult {
   kind: 'contrastBoundary';
-  /** Hue the contour was traced at, in degrees. */
+  /** OKLCH hue the contour was traced at, in degrees. */
   hue: number;
   /**
    * Longest contour line; empty on planes that are not OKLCH lightness ×
@@ -494,7 +494,7 @@ export interface PlaneContrastBoundaryResult {
 /** Result of {@link getPlaneContrastRegion}. */
 export interface PlaneContrastRegionResult {
   kind: 'contrastRegion';
-  /** Hue the region was traced at, in degrees. */
+  /** OKLCH hue the region was traced at, in degrees. */
   hue: number;
   /**
    * Contour lines bounding the passing area (typically one per side of the
@@ -507,7 +507,7 @@ export interface PlaneContrastRegionResult {
 /** Result of {@link getPlaneChromaBand}. */
 export interface PlaneChromaBandResult {
   kind: 'chromaBand';
-  /** Hue the band was sampled at, in degrees. */
+  /** OKLCH hue the band was sampled at, in degrees. */
   hue: number;
   /**
    * Band from black to white; empty on planes that are not OKLCH lightness ×
