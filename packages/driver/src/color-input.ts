@@ -20,27 +20,47 @@ import type { ParseColorInputExpressionOptions } from './color-input-parser.js';
 export { parseColorInputExpression } from './color-input-parser.js';
 export type { ParseColorInputExpressionOptions } from './color-input-parser.js';
 
+/**
+ * Color model a numeric channel input edits: OKLCH (`l` 0-1, `c` 0-0.4, `h`
+ * degrees), RGB (`r`/`g`/`b` 0-255) or HSL (`h` degrees, `s`/`l` 0-100).
+ * Every model also has an `alpha` channel (0-1).
+ */
 export type ColorInputModel = 'oklch' | 'rgb' | 'hsl';
+/** Channels of the `'oklch'` input model. */
 export type OklchColorInputChannel = 'l' | 'c' | 'h' | 'alpha';
+/** Channels of the `'rgb'` input model. */
 export type RgbColorInputChannel = 'r' | 'g' | 'b' | 'alpha';
+/** Channels of the `'hsl'` input model. */
 export type HslColorInputChannel = 'h' | 's' | 'l' | 'alpha';
+/** Any channel of any {@link ColorInputModel}. */
 export type ColorInputChannel =
   | OklchColorInputChannel
   | RgbColorInputChannel
   | HslColorInputChannel;
+/** Channels valid for `Model`, so `('rgb', 'h')` fails to type-check. */
 export type ColorInputChannelFor<Model extends ColorInputModel> =
   Model extends 'oklch'
     ? OklchColorInputChannel
     : Model extends 'rgb'
       ? RgbColorInputChannel
       : HslColorInputChannel;
+/**
+ * A valid model/channel pair, e.g. `{ model: 'hsl', channel: 's' }`. The
+ * union is discriminated on `model`.
+ */
 export type ColorInputSpec<Model extends ColorInputModel = ColorInputModel> = {
   [Key in Model]: {
+    /** Color model the input edits. */
     model: Key;
+    /** Channel of `model` the input edits. */
     channel: ColorInputChannelFor<Key>;
   };
 }[Model];
 
+/**
+ * Keyboard keys {@link colorFromColorInputKey} steps on: arrows by `step`,
+ * Page Up/Down by `pageStep`, Home/End to the range ends.
+ */
 export type ColorInputKey =
   | 'ArrowRight'
   | 'ArrowLeft'
@@ -51,21 +71,51 @@ export type ColorInputKey =
   | 'Home'
   | 'End';
 
+/** Resolved step sizes for one channel input, in channel units. */
 export interface ColorInputStepConfig {
+  /** Arrow-key and scrub step. */
   step: number;
+  /** Fine step (typically with a modifier key held). */
   fineStep: number;
+  /** Coarse step (typically with Shift held). */
   coarseStep: number;
+  /** Page Up / Page Down step. */
   pageStep: number;
 }
 
+/**
+ * Step overrides for {@link resolveColorInputSteps}. A missing, zero,
+ * negative or non-finite value falls back to the channel default.
+ */
 export interface ResolveColorInputStepsOptions {
+  /**
+   * Arrow-key and scrub step.
+   * @defaultValue per channel: OKLCH `l` 0.01, `c` 0.005, hue 1, RGB 1, HSL `s`/`l` 1, alpha 0.01
+   */
   step?: number;
+  /**
+   * Fine step.
+   * @defaultValue per channel: OKLCH `l`/`c` 0.001, hue 0.1, RGB 0.1, HSL `s`/`l` 0.1, alpha 0.001
+   */
   fineStep?: number;
+  /**
+   * Coarse step.
+   * @defaultValue per channel: OKLCH `l` 0.1, `c` 0.05, hue 10, RGB 10, HSL `s`/`l` 10, alpha 0.1
+   */
   coarseStep?: number;
+  /**
+   * Page Up / Page Down step.
+   * @defaultValue per channel: OKLCH `l` 0.1, `c` 0.05, hue 45, RGB 25, HSL `s`/`l` 10, alpha 0.1
+   */
   pageStep?: number;
 }
 
+/** Options for {@link resolveColorInputDraftValue}. */
 export interface ResolveColorInputDraftValueOptions extends ParseColorInputExpressionOptions {
+  /**
+   * Wrap the parsed value into `range` (hue-style) instead of clamping it.
+   * @defaultValue false
+   */
   wrap?: boolean;
 }
 
@@ -74,8 +124,11 @@ export interface ResolveColorInputDraftValueOptions extends ParseColorInputExpre
  * compatible with control-kit's `PrimitiveExpressionParser` callback).
  */
 export interface ColorInputPrimitiveExpressionOptions {
+  /** Accept arithmetic and relative expressions, not just a single number. */
   allowExpressions: boolean;
+  /** Current channel value; the left operand of relative input like `+10`. */
   currentValue: number;
+  /** Channel range `[min, max]`; percentages are fractions of its span. */
   range: [number, number];
 }
 
@@ -106,6 +159,12 @@ const COLOR_INPUT_LABELS: ColorInputChannelTable<string> = {
   },
 };
 
+/**
+ * Default `[min, max]` range of every channel input, keyed by model then
+ * channel: OKLCH `l` `[0, 1]`, `c` `[0, 0.4]`, `h` `[0, 360]`; RGB `r`/`g`/`b`
+ * `[0, 255]`; HSL `h` `[0, 360]`, `s`/`l` `[0, 100]`; `alpha` `[0, 1]` in
+ * every model. {@link resolveColorInputRange} reads it.
+ */
 export const COLOR_INPUT_DEFAULT_RANGES: ColorInputChannelTable<
   [number, number]
 > = {
@@ -215,6 +274,24 @@ function resolveStepValue(value: number | undefined, fallback: number): number {
   return value;
 }
 
+/**
+ * Returns `range` when given, otherwise the channel's default from
+ * {@link COLOR_INPUT_DEFAULT_RANGES}.
+ *
+ * @param model - Color model of the input.
+ * @param channel - Channel of `model`.
+ * @param range - Explicit `[min, max]` override, returned as is.
+ * @throws {Error} When no `range` is given and `channel` does not belong to
+ * `model`.
+ *
+ * @example
+ * ```ts
+ * import { resolveColorInputRange } from 'color-kit/driver';
+ *
+ * resolveColorInputRange('rgb', 'r'); // → [0, 255]
+ * resolveColorInputRange('oklch', 'c', [0, 0.5]); // → [0, 0.5]
+ * ```
+ */
 export function resolveColorInputRange<Model extends ColorInputModel>(
   model: Model,
   channel: ColorInputChannelFor<Model>,
@@ -226,6 +303,19 @@ export function resolveColorInputRange<Model extends ColorInputModel>(
   );
 }
 
+/**
+ * Returns `wrap` when given, otherwise whether the channel is a hue (OKLCH or
+ * HSL `h`), which wraps around its range instead of clamping.
+ *
+ * @example
+ * ```ts
+ * import { resolveColorInputWrap } from 'color-kit/driver';
+ *
+ * resolveColorInputWrap('hsl', 'h'); // → true
+ * resolveColorInputWrap('oklch', 'l'); // → false
+ * resolveColorInputWrap('oklch', 'h', false); // → false
+ * ```
+ */
 export function resolveColorInputWrap<Model extends ColorInputModel>(
   model: Model,
   channel: ColorInputChannelFor<Model>,
@@ -234,6 +324,23 @@ export function resolveColorInputWrap<Model extends ColorInputModel>(
   return wrap ?? isHueChannel(model, channel);
 }
 
+/**
+ * Resolves the step sizes for a channel input: each option that is a finite
+ * positive number wins, anything else falls back to the channel default.
+ *
+ * @throws {Error} When `channel` does not belong to `model`.
+ * @see {@link ResolveColorInputStepsOptions} for the per-channel defaults.
+ *
+ * @example
+ * ```ts
+ * import { resolveColorInputSteps } from 'color-kit/driver';
+ *
+ * resolveColorInputSteps('oklch', 'h');
+ * // → { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 }
+ * resolveColorInputSteps('rgb', 'r', { step: 5, pageStep: -1 });
+ * // → { step: 5, fineStep: 0.1, coarseStep: 10, pageStep: 25 }
+ * ```
+ */
 export function resolveColorInputSteps<Model extends ColorInputModel>(
   model: Model,
   channel: ColorInputChannelFor<Model>,
@@ -253,6 +360,20 @@ export function resolveColorInputSteps<Model extends ColorInputModel>(
   };
 }
 
+/**
+ * Returns the English accessible label for a channel input, e.g.
+ * `'OKLCH lightness'`, `'Red'` or `'Opacity'`.
+ *
+ * @throws {Error} When `channel` does not belong to `model`.
+ *
+ * @example
+ * ```ts
+ * import { getColorInputLabel } from 'color-kit/driver';
+ *
+ * getColorInputLabel('oklch', 'c'); // → 'OKLCH chroma'
+ * getColorInputLabel('hsl', 's'); // → 'Saturation'
+ * ```
+ */
 export function getColorInputLabel<Model extends ColorInputModel>(
   model: Model,
   channel: ColorInputChannelFor<Model>,
@@ -282,6 +403,20 @@ const COLOR_INPUT_GLYPHS: ColorInputChannelTable<string> = {
   },
 };
 
+/**
+ * Returns the one-character glyph for a channel input's leading scrub
+ * handle: the uppercase channel letter, or `'α'` for alpha.
+ *
+ * @throws {Error} When `channel` does not belong to `model`.
+ *
+ * @example
+ * ```ts
+ * import { getColorInputChannelGlyph } from 'color-kit/driver';
+ *
+ * getColorInputChannelGlyph('oklch', 'c'); // → 'C'
+ * getColorInputChannelGlyph('rgb', 'alpha'); // → 'α'
+ * ```
+ */
 export function getColorInputChannelGlyph<Model extends ColorInputModel>(
   model: Model,
   channel: ColorInputChannelFor<Model>,
@@ -289,6 +424,20 @@ export function getColorInputChannelGlyph<Model extends ColorInputModel>(
   return getColorInputChannelTableValue(COLOR_INPUT_GLYPHS, model, channel);
 }
 
+/**
+ * Maps an input's channel to the OKLCH {@link ColorChannel} reported as
+ * `changedChannel` in {@link ColorUpdateEvent}. Only OKLCH inputs map to a
+ * channel; RGB and HSL edits change several OKLCH channels at once and
+ * return `undefined`.
+ *
+ * @example
+ * ```ts
+ * import { getColorInputChangedChannel } from 'color-kit/driver';
+ *
+ * getColorInputChangedChannel('oklch', 'h'); // → 'h'
+ * getColorInputChangedChannel('rgb', 'r'); // → undefined
+ * ```
+ */
 export function getColorInputChangedChannel<Model extends ColorInputModel>(
   model: Model,
   channel: ColorInputChannelFor<Model>,
@@ -298,6 +447,21 @@ export function getColorInputChangedChannel<Model extends ColorInputModel>(
     : undefined;
 }
 
+/**
+ * Wraps `value` into `range` when `wrap` is true, otherwise clamps it.
+ * Wrapping keeps a value equal to `max` at `max` (360 stays 360, not 0).
+ * A non-finite `value` returns `range[0]`; an empty or inverted range
+ * returns `value` unchanged.
+ *
+ * @example
+ * ```ts
+ * import { normalizeColorInputValue } from 'color-kit/driver';
+ *
+ * normalizeColorInputValue(400, [0, 360], true); // → 40
+ * normalizeColorInputValue(-20, [0, 360], true); // → 340
+ * normalizeColorInputValue(1.2, [0, 1], false); // → 1
+ * ```
+ */
 export function normalizeColorInputValue(
   value: number,
   range: [number, number],
@@ -316,6 +480,23 @@ export function normalizeColorInputValue(
  * black or white) the HSL hue is not the canonical `0` but the HSL hue of the
  * stored OKLCH hue: the hue of the 1%-saturated HSL color at the same
  * lightness (clamped to 5-95%) whose OKLCH hue is `color.h`.
+ *
+ * Values are unrounded, in the channel's units (RGB 0-255, HSL `s`/`l`
+ * 0-100); format them with {@link formatColorInputChannelValue}.
+ *
+ * @throws {Error} When `channel` does not belong to `model`.
+ *
+ * @example
+ * ```ts
+ * import { parse } from 'color-kit';
+ * import { getColorInputChannelValue } from 'color-kit/driver';
+ *
+ * const blue = parse('#3b82f6');
+ * getColorInputChannelValue(blue, 'rgb', 'r'); // → 59
+ * getColorInputChannelValue(blue, 'hsl', 'h').toFixed(1); // → '217.2'
+ * const gray = { l: 0.6, c: 0, h: 250, alpha: 1 };
+ * getColorInputChannelValue(gray, 'hsl', 'h').toFixed(1); // → '211.2'
+ * ```
  */
 export function getColorInputChannelValue<Model extends ColorInputModel>(
   color: Color,
@@ -505,6 +686,23 @@ function colorFromAchromaticHslEdit(
  * - Lightness and alpha edits keep `color.h`.
  *
  * RGB edits away from a gray take whatever hue the new RGB values have.
+ *
+ * `value` is not clamped; normalize it first with
+ * {@link normalizeColorInputValue}.
+ *
+ * @throws {Error} When `channel` does not belong to `model`.
+ *
+ * @example
+ * ```ts
+ * import { parse, toHex } from 'color-kit';
+ * import { colorFromColorInputChannelValue } from 'color-kit/driver';
+ *
+ * const blue = parse('#3b82f6');
+ * toHex(colorFromColorInputChannelValue(blue, 'rgb', 'r', 255)); // → '#ff82f6'
+ * const gray = colorFromColorInputChannelValue(blue, 'hsl', 's', 0);
+ * gray.c < 0.001; // → true
+ * gray.h === blue.h; // → true
+ * ```
  */
 export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
   color: Color,
@@ -547,6 +745,21 @@ export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
   return assertInvalidColorInputPair(model, channel);
 }
 
+/**
+ * Number of decimal places needed to show values on a `step` grid: the count
+ * of decimals in `|step|`, capped at 6. A zero or non-finite step returns
+ * `2`.
+ *
+ * @example
+ * ```ts
+ * import { getColorInputPrecisionFromStep } from 'color-kit/driver';
+ *
+ * getColorInputPrecisionFromStep(1); // → 0
+ * getColorInputPrecisionFromStep(0.01); // → 2
+ * getColorInputPrecisionFromStep(0.005); // → 3
+ * getColorInputPrecisionFromStep(0); // → 2
+ * ```
+ */
 export function getColorInputPrecisionFromStep(step: number): number {
   const safeStep = Math.abs(step);
   if (!Number.isFinite(safeStep) || safeStep <= 0) {
@@ -562,6 +775,20 @@ export function getColorInputPrecisionFromStep(step: number): number {
   return precision;
 }
 
+/**
+ * Formats a channel value for display: rounds to `precision` decimals
+ * (itself rounded and clamped to 0-6) and drops trailing zeros. `-0` and
+ * non-finite values format as `'0'`.
+ *
+ * @example
+ * ```ts
+ * import { formatColorInputChannelValue } from 'color-kit/driver';
+ *
+ * formatColorInputChannelValue(0.62795, 3); // → '0.628'
+ * formatColorInputChannelValue(120, 2); // → '120'
+ * formatColorInputChannelValue(-0.0001, 2); // → '0'
+ * ```
+ */
 export function formatColorInputChannelValue(
   value: number,
   precision: number,
@@ -570,6 +797,26 @@ export function formatColorInputChannelValue(
   return formatPrimitiveValue(value, safePrecision, true);
 }
 
+/**
+ * Parses a typed draft with {@link parseColorInputExpression}, then wraps or
+ * clamps the result into `options.range` (see
+ * {@link normalizeColorInputValue}). Returns `null` when the draft does not
+ * parse, so the input can keep or revert its value.
+ *
+ * @example
+ * ```ts
+ * import { resolveColorInputDraftValue } from 'color-kit/driver';
+ *
+ * const alpha = { currentValue: 0.3, range: [0, 1] as [number, number] };
+ * resolveColorInputDraftValue('50%', alpha); // → 0.5
+ * resolveColorInputDraftValue('1.5', alpha); // → 1
+ * resolveColorInputDraftValue('abc', alpha); // → null
+ * resolveColorInputDraftValue('+0.1', { ...alpha, allowExpressions: true }); // → 0.4
+ *
+ * const hue = { currentValue: 0, range: [0, 360] as [number, number] };
+ * resolveColorInputDraftValue('370deg', { ...hue, wrap: true }); // → 10
+ * ```
+ */
 export function resolveColorInputDraftValue(
   input: string,
   options: ResolveColorInputDraftValueOptions,
@@ -586,6 +833,31 @@ export function resolveColorInputDraftValue(
   return normalizeColorInputValue(parsed, options.range, options.wrap ?? false);
 }
 
+/**
+ * Applies a keyboard step to one channel of `color`. Arrow Up/Right add
+ * `options.step`, Arrow Down/Left subtract it, Page Up/Down use
+ * `options.pageStep` (default: `step`), and Home/End jump to the range ends.
+ * The stepped value is wrapped or clamped into `options.range` (`wrap`
+ * defaults to `false`) and written back with
+ * {@link colorFromColorInputChannelValue}.
+ *
+ * @param key - A `KeyboardEvent.key` value; see {@link ColorInputKey}.
+ * @returns The new color and channel value, or `null` for any other key.
+ * @throws {Error} When `channel` does not belong to `model`.
+ *
+ * @example
+ * ```ts
+ * import { parse, toHex } from 'color-kit';
+ * import { colorFromColorInputKey } from 'color-kit/driver';
+ *
+ * const blue = parse('#3b82f6');
+ * const options = { step: 10, range: [0, 255] as [number, number] };
+ * const next = colorFromColorInputKey(blue, 'rgb', 'r', 'ArrowUp', options);
+ * next?.value; // → 69
+ * toHex(next!.color); // → '#4582f6'
+ * colorFromColorInputKey(blue, 'rgb', 'r', 'Enter', options); // → null
+ * ```
+ */
 export function colorFromColorInputKey<Model extends ColorInputModel>(
   color: Color,
   model: Model,

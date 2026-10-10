@@ -37,12 +37,12 @@ import {
  *
  * @example
  * ```ts
- * import { interpolate, parse } from 'color-kit';
+ * import { interpolate, parse, toHex } from 'color-kit';
  *
  * const a = parse('#3b82f6');
  * const b = parse('#ef4444');
- * interpolate(a, b, 0.25);
- * interpolate(a, b, 0.25, { space: 'oklch', hue: 'longer' });
+ * toHex(interpolate(a, b, 0.25)); // → '#8c6bf1'
+ * toHex(interpolate(a, b, 0.25, { space: 'oklch', hue: 'longer' })); // → '#00a6b8'
  * ```
  */
 export function interpolate(
@@ -111,10 +111,12 @@ export function interpolateInto(
  *
  * @example
  * ```ts
- * import { generateScale, parse } from 'color-kit';
+ * import { generateScale, parse, toHex } from 'color-kit';
  *
- * generateScale(parse('#0f172a'), parse('#f8fafc'), 7);
- * generateScale(parse('#f00'), parse('#00f'), 5, { space: 'linear-srgb' });
+ * generateScale(parse('#f00'), parse('#00f'), 5).map(toHex);
+ * // → ['#ff0000', '#e8007b', '#ba00c2', '#7a00f4', '#0000ff']
+ * generateScale(parse('#f00'), parse('#00f'), 5, { space: 'linear-srgb' }).map(toHex);
+ * // → ['#ff0000', '#e10089', '#bc00bc', '#8900e1', '#0000ff']
  * ```
  */
 export function generateScale(
@@ -130,12 +132,25 @@ export function generateScale(
 }
 
 /**
- * Generate a lightness scale for a given hue/chroma.
- * Creates a scale from dark to light while preserving hue and chroma.
+ * Generate a dark-to-light scale at the hue and chroma of `color`: `steps`
+ * colors with OKLCH lightness evenly spaced from `range[0]` to `range[1]`
+ * (both included). Chroma, hue and alpha are copied unchanged, so stops near
+ * the ends can fall outside the sRGB gamut; they are not gamut mapped.
  *
- * @param color - Base color (hue and chroma are preserved)
- * @param steps - Number of stops in the scale
- * @param range - Lightness range [min, max], defaults to [0.05, 0.95]
+ * @param color - Base color (hue, chroma and alpha are preserved)
+ * @param steps - Number of stops in the scale (default `11`, minimum `2`)
+ * @param range - Lightness range `[min, max]` (default `[0.05, 0.95]`)
+ * @returns `steps` new Colors
+ * @throws {Error} When `steps` is less than 2
+ * @see {@link generateScale}
+ *
+ * @example
+ * ```ts
+ * import { lightnessScale, parse } from 'color-kit';
+ *
+ * lightnessScale(parse('oklch(0.6 0.1 250)'), 3, [0.2, 0.8]).map((c) => c.l);
+ * // → [0.2, 0.5, 0.8]
+ * ```
  */
 export function lightnessScale(
   color: Color,

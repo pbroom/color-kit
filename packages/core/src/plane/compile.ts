@@ -6,12 +6,23 @@ import type {
 } from './types.js';
 import { resolvePlaneDefinition } from './plane.js';
 
+/** Formatting options for {@link toSvgPath} and {@link toSvgCompoundPath}. */
 export interface SvgPathCompileOptions {
-  /** Appends `Z` to close the generated path. */
+  /**
+   * Appends `Z` to close each generated path.
+   * @defaultValue false
+   */
   closeLoop?: boolean;
-  /** Decimal precision used when formatting SVG coordinates. */
+  /**
+   * Decimal places used when formatting each coordinate.
+   * @defaultValue 3
+   */
   precision?: number;
-  /** Multiplier applied to normalized plane coordinates before formatting. */
+  /**
+   * Multiplier applied to normalized plane coordinates before formatting;
+   * `100` maps the plane onto an SVG `viewBox="0 0 100 100"`.
+   * @defaultValue 100
+   */
   scale?: number;
 }
 
@@ -40,13 +51,31 @@ function pathForPoints(
 }
 
 /**
- * Compiles one point sequence into an SVG path string.
+ * Compiles an ordered list of plane points into an SVG path `d` string.
  *
- * @param points Ordered point list in normalized plane coordinates.
- * @param options SVG path formatting options.
- * @param options.closeLoop Appends `Z` to close the generated path.
- * @param options.precision Decimal precision used for coordinate formatting.
- * @param options.scale Multiplier applied to normalized point coordinates.
+ * Emits `M x y` for the first point and `L x y` for each following point,
+ * with coordinates multiplied by `scale` and fixed to `precision` decimals.
+ * Plane `y` maps directly to SVG `y` (both grow downward). Returns `''` when
+ * fewer than two points are given.
+ *
+ * @param points - Ordered points in normalized plane coordinates.
+ * @param options - Formatting options; see {@link SvgPathCompileOptions}.
+ * @returns The path data string.
+ * @see {@link toSvgCompoundPath} for several paths at once.
+ *
+ * @example
+ * ```ts
+ * import { toSvgPath } from 'color-kit/plane';
+ *
+ * const points = [
+ *   { x: 0, y: 1 },
+ *   { x: 0.5, y: 0.25 },
+ *   { x: 1, y: 1 },
+ * ];
+ * toSvgPath(points); // → 'M 0.000 100.000 L 50.000 25.000 L 100.000 100.000'
+ * toSvgPath(points, { scale: 200, precision: 0, closeLoop: true });
+ * // → 'M 0 200 L 100 50 L 200 200 Z'
+ * ```
  */
 export function toSvgPath(
   points: PlanePoint[],
@@ -56,13 +85,29 @@ export function toSvgPath(
 }
 
 /**
- * Compiles multiple point sequences into one compound SVG path string.
+ * Compiles several point lists into one compound SVG path `d` string.
  *
- * @param paths Collection of point lists in normalized plane coordinates.
- * @param options SVG path formatting options applied to each subpath.
- * @param options.closeLoop Appends `Z` to close each generated subpath.
- * @param options.precision Decimal precision used for coordinate formatting.
- * @param options.scale Multiplier applied to normalized point coordinates.
+ * Each list becomes a subpath formatted as in {@link toSvgPath}; lists with
+ * fewer than two points are skipped. Use it for multi-path query output such
+ * as a gamut region's `visibleRegion.paths` or a contrast region's `paths`.
+ *
+ * @param paths - Point lists in normalized plane coordinates.
+ * @param options - Formatting options applied to every subpath; see
+ * {@link SvgPathCompileOptions}.
+ * @returns The path data string, subpaths separated by spaces.
+ *
+ * @example
+ * ```ts
+ * import {
+ *   definePlane,
+ *   getPlaneGamutRegion,
+ *   toSvgCompoundPath,
+ * } from 'color-kit/plane';
+ *
+ * const region = getPlaneGamutRegion(definePlane({ fixed: { h: 264 } }));
+ * const d = toSvgCompoundPath(region.visibleRegion.paths, { closeLoop: true });
+ * // → 'M 50.000 29.736 L … Z' (one closed subpath)
+ * ```
  */
 export function toSvgCompoundPath(
   paths: PlanePoint[][],
@@ -95,8 +140,30 @@ function stableStringify(value: unknown): string {
 /**
  * Creates a deterministic cache key for a plane/query pair.
  *
- * @param plane Plane definition used for the query.
- * @param query Query definition run against the plane.
+ * The plane is resolved first and both parts are serialized with sorted
+ * object keys, so equivalent definitions (defaults omitted or spelled out,
+ * properties in any order) produce the same key. The key starts with the
+ * serialized plane, so `PlaneQueryCache.invalidateByPrefix()` can drop every
+ * entry for one plane.
+ *
+ * @param plane - Plane the query runs against; a {@link Plane} or any
+ * {@link PlaneDefinition}.
+ * @param query - Query payload.
+ * @returns The key string.
+ * @throws {TypeError} When the plane model is not supported.
+ * @throws {Error} When the plane definition is otherwise invalid.
+ *
+ * @example
+ * ```ts
+ * import { createPlaneQueryKey, definePlane } from 'color-kit/plane';
+ *
+ * const a = createPlaneQueryKey({ fixed: { h: 264 } }, { kind: 'gamutBoundary' });
+ * const b = createPlaneQueryKey(definePlane({ fixed: { h: 264, alpha: 1 } }), {
+ *   kind: 'gamutBoundary',
+ * });
+ * a === b; // → true
+ * a.slice(0, 24); // → '{"fixed":{"alpha":1,"c":'
+ * ```
  */
 export function createPlaneQueryKey(
   plane: PlaneDefinition,
@@ -105,12 +172,14 @@ export function createPlaneQueryKey(
   return `${stableStringify(resolvePlaneDefinition(plane))}:${stableStringify(query)}`;
 }
 
+/** Options for the {@link PlaneQueryCache} constructor. */
 export interface PlaneQueryCacheOptions {
   /**
    * Maximum number of cached query results retained. When the cache grows
-   * past this bound, least-recently-used entries are evicted first.
+   * past this bound, least-recently-used entries are evicted first. Values
+   * are floored and raised to at least `1`; non-finite values use the default.
    *
-   * @default 128
+   * @defaultValue 128
    */
   maxEntries?: number;
 }
@@ -124,11 +193,26 @@ export interface PlaneQueryCacheOptions {
 const DEFAULT_PLANE_QUERY_CACHE_MAX_ENTRIES = 128;
 
 /**
- * Caches plane query results by a deterministic plane/query key.
+ * LRU cache of plane query results, keyed by {@link createPlaneQueryKey}.
  *
- * The cache is LRU-bounded: reads refresh an entry's recency and writes evict
- * the least-recently-used entries once {@link PlaneQueryCacheOptions.maxEntries}
- * is exceeded.
+ * Reads (`get`, `has`) refresh an entry's recency and writes evict the
+ * least-recently-used entries once {@link PlaneQueryCacheOptions.maxEntries}
+ * is exceeded. Results are stored and returned by reference; treat them as
+ * read-only. Pair it with {@link runCachedPlaneQuery}.
+ *
+ * @example
+ * ```ts
+ * import { definePlane, PlaneQueryCache, runPlaneQuery } from 'color-kit/plane';
+ *
+ * const cache = new PlaneQueryCache({ maxEntries: 1 });
+ * const plane = definePlane({ fixed: { h: 264 } });
+ * const a = { kind: 'gamutBoundary' } as const;
+ * const b = { kind: 'chromaBand' } as const;
+ * cache.set(plane, a, runPlaneQuery(plane, a));
+ * cache.set(plane, b, runPlaneQuery(plane, b)); // evicts `a`
+ * cache.has(plane, a); // → false
+ * cache.has(plane, b); // → true
+ * ```
  */
 export class PlaneQueryCache {
   private entries = new Map<string, PlaneQueryResult>();
@@ -193,12 +277,40 @@ export class PlaneQueryCache {
 }
 
 /**
- * Executes a plane query with cache lookup and cache write-through.
+ * Returns the cached result for a plane/query pair, or runs `execute` and
+ * caches what it returns.
  *
- * @param cache Cache instance used for reads and writes.
- * @param plane Plane definition used for the query.
- * @param query Query definition run against the plane.
- * @param execute Function invoked only on cache miss.
+ * `execute` is called only on a cache miss; it is not checked against
+ * `query`, so it must compute the result for that same plane and query.
+ *
+ * @param cache - Cache to read from and write to.
+ * @param plane - Plane the query runs against; a {@link Plane} or any
+ * {@link PlaneDefinition}.
+ * @param query - Query payload, used for the cache key.
+ * @param execute - Computes the result on a miss (for example
+ * `() => runPlaneQuery(plane, query)`).
+ * @returns The cached or freshly computed result (same reference on a hit).
+ *
+ * @example
+ * ```ts
+ * import {
+ *   definePlane,
+ *   getPlaneGamutBoundary,
+ *   PlaneQueryCache,
+ *   runCachedPlaneQuery,
+ * } from 'color-kit/plane';
+ *
+ * const cache = new PlaneQueryCache({ maxEntries: 32 });
+ * const plane = definePlane({ fixed: { h: 264 } });
+ * const query = { kind: 'gamutBoundary' } as const;
+ * const first = runCachedPlaneQuery(cache, plane, query, () =>
+ *   getPlaneGamutBoundary(plane),
+ * );
+ * const second = runCachedPlaneQuery(cache, plane, query, () =>
+ *   getPlaneGamutBoundary(plane),
+ * );
+ * first === second; // → true (execute ran once)
+ * ```
  */
 export function runCachedPlaneQuery(
   cache: PlaneQueryCache,

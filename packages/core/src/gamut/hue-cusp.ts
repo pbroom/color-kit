@@ -185,11 +185,29 @@ function sampleHueCuspLut(
 }
 
 /**
- * Resolve the hue cusp: the lightness/chroma point with maximum in-gamut
- * chroma for a fixed hue.
+ * Returns the hue cusp: the OKLCH lightness/chroma point with the maximum
+ * in-gamut chroma for a fixed hue.
  *
- * This avoids scanning lightness values and supports a cached LUT mode for
- * very high-throughput repeated queries (e.g. interactive wheels/overlays).
+ * `'direct'` solves the cusp analytically without scanning lightness.
+ * `'lut'` (the default) interpolates a per-gamut lookup table built on first
+ * use and cached, for high-throughput repeated queries (e.g. interactive
+ * wheels/overlays); its result can differ from `'direct'` by interpolation
+ * error.
+ *
+ * @param hue - OKLCH hue in degrees.
+ * @param options - Gamut, method and LUT size.
+ * @returns The cusp `{ l, c }`.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {Error} When `options.method` is not `'direct'` or `'lut'`.
+ * @see {@link maxChromaAt}
+ *
+ * @example
+ * ```ts
+ * import { maxChromaForHue } from 'color-kit';
+ *
+ * maxChromaForHue(250); // → { l: ≈ 0.6614, c: ≈ 0.1872 }
+ * maxChromaForHue(250, { gamut: 'display-p3' }); // → { l: ≈ 0.6227, c: ≈ 0.2276 }
+ * ```
  */
 export function maxChromaForHue(
   hue: number,

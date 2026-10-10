@@ -13,6 +13,11 @@ import type {
   PlaneQueryTraceOptions,
 } from './types.js';
 
+/**
+ * Creates the mutable trace context that collects one query's
+ * `PlaneQueryTrace` while it runs. Used by `inspectPlaneQuery`; not part of
+ * the public API.
+ */
 export function createPlaneTraceContext(
   query: PlaneQuery,
   options?: PlaneQueryTraceOptions,
@@ -20,12 +25,21 @@ export function createPlaneTraceContext(
   return createTraceContext(query.kind, options);
 }
 
+/**
+ * Counts the paths and points a query result carries, using the kind's query
+ * spec. Feeds `resultPathCount` / `resultPointCount` in the trace summary.
+ */
 export function countResultGeometry(
   result: PlaneQueryResult,
 ): PlaneQueryGeometryCount {
   return getPlaneQuerySpec(result.kind).countGeometry(result);
 }
 
+/**
+ * Completes a trace once its query has produced `result`: records the result
+ * geometry counts and total time, appends the closing `metrics` stage (at
+ * `'stages'` and `'full'` levels) and pairs the trace with the result.
+ */
 export function finalizePlaneTrace<Result extends PlaneQueryResult>(
   trace: InternalPlaneTraceContext,
   result: Result,

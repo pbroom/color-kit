@@ -136,6 +136,32 @@ function sortBucketsByRecentUse(
  * and records per-workload timing telemetry (EWMA of total time, bucketed
  * by query kinds, workload signature, priority, quality, profile, and
  * estimated budget).
+ *
+ * Telemetry is in-memory and per scheduler; when `maxTelemetryBuckets` is
+ * reached the least recently used bucket is evicted. Responses gain
+ * `schedule`, and traced responses get `bucketKey` / `scheduleReason` in each
+ * trace summary.
+ *
+ * @param config - Optional backends and telemetry options.
+ * @param config.backends - Backends by kind. Only `js` is used; defaults to a
+ * new {@link createJsPlaneComputeBackend} instance.
+ * @param config.options - Telemetry settings.
+ * @returns A {@link PlaneComputeScheduler}.
+ * @see {@link runScheduledPlaneCompute}
+ * @example
+ * ```ts
+ * import { createPlaneComputeScheduler } from 'color-kit/compute';
+ *
+ * const scheduler = createPlaneComputeScheduler({ options: { maxTelemetryBuckets: 16 } });
+ * const response = scheduler.run({
+ *   plane: { model: 'oklch', fixed: { h: 250 } },
+ *   queries: [{ kind: 'gamutRegion', gamut: 'srgb' }],
+ *   priority: 'drag',
+ * });
+ *
+ * response.result.queryDescriptors.map((d) => d.kind); // → ['gamutRegion']
+ * scheduler.getTelemetrySnapshot().buckets.length; // → 1
+ * ```
  */
 export function createPlaneComputeScheduler({
   backends,

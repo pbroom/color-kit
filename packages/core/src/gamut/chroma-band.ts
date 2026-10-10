@@ -15,10 +15,36 @@ const CHROMA_BAND_CROSSING_EPSILON = 1e-7;
 const CHROMA_BAND_CROSSING_ITERATIONS = 18;
 
 /**
- * Generate a tonal strip for a fixed hue and requested chroma.
+ * Returns a tonal strip of OKLCH colors from black to white at a fixed hue,
+ * keeping each step inside the target gamut.
  *
- * `clamped`: use requested chroma where available, otherwise clamp to boundary.
- * `proportional`: scale by a fixed requested/max ratio across all lightness steps.
+ * - `'clamped'` (default): use `requestedChroma` where the gamut allows it,
+ *   otherwise the boundary chroma at that lightness.
+ * - `'proportional'`: take the ratio of `requestedChroma` to the boundary
+ *   chroma at `selectedLightness` (capped at 1) and apply it to the boundary
+ *   chroma at every step.
+ *
+ * Uniform sampling returns `steps + 1` colors; adaptive sampling follows
+ * {@link gamutBoundaryPath} and, in clamped mode, adds a color where the
+ * boundary crosses `requestedChroma`. Every color carries the normalized hue
+ * and `options.alpha`.
+ *
+ * @param hue - OKLCH hue in degrees.
+ * @param requestedChroma - Desired OKLCH chroma (negative values act as 0).
+ * @param options - Mode, sampling, gamut and search options.
+ * @returns Colors ordered by increasing lightness.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {Error} When `requestedChroma` is not finite, `mode` or
+ *   `samplingMode` is unknown, or `steps` is not an integer >= 2 (uniform
+ *   mode).
+ *
+ * @example
+ * ```ts
+ * import { chromaBand } from 'color-kit';
+ *
+ * chromaBand(250, 0.1, { steps: 4 }).map((color) => color.c);
+ * // → [0, 0.070703125, 0.1, 0.1, 0]
+ * ```
  */
 export function chromaBand(
   hue: number,

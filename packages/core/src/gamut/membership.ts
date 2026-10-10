@@ -66,25 +66,51 @@ export function getTargetRows(gamut: GamutTarget): TargetRows {
 }
 
 /**
- * Checks linear-light RGB channels (linear sRGB or linear Display P3, which
- * share the sRGB transfer function) against the unit cube, allowing
- * `GAMUT_EPSILON` of slack on the gamma-encoded channels (linear bounds
- * `[-GAMUT_EPSILON / 12.92, linearize(1 + GAMUT_EPSILON)]`, shared with the
- * plane gamut-region solver via `linear-bounds.ts`).
+ * Returns whether unclamped linear-light RGB channels (linear sRGB or linear
+ * Display P3, which share the sRGB transfer function) lie inside the unit
+ * cube, allowing {@link GAMUT_EPSILON} of slack on the gamma-encoded
+ * channels: each channel must be within
+ * [{@link GAMUT_LINEAR_MIN}, {@link GAMUT_LINEAR_MAX}].
  *
- * This is the membership rule behind `inSrgbGamut` / `inP3Gamut`, exposed for
- * hot loops (e.g. per-pixel canvas rendering) that already hold linear
- * channels and want to avoid re-converting from OKLCH.
+ * This is the membership rule behind {@link inSrgbGamut} /
+ * {@link inP3Gamut}, exposed for hot loops (e.g. per-pixel canvas rendering)
+ * that already hold linear channels and want to avoid re-converting from
+ * OKLCH. Allocation-free.
+ *
+ * @param r - Linear red channel.
+ * @param g - Linear green channel.
+ * @param b - Linear blue channel.
+ *
+ * @example
+ * ```ts
+ * import { isLinearRgbInGamut } from 'color-kit';
+ *
+ * isLinearRgbInGamut(0, 0.5, 1); // → true
+ * isLinearRgbInGamut(1.0001, 0.5, 0.2); // → true (within the epsilon slack)
+ * isLinearRgbInGamut(-0.001, 0, 0); // → false
+ * ```
  */
 export function isLinearRgbInGamut(r: number, g: number, b: number): boolean {
   return linearChannelsInGamut(r, g, b);
 }
 
 /**
- * Check if a Color is within the sRGB gamut.
+ * Returns whether an OKLCH color is inside the sRGB gamut.
  *
- * Uses unclamped linear sRGB values to avoid the false-positive
- * caused by the clamping in `linearToSrgb` / `toRgb`.
+ * Tests the unclamped linear sRGB channels with {@link isLinearRgbInGamut}
+ * (so clamping in `toRgb` cannot produce a false positive), allowing
+ * {@link GAMUT_EPSILON} of slack on the encoded channels. Allocation-free.
+ *
+ * @see {@link inP3Gamut}
+ * @see {@link toSrgbGamut}
+ *
+ * @example
+ * ```ts
+ * import { inSrgbGamut } from 'color-kit';
+ *
+ * inSrgbGamut({ l: 0.7, c: 0.1, h: 150, alpha: 1 }); // → true
+ * inSrgbGamut({ l: 0.7, c: 0.2, h: 150, alpha: 1 }); // → false
+ * ```
  */
 export function inSrgbGamut(color: Color): boolean {
   const linear = scratchLinearSrgb(color);
@@ -92,10 +118,24 @@ export function inSrgbGamut(color: Color): boolean {
 }
 
 /**
- * Check if a Color is within the Display P3 gamut.
+ * Returns whether an OKLCH color is inside the Display P3 gamut.
  *
- * Uses unclamped linear P3 values to avoid the false-positive
- * caused by the clamping in `linearP3ToP3` / `toP3`.
+ * Tests the unclamped linear Display P3 channels with
+ * {@link isLinearRgbInGamut} (so clamping in `toP3` cannot produce a false
+ * positive), allowing {@link GAMUT_EPSILON} of slack on the encoded
+ * channels. Allocation-free.
+ *
+ * @see {@link inSrgbGamut}
+ * @see {@link toP3Gamut}
+ *
+ * @example
+ * ```ts
+ * import { inP3Gamut, inSrgbGamut } from 'color-kit';
+ *
+ * const green = { l: 0.7, c: 0.2, h: 150, alpha: 1 };
+ * inP3Gamut(green); // → true
+ * inSrgbGamut(green); // → false
+ * ```
  */
 export function inP3Gamut(color: Color): boolean {
   const linearP3 = scratchLinearTarget(color, 'display-p3');
@@ -276,6 +316,7 @@ function resolveMethod(options: GamutMapOptions | undefined): GamutMapMethod {
  *
  * const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
  * toSrgbGamutInto(mapped, { l: 0.7, c: 0.35, h: 150, alpha: 1 });
+ * mapped; // → { l: 0.7, c: ≈ 0.1928, h: 150, alpha: 1 }
  * ```
  */
 export function toSrgbGamutInto(
@@ -300,6 +341,7 @@ export function toSrgbGamutInto(
  *
  * const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
  * toP3GamutInto(mapped, { l: 0.7, c: 0.4, h: 150, alpha: 1 });
+ * mapped; // → { l: 0.7, c: ≈ 0.2689, h: 150, alpha: 1 }
  * ```
  */
 export function toP3GamutInto(
@@ -334,8 +376,8 @@ export function toP3GamutInto(
  * import { toSrgbGamut } from 'color-kit';
  *
  * const vivid = { l: 0.7, c: 0.35, h: 150, alpha: 1 };
- * toSrgbGamut(vivid); // chroma-reduced, same l and h
- * toSrgbGamut(vivid, { method: 'css' }); // CSS Color 4 result
+ * toSrgbGamut(vivid); // → { l: 0.7, c: ≈ 0.1928, h: 150, alpha: 1 }
+ * toSrgbGamut(vivid, { method: 'css' }).c; // → ≈ 0.2104 (l, h shift slightly)
  * ```
  */
 export function toSrgbGamut(color: Color): Color;
@@ -349,7 +391,20 @@ export function toSrgbGamut(color: Color, options?: GamutMapOptions): Color {
 
 /**
  * Map a Color to the Display P3 gamut. Same methods and options as
- * `toSrgbGamut()`; the default reduces OKLCH chroma at fixed L and h.
+ * {@link toSrgbGamut}; the default reduces OKLCH chroma at fixed L and h.
+ *
+ * Colors already in gamut (per {@link inP3Gamut}) are returned unchanged.
+ * Returns a new object.
+ *
+ * @see {@link toP3GamutInto}
+ *
+ * @example
+ * ```ts
+ * import { toP3Gamut } from 'color-kit';
+ *
+ * toP3Gamut({ l: 0.7, c: 0.35, h: 150, alpha: 1 });
+ * // → { l: 0.7, c: ≈ 0.2689, h: 150, alpha: 1 }
+ * ```
  */
 export function toP3Gamut(color: Color): Color;
 export function toP3Gamut(

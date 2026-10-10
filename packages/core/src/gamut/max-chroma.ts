@@ -14,10 +14,30 @@ import {
 const PROBE: Color = { l: 0, c: 0, h: 0, alpha: 1 };
 
 /**
- * Resolve the maximum in-gamut chroma for a specific lightness + hue.
+ * Returns the maximum in-gamut OKLCH chroma at a given lightness and hue.
  *
  * This is the geometry primitive used by gamut boundary overlays and
- * model-accurate hue/chroma gradient generation.
+ * model-accurate hue/chroma gradient generation. It bisects chroma between 0
+ * and `options.maxChroma` and returns the in-gamut end of the final interval,
+ * so the true boundary can sit up to `options.tolerance` higher. Lightness is
+ * clamped to `[0, 1]` (0 and 1 return `0`), hue is wrapped, and when
+ * `maxChroma` itself is in gamut it is returned as a cap. Allocation-free.
+ *
+ * @param lightness - OKLCH lightness, 0-1.
+ * @param hue - OKLCH hue in degrees.
+ * @param options - Target gamut and search settings.
+ * @returns Chroma in `[0, options.maxChroma]`.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @see {@link maxChromaForHue}
+ * @see {@link gamutBoundaryPath}
+ *
+ * @example
+ * ```ts
+ * import { maxChromaAt } from 'color-kit';
+ *
+ * maxChromaAt(0.6, 250); // → 0.16982421875
+ * maxChromaAt(0.6, 250, { gamut: 'display-p3' }); // → 0.21923828125
+ * ```
  */
 export function maxChromaAt(
   lightness: number,

@@ -3,20 +3,34 @@ import type { Color } from '@color-kit/core';
 import type { ResolvedColorAreaAxes } from '@color-kit/driver';
 import type { SetRequestedOptions } from './use-color.js';
 
+/**
+ * {@link ColorArea} performance profile. `'quality'` always renders at full
+ * quality; `'auto'`, `'balanced'` and `'performance'` adapt the quality
+ * level to measured update cost, with progressively lower resolution and
+ * earlier degradation.
+ */
 export type ColorAreaPerformanceProfile =
   | 'auto'
   | 'quality'
   | 'balanced'
   | 'performance';
 
+/** Current adaptive quality level of a {@link ColorArea}. */
 export type ColorAreaQualityLevel = 'high' | 'medium' | 'low';
 
+/** Per-frame stats passed to `ColorAreaProps.onInteractionFrame`. */
 export interface ColorAreaInteractionFrameStats {
+  /** Milliseconds since the previous committed frame. */
   frameTimeMs: number;
+  /** Milliseconds spent applying this frame's color update. */
   updateDurationMs: number;
+  /** Whether `frameTimeMs` exceeded one 60 Hz frame (16.67 ms). */
   droppedFrame: boolean;
+  /** Whether `updateDurationMs` exceeded 50 ms. */
   longTask: boolean;
+  /** Quality level after this frame's adaptation. */
   qualityLevel: ColorAreaQualityLevel;
+  /** Number of coalesced pointer events merged into this frame. */
   coalescedCount: number;
 }
 

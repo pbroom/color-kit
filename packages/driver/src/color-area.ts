@@ -17,7 +17,12 @@ import {
   stepRangeValue,
 } from './channel-keys.js';
 
+/**
+ * OKLCH channel a color-area axis can drive: lightness `l` (0..1), chroma `c`
+ * (0..~0.4) or hue `h` (degrees).
+ */
 export type ColorAreaChannel = 'l' | 'c' | 'h';
+/** Keyboard keys handled by {@link colorFromColorAreaKey}. */
 export type ColorAreaKey =
   | 'ArrowRight'
   | 'ArrowLeft'
@@ -28,42 +33,65 @@ export type ColorAreaKey =
   | 'Home'
   | 'End';
 
+/** Options for {@link colorFromColorAreaKey}. */
 export interface ColorAreaKeyOptions {
   /**
    * PageUp/PageDown step as a ratio of the y-axis range.
-   * @default 0.1
+   * @defaultValue 0.1
    */
   largeStepRatio?: number;
   /**
    * Wrap hue axes around their range ends instead of clamping.
-   * @default true
+   * @defaultValue true
    */
   wrapHue?: boolean;
 }
 const COLOR_AREA_PLANE_MODEL = 'oklch' as const;
 
+/** One axis of a color area as authored: a channel and an optional range. */
 export interface ColorAreaAxis {
+  /** OKLCH channel the axis drives. */
   channel: ColorAreaChannel;
+  /**
+   * `[start, end]` channel values. `start` maps to the left (x) or bottom (y)
+   * edge, `end` to the right or top edge.
+   * @defaultValue `COLOR_AREA_DEFAULT_RANGES[channel]`
+   */
   range?: [number, number];
 }
 
+/** Axis configuration for a color area. */
 export interface ColorAreaAxes {
+  /** Horizontal axis. */
   x: ColorAreaAxis;
+  /** Vertical axis. */
   y: ColorAreaAxis;
 }
 
+/** A {@link ColorAreaAxis} with its range filled in. */
 export interface ResolvedColorAreaAxis {
+  /** OKLCH channel the axis drives. */
   channel: ColorAreaChannel;
+  /** `[start, end]` values; `start` is the left/bottom edge. */
   range: [number, number];
 }
 
+/** {@link ColorAreaAxes} with both ranges filled in; see {@link resolveColorAreaAxes}. */
 export interface ResolvedColorAreaAxes {
+  /** Horizontal axis. */
   x: ResolvedColorAreaAxis;
+  /** Vertical axis. */
   y: ResolvedColorAreaAxis;
 }
 
 const OKLCH_DEFAULT_RANGES = PLANE_MODEL_DEFAULT_RANGES.oklch;
 
+/**
+ * Default `[start, end]` range per color-area channel: `l` `[0, 1]`, `c`
+ * `[0, 0.4]`, `h` `[0, 360]`. `start` sits at the left/bottom edge.
+ *
+ * @see {@link resolveColorAreaRange}
+ */
 export const COLOR_AREA_DEFAULT_RANGES: Record<
   ColorAreaChannel,
   [number, number]
@@ -85,35 +113,78 @@ const COLOR_AREA_DEFAULT_AXES: ResolvedColorAreaAxes = {
   },
 };
 
+/**
+ * A boundary or band point in OKLCH `l`/`c` plus its normalized area position
+ * (`x` right, `y` down, both `[0, 1]`).
+ */
 export interface ColorAreaGamutBoundaryPoint {
+  /** OKLCH lightness, 0..1. */
   l: number;
+  /** OKLCH chroma. */
   c: number;
+  /** Normalized x position, 0 = left edge. */
   x: number;
+  /** Normalized y position, 0 = top edge. */
   y: number;
 }
 
+/** Options for {@link getColorAreaGamutBoundaryPoints}. */
 export interface ColorAreaGamutBoundaryOptions {
+  /**
+   * Gamut whose boundary is traced.
+   * @defaultValue 'srgb'
+   */
   gamut?: GamutTarget;
+  /**
+   * Equal lightness segments in uniform mode; the path has `steps + 1`
+   * points. Must be an integer of at least 2. Ignored in adaptive mode.
+   * @defaultValue 100
+   */
   steps?: number;
-  /** RDP simplification tolerance in (l,c) space; omit to disable */
+  /** Ramer-Douglas-Peucker simplification tolerance in (l, c) space; omit to disable. */
   simplifyTolerance?: number;
-  /** 'uniform' (default) or 'adaptive' sampling */
+  /**
+   * `'uniform'` samples fixed lightness steps; `'adaptive'` subdivides where
+   * the curve bends.
+   * @defaultValue 'uniform'
+   */
   samplingMode?: 'uniform' | 'adaptive';
+  /**
+   * Adaptive mode: max perpendicular error in (l, c) before subdividing.
+   * @defaultValue 0.001
+   */
   adaptiveTolerance?: number;
+  /**
+   * Adaptive mode: max recursion depth.
+   * @defaultValue 12
+   */
   adaptiveMaxDepth?: number;
 }
 
+/**
+ * A contrast-region path point in OKLCH `l`/`c` plus its normalized area
+ * position (`x` right, `y` down, both `[0, 1]`).
+ */
 export interface ColorAreaContrastRegionPoint {
+  /** OKLCH lightness, 0..1. */
   l: number;
+  /** OKLCH chroma. */
   c: number;
+  /** Normalized x position, 0 = left edge. */
   x: number;
+  /** Normalized y position, 0 = top edge. */
   y: number;
 }
 
+/** Result of {@link getColorAreaFallbackPoint}. */
 export interface ColorAreaFallbackPoint {
+  /** Normalized x position of the mapped color, 0 = left edge. */
   x: number;
+  /** Normalized y position of the mapped color, 0 = top edge. */
   y: number;
+  /** The color after gamut mapping into `gamut`. */
   color: Color;
+  /** Gamut the color was mapped into. */
   gamut: GamutTarget;
 }
 
@@ -123,21 +194,72 @@ export interface ColorAreaFallbackPoint {
  */
 export type ColorAreaContrastRegionOptions = ContrastRegionPathOptions;
 
+/** Options for {@link getColorAreaChromaBandPoints}. */
 export interface ColorAreaChromaBandOptions {
+  /**
+   * Gamut the band must stay inside.
+   * @defaultValue 'srgb'
+   */
   gamut?: GamutTarget;
+  /**
+   * `'clamped'` keeps the reference chroma where the gamut allows it and
+   * clamps to the boundary elsewhere; `'proportional'` scales every step by
+   * the reference's requested/max chroma ratio at `selectedLightness`.
+   * @defaultValue 'clamped'
+   */
   mode?: ChromaBandMode;
+  /**
+   * Equal lightness segments in uniform mode; the band has `steps + 1`
+   * points. Ignored in adaptive mode.
+   * @defaultValue 12
+   */
   steps?: number;
-  /** 'uniform' (default) or 'adaptive' band sampling */
+  /**
+   * `'uniform'` samples fixed lightness steps; `'adaptive'` reuses adaptive
+   * boundary sampling.
+   * @defaultValue 'uniform'
+   */
   samplingMode?: 'uniform' | 'adaptive';
+  /**
+   * Adaptive mode: max perpendicular error in (l, c) before subdividing.
+   * @defaultValue 0.001
+   */
   adaptiveTolerance?: number;
+  /**
+   * Adaptive mode: max recursion depth.
+   * @defaultValue 12
+   */
   adaptiveMaxDepth?: number;
+  /**
+   * Lightness anchor for `'proportional'` mode.
+   * @defaultValue the reference color's `l`
+   */
   selectedLightness?: number;
+  /** Upper bound for the max-chroma search. */
   maxChroma?: number;
+  /** Absolute precision of the max-chroma binary search. */
   tolerance?: number;
+  /** Iteration cap for the max-chroma binary search. */
   maxIterations?: number;
+  /**
+   * Alpha used while sampling.
+   * @defaultValue the reference color's `alpha`
+   */
   alpha?: number;
 }
 
+/**
+ * Returns `range` when given, otherwise the channel's entry in
+ * {@link COLOR_AREA_DEFAULT_RANGES}.
+ *
+ * @example
+ * ```ts
+ * import { resolveColorAreaRange } from 'color-kit/driver';
+ *
+ * resolveColorAreaRange('c'); // → [0, 0.4]
+ * resolveColorAreaRange('h', [0, 180]); // → [0, 180]
+ * ```
+ */
 export function resolveColorAreaRange(
   channel: ColorAreaChannel,
   range?: [number, number],
@@ -145,6 +267,20 @@ export function resolveColorAreaRange(
   return range ?? COLOR_AREA_DEFAULT_RANGES[channel];
 }
 
+/**
+ * Fills in missing axis ranges from {@link COLOR_AREA_DEFAULT_RANGES}. With no
+ * argument, returns the default axes: lightness on x, chroma on y.
+ *
+ * @example
+ * ```ts
+ * import { resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * resolveColorAreaAxes();
+ * // → { x: { channel: 'l', range: [0, 1] }, y: { channel: 'c', range: [0, 0.4] } }
+ * resolveColorAreaAxes({ x: { channel: 'h' }, y: { channel: 'l' } });
+ * // → { x: { channel: 'h', range: [0, 360] }, y: { channel: 'l', range: [0, 1] } }
+ * ```
+ */
 export function resolveColorAreaAxes(
   axes?: ColorAreaAxes,
 ): ResolvedColorAreaAxes {
@@ -161,6 +297,18 @@ export function resolveColorAreaAxes(
   };
 }
 
+/**
+ * Whether the x and y axes drive different channels. An area whose axes share
+ * a channel cannot place a color unambiguously.
+ *
+ * @example
+ * ```ts
+ * import { areColorAreaAxesDistinct } from 'color-kit/driver';
+ *
+ * areColorAreaAxesDistinct({ x: { channel: 'l' }, y: { channel: 'c' } }); // → true
+ * areColorAreaAxesDistinct({ x: { channel: 'l' }, y: { channel: 'l' } }); // → false
+ * ```
+ */
 export function areColorAreaAxesDistinct(axes: {
   x: { channel: ColorAreaChannel };
   y: { channel: ColorAreaChannel };
@@ -182,17 +330,37 @@ function usesLightnessAndChroma(axes: {
   );
 }
 
+/**
+ * Plain, serializable OKLCH plane description of a color area; see
+ * {@link toColorAreaPlaneDefinition}.
+ */
 export interface ColorAreaPlaneDefinition {
+  /** Always `'oklch'`. */
   model: typeof COLOR_AREA_PLANE_MODEL;
+  /** Horizontal axis channel and `[start, end]` range. */
   x: { channel: ColorAreaChannel; range: [number, number] };
+  /** Vertical axis channel and `[start, end]` range. */
   y: { channel: ColorAreaChannel; range: [number, number] };
+  /** Reference color channels; the axis channels are overridden per point. */
   fixed: { l: number; c: number; h: number; alpha: number };
 }
 
 /**
  * Builds the plain plane definition for a color area's axes and reference
  * color. This is the single source of truth for plane payloads sent to
- * plane-query workers and other transport boundaries.
+ * plane-query workers and other transport boundaries. The result is plain
+ * JSON and can be passed to `definePlane` from `color-kit/plane`.
+ *
+ * @example
+ * ```ts
+ * import { resolveColorAreaAxes, toColorAreaPlaneDefinition } from 'color-kit/driver';
+ *
+ * toColorAreaPlaneDefinition(resolveColorAreaAxes(), { l: 0.6, c: 0.1, h: 250, alpha: 1 });
+ * // → { model: 'oklch',
+ * //     x: { channel: 'l', range: [0, 1] },
+ * //     y: { channel: 'c', range: [0, 0.4] },
+ * //     fixed: { l: 0.6, c: 0.1, h: 250, alpha: 1 } }
+ * ```
  */
 export function toColorAreaPlaneDefinition(
   axes: ResolvedColorAreaAxes,
@@ -231,6 +399,20 @@ function planeToUiPoint(point: { x: number; y: number }): {
   };
 }
 
+/**
+ * Normalized thumb position of `color` in the area: `x` runs left to right
+ * and `y` top to bottom, so a y-axis value at its range end sits at `y = 0`.
+ * Both coordinates are clamped to `[0, 1]`.
+ *
+ * @example
+ * ```ts
+ * import { getColorAreaThumbPosition, resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * const axes = resolveColorAreaAxes(); // x: l [0, 1], y: c [0, 0.4]
+ * getColorAreaThumbPosition({ l: 0.6, c: 0.1, h: 250, alpha: 1 }, axes);
+ * // → { x: 0.6, y: 0.75 }
+ * ```
+ */
 export function getColorAreaThumbPosition(
   color: Color,
   axes: ResolvedColorAreaAxes,
@@ -241,10 +423,17 @@ export function getColorAreaThumbPosition(
   };
 }
 
+/**
+ * Client-space bounds of a color area, e.g. from `getBoundingClientRect()`.
+ */
 export interface ColorAreaPointerRect {
+  /** Left edge in client pixels. */
   left: number;
+  /** Top edge in client pixels. */
   top: number;
+  /** Width in pixels. */
   width: number;
+  /** Height in pixels. */
   height: number;
 }
 
@@ -252,6 +441,15 @@ export interface ColorAreaPointerRect {
  * Normalizes a pointer position against the area's client rect into clamped
  * `[0, 1]` coordinates (x right, y down). Returns `null` for an empty rect or
  * non-finite input.
+ *
+ * @example
+ * ```ts
+ * import { normalizeColorAreaPointer } from 'color-kit/driver';
+ *
+ * const rect = { left: 100, top: 20, width: 200, height: 100 };
+ * normalizeColorAreaPointer(150, 40, rect); // → { x: 0.25, y: 0.2 }
+ * normalizeColorAreaPointer(50, 400, rect); // → { x: 0, y: 1 }
+ * ```
  */
 export function normalizeColorAreaPointer(
   clientX: number,
@@ -271,6 +469,21 @@ export function normalizeColorAreaPointer(
   return { x: clamp(x, 0, 1), y: clamp(y, 0, 1) };
 }
 
+/**
+ * Returns a copy of `color` with both axis channels set from a normalized
+ * area position (`x` right, `y` down, as from
+ * {@link normalizeColorAreaPointer}). Positions are clamped to `[0, 1]`; the
+ * result is not gamut-mapped.
+ *
+ * @example
+ * ```ts
+ * import { colorFromColorAreaPosition, resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * const axes = resolveColorAreaAxes(); // x: l [0, 1], y: c [0, 0.4]
+ * colorFromColorAreaPosition({ l: 0.6, c: 0.1, h: 250, alpha: 1 }, axes, 0.25, 0.5);
+ * // → { l: 0.25, c: 0.2, h: 250, alpha: 1 }
+ * ```
+ */
 export function colorFromColorAreaPosition(
   color: Color,
   axes: ResolvedColorAreaAxes,
@@ -293,6 +506,26 @@ export function colorFromColorAreaPosition(
   };
 }
 
+/**
+ * Traces the gamut boundary (max in-gamut chroma per lightness) at `hue`
+ * degrees as area points, ordered from `l = 0` to `l = 1`. Each point carries
+ * its OKLCH `l`/`c` and normalized `x`/`y` (`y` down). Returns `[]` unless the
+ * axes are lightness and chroma (in either orientation).
+ *
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`
+ * (for example the removed `'p3'` spelling).
+ * @throws {Error} When `options.steps` is not an integer of at least 2.
+ * @see {@link getColorAreaChromaBandPoints}
+ *
+ * @example
+ * ```ts
+ * import { getColorAreaGamutBoundaryPoints, resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * const points = getColorAreaGamutBoundaryPoints(250, resolveColorAreaAxes());
+ * points.length; // → 101
+ * points[10]; // → { l: 0.1, c: 0.02841796875, x: 0.1, y: 0.928955078125 }
+ * ```
+ */
 export function getColorAreaGamutBoundaryPoints(
   hue: number,
   axes: ResolvedColorAreaAxes,
@@ -329,6 +562,27 @@ export function getColorAreaGamutBoundaryPoints(
   });
 }
 
+/**
+ * Outlines the region of the `hue` plane whose colors meet the contrast
+ * threshold against `reference` (WCAG AA 4.5:1 by default), as one or more
+ * paths of area points (`y` down). Returns `[]` unless the axes are
+ * lightness and chroma (in either orientation).
+ *
+ * @param reference - Color to measure contrast against, e.g. the background.
+ * @param hue - OKLCH hue of the plane, in degrees.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`
+ * (for example the removed `'p3'` spelling).
+ *
+ * @example
+ * ```ts
+ * import { getColorAreaContrastRegionPaths, resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * const white = { l: 1, c: 0, h: 0, alpha: 1 };
+ * const paths = getColorAreaContrastRegionPaths(white, 250, resolveColorAreaAxes(), { level: 'AA' });
+ * paths.length; // → 1
+ * paths[0].length; // → 57
+ * ```
+ */
 export function getColorAreaContrastRegionPaths(
   reference: Color,
   hue: number,
@@ -360,6 +614,29 @@ export function getColorAreaContrastRegionPaths(
   );
 }
 
+/**
+ * Samples the tonal strip at `reference.c` across lightness for `hue`
+ * degrees, kept inside the gamut (see `mode`), as area points ordered from
+ * `l = 0` to `l = 1` (`y` down). Returns `[]` unless the axes are lightness
+ * and chroma (in either orientation).
+ *
+ * @param reference - Supplies the requested chroma, and the default
+ * `selectedLightness` and `alpha`.
+ * @param hue - OKLCH hue of the band, in degrees.
+ * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`
+ * (for example the removed `'p3'` spelling).
+ * @see {@link getColorAreaGamutBoundaryPoints}
+ *
+ * @example
+ * ```ts
+ * import { getColorAreaChromaBandPoints, resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * const color = { l: 0.6, c: 0.1, h: 250, alpha: 1 };
+ * const band = getColorAreaChromaBandPoints(color, color.h, resolveColorAreaAxes());
+ * band.length; // → 13
+ * band[6]; // → { l: 0.5, c: 0.1, x: 0.5, y: 0.75 }
+ * ```
+ */
 export function getColorAreaChromaBandPoints(
   reference: Color,
   hue: number,
@@ -398,11 +675,26 @@ export function getColorAreaChromaBandPoints(
 }
 
 /**
- * Maps `query.color` into the requested gamut and returns its thumb position.
+ * Maps `query.color` into the requested gamut and returns its thumb position,
+ * e.g. to show where an out-of-gamut selection will actually render.
  *
  * @throws {TypeError} When `query.gamut` is missing or is not `'srgb'` or
  * `'display-p3'` (for example the removed `'p3'` spelling), matching the core
  * plane queries.
+ * @see {@link getColorAreaThumbPosition}
+ *
+ * @example
+ * ```ts
+ * import { getColorAreaFallbackPoint, resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * const point = getColorAreaFallbackPoint(resolveColorAreaAxes(), {
+ *   color: { l: 0.7, c: 0.35, h: 150, alpha: 1 },
+ *   gamut: 'srgb',
+ * });
+ * point.x; // → 0.7
+ * point.y.toFixed(3); // → '0.518'
+ * point.color.c.toFixed(4); // → '0.1928'
+ * ```
  */
 export function getColorAreaFallbackPoint(
   axes: ResolvedColorAreaAxes,
@@ -432,7 +724,20 @@ export function getColorAreaFallbackPoint(
   };
 }
 
-/** Axis a ColorArea key acts on, or `null` when the key is not handled. */
+/**
+ * Axis a ColorArea key acts on, or `null` when the key is not handled:
+ * ArrowLeft/ArrowRight/Home/End act on x, ArrowUp/ArrowDown/PageUp/PageDown
+ * on y.
+ *
+ * @example
+ * ```ts
+ * import { getColorAreaKeyAxis } from 'color-kit/driver';
+ *
+ * getColorAreaKeyAxis('ArrowUp'); // → 'y'
+ * getColorAreaKeyAxis('Home'); // → 'x'
+ * getColorAreaKeyAxis('Enter'); // → null
+ * ```
+ */
 export function getColorAreaKeyAxis(key: string): 'x' | 'y' | null {
   switch (key as ColorAreaKey) {
     case 'ArrowRight':
@@ -458,7 +763,22 @@ export function getColorAreaKeyAxis(key: string): 'x' | 'y' | null {
  * - Home/End jump the x axis to its range start/end.
  *
  * Hue axes wrap by default; other channels clamp. Returns `null` for keys the
- * area does not handle.
+ * area does not handle. Modifier keys are not read: pass a larger
+ * `stepRatio` for Shift+Arrow.
+ *
+ * @param stepRatio - Arrow-key step as a fraction of the axis range, e.g. `0.01`.
+ * @see {@link getColorAreaKeyAxis}
+ *
+ * @example
+ * ```ts
+ * import { colorFromColorAreaKey, resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * const axes = resolveColorAreaAxes(); // x: l [0, 1], y: c [0, 0.4]
+ * const color = { l: 0.6, c: 0.1, h: 250, alpha: 1 };
+ * colorFromColorAreaKey(color, axes, 'ArrowRight', 0.01); // → { l: 0.61, c: 0.1, h: 250, alpha: 1 }
+ * colorFromColorAreaKey(color, axes, 'PageUp', 0.01); // → { l: 0.6, c: 0.14, h: 250, alpha: 1 }
+ * colorFromColorAreaKey(color, axes, 'Enter', 0.01); // → null
+ * ```
  */
 export function colorFromColorAreaKey(
   color: Color,
@@ -511,8 +831,17 @@ export function colorFromColorAreaKey(
 }
 
 /**
- * Human-readable `aria-valuetext` for both axes, e.g.
- * "Lightness 60%, Chroma 0.2".
+ * Human-readable `aria-valuetext` for both axes, x first, e.g.
+ * "Lightness 60%, Chroma 0.2". Lightness is shown as a percentage, hue in
+ * whole degrees, chroma to three decimals.
+ *
+ * @example
+ * ```ts
+ * import { getColorAreaValueText, resolveColorAreaAxes } from 'color-kit/driver';
+ *
+ * getColorAreaValueText({ l: 0.6, c: 0.1, h: 250, alpha: 1 }, resolveColorAreaAxes());
+ * // → 'Lightness 60%, Chroma 0.1'
+ * ```
  */
 export function getColorAreaValueText(
   color: Color,

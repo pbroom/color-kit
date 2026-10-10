@@ -10,13 +10,34 @@ import type {
 import { countSinglePath, withFiniteHue } from './shared.js';
 
 /**
- * Samples evenly spaced gradient points and projects each color to the plane.
+ * Samples a two-color gradient and projects each sample onto the plane.
  *
- * @param planeDefinition Plane definition used to project sampled colors.
- * @param query Gradient sampling input.
- * @param query.from Gradient start color.
- * @param query.to Gradient end color.
- * @param query.steps Number of samples to generate (minimum 2).
+ * Colors are interpolated in OKLCH along the shorter hue arc (a powerless hue
+ * borrows the other endpoint's), endpoints included. Each point carries its
+ * sampled color and plane `x`/`y`, clamped to the plane window; draw the
+ * path with {@link toSvgPath}. Works on every plane model.
+ *
+ * @param planeDefinition - Plane to project onto; a {@link Plane} or any
+ * {@link PlaneDefinition}.
+ * @param query - Endpoints and sample count; see {@link PlaneGradientQuery}.
+ * @returns A new result with one point per sample.
+ * @throws {RangeError} When `steps` is not a finite integer.
+ * @see {@link sense} for the fluent form.
+ *
+ * @example
+ * ```ts
+ * import { parse, toHex } from 'color-kit';
+ * import { definePlane, samplePlaneGradient } from 'color-kit/plane';
+ *
+ * const plane = definePlane({ fixed: { h: 264 } });
+ * const { points } = samplePlaneGradient(plane, {
+ *   from: parse('#1e3a8a'),
+ *   to: parse('#93c5fd'),
+ *   steps: 3,
+ * });
+ * points.map((point) => toHex(point.color)); // → ['#1e3a8a', '#527fc3', '#93c5fd']
+ * points.map((point) => point.x.toFixed(3)); // → ['0.379', '0.594', '0.809']
+ * ```
  */
 export function samplePlaneGradient(
   planeDefinition: PlaneDefinition,
@@ -24,6 +45,11 @@ export function samplePlaneGradient(
 ): PlaneGradientResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const steps = query.steps ?? 16;
+  if (!Number.isInteger(steps)) {
+    throw new RangeError(
+      `samplePlaneGradient() requires finite integer steps, got ${steps}`,
+    );
+  }
   const colors = generateOklchDefaultScale(
     withFiniteHue(query.from),
     withFiniteHue(query.to),

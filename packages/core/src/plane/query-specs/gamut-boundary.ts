@@ -12,19 +12,37 @@ import type {
 import { countSinglePath, toPlaneBoundaryPoint } from './shared.js';
 
 /**
- * Computes a gamut boundary contour projected into the target plane.
+ * Traces the gamut's maximum-chroma edge at one hue and projects it onto the
+ * plane.
  *
- * Returns an empty point list when the plane is not a lightness/chroma pairing.
+ * Samples the boundary from black (`l = 0`) to white (`l = 1`) and returns
+ * one point per sample, each with its OKLCH `l`/`c` and plane `x`/`y`. Draw it
+ * with {@link toSvgPath}; for a filled, viewport-clipped shape that also works
+ * on non-L×C planes, use {@link getPlaneGamutRegion}.
  *
- * @param planeDefinition Plane definition used to project the result points.
- * @param query Boundary sampling configuration.
- * @param query.hue Optional hue override; falls back to the plane's hue.
- * @param query.gamut Target gamut used for the boundary calculation.
- * @param query.steps Optional fixed sample count.
- * @param query.simplifyTolerance Optional simplification tolerance.
- * @param query.samplingMode Optional sampling strategy.
- * @param query.adaptiveTolerance Optional adaptive sampling error tolerance.
- * @param query.adaptiveMaxDepth Optional adaptive recursion depth cap.
+ * Only OKLCH lightness × chroma planes produce geometry (see
+ * {@link usesLightnessAndChroma}); any other plane validates `gamut`, then
+ * returns an empty list without validating the remaining query options.
+ *
+ * @param planeDefinition - Plane to project onto; a {@link Plane} or any
+ * {@link PlaneDefinition}.
+ * @param query - Boundary options; see {@link PlaneGamutBoundaryQuery}.
+ * @returns A new result with the gamut, resolved hue and boundary points.
+ * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`
+ * (including the removed `'p3'`).
+ * @throws {Error} On an OKLCH lightness × chroma plane with uniform sampling,
+ * when `steps` is not an integer of at least 2.
+ * @see {@link sense} for the fluent form.
+ *
+ * @example
+ * ```ts
+ * import { definePlane, getPlaneGamutBoundary } from 'color-kit/plane';
+ *
+ * const plane = definePlane({ fixed: { h: 264 } }); // OKLCH, x: l, y: c
+ * const { points } = getPlaneGamutBoundary(plane, { steps: 50 });
+ * points.length; // → 51
+ * points[25]; // → { l: 0.5, c: ≈ 0.2811, x: 0.5, y: ≈ 0.2974 }
+ * ```
  */
 export function getPlaneGamutBoundary(
   planeDefinition: PlaneDefinition,

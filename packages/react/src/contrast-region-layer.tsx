@@ -53,11 +53,17 @@ import {
 } from './use-plane-query-layer.js';
 import type { PlaneQueryWorkerResponse } from './workers/plane-query-client.js';
 
+/** Per-compute stats passed to `ContrastRegionLayerProps.onMetrics`. */
 export interface ContrastRegionLayerMetrics {
+  /** Whether the paths came from the main-thread or the worker compute. */
   source: 'sync' | 'worker';
+  /** Worker request id the result answers. */
   requestId: number;
+  /** Compute time in milliseconds (non-deterministic). */
   computeTimeMs: number;
+  /** Number of contour paths. */
   pathCount: number;
+  /** Total vertices across all paths. */
   pointCount: number;
   /** Initial samples per gamut chroma extent the solver ran with. */
   initialSamples: number;
@@ -65,50 +71,114 @@ export interface ContrastRegionLayerMetrics {
   errorTolerance: number;
   /** Maximum refinement depth the solver ran with. */
   maxDepth: number;
+  /** Contrast metric the region was solved with. */
   contrastMetric: ContrastMetric;
+  /** Compute backend that ran the worker query, when reported. */
   backend?: PlaneComputeBackendKind;
+  /** Worker scheduler telemetry; only with `includeSchedulerTelemetry`. */
   scheduleReason?: string;
+  /** Worker scheduler telemetry; only with `includeSchedulerTelemetry`. */
   schedulerBucketCount?: number;
+  /** Resolved sampling quality level. */
   quality: 'high' | 'medium' | 'low';
+  /** Whether the area was being dragged. */
   isDragging: boolean;
 }
 
+/** Props for {@link ContrastRegionLayer}; other {@link LayerProps} are forwarded. */
 export interface ContrastRegionLayerProps extends LayerProps {
+  /**
+   * Color the region's samples are measured against (gamut-mapped into
+   * `gamut` first). Defaults to the requested color.
+   */
   reference?: Color;
+  /** Hue of the plane slice in degrees. Defaults to the requested hue. */
   hue?: number;
+  /**
+   * Gamut the reference and samples are measured in; paths stay inside it.
+   * @defaultValue 'srgb'
+   */
   gamut?: GamutTarget;
+  /**
+   * Contrast metric.
+   * @defaultValue 'wcag'
+   */
   metric?: ContrastMetric;
+  /**
+   * Explicit threshold; overrides `level` and `apcaPreset`. A WCAG contrast
+   * ratio, or with `metric="apca"` a normalized Lc magnitude (`0.6` for
+   * Lc 60).
+   */
   threshold?: number;
+  /**
+   * WCAG threshold preset used when `threshold` is omitted.
+   * @defaultValue 'AA' (4.5:1)
+   */
   level?: ColorAreaContrastRegionOptions['level'];
+  /**
+   * APCA threshold preset used with `metric="apca"` when `threshold` is
+   * omitted.
+   * @defaultValue 'body' (Lc 60, normalized 0.6)
+   */
   apcaPreset?: ColorAreaContrastRegionOptions['apcaPreset'];
+  /**
+   * APCA polarity test with `metric="apca"`: `absolute`, `positive` or
+   * `negative` Lc.
+   * @defaultValue 'absolute'
+   */
   apcaPolarity?: ColorAreaContrastRegionOptions['apcaPolarity'];
+  /**
+   * Whether samples are the text (`sample-text`) or the background
+   * (`sample-background`) in APCA.
+   * @defaultValue 'sample-text'
+   */
   apcaRole?: ColorAreaContrastRegionOptions['apcaRole'];
   /**
    * Initial samples per gamut chroma extent, scaled by `quality`. The
    * layer's default is tuned for interactive use; see `contrastRegionPaths`.
-   * @default 8
+   * @defaultValue 8
    */
   initialSamples?: number;
   /**
    * Largest distance, in l/c units, a sampled midpoint may lie from its
    * chord before the interval is refined.
-   * @default 0.004
+   * @defaultValue 0.004
    */
   errorTolerance?: number;
   /**
    * Maximum refinement depth per initial interval.
-   * @default 3 at `high` quality, 2 at `medium`, 1 at `low`
+   * @defaultValue 3 at `high` quality, 2 at `medium`, 1 at `low`
    */
   maxDepth?: number;
+  /**
+   * Upper chroma bound of the region.
+   * @defaultValue 0.4
+   */
   maxChroma?: number;
+  /** Alpha used for the samples while measuring contrast. */
   alpha?: number;
+  /**
+   * Sampling quality. `'auto'` follows the area's adaptive quality level.
+   * @defaultValue 'auto'
+   */
   quality?: ColorAreaLayerQuality;
+  /** Props for each contour `<path>` (stroke, dash, etc.); `fill` defaults to `'none'`. */
   pathProps?: SVGAttributes<SVGPathElement>;
+  /**
+   * Draw a circle at every path vertex (for debugging sampling).
+   * @defaultValue false
+   */
   showPathPoints?: boolean;
+  /** Props for the vertex circles drawn with `showPathPoints`. */
   pointProps?: SVGAttributes<SVGCircleElement>;
+  /** Called after each sync or worker compute with sampling and timing stats. */
   onMetrics?: (metrics: ContrastRegionLayerMetrics) => void;
   /** RDP simplification tolerance in (l,c) space; omit to disable */
   simplifyTolerance?: number;
+  /**
+   * Include worker scheduler fields in `onMetrics`.
+   * @defaultValue false
+   */
   includeSchedulerTelemetry?: boolean;
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
@@ -171,16 +241,32 @@ function useContrastRegionPath(): ContrastRegionPathContextValue {
   return value;
 }
 
+/** Props for {@link ContrastRegionFill}. */
 export interface ContrastRegionFillProps {
-  /** Fill color for the region. @default '#c0e1ff' */
+  /**
+   * Fill color for the region.
+   * @defaultValue '#c0e1ff'
+   */
   fillColor?: string;
-  /** Fill opacity 0–1. @default 0.22 */
+  /**
+   * Fill opacity 0–1.
+   * @defaultValue 0.22
+   */
   fillOpacity?: number;
-  /** Dot pattern opacity 0–1; 0 disables dots. @default 0 */
+  /**
+   * Opacity 0–1 of a white dot pattern over the region; 0 disables dots.
+   * @defaultValue 0
+   */
   dotOpacity?: number;
-  /** Dot size in px. @default 2 */
+  /**
+   * Dot size in px.
+   * @defaultValue 2
+   */
   dotSize?: number;
-  /** Gap between dots in px. @default 3 */
+  /**
+   * Gap between dots in px.
+   * @defaultValue 3
+   */
   dotGap?: number;
   /** Additional path element props (e.g. fill). */
   pathProps?: SVGAttributes<SVGPathElement>;
@@ -193,8 +279,36 @@ function clamp01(value: number): number {
 }
 
 /**
- * Renders a filled region (and optional dot pattern) for the computed contrast
- * contour. Must be used as a child of ContrastRegionLayer.
+ * Fills the region computed by the enclosing {@link ContrastRegionLayer},
+ * with an optional white dot pattern.
+ *
+ * Renders nothing while the region is empty. Must be a child of a
+ * ContrastRegionLayer.
+ *
+ * @throws {Error} When rendered outside a `<ContrastRegionLayer>`.
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   Color,
+ *   ColorArea,
+ *   ColorPlane,
+ *   ContrastRegionFill,
+ *   ContrastRegionLayer,
+ * } from 'color-kit/react';
+ * import { parse } from 'color-kit';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane />
+ *       <ContrastRegionLayer reference={parse('#ffffff')} level="AA">
+ *         <ContrastRegionFill fillColor="#000" fillOpacity={0.2} dotOpacity={0.4} />
+ *       </ContrastRegionLayer>
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export function ContrastRegionFill({
   fillColor = '#c0e1ff',
@@ -797,8 +911,51 @@ function toPath(
 }
 
 /**
- * Precomposed Layer wrapper for drawing contrast-safe paths. Compose
- * ContrastRegionFill as a child for filled region + dot pattern.
+ * Overlay {@link Layer} that outlines the colors of the current hue that meet
+ * a contrast threshold against a reference color.
+ *
+ * The region is solved in the area's lightness/chroma plane (axes `l` and
+ * `c` in either order; other axis pairs render an empty layer) with WCAG
+ * 2 or APCA, and drawn as SVG contour paths. Compose
+ * {@link ContrastRegionFill} as a child to fill the region. The reference
+ * defaults to the requested color; pass `reference` to test against a fixed
+ * text or background color. Computed synchronously while idle and in a
+ * shared Web Worker during drags (when workers are available), keeping the
+ * last stable region until a fresh one arrives. Must be rendered inside a
+ * {@link ColorArea}.
+ *
+ * @throws {TypeError} When a removed hybrid-solver prop (`lightnessSteps`,
+ *   `chromaSteps`, `hybridMaxDepth`, `hybridErrorTolerance`, `tolerance`,
+ *   `maxIterations`) is passed.
+ * @throws {Error} When rendered outside a `<ColorArea>`.
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   Color,
+ *   ColorArea,
+ *   ColorPlane,
+ *   ContrastRegionFill,
+ *   ContrastRegionLayer,
+ * } from 'color-kit/react';
+ * import { parse } from 'color-kit';
+ *
+ * export const TextColorPicker = () => (
+ *   <Color defaultColor="#1f2937">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane />
+ *       <ContrastRegionLayer
+ *         reference={parse('#ffffff')}
+ *         metric="apca"
+ *         apcaPreset="body"
+ *         pathProps={{ stroke: '#fff', vectorEffect: 'non-scaling-stroke' }}
+ *       >
+ *         <ContrastRegionFill fillOpacity={0.15} />
+ *       </ContrastRegionLayer>
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export function ContrastRegionLayer({
   reference,

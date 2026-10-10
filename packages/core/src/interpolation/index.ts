@@ -69,13 +69,13 @@ export type HueInterpolationMethod =
 export interface InterpolationOptions {
   /**
    * Space to interpolate in.
-   * @default 'oklch'
+   * @defaultValue `'oklch'`
    */
   space?: InterpolationSpace;
   /**
    * Hue interpolation method for polar spaces. Ignored for rectangular
    * spaces.
-   * @default 'shorter'
+   * @defaultValue `'shorter'`
    */
   hue?: HueInterpolationMethod;
   /**
@@ -94,6 +94,8 @@ export interface InterpolationOptions {
    * every fully transparent result to transparent black. The two agree on
    * everything visible; color-kit keeps the hue and lightness so a
    * transparent stop is not silently turned into black.
+   *
+   * @defaultValue `true` for rectangular spaces, `false` for `'oklch'`
    */
   premultiplied?: boolean;
 }

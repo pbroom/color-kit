@@ -135,19 +135,36 @@ function validateDistinctAxes(definition: Plane): void {
 }
 
 /**
- * Broad plane resolver for dynamic `PlaneDefinition` objects.
+ * Resolves a dynamic {@link PlaneDefinition} into a fully-specified
+ * {@link Plane}.
  *
- * Prefer `definePlane()` in user code when the model is known at the call site,
- * because its overloads provide model-aware TypeScript narrowing.
+ * Applies the same defaults and validation as {@link definePlane}, but accepts
+ * the broad `PlaneDefinition` type, so it suits definitions whose model is only
+ * known at runtime (for example, read from settings). Prefer `definePlane()`
+ * when the model is known at the call site: its overloads narrow channel names
+ * per model at compile time.
  *
- * @param planeObject Plane input object.
- * @param planeObject.model Target model (`oklch`, `rgb`, `hsl`, `hsv`, `oklab`, `hct`, `display-p3`).
- * @param planeObject.x Optional x-axis descriptor; defaults to model defaults.
- * @param planeObject.y Optional y-axis descriptor; defaults to model defaults.
- * @param planeObject.color Optional anchor color converted into the selected
- * model before fixed-channel overrides are applied.
- * @param planeObject.fixed Optional fixed channel values clamped for the model.
- * @returns Fully-resolved plane safe for query and projection.
+ * @param planeObject - Plane input. `model` defaults to `'oklch'`, omitted
+ * axes fall back to {@link PLANE_MODEL_DEFAULT_AXES} and omitted ranges to
+ * {@link PLANE_MODEL_DEFAULT_RANGES}. Channels not on an axis come from
+ * `fixed`, then from the anchor `color`, then from model defaults, and are
+ * clamped to the model's valid range.
+ * @returns A new resolved plane with explicit axes, ranges and fixed channels.
+ * @throws {TypeError} When `model` is not a supported plane model (including
+ * the removed `'p3'` spelling; use `'display-p3'`).
+ * @throws {Error} When an axis or fixed channel is not valid for the model,
+ * both axes use the same channel, or a range or fixed value is not finite.
+ * @see {@link definePlane}
+ *
+ * @example
+ * ```ts
+ * import { resolvePlaneDefinition } from 'color-kit/plane';
+ *
+ * const plane = resolvePlaneDefinition({ model: 'hsv' });
+ * plane.x; // → { channel: 'h', range: [0, 360] }
+ * plane.y; // → { channel: 's', range: [100, 0] }
+ * plane.fixed; // → { h: 0, s: 0, v: 50, alpha: 1 }
+ * ```
  */
 export function resolvePlaneDefinition(
   planeObject: PlaneDefinition = {},
@@ -172,9 +189,68 @@ export function resolvePlaneDefinition(
   return resolved;
 }
 
+/**
+ * Defines a 2D color plane: two channels of one color model mapped onto
+ * normalized `x`/`y` coordinates, with every other channel held fixed.
+ *
+ * The returned {@link Plane} is the input to every plane query
+ * ({@link getPlaneGamutRegion}, {@link getPlaneContrastRegion}, {@link sense},
+ * …) and to the {@link planeToColor} / {@link colorToPlane} projections. Plane
+ * coordinates are normalized: `{ x: 0, y: 0 }` maps to the start of each axis
+ * range and `{ x: 1, y: 1 }` to its end. Ranges may be descending to flip an
+ * axis; the OKLCH chroma default `[0.4, 0]` puts high chroma at `y = 0`, the
+ * top of an SVG or canvas.
+ *
+ * Defaults: `model` is `'oklch'`; omitted axes come from
+ * {@link PLANE_MODEL_DEFAULT_AXES} (`x: l`, `y: c` for OKLCH) and omitted
+ * ranges from {@link PLANE_MODEL_DEFAULT_RANGES}. Channels not on an axis are
+ * resolved from `fixed`, then from the anchor `color` (converted into the
+ * model), then from model defaults, and clamped to the model's valid range
+ * (hue is wrapped into `[0, 360)`). `alpha` defaults to `1`.
+ *
+ * Type-level guarantees: channel names in `x`, `y` and `fixed` are checked
+ * against the chosen model (`definePlane({ model: 'rgb', x: { channel: 'l' } })`
+ * and `fixed: { h }` on an RGB plane are compile errors), a non-OKLCH model must
+ * be spelled out, and the result is typed `Plane<Model>`. Use
+ * {@link PlaneDefinitionFor} to keep that narrowing when the definition is
+ * stored in a variable first, and {@link resolvePlaneDefinition} for
+ * definitions whose model is only known at runtime.
+ *
+ * @param planeObject - Plane input; see {@link PlaneDefinition} for each
+ * field. Omit it for the default OKLCH lightness × chroma plane at hue 0.
+ * @returns A new resolved plane with explicit axes, ranges and fixed channels.
+ * @throws {TypeError} When `model` is not a supported plane model (including
+ * the removed `'p3'` spelling; use `'display-p3'`).
+ * @throws {Error} When an axis or fixed channel is not valid for the model,
+ * both axes use the same channel, or a range or fixed value is not finite.
+ * @see {@link definePlaneFromColor}
+ *
+ * @example
+ * ```ts
+ * import { definePlane } from 'color-kit/plane';
+ *
+ * const plane = definePlane({
+ *   model: 'oklch',
+ *   x: { channel: 'l' },
+ *   y: { channel: 'c' },
+ *   fixed: { h: 264 },
+ * });
+ * plane.y; // → { channel: 'c', range: [0.4, 0] }
+ * plane.fixed; // → { l: 0.5, c: 0, h: 264, alpha: 1 }
+ * ```
+ */
 export function definePlane(
   planeObject?: PlaneDefinitionFor<'oklch'>,
 ): Plane<'oklch'>;
+/**
+ * Defines a 2D color plane for a non-OKLCH model (`model` is required).
+ *
+ * Same behavior as the OKLCH overload; channel names in `x`, `y` and `fixed`
+ * are checked against `Model` and the result is typed `Plane<Model>`.
+ *
+ * @param planeObject - Plane input with an explicit `model`.
+ * @returns A new resolved plane with explicit axes, ranges and fixed channels.
+ */
 export function definePlane<Model extends Exclude<PlaneModel, 'oklch'>>(
   planeObject: PlaneDefinitionFor<Model>,
 ): Plane<Model>;
@@ -183,18 +259,46 @@ export function definePlane(planeObject: PlaneDefinition = {}): Plane {
 }
 
 /**
- * Defines a plane anchored to a source color.
+ * Defines a plane whose fixed channels are taken from an anchor color.
  *
- * Equivalent to `definePlane({ ...planeObject, color })`.
+ * Equivalent to `definePlane({ ...planeObject, color })`: the color is
+ * converted into the plane's model to fill every channel not on an axis, and
+ * explicit `fixed` values still win. Useful for a picker plane that follows
+ * the current color, or for switching models while keeping the same color.
  *
- * @param color Anchor color converted into the selected model.
- * @param planeObject Optional plane definition overrides.
- * @returns Fully-resolved plane safe for query and projection.
+ * @param color - Anchor color converted into the selected model.
+ * @param planeObject - Optional plane definition overrides (any
+ * {@link PlaneDefinition} field except `color`).
+ * @returns A new resolved plane with explicit axes, ranges and fixed channels.
+ * @throws {TypeError} When `model` is not a supported plane model.
+ * @throws {Error} When an axis or fixed channel is not valid for the model.
+ * @see {@link definePlane}
+ *
+ * @example
+ * ```ts
+ * import { parse } from 'color-kit';
+ * import { definePlaneFromColor } from 'color-kit/plane';
+ *
+ * const plane = definePlaneFromColor(parse('#7c3aed'), {
+ *   model: 'hsl',
+ *   x: { channel: 'h' },
+ *   y: { channel: 's' },
+ * });
+ * plane.fixed.l?.toFixed(1); // → '57.8' (HSL lightness of the anchor)
+ * ```
  */
 export function definePlaneFromColor(
   color: Color,
   planeObject?: Omit<PlaneDefinitionFor<'oklch'>, 'color'>,
 ): Plane<'oklch'>;
+/**
+ * Defines a plane for a non-OKLCH model whose fixed channels are taken from an
+ * anchor color (`model` is required).
+ *
+ * @param color - Anchor color converted into the selected model.
+ * @param planeObject - Plane definition with an explicit `model`.
+ * @returns A new resolved plane with explicit axes, ranges and fixed channels.
+ */
 export function definePlaneFromColor<
   Model extends Exclude<PlaneModel, 'oklch'>,
 >(

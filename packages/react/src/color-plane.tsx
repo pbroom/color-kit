@@ -29,8 +29,19 @@ import {
 import { useColorAreaContext } from './color-area-context.js';
 import { useOptionalColorContext } from './context.js';
 
+/**
+ * Which colors a {@link ColorPlane} paints: the raw `requested` plane colors
+ * (each channel clipped to sRGB) or the `displayed` colors for the display
+ * gamut.
+ */
 export type ColorPlaneSource = 'requested' | 'displayed';
+/**
+ * {@link ColorPlane} rasterizer: `'gpu'` (WebGL), `'cpu'` (2D canvas), or
+ * `'auto'` (WebGL with a CPU fallback). `'canvas2d'` is a deprecated alias
+ * of `'cpu'`.
+ */
 export type ColorPlaneRenderer = 'auto' | 'gpu' | 'cpu' | 'canvas2d';
+/** How a `displayed` {@link ColorPlane} paints colors outside the display gamut. */
 export type ColorPlaneEdgeBehavior = 'transparent' | 'clamp';
 
 type ActiveColorPlaneRenderer = 'gpu' | 'cpu';
@@ -41,22 +52,39 @@ let warnedCanvasAlias = false;
 export const BENCHMARK_SELECTED_COLOR_PLANE_RENDERER: ActiveColorPlaneRenderer =
   'gpu';
 
+/** Props for {@link ColorPlane}; other `canvas` attributes are forwarded. */
 export interface ColorPlaneProps extends Omit<
   CanvasHTMLAttributes<HTMLCanvasElement>,
   'onChange'
 > {
+  /**
+   * Paint the gamut-mapped `displayed` colors or the raw `requested` colors.
+   * @defaultValue 'displayed'
+   */
   source?: ColorPlaneSource;
+  /**
+   * Gamut the displayed pixels are mapped into. Defaults to the provider's
+   * active gamut, or `'display-p3'` without a `<Color>` provider.
+   */
   displayGamut?: GamutTarget;
+  /**
+   * Rasterizer. `'auto'` uses WebGL and falls back to the CPU renderer when
+   * WebGL is unavailable or its context is lost.
+   * @defaultValue 'auto'
+   */
   renderer?: ColorPlaneRenderer;
   /**
    * Out-of-gamut behavior for displayed source pixels.
    * - 'transparent': keep out-of-gamut pixels transparent.
    * - 'clamp': clamp out-of-gamut pixels to the nearest in-gamut edge.
-   * @default 'clamp'
+   * @defaultValue 'clamp'
    */
   edgeBehavior?: ColorPlaneEdgeBehavior;
   /**
-   * Extra backing-store scale factor beyond DPR. @default 1
+   * Extra backing-store scale factor beyond DPR (non-positive or non-finite
+   * values count as 1). The effective scale, including the performance
+   * profile's multiplier, is clamped to [0.35, 2.5].
+   * @defaultValue 1
    */
   resolutionScale?: number;
 }
@@ -372,7 +400,32 @@ function resolutionMultiplier(
 }
 
 /**
- * Primary rasterized color surface for ColorArea.
+ * Canvas that rasterizes the {@link ColorArea}'s color plane: every pixel is
+ * the requested color with the two axis channels set to that position.
+ *
+ * Renders with WebGL by default and falls back to a CPU renderer. With the
+ * default `source="displayed"`, pixels are mapped into the display gamut
+ * (`edgeBehavior` decides whether out-of-gamut pixels clamp or turn
+ * transparent). Resolution follows the device pixel ratio, `resolutionScale`
+ * and the area's adaptive quality level; the canvas fills the area and
+ * ignores pointer events. `data-renderer` reports the renderer in use
+ * (`gpu` or `cpu`). Must be rendered inside a ColorArea.
+ *
+ * @throws {Error} When rendered outside a `<ColorArea>`.
+ * @see {@link OutOfGamutLayer}
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorArea, ColorPlane } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6" defaultGamut="srgb">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane edgeBehavior="transparent" />
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export const ColorPlane = forwardRef<HTMLCanvasElement, ColorPlaneProps>(
   function ColorPlane(

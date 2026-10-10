@@ -27,19 +27,48 @@ import type { PlaneQueryWorkerResponse } from './workers/plane-query-client.js';
 
 export type { ColorAreaLayerQuality } from './layer-quality-utils.js';
 
+/** Props for {@link GamutBoundaryLayer}; other {@link LayerProps} are forwarded. */
 export interface GamutBoundaryLayerProps extends LayerProps {
+  /**
+   * Gamut whose boundary is drawn.
+   * @defaultValue 'srgb'
+   */
   gamut?: GamutTarget;
+  /** Hue of the boundary slice in degrees. Defaults to the requested hue. */
   hue?: number;
+  /**
+   * Boundary samples at `high` quality; lower quality levels scale this
+   * down (minimum 8).
+   * @defaultValue 48
+   */
   steps?: number;
+  /**
+   * Sampling quality. `'auto'` follows the area's adaptive quality level.
+   * @defaultValue 'auto'
+   */
   quality?: ColorAreaLayerQuality;
   /** RDP simplification tolerance in (l,c) space; omit to disable */
   simplifyTolerance?: number;
   /** 'uniform' (default) or 'adaptive' boundary sampling */
   samplingMode?: 'uniform' | 'adaptive';
+  /**
+   * Adaptive-sampling error tolerance; derived from the area's pixel size
+   * when omitted. Only used with `samplingMode: 'adaptive'`.
+   */
   adaptiveTolerance?: number;
+  /**
+   * Adaptive-sampling maximum refinement depth; derived from the area's
+   * pixel size when omitted. Only used with `samplingMode: 'adaptive'`.
+   */
   adaptiveMaxDepth?: number;
+  /** Props for the boundary `<path>` (stroke, dash, etc.); `fill` defaults to `'none'`. */
   pathProps?: SVGAttributes<SVGPathElement>;
+  /**
+   * Draw a circle at every path vertex (for debugging sampling).
+   * @defaultValue false
+   */
   showPathPoints?: boolean;
+  /** Props for the vertex circles drawn with `showPathPoints`. */
   pointProps?: SVGAttributes<SVGCircleElement>;
   /** Corner radius in 0-1 for path vertices; omit for sharp corners */
   cornerRadius?: number;
@@ -57,7 +86,38 @@ function toLinePointsFromBoundary(
 }
 
 /**
- * Precomposed Layer wrapper for drawing a gamut boundary path.
+ * Overlay {@link Layer} that draws the gamut boundary (the maximum in-gamut
+ * chroma at each lightness) for one hue as an SVG path.
+ *
+ * Draws only when the area's axes are lightness and chroma (in either
+ * order); other axis pairs render an empty layer. The boundary follows the
+ * requested hue unless `hue` is set; it is computed synchronously while
+ * idle and in a shared Web Worker during drags (when workers are
+ * available). Must be rendered inside a {@link ColorArea}.
+ *
+ * @throws {Error} When rendered outside a `<ColorArea>`.
+ * @see {@link ChromaBandLayer}
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorArea, ColorPlane, GamutBoundaryLayer } from 'color-kit/react';
+ *
+ * export const Picker = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorArea style={{ width: 240, height: 240 }}>
+ *       <ColorPlane />
+ *       <GamutBoundaryLayer
+ *         gamut="srgb"
+ *         pathProps={{ stroke: '#fff', strokeDasharray: '4 3', vectorEffect: 'non-scaling-stroke' }}
+ *       />
+ *       <GamutBoundaryLayer
+ *         gamut="display-p3"
+ *         pathProps={{ stroke: '#fff', vectorEffect: 'non-scaling-stroke' }}
+ *       />
+ *     </ColorArea>
+ *   </Color>
+ * );
+ * ```
  */
 export function GamutBoundaryLayer({
   gamut = 'srgb',

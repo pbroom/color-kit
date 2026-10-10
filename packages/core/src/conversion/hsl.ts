@@ -10,7 +10,23 @@ import { normalizeHue } from '../utils/index.js';
  */
 export const RGB_GRAY_DELTA = 1e-10;
 
-/** Convert sRGB (0-255, fractional values allowed) to HSL */
+/**
+ * Convert sRGB (`0-255`, fractional values allowed) to HSL (hue in degrees
+ * `[0, 360)`, saturation and lightness `0-100`). Grays get hue and
+ * saturation `0`.
+ *
+ * @param rgb - sRGB color
+ * @returns A new {@link Hsl}
+ * @see {@link hslToRgb}
+ * @see {@link toHsl}
+ *
+ * @example
+ * ```ts
+ * import { rgbToHsl } from 'color-kit';
+ *
+ * rgbToHsl({ r: 0, g: 0, b: 255, alpha: 1 }); // → { h: 240, s: 100, l: 50, alpha: 1 }
+ * ```
+ */
 export function rgbToHsl(rgb: Rgb): Hsl {
   const r = rgb.r / 255;
   const g = rgb.g / 255;
@@ -78,7 +94,23 @@ export function hslToRgbUnrounded(hsl: Hsl): Rgb {
   };
 }
 
-/** Convert HSL to sRGB (0-255, rounded to 8-bit channels) */
+/**
+ * Convert HSL (hue in degrees, saturation and lightness `0-100`) to 8-bit
+ * sRGB (`0-255`, each channel rounded to an integer). Any finite hue is
+ * accepted and wrapped.
+ *
+ * @param hsl - HSL color
+ * @returns A new {@link Rgb} with integer channels
+ * @see {@link rgbToHsl}
+ * @see {@link fromHsl}
+ *
+ * @example
+ * ```ts
+ * import { hslToRgb } from 'color-kit';
+ *
+ * hslToRgb({ h: 200, s: 80, l: 40, alpha: 1 }); // → { r: 20, g: 129, b: 184, alpha: 1 }
+ * ```
+ */
 export function hslToRgb(hsl: Hsl): Rgb {
   const rgb = hslToRgbUnrounded(hsl);
   return {

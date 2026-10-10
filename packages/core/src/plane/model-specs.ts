@@ -416,21 +416,48 @@ export function planeModelSpec(model: PlaneModel): PlaneModelSpec {
 }
 
 /**
- * Returns the channels supported by a plane model.
+ * Returns the channels a plane model accepts on its axes and in `fixed`.
  *
- * @param model Plane model to inspect.
- * @returns Ordered channel list for the model.
+ * Same data as {@link PLANE_MODEL_CHANNELS}, for models chosen at runtime.
+ *
+ * @param model - Plane model to inspect.
+ * @returns The model's channel list, in model order (shared, do not mutate).
+ * @throws {TypeError} When `model` is not a supported plane model.
+ *
+ * @example
+ * ```ts
+ * import { planeModelChannels } from 'color-kit/plane';
+ *
+ * planeModelChannels('oklab'); // → ['L', 'a', 'b']
+ * planeModelChannels('hct'); // → ['h', 'c', 't']
+ * ```
  */
 export function planeModelChannels(model: PlaneModel): readonly PlaneChannel[] {
   return planeModelSpec(model).channels;
 }
 
 /**
- * Resolves the model default range for a channel.
+ * Returns the default axis range `definePlane()` uses for a channel of a model.
  *
- * @param model Plane model to inspect.
- * @param channel Channel whose default range should be read.
- * @returns Model default range, or `undefined` when the channel is unsupported.
+ * Some defaults are descending (OKLCH and HCT chroma, HCT tone, HSL/HSV
+ * saturation, lightness and value, OKLab `b`) so that larger values sit at
+ * `y = 0`, the top of a screen-space plane.
+ *
+ * @param model - Plane model to inspect.
+ * @param channel - Channel whose default range should be read.
+ * @returns A new `[start, end]` tuple, or `undefined` when the model has no
+ * such channel.
+ * @throws {TypeError} When `model` is not a supported plane model.
+ * @see {@link PLANE_MODEL_DEFAULT_RANGES}
+ *
+ * @example
+ * ```ts
+ * import { planeModelDefaultRange } from 'color-kit/plane';
+ *
+ * planeModelDefaultRange('oklch', 'c'); // → [0.4, 0]
+ * planeModelDefaultRange('hsl', 'l'); // → [100, 0]
+ * planeModelDefaultRange('oklch', 'r'); // → undefined
+ * ```
  */
 export function planeModelDefaultRange(
   model: PlaneModel,

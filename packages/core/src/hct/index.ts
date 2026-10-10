@@ -8,6 +8,7 @@ const DIRECT_TONE_COARSE_STEP = 1;
 const DIRECT_TONE_REFINE_ITERATIONS = 18;
 const DIRECT_TONE_REFINE_EPSILON = 0.0001;
 
+/** The chroma peak of an HCT hue, returned by {@link maxHctChromaForHue}. */
 export interface HctHuePeak {
   /** Maximum realized HCT chroma for the requested hue. */
   c: number;
@@ -15,19 +16,25 @@ export interface HctHuePeak {
   t: number;
 }
 
+/**
+ * How {@link maxHctChromaForHue} resolves the peak: `'lut'` interpolates a
+ * cached hue lookup table, `'direct'` searches tone per call.
+ */
 export type MaxHctChromaForHueMethod = 'lut' | 'direct';
 
+/** Options for {@link maxHctChromaForHue} and {@link maxHctPeakToneForHue}. */
 export interface MaxHctChromaForHueOptions {
   /**
    * `lut` uses a cached hue lookup table for maximum throughput across repeated
    * calls. `direct` performs a per-call tone search + local refinement.
-   * @default 'lut'
+   * @defaultValue `'lut'`
    */
   method?: MaxHctChromaForHueMethod;
   /**
    * Number of evenly spaced hue samples in the cached LUT.
    * Higher values increase warm-up cost and reduce interpolation error.
-   * @default 4096
+   * Values below 16 or non-finite use the default.
+   * @defaultValue `4096`
    */
   lutSize?: number;
 }
@@ -57,6 +64,26 @@ function resolveHctMaxChromaAtTone(hue: number, tone: number): number {
   return resolveHctMaxChromaAtToneNormalized(normalizeHue(hue), tone);
 }
 
+/**
+ * Returns the maximum HCT chroma realizable at a given hue and tone.
+ *
+ * Asks Material HCT (default viewing conditions, sRGB rendering) for chroma
+ * 200 at that hue and tone and reports the chroma the solver actually
+ * realizes. Hue is wrapped to `[0, 360)`, tone is clamped to `[0, 100]`, and
+ * the result is never negative.
+ *
+ * @param hue - HCT hue in degrees.
+ * @param tone - HCT tone, 0-100.
+ * @returns Maximum realized HCT chroma.
+ * @see {@link maxHctChromaForHue}
+ *
+ * @example
+ * ```ts
+ * import { maxHctChromaAtTone } from 'color-kit/hct';
+ *
+ * maxHctChromaAtTone(250, 50); // → ≈ 52.34
+ * ```
+ */
 export function maxHctChromaAtTone(hue: number, tone: number): number {
   return resolveHctMaxChromaAtTone(hue, tone);
 }
@@ -196,6 +223,22 @@ function resolveHctHuePeak(
  *
  * Uses Material HCT (default viewing conditions), which is based on an sRGB
  * rendering pipeline and may quantize the result through the underlying solver.
+ * The default `'lut'` method builds a 4096-entry table on first use and caches
+ * it; `'direct'` searches tone per call.
+ *
+ * @param hue - HCT hue in degrees (wrapped).
+ * @param options - Method and LUT size.
+ * @returns The peak chroma `c` and the tone `t` where it occurs.
+ * @throws {Error} When `options.method` is not `'lut'` or `'direct'`.
+ * @see {@link maxHctPeakToneForHue}
+ * @see {@link maxHctChromaAtTone}
+ *
+ * @example
+ * ```ts
+ * import { maxHctChromaForHue } from 'color-kit/hct';
+ *
+ * maxHctChromaForHue(250); // → { c: ≈ 61.71, t: ≈ 64.22 }
+ * ```
  */
 export function maxHctChromaForHue(
   hue: number,
@@ -209,6 +252,18 @@ export function maxHctChromaForHue(
  *
  * Returns the fractional HCT tone (0-100) at which the maximum realized HCT
  * chroma occurs for the provided hue.
+ *
+ * @param hue - HCT hue in degrees (wrapped).
+ * @param options - Method and LUT size, as for {@link maxHctChromaForHue}.
+ * @returns Tone of the chroma peak, 0-100.
+ * @throws {Error} When `options.method` is not `'lut'` or `'direct'`.
+ *
+ * @example
+ * ```ts
+ * import { maxHctPeakToneForHue } from 'color-kit/hct';
+ *
+ * maxHctPeakToneForHue(250); // → ≈ 64.22
+ * ```
  */
 export function maxHctPeakToneForHue(
   hue: number,

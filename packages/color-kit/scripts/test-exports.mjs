@@ -67,6 +67,19 @@ function assertNotOnRoot(rootEntry) {
   }
 }
 
+// ColorPlane's shader sources and benchmark-selected renderer are internal.
+const NOT_ON_REACT = [
+  'BENCHMARK_SELECTED_COLOR_PLANE_RENDERER',
+  'COLOR_PLANE_VERTEX_SHADER_SOURCE',
+  'COLOR_PLANE_FRAGMENT_SHADER_SOURCE',
+];
+
+function assertNotOnReact(reactEntry) {
+  for (const name of NOT_ON_REACT) {
+    assert.equal(name in reactEntry, false, `${name} must not be public`);
+  }
+}
+
 const root = await import('color-kit');
 const core = await import('color-kit/core');
 const driver = await import('color-kit/driver');
@@ -113,8 +126,11 @@ await assert.rejects(import('color-kit/react/color-input'), {
 // point.
 assert.equal(root.definePlane, plane.definePlane);
 assert.equal(root.definePlane, core.definePlane);
+assert.equal(typeof root.assertGamutTarget, 'function');
+assert.equal(root.assertGamutTarget, plane.assertGamutTarget);
 assertNotOnRoot(root);
 assertNotOnRoot(core);
+assertNotOnReact(react);
 assertDefaultSchedulerTelemetry(compute);
 
 const cjsRoot = require('color-kit');
@@ -147,6 +163,8 @@ assert.throws(() => require('color-kit/react/color-input'), {
 });
 assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);
 assert.equal(cjsRoot.definePlane, cjsCore.definePlane);
+assert.equal(cjsRoot.assertGamutTarget, cjsPlane.assertGamutTarget);
 assertNotOnRoot(cjsRoot);
 assertNotOnRoot(cjsCore);
+assertNotOnReact(cjsReact);
 assertDefaultSchedulerTelemetry(cjsCompute);

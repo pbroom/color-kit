@@ -3,8 +3,10 @@ import { clamp } from '@color-kit/core';
 import { getColorSliderNormFromValue } from '@color-kit/driver';
 import { useColorSliderContext } from './color-slider-context.js';
 
+/** Styling variant of a {@link SliderMarker}, exposed as `data-variant`. */
 export type SliderMarkerVariant = 'dot' | 'mini-thumb';
 
+/** Props for {@link SliderMarker}; other `div` attributes are forwarded. */
 export interface SliderMarkerProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'onChange'
@@ -13,12 +15,37 @@ export interface SliderMarkerProps extends Omit<
   value?: number;
   /** Normalized marker position in [0,1]. Takes precedence over `value`. */
   norm?: number;
-  /** Marker semantic variant used for styling hooks. */
+  /**
+   * Marker semantic variant used for styling hooks.
+   * @defaultValue 'dot'
+   */
   variant?: SliderMarkerVariant;
 }
 
 /**
- * Decorative marker primitive anchored to a ColorSlider rail.
+ * Decorative marker positioned on the enclosing {@link ColorSlider}'s rail
+ * at a channel value or normalized position.
+ *
+ * The position is clamped to the rail and follows the slider's orientation
+ * and `--ck-slider-position-inset`. Hidden from assistive technology and
+ * pointer events; unstyled apart from positioning. Must be a child of a
+ * ColorSlider.
+ *
+ * @throws {Error} When rendered outside a `<ColorSlider>`, or with neither
+ *   `value` nor `norm`.
+ *
+ * @example
+ * ```tsx
+ * import { Color, ColorSlider, SliderMarker } from 'color-kit/react';
+ *
+ * export const HueSlider = () => (
+ *   <Color defaultColor="#3b82f6">
+ *     <ColorSlider channel="h" style={{ height: 16 }}>
+ *       <SliderMarker value={120} style={{ width: 4, height: 4, background: '#fff' }} />
+ *     </ColorSlider>
+ *   </Color>
+ * );
+ * ```
  */
 export const SliderMarker = forwardRef<HTMLDivElement, SliderMarkerProps>(
   function SliderMarker(

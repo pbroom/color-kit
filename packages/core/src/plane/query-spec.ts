@@ -12,18 +12,23 @@ import type {
   PlaneQueryResult,
 } from './types.js';
 
+/** The `PlaneQuery` variant whose `kind` is `K`. */
 export type PlaneQueryOf<K extends PlaneQueryKind> = Extract<
   PlaneQuery,
   { kind: K }
 >;
 
+/** The `PlaneQueryResult` variant whose `kind` is `K`. */
 export type PlaneQueryResultOf<K extends PlaneQueryKind> = Extract<
   PlaneQueryResult,
   { kind: K }
 >;
 
+/** Path and point totals of one query result's geometry. */
 export interface PlaneQueryGeometryCount {
+  /** Number of non-empty paths. */
   pathCount: number;
+  /** Total points across all paths. */
   pointCount: number;
 }
 
@@ -49,18 +54,23 @@ export type PlaneQueryTelemetryGroup = 'gamutRegion' | 'contrast';
  */
 export interface PlaneQuerySpec<K extends PlaneQueryKind> {
   kind: K;
+  /** Executes the query, recording into `trace` when one is given. */
   run(
     plane: PlaneDefinition,
     query: PlaneQueryOf<K>,
     trace?: InternalPlaneTraceContext | null,
   ): PlaneQueryResultOf<K>;
+  /** Per-point channels this kind packs. */
   pointChannels: PlaneQueryPointChannels;
   /** Set when the kind always packs exactly one path. */
   fixedPathCount?: 1;
+  /** Counts the result's paths and points (trace summaries, packing). */
   countGeometry(result: PlaneQueryResultOf<K>): PlaneQueryGeometryCount;
   /** Relative work estimate used by the compute scheduler's budget buckets. */
   budget(query: PlaneQueryOf<K>): number;
+  /** Scheduler telemetry section this kind reports into, if any. */
   telemetryGroup?: PlaneQueryTelemetryGroup;
+  /** Stable signature that buckets this query within its telemetry group. */
   telemetrySignature?(query: PlaneQueryOf<K>, plane: Plane): string;
   /** Set when every packed path of this kind holds exactly one point. */
   fixedPointCount?: 1;
@@ -83,12 +93,14 @@ export interface PlaneQuerySpec<K extends PlaneQueryKind> {
   ): asserts descriptor is PackedPlaneQueryDescriptorOf<K>;
   /** Total number of consecutive paths the descriptor owns from pathStart. */
   pathSpan?(descriptor: PackedPlaneQueryDescriptorOf<K>): number;
+  /** Rebuilds the result from its descriptor and the packed buffers. */
   unpack(
     descriptor: PackedPlaneQueryDescriptorOf<K>,
     reader: PackedReader,
   ): PlaneQueryResultOf<K>;
 }
 
+/** One `PlaneQuerySpec` per query kind, keyed by `kind`. */
 export type PlaneQuerySpecRegistry = {
   [K in PlaneQueryKind]: PlaneQuerySpec<K>;
 };
