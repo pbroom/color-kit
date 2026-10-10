@@ -37,6 +37,7 @@ interface RawSymbol {
   kind?: unknown;
   summary?: unknown;
   group?: unknown;
+  domain?: unknown;
 }
 
 interface RawEntry {
@@ -54,7 +55,10 @@ const asString = (value: unknown): string | undefined =>
  * Project the generated API model onto the route index. S2 owns the model's
  * shape; if it changes, adjust this projection rather than the registry.
  */
-export function projectApiRoutes(model: unknown): unknown {
+export function projectApiRoutes(
+  model: unknown,
+  { summaries = true }: { summaries?: boolean } = {},
+): unknown {
   const entries = (model as { entries?: unknown })?.entries;
   if (!Array.isArray(entries)) {
     return { entries: [] };
@@ -69,8 +73,11 @@ export function projectApiRoutes(model: unknown): unknown {
         ? (entry.symbols as RawSymbol[]).map((symbol) => ({
             name: asString(symbol.name) ?? '',
             kind: asString(symbol.kind) ?? 'unknown',
-            summary: asString(symbol.summary),
-            group: asString(symbol.group),
+            // Symbol summaries only feed prerendered meta descriptions, so
+            // the client bundle (which every page loads) skips them.
+            summary: summaries ? asString(symbol.summary) : undefined,
+            // The model calls it `domain` (src/api/model.ts).
+            group: asString(symbol.domain) ?? asString(symbol.group),
           }))
         : [],
     })),
@@ -99,7 +106,7 @@ export function routeDataPlugin(): Plugin {
       // No source extension at the end, so MDX/React/JSON plugins skip it.
       return `${PREFIX}${QUERIES[query]}:${resolved.id.split('?')[0]}.data`;
     },
-    async load(id) {
+    async load(id, options) {
       if (!id.startsWith(PREFIX)) {
         return null;
       }
@@ -112,7 +119,9 @@ export function routeDataPlugin(): Plugin {
       const data =
         kind === 'frontmatter'
           ? readFrontmatter(source)
-          : projectApiRoutes(JSON.parse(source));
+          : projectApiRoutes(JSON.parse(source), {
+              summaries: Boolean(options?.ssr),
+            });
       return `export default ${JSON.stringify(data)};`;
     },
   };

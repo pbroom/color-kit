@@ -251,38 +251,3 @@
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
-
-/* ---------- API placeholders ---------- */
-
-.entry-list {
-  border-top: var(--hairline) solid var(--line);
-}
-
-.entry-list__link {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-4) 0;
-  border-bottom: var(--hairline) solid var(--line);
-}
-
-@media (min-width: 48rem) {
-  .entry-list__link {
-    grid-template-columns: 220px minmax(0, 1fr);
-    align-items: baseline;
-  }
-}
-
-.entry-list__name {
-  color: var(--fg);
-  font-size: var(--text-1);
-  font-weight: 500;
-}
-
-.entry-list__text {
-  color: var(--fg-3);
-}
-
-.entry-list__link:hover .entry-list__name {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
