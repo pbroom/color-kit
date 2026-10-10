@@ -76,15 +76,19 @@ const docs: ComponentDocRegistry = {
     description:
       'Use Color to coordinate ColorArea, sliders, and input fields around one canonical requested color state.',
     demo: ColorProviderDemo,
-    usage: `import { Color, ColorArea, ColorSlider } from 'color-kit/react';
-import { ColorInput } from 'color-kit/react/color-input';
+    usage: `import {
+  Color,
+  ColorArea,
+  ColorSlider,
+  ColorStringInput,
+} from 'color-kit/react';
 
 export function Picker() {
   return (
     <Color defaultColor="#3b82f6">
       <ColorArea />
       <ColorSlider channel="h" />
-      <ColorInput model="oklch" channel="h" />
+      <ColorStringInput format="oklch" />
     </Color>
   );
 }`,
@@ -203,9 +207,10 @@ export function Picker() {
     title: 'Color Input',
     summary: 'Channel-aware value input with scrub and expression support.',
     description:
-      'ColorInput edits a single channel in oklch/rgb/hsl using typed math expressions, keyboard stepping, and left-edge scrubbing.',
+      'ColorInput edits a single channel in oklch/rgb/hsl using typed math expressions, keyboard stepping, and left-edge scrubbing. It is not in the published color-kit package yet: it depends on control-kit, which is unpublished, so it is only available from the @color-kit/react workspace package for now.',
     demo: ColorInputDemo,
-    usage: `import { ColorInput } from 'color-kit/react/color-input';
+    usage: `// Not in the published \`color-kit\` package until control-kit is published.
+import { ColorInput } from '@color-kit/react/color-input';
 
 <ColorInput model="oklch" channel="h" />;`,
     helperApis: [

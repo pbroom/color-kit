@@ -75,7 +75,6 @@ const compute = await import('color-kit/compute');
 const hct = await import('color-kit/hct');
 const interop = await import('color-kit/interop');
 const react = await import('color-kit/react');
-const reactColorInput = await import('color-kit/react/color-input');
 
 assert.equal(typeof root.definePlane, 'function');
 assert.equal(typeof root.sense, 'function');
@@ -103,7 +102,11 @@ assert.equal(root.packColors, interop.packColors);
 assert.equal(typeof react.Color, 'function');
 assert.equal(typeof react.useColor, 'function');
 assert.equal('ColorInput' in react, false);
-assert.equal('ColorInput' in reactColorInput, true);
+// ColorInput depends on the unpublished @color-kit/control-kit, so the facade
+// does not expose `color-kit/react/color-input` until control-kit is published.
+await assert.rejects(import('color-kit/react/color-input'), {
+  code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
+});
 
 // Subpath entries must share module state with the root barrel (chunk
 // splitting), otherwise module-level state would be duplicated per entry
@@ -122,7 +125,6 @@ const cjsCompute = require('color-kit/compute');
 const cjsHct = require('color-kit/hct');
 const cjsInterop = require('color-kit/interop');
 const cjsReact = require('color-kit/react');
-const cjsReactColorInput = require('color-kit/react/color-input');
 
 assert.equal(typeof cjsRoot.definePlane, 'function');
 assert.equal(typeof cjsCore.definePlane, 'function');
@@ -140,7 +142,9 @@ assert.equal(typeof cjsInterop.toLinearSrgbArray, 'function');
 assert.equal(cjsRoot.packColors, cjsInterop.packColors);
 assert.equal(typeof cjsReact.Color, 'function');
 assert.equal('ColorInput' in cjsReact, false);
-assert.equal('ColorInput' in cjsReactColorInput, true);
+assert.throws(() => require('color-kit/react/color-input'), {
+  code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
+});
 assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);
 assert.equal(cjsRoot.definePlane, cjsCore.definePlane);
 assertNotOnRoot(cjsRoot);
