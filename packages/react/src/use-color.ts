@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Color, Hsl, Hsv, Oklch, Rgb } from '@color-kit/core';
+import type {
+  Color,
+  CssColorFormat,
+  Hsl,
+  Hsv,
+  Oklch,
+  Rgb,
+} from '@color-kit/core';
 import {
   fromHsl,
   fromHsv,
@@ -77,8 +84,8 @@ export interface UseColorReturn {
   hsl: Hsl;
   hsv: Hsv;
   oklch: Oklch;
-  requestedCss: (format?: string) => string;
-  displayedCss: (format?: string) => string;
+  requestedCss: (format?: CssColorFormat) => string;
+  displayedCss: (format?: CssColorFormat) => string;
 }
 
 function resolveInitialColor(defaultColor?: string | Color): Color {
@@ -302,12 +309,12 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
   const oklch = toOklch(requested);
 
   const requestedCss = useCallback(
-    (format?: string) => toCss(requested, format),
+    (format?: CssColorFormat) => toCss(requested, format),
     [requested],
   );
 
   const displayedCss = useCallback(
-    (format?: string) =>
+    (format?: CssColorFormat) =>
       toCss(
         displayed,
         format ?? (state.activeGamut === 'display-p3' ? 'p3' : 'hex'),

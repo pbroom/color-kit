@@ -69,7 +69,25 @@ exactly as implemented:
 Alpha is always clamped to `[0, 1]` and defaults to `1` when omitted. Any
 string that matches none of these patterns throws
 `Error: Unable to parse color: "..."` &mdash; named colors such as `red` and
-keywords such as `none` are not supported.
+keywords such as `none` are not supported. Malformed input also throws rather
+than producing `NaN` channels: invalid hex digits or lengths (`#gggggg`,
+`#12345`), malformed numbers (`rgb(1.2.3 0 0)`), and components that overflow
+to `Infinity` (`rgb(1e999 0 0)`).
+
+## `tryParse`
+
+Same as `parse`, but returns `null` instead of throwing. Use it for user input.
+
+```ts
+import { tryParse } from 'color-kit';
+
+tryParse('#7c3aed'); // Color
+tryParse('#gggggg'); // null
+```
+
+<p className="api-returns">
+  Returns <code>Color | null</code>
+</p>
 
 ## `toCss`
 
@@ -89,10 +107,10 @@ toCss(color, 'p3'); // 'color(display-p3 <r> <g> <b>)'
   Returns <code>string</code>
 </p>
 
-| Parameter | Type     | Default  | Description                                                                                       |
-| --------- | -------- | -------- | ------------------------------------------------------------------------------------------------- |
-| `color`   | `Color`  | required | The color to serialize.                                                                           |
-| `format`  | `string` | `'hex'`  | One of `'hex'`, `'rgb'`, `'hsl'`, `'oklch'`, `'oklab'`, `'p3'`. Unknown formats fall back to hex. |
+| Parameter | Type             | Default  | Description                                                                                          |
+| --------- | ---------------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `color`   | `Color`          | required | The color to serialize. Any non-finite channel throws a `RangeError`.                                |
+| `format`  | `CssColorFormat` | `'hex'`  | One of `'hex'`, `'rgb'`, `'hsl'`, `'oklch'`, `'oklab'`, `'p3'`. Unknown formats throw a `TypeError`. |
 
 Alpha is only included in the output when it is below `1` (as a `/ a` suffix,
 or as an 8-digit hex). Values are rounded per format: HSL to 1 decimal, OKLCH
