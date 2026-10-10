@@ -1,6 +1,6 @@
 import type { Color } from '@color-kit/core';
 import { toCss, toHex } from '@color-kit/core';
-import type { GamutTarget } from './color-state.js';
+import { assertActiveGamut, type GamutTarget } from './color-state.js';
 
 /**
  * Inline style pair for a color swatch. Set both properties: browsers that do
@@ -35,14 +35,16 @@ export function getColorDisplayHex(color: Color): string {
 /**
  * Builds swatch styles for the active gamut. For `'display-p3'`,
  * `background` is `displayed` as `color(display-p3 ...)` and
- * `backgroundColor` is the `srgbFallback` color; for any other gamut both
- * are `displayed` as sRGB. Colors are formatted as given, without gamut
+ * `backgroundColor` is the `srgbFallback` color; for `'srgb'` both are
+ * `displayed` as sRGB. Colors are formatted as given, without gamut
  * mapping, so pass the matching entries of `ColorState.displayed`.
  *
  * @param displayed - Color to paint (`state.displayed.p3` for P3).
  * @param srgbFallback - sRGB color for browsers without P3 support; only
  * used for `'display-p3'`.
- * @param activeGamut - Gamut to render in; not validated.
+ * @param activeGamut - Gamut to render in.
+ * @throws {TypeError} When `activeGamut` is not `'srgb'` or `'display-p3'`
+ * (for example the removed `'p3'` spelling).
  *
  * @example
  * ```ts
@@ -58,6 +60,7 @@ export function getColorDisplayStyles(
   srgbFallback: Color,
   activeGamut: GamutTarget,
 ): ColorDisplayStyles {
+  assertActiveGamut(activeGamut, 'getColorDisplayStyles()');
   if (activeGamut === 'display-p3') {
     const p3 = toCss(displayed, 'display-p3');
     const fallbackColor =

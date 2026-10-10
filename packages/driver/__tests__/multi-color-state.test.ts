@@ -198,3 +198,44 @@ describe('gamutMapMethod persistence', () => {
     expect(next.colors.base.meta.gamutMapMethod).toBe('chroma-reduction');
   });
 });
+
+describe('multi-color validation', () => {
+  it('rejects unknown gamuts when creating a model', () => {
+    expect(() =>
+      createMultiColorModel({ activeGamut: 'p3' as 'srgb' }),
+    ).toThrow(TypeError);
+    expect(() =>
+      createMultiColorModel({ activeGamut: 'p3' as 'srgb' }),
+    ).toThrow(/createMultiColorModel\(\): unknown gamut "p3".*'display-p3'/);
+    expect(() =>
+      createMultiColorModel({ activeGamut: 'rec2020' as 'srgb' }),
+    ).toThrow(TypeError);
+  });
+
+  it('rejects unknown and missing gamuts in setMultiColorActiveGamut', () => {
+    const model = createModel();
+    for (const gamut of ['p3', 'rec2020', null, undefined]) {
+      expect(() =>
+        setMultiColorActiveGamut(model, gamut as 'srgb', 'user'),
+      ).toThrow(TypeError);
+    }
+    expect(setMultiColorActiveGamut(model, 'srgb', 'user').activeGamut).toBe(
+      'srgb',
+    );
+  });
+
+  it('throws a TypeError for colors that are neither strings nor objects', () => {
+    expect(() =>
+      createMultiColorModel({ colors: { a: null as unknown as string } }),
+    ).toThrow(TypeError);
+    expect(() =>
+      addMultiColorEntry(createModel(), 'x', 42 as unknown as string),
+    ).toThrow(/addMultiColorEntry\(\): color must be/);
+  });
+
+  it('keeps the parse error for unparseable color strings', () => {
+    expect(() => addMultiColorEntry(createModel(), 'x', 'nope')).toThrow(
+      'Unable to parse color: "nope"',
+    );
+  });
+});

@@ -364,3 +364,27 @@ describe('slider gradient api', () => {
     expect(p3[0]?.activeCss).toContain('color(display-p3');
   });
 });
+
+describe('slider gradient step validation', () => {
+  it('throws a RangeError for fewer than 2 or non-finite steps', () => {
+    const base = parse('#3b82f6');
+    for (const steps of [1, 0, -3, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() =>
+        sampleSliderGradient({
+          channel: 'l',
+          range: [0, 1],
+          baseColor: base,
+          steps,
+        }),
+      ).toThrow(RangeError);
+    }
+    expect(() =>
+      getSliderGradientStyles({
+        channel: 'l',
+        range: [0, 1],
+        baseColor: base,
+        steps: 1,
+      }),
+    ).toThrow('sampleSliderGradient() requires steps >= 2');
+  });
+});
