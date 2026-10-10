@@ -12,6 +12,7 @@ import {
   setMultiColorChannel,
   setMultiColorRequested,
 } from '../src/multi-color-state.js';
+import { createColorState } from '../src/color-state.js';
 
 function createModel() {
   return createMultiColorModel({
@@ -159,5 +160,41 @@ describe('reducers', () => {
     expect(renameMultiColorEntry(model, 'base', 'base')).toBe(model);
     expect(renameMultiColorEntry(model, 'base', 'accent')).toBe(model);
     expect(renameMultiColorEntry(model, 'missing', 'other')).toBe(model);
+  });
+});
+
+describe('gamutMapMethod persistence', () => {
+  it('keeps each entry mapping method through model updates', () => {
+    const state = materializeMultiColorState(createModel());
+    const cssState = {
+      ...state,
+      colors: {
+        ...state.colors,
+        accent: createColorState(state.colors.accent.requested, {
+          gamutMapMethod: 'css',
+        }),
+      },
+    };
+
+    let model = multiColorModelFromState(cssState);
+    expect(model.entries.accent.gamutMapMethod).toBe('css');
+
+    model = setMultiColorRequested(
+      model,
+      'accent',
+      { l: 0.7, c: 0.4, h: 150, alpha: 1 },
+      'user',
+    );
+    model = setMultiColorChannel(model, 'accent', 'c', 0.38, 'user');
+    model = renameMultiColorEntry(model, 'accent', 'highlight');
+
+    const next = materializeMultiColorState(model);
+    expect(next.colors.highlight.meta.gamutMapMethod).toBe('css');
+    expect(next.colors.highlight.displayed).toEqual(
+      createColorState(next.colors.highlight.requested, {
+        gamutMapMethod: 'css',
+      }).displayed,
+    );
+    expect(next.colors.base.meta.gamutMapMethod).toBe('chroma-reduction');
   });
 });

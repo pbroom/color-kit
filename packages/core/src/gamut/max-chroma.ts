@@ -8,6 +8,10 @@ import {
   type MaxChromaAtOptions,
 } from './types.js';
 
+// Bisection probe, reused across calls so the search allocates nothing.
+// `isInTargetGamut` reads every field before touching its own scratch.
+const PROBE: Color = { l: 0, c: 0, h: 0, alpha: 1 };
+
 /**
  * Resolve the maximum in-gamut chroma for a specific lightness + hue.
  *
@@ -37,9 +41,14 @@ export function maxChromaAt(
   let lo = 0;
   let hi = hiStart;
 
+  const probe = PROBE;
+  probe.l = l;
+  probe.c = hi;
+  probe.h = h;
+  probe.alpha = alpha;
+
   // If upper bound is already in gamut, caller supplied a hard cap.
-  const hiColor: Color = { l, c: hi, h, alpha };
-  if (isInTargetGamut(hiColor, gamut)) {
+  if (isInTargetGamut(probe, gamut)) {
     return hi;
   }
 
@@ -52,8 +61,8 @@ export function maxChromaAt(
   for (let index = 0; index < iterations; index += 1) {
     if (hi - lo <= minTolerance) break;
     const mid = (lo + hi) / 2;
-    const test: Color = { l, c: mid, h, alpha };
-    if (isInTargetGamut(test, gamut)) {
+    probe.c = mid;
+    if (isInTargetGamut(probe, gamut)) {
       lo = mid;
     } else {
       hi = mid;

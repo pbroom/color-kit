@@ -1,13 +1,19 @@
 import type { Color, LinearRgb, Oklab, P3 } from '../types.js';
-import { oklchToOklabInto } from '../conversion/oklch.js';
-import { oklabToLinearRgbInto } from '../conversion/oklab.js';
-import { linearSrgbToLinearP3Into } from '../conversion/p3.js';
+import { oklabToOklchInto, oklchToOklabInto } from '../conversion/oklch.js';
+import {
+  linearRgbToOklabInto,
+  oklabToLinearRgbInto,
+} from '../conversion/oklab.js';
+import {
+  linearP3ToLinearSrgbInto,
+  linearSrgbToLinearP3Into,
+} from '../conversion/p3.js';
 import {
   LMS_TO_LINEAR_P3,
   LMS_TO_LINEAR_SRGB,
 } from '../conversion/matrices.js';
 import { linearChannelsInGamut } from './linear-bounds.js';
-import type { GamutTarget } from './types.js';
+import type { GamutMapMethod, GamutMapOptions, GamutTarget } from './types.js';
 
 export { GAMUT_LINEAR_MAX, GAMUT_LINEAR_MIN } from './linear-bounds.js';
 
@@ -29,6 +35,12 @@ const LAB: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
 const LINEAR: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
 const LINEAR_P3: P3 = { r: 0, g: 0, b: 0, alpha: 1 };
 const TRIAL: Color = { l: 0, c: 0, h: 0, alpha: 1 };
+const CLIPPED: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
+
+/** CSS Color 4 gamut mapping: just-noticeable difference in deltaE OK. */
+const CSS_JND = 0.02;
+/** CSS Color 4 gamut mapping: chroma bisection precision. */
+const CSS_EPSILON = 0.0001;
 
 /** Unclamped linear sRGB of `color`, written into the shared scratch. */
 function scratchLinearSrgb(color: Color): LinearRgb {
@@ -103,17 +115,95 @@ function strictlyInTargetGamut(color: Color, gamut: GamutTarget): boolean {
 }
 
 /**
+ * Clip `color` to `gamut` (clamping linear channels to `[0, 1]`), writing
+ * the clipped color's OKLab into `out`, and return the deltaE OK between
+ * `color` and the clipped color.
+ */
+function clipToGamutLab(out: Oklab, color: Color, gamut: GamutTarget): number {
+  const lab = oklchToOklabInto(LAB, color);
+  const L = lab.L;
+  const a = lab.a;
+  const b = lab.b;
+  const target = scratchLinearTarget(color, gamut);
+  target.r = Math.min(Math.max(target.r, 0), 1);
+  target.g = Math.min(Math.max(target.g, 0), 1);
+  target.b = Math.min(Math.max(target.b, 0), 1);
+  const linear =
+    gamut === 'display-p3' ? linearP3ToLinearSrgbInto(LINEAR, target) : target;
+  linearRgbToOklabInto(out, linear);
+  const dL = out.L - L;
+  const da = out.a - a;
+  const db = out.b - b;
+  return Math.sqrt(dL * dL + da * da + db * db);
+}
+
+/**
+ * CSS Color 4 gamut mapping (binary search with local MINDE), on `trial`
+ * which is out of gamut and holds the input. Writes the result into `out`.
+ *
+ * Bisects OKLCH chroma at fixed L and h, but accepts a chroma as soon as
+ * clipping it into the gamut moves the color by less than the JND (0.02
+ * deltaE OK), and returns that clipped color. The result keeps more chroma
+ * than pure chroma reduction, at the cost of small L and h shifts.
+ *
+ * @see https://www.w3.org/TR/css-color-4/#binsearch
+ */
+function cssMapToGamutInto(
+  out: Color,
+  trial: Color,
+  gamut: GamutTarget,
+): Color {
+  const alpha = trial.alpha;
+  let deltaE = clipToGamutLab(CLIPPED, trial, gamut);
+  if (deltaE >= CSS_JND) {
+    let min = 0;
+    let max = trial.c;
+    let minInGamut = true;
+    while (max - min > CSS_EPSILON) {
+      const chroma = (min + max) / 2;
+      trial.c = chroma;
+      if (minInGamut && strictlyInTargetGamut(trial, gamut)) {
+        min = chroma;
+        continue;
+      }
+      deltaE = clipToGamutLab(CLIPPED, trial, gamut);
+      if (deltaE < CSS_JND) {
+        if (CSS_JND - deltaE < CSS_EPSILON) break;
+        minInGamut = false;
+        min = chroma;
+      } else {
+        max = chroma;
+      }
+    }
+  }
+  oklabToOklchInto(out, CLIPPED);
+  out.alpha = alpha;
+  return out;
+}
+
+/**
  * Map `color` into `gamut`, writing l/c/h/alpha into `out`. `out` may be the
  * same object as `color`.
  *
- * Out-of-gamut colors bisect OKLCH chroma (at fixed L and h) down to the
+ * Colors that pass the membership check (`inSrgbGamut` / `inP3Gamut`,
+ * including its GAMUT_EPSILON slack) are returned unchanged by every method,
+ * as are the lightness endpoints (snapped to black / white).
+ *
+ * `'chroma-reduction'` bisects OKLCH chroma (at fixed L and h) down to the
  * target gamut boundary. Candidates are accepted only when *strictly* inside
  * the gamut. The GAMUT_EPSILON slack used by membership checks is meant to
  * absorb float noise on colors that are already in gamut; letting the search
  * settle inside that slack would return out-of-gamut colors, and near black
  * the slack spans a large chroma range.
+ *
+ * `'css'` runs the CSS Color 4 algorithm (see `cssMapToGamutInto`).
  */
-function mapToGamutInto(out: Color, color: Color, gamut: GamutTarget): Color {
+function mapToGamutInto(
+  out: Color,
+  color: Color,
+  gamut: GamutTarget,
+  method: GamutMapMethod,
+): Color {
   const l = color.l;
   const c = color.c;
   const h = color.h;
@@ -136,6 +226,10 @@ function mapToGamutInto(out: Color, color: Color, gamut: GamutTarget): Color {
 
   let mappedC = c;
   if (!isInTargetGamut(trial, gamut)) {
+    if (method === 'css') {
+      return cssMapToGamutInto(out, trial, gamut);
+    }
+
     trial.c = 0;
 
     let lo = 0;
@@ -162,10 +256,19 @@ function mapToGamutInto(out: Color, color: Color, gamut: GamutTarget): Color {
   return out;
 }
 
+function resolveMethod(options: GamutMapOptions | undefined): GamutMapMethod {
+  // `options` may be a non-object when the function is passed straight to
+  // `Array.prototype.map` (which supplies the index); treat that as unset.
+  return options?.method === 'css' ? 'css' : 'chroma-reduction';
+}
+
 /**
  * Map a Color to the sRGB gamut, writing the result into `out`
  * (allocation-free). Same algorithm and bit-identical result as
  * `toSrgbGamut`; `out` may be the same object as `color`.
+ *
+ * @param options.method - `'chroma-reduction'` (default) or `'css'`; see
+ *   `toSrgbGamut()`
  *
  * @example
  * ```ts
@@ -175,14 +278,21 @@ function mapToGamutInto(out: Color, color: Color, gamut: GamutTarget): Color {
  * toSrgbGamutInto(mapped, { l: 0.7, c: 0.35, h: 150, alpha: 1 });
  * ```
  */
-export function toSrgbGamutInto(out: Color, color: Color): Color {
-  return mapToGamutInto(out, color, 'srgb');
+export function toSrgbGamutInto(
+  out: Color,
+  color: Color,
+  options?: GamutMapOptions,
+): Color {
+  return mapToGamutInto(out, color, 'srgb', resolveMethod(options));
 }
 
 /**
  * Map a Color to the Display P3 gamut, writing the result into `out`
  * (allocation-free). Same algorithm and bit-identical result as
  * `toP3Gamut`; `out` may be the same object as `color`.
+ *
+ * @param options.method - `'chroma-reduction'` (default) or `'css'`; see
+ *   `toSrgbGamut()`
  *
  * @example
  * ```ts
@@ -192,24 +302,60 @@ export function toSrgbGamutInto(out: Color, color: Color): Color {
  * toP3GamutInto(mapped, { l: 0.7, c: 0.4, h: 150, alpha: 1 });
  * ```
  */
-export function toP3GamutInto(out: Color, color: Color): Color {
-  return mapToGamutInto(out, color, 'display-p3');
+export function toP3GamutInto(
+  out: Color,
+  color: Color,
+  options?: GamutMapOptions,
+): Color {
+  return mapToGamutInto(out, color, 'display-p3', resolveMethod(options));
 }
 
 /**
- * Map a Color to the sRGB gamut by progressively reducing chroma.
- * Uses a binary search to find the maximum chroma that stays in gamut.
+ * Map a Color to the sRGB gamut.
  *
- * This preserves lightness and hue while only reducing saturation,
- * which produces the most visually similar in-gamut color.
+ * Colors already in gamut (per `inSrgbGamut`, with its GAMUT_EPSILON slack)
+ * are returned unchanged. Otherwise `options.method` picks the algorithm:
+ *
+ * - `'chroma-reduction'` (default): binary search for the largest in-gamut
+ *   OKLCH chroma at the same lightness and hue. Lightness and hue are
+ *   preserved exactly, which plane geometry, contrast regions and slider
+ *   tracks rely on.
+ * - `'css'`: the CSS Color 4 gamut mapping algorithm (chroma bisection with
+ *   a 0.02 deltaE OK just-noticeable-difference clip), as browsers and
+ *   colorjs.io `toGamut({ method: 'css' })` define it. Keeps more chroma
+ *   (e.g. `oklch(0.7 0.35 150)` maps to chroma ~0.210 instead of ~0.193),
+ *   at the cost of small lightness and hue shifts. Matches colorjs.io
+ *   outside the GAMUT_EPSILON tolerance band; colors inside the band are
+ *   returned unchanged, while colorjs.io (epsilon 0) still maps them, so
+ *   results can differ slightly there (up to ~0.014 deltaE OK near black).
+ *
+ * @example
+ * ```ts
+ * import { toSrgbGamut } from 'color-kit';
+ *
+ * const vivid = { l: 0.7, c: 0.35, h: 150, alpha: 1 };
+ * toSrgbGamut(vivid); // chroma-reduced, same l and h
+ * toSrgbGamut(vivid, { method: 'css' }); // CSS Color 4 result
+ * ```
  */
-export function toSrgbGamut(color: Color): Color {
-  return toSrgbGamutInto({ ...color }, color);
+export function toSrgbGamut(color: Color): Color;
+export function toSrgbGamut(
+  color: Color,
+  options: GamutMapOptions | undefined,
+): Color;
+export function toSrgbGamut(color: Color, options?: GamutMapOptions): Color {
+  return toSrgbGamutInto({ ...color }, color, options);
 }
 
 /**
- * Map a Color to the Display P3 gamut by progressively reducing chroma.
+ * Map a Color to the Display P3 gamut. Same methods and options as
+ * `toSrgbGamut()`; the default reduces OKLCH chroma at fixed L and h.
  */
-export function toP3Gamut(color: Color): Color {
-  return toP3GamutInto({ ...color }, color);
+export function toP3Gamut(color: Color): Color;
+export function toP3Gamut(
+  color: Color,
+  options: GamutMapOptions | undefined,
+): Color;
+export function toP3Gamut(color: Color, options?: GamutMapOptions): Color {
+  return toP3GamutInto({ ...color }, color, options);
 }

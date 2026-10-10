@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Color } from '@color-kit/core';
-import { inP3Gamut, inSrgbGamut } from '@color-kit/core';
+import {
+  inP3Gamut,
+  inSrgbGamut,
+  toP3Gamut,
+  toSrgbGamut,
+} from '@color-kit/core';
 import {
   colorsEqual,
   createColorState,
@@ -119,5 +124,31 @@ describe('colorsEqual', () => {
     expect(colorsEqual(IN_GAMUT, { ...IN_GAMUT, alpha: 0.998 }, 0.001)).toBe(
       false,
     );
+  });
+});
+
+describe('gamutMapMethod', () => {
+  it('records the mapping method in state meta', () => {
+    expect(createColorState(OUT_OF_BOTH).meta.gamutMapMethod).toBe(
+      'chroma-reduction',
+    );
+    expect(
+      createColorState(OUT_OF_BOTH, { gamutMapMethod: 'css' }).meta
+        .gamutMapMethod,
+    ).toBe('css');
+  });
+
+  it('defaults to chroma reduction and forwards an explicit method', () => {
+    expect(mapDisplayedColors(OUT_OF_BOTH)).toEqual(
+      mapDisplayedColors(OUT_OF_BOTH, { gamutMapMethod: 'chroma-reduction' }),
+    );
+
+    const css = mapDisplayedColors(OUT_OF_BOTH, { gamutMapMethod: 'css' });
+    expect(css.srgb).toEqual(toSrgbGamut(OUT_OF_BOTH, { method: 'css' }));
+    expect(css.p3).toEqual(toP3Gamut(OUT_OF_BOTH, { method: 'css' }));
+    expect(css.outOfGamut).toEqual({ srgb: true, p3: true });
+
+    const state = createColorState(OUT_OF_BOTH, { gamutMapMethod: 'css' });
+    expect(state.displayed).toEqual({ srgb: css.srgb, p3: css.p3 });
   });
 });

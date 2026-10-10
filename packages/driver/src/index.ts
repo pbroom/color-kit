@@ -121,6 +121,7 @@ export type {
   ColorUpdateEvent,
   CreateColorStateOptions,
   GamutTarget,
+  MapDisplayedColorsOptions,
   ViewModel,
 } from './color-state.js';
 
