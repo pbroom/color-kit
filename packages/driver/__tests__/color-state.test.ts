@@ -12,6 +12,10 @@ import {
   getActiveDisplayedColor,
   mapDisplayedColors,
   resolveColorSource,
+  setColorActiveGamut,
+  setColorActiveView,
+  setColorChannel,
+  setColorRequested,
 } from '../src/color-state.js';
 
 const IN_GAMUT: Color = { l: 0.5, c: 0.05, h: 200, alpha: 1 };
@@ -150,5 +154,150 @@ describe('gamutMapMethod', () => {
 
     const state = createColorState(OUT_OF_BOTH, { gamutMapMethod: 'css' });
     expect(state.displayed).toEqual({ srgb: css.srgb, p3: css.p3 });
+  });
+});
+
+describe('single-color reducers', () => {
+  const base = createColorState(OUT_OF_SRGB, { source: 'programmatic' });
+
+  it('setColorRequested re-derives displayed colors and keeps the display context', () => {
+    const start = setColorActiveView(
+      setColorActiveGamut(base, 'srgb', 'programmatic'),
+      'hex',
+      'programmatic',
+    );
+    const next = setColorRequested(start, OUT_OF_BOTH, 'user');
+
+    expect(next).not.toBe(start);
+    expect(next.requested).toEqual(OUT_OF_BOTH);
+    expect(next.meta).toEqual({
+      source: 'user',
+      outOfGamut: { srgb: true, p3: true },
+      gamutMapMethod: 'chroma-reduction',
+    });
+    expect(next.activeGamut).toBe('srgb');
+    expect(next.activeView).toBe('hex');
+    expect(inSrgbGamut(next.displayed.srgb)).toBe(true);
+  });
+
+  it('setColorRequested is a no-op only for an equal color and source', () => {
+    expect(setColorRequested(base, { ...OUT_OF_SRGB }, 'programmatic')).toBe(
+      base,
+    );
+    const resourced = setColorRequested(base, { ...OUT_OF_SRGB }, 'user');
+    expect(resourced).not.toBe(base);
+    expect(resourced.meta.source).toBe('user');
+  });
+
+  it('setColorChannel updates one channel and no-ops on an equal value', () => {
+    const next = setColorChannel(base, 'c', 0.05, 'user');
+
+    expect(next.requested).toEqual({ ...OUT_OF_SRGB, c: 0.05 });
+    expect(next.meta.outOfGamut).toEqual({ srgb: false, p3: false });
+    expect(next.meta.source).toBe('user');
+    // Equal channel value wins over a different source.
+    expect(setColorChannel(base, 'c', OUT_OF_SRGB.c, 'user')).toBe(base);
+  });
+
+  it('setColorActiveGamut/View switch context without touching colors', () => {
+    const gamut = setColorActiveGamut(base, 'srgb', 'user');
+    expect(gamut.activeGamut).toBe('srgb');
+    expect(gamut.requested).toBe(base.requested);
+    expect(gamut.displayed).toBe(base.displayed);
+    expect(gamut.meta.source).toBe('user');
+    expect(gamut.meta.outOfGamut).toBe(base.meta.outOfGamut);
+
+    const view = setColorActiveView(base, 'hsl', 'derived');
+    expect(view.activeView).toBe('hsl');
+    expect(view.requested).toBe(base.requested);
+    expect(view.meta.source).toBe('derived');
+  });
+
+  it('setColorRequested/Channel forward gamutMapMethod', () => {
+    const css = { gamutMapMethod: 'css' } as const;
+    const requested = setColorRequested(base, OUT_OF_BOTH, 'user', css);
+    expect(requested.displayed).toEqual({
+      srgb: toSrgbGamut(OUT_OF_BOTH, { method: 'css' }),
+      p3: toP3Gamut(OUT_OF_BOTH, { method: 'css' }),
+    });
+
+    const channel = setColorChannel(base, 'c', OUT_OF_BOTH.c, 'user', css);
+    const expected = { ...OUT_OF_SRGB, c: OUT_OF_BOTH.c };
+    expect(channel.displayed).toEqual({
+      srgb: toSrgbGamut(expected, { method: 'css' }),
+      p3: toP3Gamut(expected, { method: 'css' }),
+    });
+  });
+
+  it('setColorRequested/Channel apply a method override to an unchanged color', () => {
+    const css = { gamutMapMethod: 'css' } as const;
+    const byColor = setColorRequested(
+      base,
+      { ...base.requested },
+      base.meta.source,
+      css,
+    );
+    expect(byColor).not.toBe(base);
+    expect(byColor.meta.gamutMapMethod).toBe('css');
+    expect(byColor.displayed).toEqual(
+      createColorState(base.requested, css).displayed,
+    );
+
+    const byChannel = setColorChannel(base, 'c', base.requested.c, 'user', css);
+    expect(byChannel.meta.gamutMapMethod).toBe('css');
+    expect(byChannel.displayed).toEqual(
+      createColorState(base.requested, css).displayed,
+    );
+
+    // Passing the stored method is still a no-op.
+    expect(
+      setColorRequested(byColor, { ...byColor.requested }, 'programmatic', css),
+    ).toBe(byColor);
+    expect(
+      setColorChannel(byColor, 'c', byColor.requested.c, 'user', css),
+    ).toBe(byColor);
+  });
+
+  it('setColorRequested/Channel keep the stored gamutMapMethod', () => {
+    // 'css' must survive later updates instead of reverting to the default.
+    const vivid: Color = { l: 0.7, c: 0.35, h: 150, alpha: 1 };
+    const start = createColorState(vivid, { gamutMapMethod: 'css' });
+    expect(start.displayed.srgb.c).toBeCloseTo(0.2104, 3);
+
+    const alpha = setColorChannel(start, 'alpha', 0.9, 'user');
+    expect(alpha.meta.gamutMapMethod).toBe('css');
+    expect(alpha.displayed.srgb).toEqual(
+      toSrgbGamut({ ...vivid, alpha: 0.9 }, { method: 'css' }),
+    );
+    expect(alpha.displayed.srgb.c).toBeCloseTo(0.2104, 3);
+
+    const requested = setColorRequested(alpha, OUT_OF_BOTH, 'user');
+    expect(requested.meta.gamutMapMethod).toBe('css');
+    expect(requested.displayed.p3).toEqual(
+      toP3Gamut(OUT_OF_BOTH, { method: 'css' }),
+    );
+
+    // Gamut/view switches keep it; an explicit option overrides it.
+    expect(
+      setColorActiveView(
+        setColorActiveGamut(alpha, 'srgb', 'user'),
+        'hex',
+        'user',
+      ).meta.gamutMapMethod,
+    ).toBe('css');
+    const overridden = setColorChannel(alpha, 'alpha', 0.8, 'user', {
+      gamutMapMethod: 'chroma-reduction',
+    });
+    expect(overridden.meta.gamutMapMethod).toBe('chroma-reduction');
+    expect(overridden.displayed.srgb).toEqual(
+      toSrgbGamut({ ...vivid, alpha: 0.8 }),
+    );
+  });
+
+  it('setColorActiveGamut/View no-op only when value and source match', () => {
+    expect(setColorActiveGamut(base, 'display-p3', 'programmatic')).toBe(base);
+    expect(setColorActiveView(base, 'oklch', 'programmatic')).toBe(base);
+    expect(setColorActiveGamut(base, 'display-p3', 'user')).not.toBe(base);
+    expect(setColorActiveView(base, 'oklch', 'user')).not.toBe(base);
   });
 });

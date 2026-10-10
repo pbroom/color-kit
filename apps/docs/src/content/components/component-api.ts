@@ -29,7 +29,8 @@ export const componentApiDocs: ComponentApiDocs = {
     {
       name: 'onChange',
       type: '(event: ColorUpdateEvent) => void',
-      description: 'Called every time shared state changes.',
+      description:
+        'Called synchronously inside the update that changed shared state (before React re-renders), in both controlled and uncontrolled modes. Never called for no-op updates; several updates in one tick compose.',
     },
     {
       name: 'defaultGamut',
