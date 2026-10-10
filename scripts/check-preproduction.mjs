@@ -5,6 +5,7 @@ const PACKAGE_ROOTS = ['packages', 'apps'];
 const CONTROL_KIT_PACKAGE = '@color-kit/control-kit';
 const CONTROL_KIT_GITHUB_SPEC_PREFIX = 'github:pbroom/control-kit';
 const LOCAL_DEPENDENCY_PREFIXES = ['workspace:', 'file:', 'link:'];
+const CHANGESET_DIR = '.changeset';
 
 function parseMajor(version) {
   const match = /^(\d+)(?:\.|$)/.exec(version);
@@ -34,8 +35,93 @@ async function collectPackageJsonPaths() {
   return packageJsonPaths;
 }
 
+/**
+ * Parse the YAML frontmatter of a changeset: one `name: bump` mapping per
+ * line, with the name optionally quoted and an optional trailing `# comment`.
+ * Lines the guard cannot parse are returned as `unparsed` so the check rejects
+ * them instead of silently skipping a release.
+ * @param {string} source
+ * @returns {{ releases: Array<{ name: string, bump: string }>, unparsed: string[] }}
+ */
+function parseChangesetReleases(source) {
+  const releases = [];
+  const unparsed = [];
+  const match = /^---\r?\n(?:([\s\S]*?)\r?\n)?---/.exec(source);
+  if (!match) {
+    return { releases, unparsed };
+  }
+
+  for (const line of (match[1] ?? '').split(/\r?\n/)) {
+    if (/^\s*(?:#.*)?$/.test(line)) {
+      continue;
+    }
+    const release =
+      /^\s*(?:(['"])([^'"]+)\1|([^\s'"#:][^\s'"#]*))\s*:\s*(['"]?)(\w+)\4\s*(?:#.*)?$/.exec(
+        line,
+      );
+    if (release) {
+      releases.push({ name: release[2] ?? release[3], bump: release[5] });
+    } else {
+      unparsed.push(line.trim());
+    }
+  }
+
+  return { releases, unparsed };
+}
+
+/**
+ * Changesets may only target publishable packages (private workspace packages
+ * are not versioned, so their changesets would be silently dropped), and a
+ * `major` bump would take a 0.x package to 1.0.0.
+ */
+async function checkChangesets(publishablePackages, errors) {
+  let entries = [];
+  try {
+    entries = await readdir(CHANGESET_DIR, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (
+      !entry.isFile() ||
+      !entry.name.endsWith('.md') ||
+      entry.name === 'README.md'
+    ) {
+      continue;
+    }
+
+    const changesetPath = path.join(CHANGESET_DIR, entry.name);
+    const { releases, unparsed } = parseChangesetReleases(
+      await readFile(changesetPath, 'utf8'),
+    );
+    for (const line of unparsed) {
+      errors.push(
+        `${changesetPath}: cannot parse release line "${line}"; write one "'package-name': bump" per line`,
+      );
+    }
+
+    for (const { name, bump } of releases) {
+      const version = publishablePackages.get(name);
+      if (version === undefined) {
+        errors.push(
+          `${changesetPath}: "${name}" is not a publishable workspace package; target ${[...publishablePackages.keys()].map((pkg) => `"${pkg}"`).join(', ')} instead`,
+        );
+        continue;
+      }
+
+      if (bump === 'major' && (parseMajor(version) ?? 0) < 1) {
+        errors.push(
+          `${changesetPath}: "${name}" is pre-1.0; use a minor bump for breaking changes instead of major`,
+        );
+      }
+    }
+  }
+}
+
 async function main() {
   const errors = [];
+  const publishablePackages = new Map();
   const packageJsonPaths = await collectPackageJsonPaths();
   const controlKitPath = packageJsonPaths.find(
     (packageJsonPath) =>
@@ -88,6 +174,10 @@ async function main() {
       continue;
     }
 
+    if (typeof pkg.name === 'string') {
+      publishablePackages.set(pkg.name, pkg.version);
+    }
+
     if (typeof pkg.version !== 'string') {
       errors.push(`${packageJsonPath}: missing string version`);
       continue;
@@ -108,6 +198,8 @@ async function main() {
     }
   }
 
+  await checkChangesets(publishablePackages, errors);
+
   if (errors.length > 0) {
     console.error('Pre-production version guard failed:');
     for (const error of errors) {
@@ -117,7 +209,7 @@ async function main() {
   }
 
   console.log(
-    'Pre-production version guard passed: all publishable workspace packages are < 1.0.0.',
+    'Pre-production version guard passed: all publishable workspace packages are < 1.0.0 and changesets only target them with non-major bumps.',
   );
 }
 
