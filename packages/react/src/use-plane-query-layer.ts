@@ -95,17 +95,18 @@ export function usePlaneQueryLayer<T>(
   const workerUsable = canUseWorkerOffload();
   const usingWorkerPath = !external && isDragging && workerUsable;
 
+  // While dragging, sync compute stops once the worker path owns the data.
+  // At rest it never depends on worker data, and the memo keys on this flag
+  // rather than on `isDragging`, so a drag that starts before its first
+  // worker response reuses the latest idle result instead of recomputing.
+  const suppressSync =
+    isDragging &&
+    workerUsable &&
+    (syncWhileDragging === 'never' || workerData != null);
+
   const sync = useMemo(() => {
-    if (external) {
+    if (external || suppressSync) {
       return null;
-    }
-    if (isDragging && workerUsable) {
-      if (syncWhileDragging === 'never') {
-        return null;
-      }
-      if (workerData != null) {
-        return null;
-      }
     }
     const start = nowMs();
     const data = computeSync();
@@ -113,18 +114,16 @@ export function usePlaneQueryLayer<T>(
       data,
       computeTimeMs: nowMs() - start,
     };
-  }, [
-    computeSync,
-    external,
-    isDragging,
-    syncWhileDragging,
-    workerData,
-    workerUsable,
-  ]);
+  }, [computeSync, external, suppressSync]);
 
   useEffect(() => {
     if (external || !canUseWorkerOffload() || !isDragging) {
-      queueMicrotask(() => setActiveWorkerRequestId(null));
+      // Worker data belongs to one drag; dropping it at rest keeps the next
+      // drag from falling back to the previous drag's geometry.
+      queueMicrotask(() => {
+        setActiveWorkerRequestId(null);
+        setWorkerData(null);
+      });
       return;
     }
 
