@@ -81,7 +81,7 @@ const contrast = runCase('plane.contrastRegion defaults', () =>
   ),
 );
 
-// The React ContrastRegionLayer defaults, tuned for interactive use.
+// The React useContrastRegion defaults, tuned for interactive use.
 const contrastInteractive = runCase('plane.contrastRegion interactive', () =>
   THRESHOLDS.map((threshold) =>
     query.contrastRegion({

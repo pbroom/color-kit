@@ -136,7 +136,7 @@ import {
   useGamutBoundary,
 } from 'color-kit/react';
 
-function ColorPlane() {
+function PlanePreview() {
   const { requested } = useColor({ defaultColor: '#3b82f6' });
   const { ref, canvasKey } = useColorPlaneRenderer({ color: requested });
   const srgb = useGamutBoundary({ color: requested }, { gamut: 'srgb' });

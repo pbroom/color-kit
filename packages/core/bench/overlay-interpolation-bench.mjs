@@ -125,7 +125,7 @@ for (let i = 0; i < MEASURE_ROUNDS; i++) ct3.push(timeMs(contrastInteractive));
 const cp3 = contrastInteractive();
 const total3 = cp3.reduce((s, path) => s + path.length, 0);
 console.log(
-  `interactive 8/0.004/3: paths=${cp3.length} totalPoints=${total3}  median=${median(ct3).toFixed(2)}ms  (ContrastRegionLayer defaults)`,
+  `interactive 8/0.004/3: paths=${cp3.length} totalPoints=${total3}  median=${median(ct3).toFixed(2)}ms  (useContrastRegion defaults)`,
 );
 
 console.log(

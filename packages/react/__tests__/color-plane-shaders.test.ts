@@ -12,7 +12,7 @@ import {
   glslFloat,
 } from '../src/color-plane-shaders.js';
 
-describe('ColorPlane shaders', () => {
+describe('plane renderer shaders', () => {
   it('maps y-axis values without a second inversion', () => {
     expect(COLOR_PLANE_FRAGMENT_SHADER_SOURCE).toContain(
       'float yValue = mix(u_y_range.x, u_y_range.y, v_uv.y);',
@@ -47,7 +47,7 @@ describe('ColorPlane shaders', () => {
   });
 });
 
-describe('ColorPlane shader gamut constants', () => {
+describe('plane renderer shader gamut constants', () => {
   function readVec3(name: string): number[] {
     const match = COLOR_PLANE_FRAGMENT_SHADER_SOURCE.match(
       new RegExp(`const vec3 ${name} = vec3\\(([^)]*)\\);`),
