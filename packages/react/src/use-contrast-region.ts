@@ -185,7 +185,11 @@ export interface ContrastRegionGeometry {
   fillPath: string;
   /** Quality level the region was sampled at. */
   quality: ColorPlaneQualityLevel;
-  /** Where the current contours come from. */
+  /**
+   * Where the current contours come from: `'worker'` for a worker result,
+   * `'sync'` for a main-thread solve, including the idle result kept on
+   * screen while a drag waits for its first worker response.
+   */
   source: 'sync' | 'worker';
 }
 
@@ -283,9 +287,12 @@ export function useContrastRegion(
   const [frozenSampling, setFrozenSampling] = useState<LayerSampling | null>(
     null,
   );
-  const [lastStablePaths, setLastStablePaths] = useState<
-    ColorAreaContrastRegionPoint[][]
-  >([]);
+  // The last fresh contours and where they came from, shown while a drag
+  // waits for the worker.
+  const [lastStable, setLastStable] = useState<{
+    paths: ColorAreaContrastRegionPoint[][];
+    source: 'sync' | 'worker';
+  }>({ paths: [], source: 'sync' });
   const [lastStableFillPaths, setLastStableFillPaths] = useState<
     ColorAreaContrastRegionPoint[][]
   >([]);
@@ -506,23 +513,20 @@ export function useContrastRegion(
 
   const rawPathsAreFresh = !usingWorkerPath || hasCurrentWorkerResponse;
 
-  const rawPaths = useMemo(() => {
+  const { paths: rawPaths, source: rawSource } = useMemo((): {
+    paths: ColorAreaContrastRegionPoint[][];
+    source: 'sync' | 'worker';
+  } => {
     if (usingWorkerPath) {
       if (hasCurrentWorkerResponse && workerData != null) {
-        return workerData.data;
+        return { paths: workerData.data, source: 'worker' };
       }
-      if (lastStablePaths.length > 0) {
-        return lastStablePaths;
+      if (lastStable.paths.length > 0) {
+        return lastStable;
       }
     }
-    return sync?.data ?? [];
-  }, [
-    hasCurrentWorkerResponse,
-    lastStablePaths,
-    sync,
-    usingWorkerPath,
-    workerData,
-  ]);
+    return { paths: sync?.data ?? [], source: 'sync' };
+  }, [hasCurrentWorkerResponse, lastStable, sync, usingWorkerPath, workerData]);
 
   useEffect(() => {
     if (!sync) {
@@ -541,14 +545,18 @@ export function useContrastRegion(
   useEffect(() => {
     if (!isDragging) {
       if (sync?.data) {
-        queueMicrotask(() => setLastStablePaths(sync.data));
+        queueMicrotask(() =>
+          setLastStable({ paths: sync.data, source: 'sync' }),
+        );
       }
       return;
     }
     if (!hasCurrentWorkerResponse || !workerData) {
       return;
     }
-    queueMicrotask(() => setLastStablePaths(workerData.data));
+    queueMicrotask(() =>
+      setLastStable({ paths: workerData.data, source: 'worker' }),
+    );
   }, [hasCurrentWorkerResponse, isDragging, sync, workerData]);
 
   const contrastGamutBoundary = useMemo(
@@ -628,8 +636,8 @@ export function useContrastRegion(
       fillPaths: visibleFillPaths,
       fillPath: toSvgCompoundPath(visibleFillPaths, { closeLoop: true }),
       quality,
-      source: usingWorkerPath ? 'worker' : 'sync',
+      source: rawSource,
     }),
-    [paths, quality, usingWorkerPath, visibleFillPaths],
+    [paths, quality, rawSource, visibleFillPaths],
   );
 }

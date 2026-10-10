@@ -128,6 +128,14 @@ export function useAdaptiveQuality(
     profile: performanceProfile,
     level: profileDefaultQuality(performanceProfile),
   }));
+  // A profile change resets the stored level, so revisiting a profile used
+  // earlier starts from its default instead of the level it last reached.
+  if (state.profile !== performanceProfile) {
+    setState({
+      profile: performanceProfile,
+      level: profileDefaultQuality(performanceProfile),
+    });
+  }
   const quality =
     state.profile === performanceProfile
       ? state.level
