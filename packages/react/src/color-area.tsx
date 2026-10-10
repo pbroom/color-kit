@@ -32,8 +32,8 @@ import {
   ColorAreaContext,
   type ColorAreaInteractionFrameStats,
   type ColorAreaPerformanceProfile,
-  type ColorAreaQualityLevel,
 } from './color-area-context.js';
+import { useAdaptiveQuality } from './use-adaptive-quality.js';
 import { Thumb } from './thumb.js';
 import type { SetRequestedOptions } from './use-color.js';
 
@@ -135,25 +135,6 @@ function latestPointerSnapshot(event: PointerEvent): {
     },
     coalescedCount: coalesced.length,
   };
-}
-
-function lowerQuality(level: ColorAreaQualityLevel): ColorAreaQualityLevel {
-  if (level === 'high') return 'medium';
-  if (level === 'medium') return 'low';
-  return 'low';
-}
-
-function raiseQuality(level: ColorAreaQualityLevel): ColorAreaQualityLevel {
-  if (level === 'low') return 'medium';
-  if (level === 'medium') return 'high';
-  return 'high';
-}
-
-function profileDefaultQuality(
-  profile: ColorAreaPerformanceProfile,
-): ColorAreaQualityLevel {
-  if (profile === 'performance') return 'medium';
-  return 'high';
 }
 
 function normalizeAxesForProdFallback(
@@ -365,23 +346,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     if (disabled && isDragging) {
       setIsDragging(false);
     }
-    const [adaptiveQualityState, setAdaptiveQualityState] = useState<{
-      profile: ColorAreaPerformanceProfile;
-      level: ColorAreaQualityLevel;
-    }>(() => ({
-      profile: performanceProfile,
-      level: profileDefaultQuality(performanceProfile),
-    }));
-    const qualityLevel =
-      adaptiveQualityState.profile === performanceProfile
-        ? adaptiveQualityState.level
-        : profileDefaultQuality(performanceProfile);
-    const qualityLevelRef = useRef(qualityLevel);
+    const adaptiveQuality = useAdaptiveQuality(performanceProfile);
+    const qualityLevel = adaptiveQuality.quality;
     const activePointerIdRef = useRef<number | null>(null);
     const rectRef = useRef<DOMRect | null>(null);
     const lastFrameTsRef = useRef(0);
-    const rollingUpdateMsRef = useRef<number[]>([]);
-    const rollingFrameMsRef = useRef<number[]>([]);
 
     const requestedAxes = useMemo(() => resolveColorAreaAxes(axes), [axes]);
     const hasDuplicateAxes = useMemo(
@@ -424,65 +393,8 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       return nextRect;
     }, []);
 
-    const updateAdaptiveQuality = useCallback(
-      (updateDurationMs: number, frameTimeMs: number) => {
-        if (performanceProfile === 'quality') {
-          qualityLevelRef.current = 'high';
-          return;
-        }
-
-        const updates = rollingUpdateMsRef.current;
-        updates.push(updateDurationMs);
-        if (updates.length > 12) {
-          updates.shift();
-        }
-        const frames = rollingFrameMsRef.current;
-        frames.push(frameTimeMs);
-        if (frames.length > 12) {
-          frames.shift();
-        }
-
-        const avgUpdate =
-          updates.reduce((acc, value) => acc + value, 0) / updates.length;
-        const avgFrame =
-          frames.reduce((acc, value) => acc + value, 0) / frames.length;
-
-        const degradeThreshold =
-          performanceProfile === 'performance'
-            ? { update: 7.4, frame: 15.5 }
-            : performanceProfile === 'balanced'
-              ? { update: 8.8, frame: 18.5 }
-              : { update: 10, frame: 20 };
-        const recoverThreshold =
-          performanceProfile === 'performance'
-            ? { update: 4.3, frame: 11.5 }
-            : performanceProfile === 'balanced'
-              ? { update: 5.2, frame: 12.5 }
-              : { update: 5.7, frame: 13 };
-
-        let nextQuality = qualityLevelRef.current;
-        if (
-          avgUpdate >= degradeThreshold.update ||
-          avgFrame >= degradeThreshold.frame
-        ) {
-          nextQuality = lowerQuality(nextQuality);
-        } else if (
-          avgUpdate <= recoverThreshold.update &&
-          avgFrame <= recoverThreshold.frame
-        ) {
-          nextQuality = raiseQuality(nextQuality);
-        }
-
-        if (nextQuality !== qualityLevelRef.current) {
-          qualityLevelRef.current = nextQuality;
-          setAdaptiveQualityState({
-            profile: performanceProfile,
-            level: nextQuality,
-          });
-        }
-      },
-      [performanceProfile],
-    );
+    const reportQualityFrame = adaptiveQuality.reportFrame;
+    const resetQualityWindow = adaptiveQuality.reset;
 
     const commitPoint = useCallback(
       (point: DragPoint, info: DragCommitInfo) => {
@@ -502,22 +414,25 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
             : end - start;
         lastFrameTsRef.current = start;
 
-        updateAdaptiveQuality(updateDurationMs, frameTimeMs);
+        const nextQualityLevel = reportQualityFrame({
+          updateDurationMs,
+          frameTimeMs,
+        });
         onInteractionFrame?.({
           frameTimeMs,
           updateDurationMs,
           droppedFrame: frameTimeMs > 16.67,
           longTask: updateDurationMs > 50,
-          qualityLevel: qualityLevelRef.current,
+          qualityLevel: nextQualityLevel,
           coalescedCount: info.coalescedCount,
         });
       },
       [
         onInteractionFrame,
+        reportQualityFrame,
         requested,
         resolvedAxes,
         setRequested,
-        updateAdaptiveQuality,
       ],
     );
 
@@ -553,17 +468,6 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     ]);
 
     useEffect(() => () => dragController.cancel(), [dragController]);
-
-    useEffect(() => {
-      const defaultLevel = profileDefaultQuality(performanceProfile);
-      qualityLevelRef.current = defaultLevel;
-      rollingUpdateMsRef.current = [];
-      rollingFrameMsRef.current = [];
-    }, [performanceProfile]);
-
-    useEffect(() => {
-      qualityLevelRef.current = qualityLevel;
-    }, [qualityLevel]);
 
     useEffect(() => {
       if (!areaNode || typeof ResizeObserver === 'undefined') {
@@ -697,8 +601,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         thumbNode?.focus({ preventScroll: true });
         setIsDragging(true);
         activePointerIdRef.current = event.pointerId;
-        rollingUpdateMsRef.current = [];
-        rollingFrameMsRef.current = [];
+        resetQualityWindow();
         lastFrameTsRef.current = 0;
         refreshRect();
         startWindowTracking();
@@ -718,6 +621,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         dragController,
         onPointerDown,
         refreshRect,
+        resetQualityWindow,
         startWindowTracking,
       ],
     );

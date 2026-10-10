@@ -27,6 +27,41 @@ export type {
   UseMultiColorOptions,
   UseMultiColorReturn,
 } from './use-multi-color.js';
+// Plane rendering, geometry and performance hooks
+export { useColorPlaneRenderer } from './use-color-plane-renderer.js';
+export type {
+  ActiveColorPlaneRenderer,
+  ColorPlaneRendererHandle,
+  UseColorPlaneRendererOptions,
+} from './use-color-plane-renderer.js';
+export { useGamutBoundary } from './use-gamut-boundary.js';
+export type {
+  ColorPlaneLineGeometry,
+  ColorPlaneLinePoint,
+  UseGamutBoundaryOptions,
+} from './use-gamut-boundary.js';
+export { useChromaBand } from './use-chroma-band.js';
+export type { UseChromaBandOptions } from './use-chroma-band.js';
+export { useContrastRegion } from './use-contrast-region.js';
+export type {
+  ContrastRegionGeometry,
+  ContrastRegionMetrics,
+  UseContrastRegionOptions,
+} from './use-contrast-region.js';
+export { useFallbackPoints } from './use-fallback-points.js';
+export type { ColorPlaneFallbackPoints } from './use-fallback-points.js';
+export { useAdaptiveQuality } from './use-adaptive-quality.js';
+export type {
+  AdaptiveQuality,
+  AdaptiveQualityFrame,
+  ColorPlanePerformanceProfile,
+  ColorPlaneQualityLevel,
+} from './use-adaptive-quality.js';
+export type {
+  ColorPlanePixelSize,
+  ColorPlaneQueryOptions,
+  ColorPlaneSpec,
+} from './plane-spec.js';
 // Driver types used in component prop/return signatures. Values (including
 // the ColorApi helpers and color-state utilities) live in @color-kit/driver.
 export type {
