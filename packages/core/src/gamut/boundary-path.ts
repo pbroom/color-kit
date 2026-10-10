@@ -6,6 +6,7 @@ import {
 } from '../sampling/adaptive1d.js';
 import { maxChromaForHue } from './hue-cusp.js';
 import { maxChromaAt } from './max-chroma.js';
+import { assertGamutTarget } from './target.js';
 import {
   DEFAULT_MAX_CHROMA,
   type GamutBoundaryPathOptions,
@@ -21,6 +22,7 @@ export function gamutBoundaryPath(
   hue: number,
   options: GamutBoundaryPathOptions = {},
 ): GamutBoundaryPoint[] {
+  assertGamutTarget(options.gamut, 'gamutBoundaryPath()');
   const mode = options.samplingMode ?? 'uniform';
   if (mode === 'adaptive') {
     return gamutBoundaryPathAdaptive(hue, options);

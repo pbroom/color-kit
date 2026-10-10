@@ -1,3 +1,4 @@
+import { assertGamutTarget } from '../../gamut/target.js';
 import { resolvePlaneDefinition } from '../plane.js';
 import {
   limitTracePaths,
@@ -42,6 +43,7 @@ export function getPlaneGamutRegion(
   trace?: InternalPlaneTraceContext | null,
 ): PlaneGamutRegionResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
+  assertGamutTarget(query.gamut, 'gamutRegion()');
   const gamut = query.gamut ?? 'srgb';
   const scope = query.scope ?? 'viewport';
   const solver = resolveGamutSolver(resolvedPlane, gamut);

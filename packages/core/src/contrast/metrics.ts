@@ -1,5 +1,6 @@
 import type { Color, LinearRgb } from '../types.js';
 import type { GamutTarget } from '../gamut/types.js';
+import { assertGamutTarget } from '../gamut/target.js';
 import { toLinearSrgbInto } from '../conversion/into.js';
 import {
   linearP3ToLinearSrgbInto,
@@ -80,6 +81,7 @@ function displayedSrgb(
   encoded: boolean,
 ): LinearRgb {
   const quantize = options?.precision === '8bit';
+  assertGamutTarget(options?.gamut, 'contrast');
   const out = toLinearSrgbInto(DISPLAYED, color);
   if (options?.gamut === 'display-p3') {
     linearSrgbToLinearP3Into(out, out);

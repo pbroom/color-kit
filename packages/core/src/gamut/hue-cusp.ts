@@ -3,6 +3,7 @@ import { OKLAB_TO_LMS } from '../conversion/matrices.js';
 import { clamp, normalizeHue } from '../utils/index.js';
 import { findPositiveCubicRoot, type CubicCoefficients } from './cubic.js';
 import { maxChromaAt } from './max-chroma.js';
+import { assertGamutTarget } from './target.js';
 import {
   getTargetRows,
   isInTargetGamut,
@@ -194,6 +195,7 @@ export function maxChromaForHue(
   hue: number,
   options: MaxChromaForHueOptions = {},
 ): HueCusp {
+  assertGamutTarget(options.gamut, 'maxChromaForHue()');
   const gamut = options.gamut ?? 'srgb';
   const method = options.method ?? 'lut';
 

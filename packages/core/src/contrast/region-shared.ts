@@ -1,5 +1,6 @@
 import type { Color } from '../types.js';
 import { toP3Gamut, toSrgbGamut, type GamutTarget } from '../gamut/index.js';
+import { assertGamutTarget } from '../gamut/target.js';
 import type { PlanePoint } from '../geometry/types.js';
 import {
   contrastAPCA,
@@ -57,6 +58,7 @@ export function resolveContrastCriterion(
   options: ContrastRegionPathOptions,
 ): ResolvedContrastCriterion {
   const metric = options.metric ?? 'wcag';
+  assertGamutTarget(options.gamut, 'contrastRegionPaths()');
   const metricOptions: ContrastOptions = { gamut: options.gamut ?? 'srgb' };
   if (metric === 'apca') {
     const preset = options.apcaPreset ?? 'body';
