@@ -20,7 +20,11 @@ import { useOptionalColorContext } from './context.js';
 import {
   areColorAreaAxesDistinct,
   colorFromColorAreaPosition,
+  createPointerDragController,
+  normalizeColorAreaPointer,
   resolveColorAreaAxes,
+  type DragCommitInfo,
+  type DragPoint,
   type ColorAreaAxes,
   type ResolvedColorAreaAxes,
 } from '@color-kit/driver';
@@ -59,12 +63,12 @@ export interface ColorAreaProps extends Omit<
    */
   performanceProfile?: ColorAreaPerformanceProfile;
   /**
-   * Maximum pointer-driven update frequency.
+   * Maximum pointer-driven update frequency while dragging (updates/second).
    * @default 60
    */
   maxUpdateHz?: number;
   /**
-   * Skip pointer updates when normalized delta is smaller than this threshold.
+   * Skip pointer updates when the normalized delta is not larger than this.
    * @default 0.0005
    */
   dragEpsilon?: number;
@@ -92,16 +96,38 @@ export interface ColorAreaProps extends Omit<
   disabled?: boolean;
 }
 
-function clamp01(value: number): number {
-  if (value < 0) return 0;
-  if (value > 1) return 1;
-  return value;
+interface PointerSnapshot {
+  clientX: number;
+  clientY: number;
 }
-
-const UPDATE_RATE_SLOP_MS = 1;
 
 function asFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function nowMs(): number {
+  return typeof performance === 'undefined' ? Date.now() : performance.now();
+}
+
+/** Latest (coalesced) pointer position plus the number of merged samples. */
+function latestPointerSnapshot(event: PointerEvent): {
+  snapshot: PointerSnapshot;
+  coalescedCount: number;
+} {
+  const coalesced =
+    typeof event.getCoalescedEvents === 'function'
+      ? event.getCoalescedEvents()
+      : [];
+  const latest = coalesced.length > 0 ? coalesced[coalesced.length - 1] : event;
+  return {
+    snapshot: {
+      clientX:
+        asFiniteNumber(latest.clientX) ?? asFiniteNumber(event.clientX) ?? 0,
+      clientY:
+        asFiniteNumber(latest.clientY) ?? asFiniteNumber(event.clientY) ?? 0,
+    },
+    coalescedCount: coalesced.length,
+  };
 }
 
 function lowerQuality(level: ColorAreaQualityLevel): ColorAreaQualityLevel {
@@ -286,7 +312,6 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     if (disabled && isDragging) {
       setIsDragging(false);
     }
-    const isDraggingRef = useRef(false);
     const [adaptiveQualityState, setAdaptiveQualityState] = useState<{
       profile: ColorAreaPerformanceProfile;
       level: ColorAreaQualityLevel;
@@ -299,20 +324,8 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         ? adaptiveQualityState.level
         : profileDefaultQuality(performanceProfile);
     const qualityLevelRef = useRef(qualityLevel);
-    const rafRef = useRef<number | null>(null);
-    const pendingPositionRef = useRef<{
-      clientX: number;
-      clientY: number;
-      coalescedCount: number;
-    } | null>(null);
     const activePointerIdRef = useRef<number | null>(null);
-    const queuePointerPositionRef = useRef<
-      (clientX: number, clientY: number, coalescedCount: number) => void
-    >(() => {});
-    const flushPendingPositionRef = useRef<(force?: boolean) => void>(() => {});
     const rectRef = useRef<DOMRect | null>(null);
-    const lastNormRef = useRef<{ x: number; y: number } | null>(null);
-    const lastCommitTsRef = useRef(0);
     const lastFrameTsRef = useRef(0);
     const rollingUpdateMsRef = useRef<number[]>([]);
     const rollingFrameMsRef = useRef<number[]>([]);
@@ -418,74 +431,23 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       [performanceProfile],
     );
 
-    const commitFromPosition = useCallback(
-      (
-        clientX: number,
-        clientY: number,
-        options: { force?: boolean; coalescedCount?: number } = {},
-      ) => {
-        if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) {
-          return;
-        }
-
-        const rect = rectRef.current ?? refreshRect();
-        if (!rect || rect.width <= 0 || rect.height <= 0) {
-          return;
-        }
-
-        const xNormRaw = (clientX - rect.left) / rect.width;
-        const yNormRaw = (clientY - rect.top) / rect.height;
-        if (!Number.isFinite(xNormRaw) || !Number.isFinite(yNormRaw)) {
-          return;
-        }
-
-        const xNorm = clamp01(xNormRaw);
-        const yNorm = clamp01(yNormRaw);
-        const previousNorm = lastNormRef.current;
-        const epsilon = dragEpsilon >= 0 ? dragEpsilon : 0.0005;
-
-        if (
-          !options.force &&
-          previousNorm &&
-          Math.abs(previousNorm.x - xNorm) <= epsilon &&
-          Math.abs(previousNorm.y - yNorm) <= epsilon
-        ) {
-          return;
-        }
-
-        const now =
-          typeof performance === 'undefined' ? Date.now() : performance.now();
-        const safeMaxUpdateHz =
-          Number.isFinite(maxUpdateHz) && maxUpdateHz > 0 ? maxUpdateHz : 60;
-        const minDeltaMs = 1000 / safeMaxUpdateHz;
-
-        if (
-          !options.force &&
-          lastCommitTsRef.current > 0 &&
-          now + UPDATE_RATE_SLOP_MS < lastCommitTsRef.current + minDeltaMs
-        ) {
-          return;
-        }
-
-        const start =
-          typeof performance === 'undefined' ? Date.now() : performance.now();
+    const commitPoint = useCallback(
+      (point: DragPoint, info: DragCommitInfo) => {
+        const start = nowMs();
         setRequested(
-          colorFromColorAreaPosition(requested, resolvedAxes, xNorm, yNorm),
+          colorFromColorAreaPosition(requested, resolvedAxes, point.x, point.y),
           {
             interaction: 'pointer',
           },
         );
 
-        const end =
-          typeof performance === 'undefined' ? Date.now() : performance.now();
+        const end = nowMs();
         const updateDurationMs = end - start;
         const frameTimeMs =
           lastFrameTsRef.current > 0
             ? start - lastFrameTsRef.current
             : end - start;
         lastFrameTsRef.current = start;
-        lastCommitTsRef.current = start;
-        lastNormRef.current = { x: xNorm, y: yNorm };
 
         updateAdaptiveQuality(updateDurationMs, frameTimeMs);
         onInteractionFrame?.({
@@ -494,14 +456,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           droppedFrame: frameTimeMs > 16.67,
           longTask: updateDurationMs > 50,
           qualityLevel: qualityLevelRef.current,
-          coalescedCount: options.coalescedCount ?? 1,
+          coalescedCount: info.coalescedCount,
         });
       },
       [
-        dragEpsilon,
-        maxUpdateHz,
         onInteractionFrame,
-        refreshRect,
         requested,
         resolvedAxes,
         setRequested,
@@ -509,57 +468,38 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       ],
     );
 
-    const flushPendingPosition = useCallback(
-      (force: boolean = false) => {
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current);
-          rafRef.current = null;
-        }
-        const pending = pendingPositionRef.current;
-        if (pending) {
-          pendingPositionRef.current = null;
-          commitFromPosition(pending.clientX, pending.clientY, {
-            force,
-            coalescedCount: pending.coalescedCount,
-          });
-        }
+    const normalizePointer = useCallback(
+      ({ clientX, clientY }: PointerSnapshot) => {
+        const rect = rectRef.current ?? refreshRect();
+        return rect ? normalizeColorAreaPointer(clientX, clientY, rect) : null;
       },
-      [commitFromPosition],
+      [refreshRect],
     );
 
-    const queuePointerPosition = useCallback(
-      (clientX: number, clientY: number, coalescedCount: number) => {
-        pendingPositionRef.current = {
-          clientX,
-          clientY,
-          coalescedCount: Math.max(1, coalescedCount),
-        };
-        if (rafRef.current === null) {
-          rafRef.current = requestAnimationFrame(() => {
-            rafRef.current = null;
-            flushPendingPosition(false);
-          });
-        }
-      },
-      [flushPendingPosition],
+    // Shared driver drag controller: rAF coalescing, dragEpsilon, maxUpdateHz.
+    const [dragController] = useState(() =>
+      createPointerDragController<PointerSnapshot>({
+        normalize: () => null,
+        commit: () => {},
+      }),
     );
 
     useEffect(() => {
-      queuePointerPositionRef.current = queuePointerPosition;
-    }, [queuePointerPosition]);
+      dragController.configure({
+        normalize: normalizePointer,
+        commit: commitPoint,
+        maxUpdateHz,
+        dragEpsilon,
+      });
+    }, [
+      commitPoint,
+      dragController,
+      dragEpsilon,
+      maxUpdateHz,
+      normalizePointer,
+    ]);
 
-    useEffect(() => {
-      flushPendingPositionRef.current = flushPendingPosition;
-    }, [flushPendingPosition]);
-
-    useEffect(
-      () => () => {
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current);
-        }
-      },
-      [],
-    );
+    useEffect(() => () => dragController.cancel(), [dragController]);
 
     useEffect(() => {
       const defaultLevel = profileDefaultQuality(performanceProfile);
@@ -571,10 +511,6 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     useEffect(() => {
       qualityLevelRef.current = qualityLevel;
     }, [qualityLevel]);
-
-    useEffect(() => {
-      isDraggingRef.current = isDragging;
-    }, [isDragging]);
 
     useEffect(() => {
       if (!areaNode || typeof ResizeObserver === 'undefined') {
@@ -611,7 +547,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       };
 
       const onWindowPointerMove = (event: PointerEvent) => {
-        if (!isDraggingRef.current) {
+        if (!dragController.isActive()) {
           return;
         }
         const activePointerId = activePointerIdRef.current;
@@ -632,18 +568,8 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           return;
         }
 
-        const coalesced =
-          typeof event.getCoalescedEvents === 'function'
-            ? event.getCoalescedEvents()
-            : [];
-        const latest =
-          coalesced.length > 0 ? coalesced[coalesced.length - 1] : event;
-        const clientX =
-          asFiniteNumber(latest.clientX) ?? asFiniteNumber(event.clientX) ?? 0;
-        const clientY =
-          asFiniteNumber(latest.clientY) ?? asFiniteNumber(event.clientY) ?? 0;
-
-        queuePointerPositionRef.current(clientX, clientY, coalesced.length);
+        const { snapshot, coalescedCount } = latestPointerSnapshot(event);
+        dragController.move(snapshot, coalescedCount);
       };
 
       const endWindowDrag = (event: PointerEvent) => {
@@ -666,10 +592,9 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         }
 
         activePointerIdRef.current = null;
-        isDraggingRef.current = false;
         setIsDragging(false);
         stopWindowTracking();
-        flushPendingPositionRef.current(true);
+        dragController.end();
       };
 
       window.addEventListener('pointermove', onWindowPointerMove, {
@@ -689,23 +614,19 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         window.removeEventListener('pointercancel', endWindowDrag);
         window.removeEventListener('scroll', onScroll, true);
       };
-    }, [refreshRect, stopWindowTracking]);
+    }, [dragController, refreshRect, stopWindowTracking]);
 
     useEffect(() => stopWindowTracking, [stopWindowTracking]);
 
     // Cancel an active drag when the area becomes disabled: drop the pending
-    // update and the drag listeners so its value cannot change while disabled.
+    // update (without the release commit `end()` would make) and the drag
+    // listeners so its value cannot change while disabled.
     useEffect(() => {
       if (!disabled) return;
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      pendingPositionRef.current = null;
+      dragController.cancel();
       activePointerIdRef.current = null;
-      isDraggingRef.current = false;
       stopWindowTracking();
-    }, [disabled, stopWindowTracking]);
+    }, [disabled, dragController, stopWindowTracking]);
 
     const onRootPointerDown = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -721,14 +642,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           '[data-color-area-thumb]',
         );
         thumbNode?.focus({ preventScroll: true });
-        isDraggingRef.current = true;
         setIsDragging(true);
         activePointerIdRef.current = event.pointerId;
         rollingUpdateMsRef.current = [];
         rollingFrameMsRef.current = [];
         lastFrameTsRef.current = 0;
-        lastCommitTsRef.current = 0;
-        lastNormRef.current = null;
         refreshRect();
         startWindowTracking();
         if ('setPointerCapture' in event.currentTarget) {
@@ -740,11 +658,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         const clientY =
           asFiniteNumber(event.clientY) ?? asFiniteNumber(native.clientY) ?? 0;
 
-        commitFromPosition(clientX, clientY, { force: true });
+        dragController.start({ clientX, clientY });
       },
       [
-        commitFromPosition,
         disabled,
+        dragController,
         onPointerDown,
         refreshRect,
         startWindowTracking,
@@ -756,27 +674,17 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         onPointerMove?.(event);
         if (
           event.defaultPrevented ||
-          !isDraggingRef.current ||
           event.pointerId !== activePointerIdRef.current
         ) {
           return;
         }
 
-        const native = event.nativeEvent as PointerEvent;
-        const coalesced =
-          typeof native.getCoalescedEvents === 'function'
-            ? native.getCoalescedEvents()
-            : [];
-        const latest =
-          coalesced.length > 0 ? coalesced[coalesced.length - 1] : native;
-        const clientX =
-          asFiniteNumber(latest.clientX) ?? asFiniteNumber(native.clientX) ?? 0;
-        const clientY =
-          asFiniteNumber(latest.clientY) ?? asFiniteNumber(native.clientY) ?? 0;
-
-        queuePointerPosition(clientX, clientY, coalesced.length);
+        const { snapshot, coalescedCount } = latestPointerSnapshot(
+          event.nativeEvent,
+        );
+        dragController.move(snapshot, coalescedCount);
       },
-      [onPointerMove, queuePointerPosition],
+      [dragController, onPointerMove],
     );
 
     const onRootPointerUp = useCallback(
@@ -786,12 +694,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           return;
         }
         activePointerIdRef.current = null;
-        isDraggingRef.current = false;
         setIsDragging(false);
         stopWindowTracking();
-        flushPendingPosition(true);
+        dragController.end();
       },
-      [onPointerUp, flushPendingPosition, stopWindowTracking],
+      [dragController, onPointerUp, stopWindowTracking],
     );
 
     const onRootPointerCancel = useCallback(
@@ -801,12 +708,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           return;
         }
         activePointerIdRef.current = null;
-        isDraggingRef.current = false;
         setIsDragging(false);
         stopWindowTracking();
-        flushPendingPosition(true);
+        dragController.end();
       },
-      [onPointerCancel, flushPendingPosition, stopWindowTracking],
+      [dragController, onPointerCancel, stopWindowTracking],
     );
 
     const { explicitThumbCount, resolvedThumb, resolvedChildren } =

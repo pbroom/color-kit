@@ -1,13 +1,27 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import type { Color } from '@color-kit/core';
 import { ColorSlider } from '../src/color-slider.js';
 
 afterEach(() => {
   cleanup();
 });
+
+/** jsdom's PointerEvent drops clientX/Y; build pointer events from MouseEvent. */
+function firePointer(
+  target: EventTarget,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  clientX: number,
+  clientY: number,
+) {
+  const event = new MouseEvent(type, { bubbles: true, clientX, clientY });
+  Object.defineProperty(event, 'pointerId', { value: 1 });
+  act(() => {
+    target.dispatchEvent(event);
+  });
+}
 
 async function flushAnimationFrames(count: number = 1): Promise<void> {
   if (count <= 0) {
@@ -68,7 +82,7 @@ describe('ColorSlider', () => {
         requested={requested}
         onChangeRequested={onChangeRequested}
         dragEpsilon={0.1}
-        maxPointerRate={1000}
+        maxUpdateHz={1000}
       />,
     );
 
@@ -82,25 +96,20 @@ describe('ColorSlider', () => {
         height: 10,
       }) as DOMRect;
 
-    fireEvent.pointerDown(slider, {
-      pointerId: 1,
-      clientX: 50,
-      clientY: 5,
-    });
+    firePointer(slider, 'pointerdown', 50, 5);
+    expect(onChangeRequested).toHaveBeenCalledTimes(1);
+    expect(onChangeRequested.mock.calls[0][0].alpha).toBeCloseTo(0.5, 6);
 
-    fireEvent.pointerMove(slider, {
-      pointerId: 1,
-      clientX: 55,
-      clientY: 5,
-    });
-    await flushAnimationFrames(2);
-
+    // 0.05 normalized movement is within dragEpsilon.
+    firePointer(slider, 'pointermove', 55, 5);
+    await flushAnimationFrames(3);
     expect(onChangeRequested).toHaveBeenCalledTimes(1);
 
-    fireEvent.pointerUp(slider, {
-      pointerId: 1,
-      clientX: 55,
-      clientY: 5,
-    });
+    firePointer(slider, 'pointermove', 80, 5);
+    await flushAnimationFrames(3);
+    expect(onChangeRequested).toHaveBeenCalledTimes(2);
+    expect(onChangeRequested.mock.calls[1][0].alpha).toBeCloseTo(0.8, 6);
+
+    firePointer(slider, 'pointerup', 80, 5);
   });
 });
