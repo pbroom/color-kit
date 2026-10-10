@@ -36,6 +36,8 @@ export interface PlaneOverlayProps {
 
 export interface PlanePickerProps {
   color: Color;
+  /** Color the thumb is painted with, usually the state's `displayed`. */
+  displayed?: Color;
   onChange: (color: Color, options?: SetRequestedOptions) => void;
   label: string;
   axes?: ColorAreaAxes;
@@ -59,6 +61,7 @@ const LC_AXES: ColorAreaAxes = {
  */
 export function PlanePicker({
   color,
+  displayed = color,
   onChange,
   label,
   axes = LC_AXES,
@@ -69,7 +72,13 @@ export function PlanePicker({
   const areaRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
   const lastFrame = useRef(0);
+  // The pointer that started the drag; other contacts are ignored.
+  const activePointer = useRef<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  // Disabling mid-drag ends the drag (the controller is cancelled below).
+  if (disabled && isDragging) {
+    setIsDragging(false);
+  }
   // Lowers raster resolution and overlay sampling while frames are slow.
   const { quality, reportFrame, reset } = useAdaptiveQuality('auto');
   const { ref: canvasRef, canvasKey } = useColorPlaneRenderer(
@@ -93,6 +102,7 @@ export function PlanePicker({
         return rect ? normalizeColorAreaPointer(clientX, clientY, rect) : null;
       },
       commit: (point) => {
+        if (disabled) return;
         const start = performance.now();
         onChange(
           colorFromColorAreaPosition(color, resolved, point.x, point.y),
@@ -106,13 +116,22 @@ export function PlanePicker({
         lastFrame.current = start;
       },
     });
-  }, [axes, color, drag, onChange, reportFrame]);
+  }, [axes, color, disabled, drag, onChange, reportFrame]);
 
   useEffect(() => () => drag.cancel(), [drag]);
 
+  // Disabled: drop the pending update and the drag, so nothing changes.
+  useEffect(() => {
+    if (!disabled) return;
+    drag.cancel();
+    activePointer.current = null;
+  }, [disabled, drag]);
+
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (disabled || event.button !== 0) return;
+    if (activePointer.current !== null) return; // a second finger
     event.preventDefault();
+    activePointer.current = event.pointerId;
     event.currentTarget.setPointerCapture(event.pointerId);
     thumbRef.current?.focus({ preventScroll: true });
     reset();
@@ -122,11 +141,13 @@ export function PlanePicker({
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerId !== activePointer.current) return;
     drag.move({ clientX: event.clientX, clientY: event.clientY });
   };
 
-  const endDrag = () => {
-    if (!drag.isActive()) return;
+  const endDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerId !== activePointer.current) return;
+    activePointer.current = null;
     drag.end();
     setIsDragging(false);
   };
@@ -174,8 +195,8 @@ export function PlanePicker({
         tabIndex={disabled ? -1 : 0}
         aria-label={label}
         aria-roledescription="2D slider"
-        aria-valuemin={resolved.x.range[0]}
-        aria-valuemax={resolved.x.range[1]}
+        aria-valuemin={Math.min(...resolved.x.range)}
+        aria-valuemax={Math.max(...resolved.x.range)}
         aria-valuenow={color[resolved.x.channel]}
         aria-valuetext={getColorAreaValueText(color, resolved)}
         aria-disabled={disabled || undefined}
@@ -187,7 +208,7 @@ export function PlanePicker({
         style={{
           left: `${thumb.x * 100}%`,
           top: `${thumb.y * 100}%`,
-          background: toCss(color, 'oklch'),
+          background: toCss(displayed, 'oklch'),
         }}
       />
     </div>
@@ -215,12 +236,19 @@ function GamutEdges({ color, axes, isDragging, quality }: PlaneOverlayProps) {
 }
 
 export default function PlanePickerExample() {
-  const { requested, setRequested, requestedCss, displayedCss, state } =
-    useColor({ defaultColor: 'oklch(0.66 0.24 268)' });
+  const {
+    requested,
+    displayed,
+    setRequested,
+    requestedCss,
+    displayedCss,
+    state,
+  } = useColor({ defaultColor: 'oklch(0.66 0.24 268)' });
   return (
     <div className="grid max-w-96 gap-4">
       <PlanePicker
         color={requested}
+        displayed={displayed}
         onChange={setRequested}
         label="Lightness and chroma"
         className="aspect-[4/3] w-full rounded-md"

@@ -1,18 +1,25 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { parse } from 'color-kit';
 import { createColorState } from 'color-kit/driver';
-import { Color, useColorContext, type ColorUpdateEvent } from 'color-kit/react';
+import {
+  Color,
+  useColorContext,
+  type ColorInteraction,
+  type ColorUpdateEvent,
+} from 'color-kit/react';
 import { PlanePicker } from './plane-picker';
 
 const START = createColorState(parse('oklch(0.62 0.19 30)'));
 
 /** Any component under the provider reads and writes the shared color. */
 function ProviderPicker({ disabled }: { disabled: boolean }) {
-  const { requested, setRequested, setChannel } = useColorContext();
+  const { requested, displayed, setRequested, setChannel } = useColorContext();
+  const input = useRef<ColorInteraction>('pointer');
   return (
     <>
       <PlanePicker
         color={requested}
+        displayed={displayed}
         onChange={setRequested}
         label="Lightness and chroma"
         disabled={disabled}
@@ -26,9 +33,17 @@ function ProviderPicker({ disabled }: { disabled: boolean }) {
         step={1}
         disabled={disabled}
         value={Math.round(requested.h)}
+        // A native range reports keyboard and pointer changes alike; note
+        // which one started it so the update event names it.
+        onPointerDown={() => {
+          input.current = 'pointer';
+        }}
+        onKeyDown={() => {
+          input.current = 'keyboard';
+        }}
         onChange={(event) =>
           setChannel('h', Number(event.currentTarget.value), {
-            interaction: 'pointer',
+            interaction: input.current,
           })
         }
       />
