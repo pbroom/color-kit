@@ -85,7 +85,6 @@ export {
 } from './color-plane.js';
 export type {
   ColorPlaneEdgeBehavior,
-  ColorPlaneOutOfGamutConfig,
   ColorPlaneProps,
   ColorPlaneRenderer,
   ColorPlaneSource,
