@@ -13,7 +13,6 @@ import {
   contrastAPCA,
   oklabToLinearRgb,
   oklchToOklab,
-  unpackPlaneQueryResults,
   toP3Gamut,
   toSrgbGamut,
   type ContrastApcaPolarity,
@@ -25,6 +24,7 @@ import {
   type GamutTarget,
   type PlaneContrastRegionResult,
 } from '@color-kit/core';
+import { unpackPlaneQueryResults } from '@color-kit/core/compute';
 import {
   getColorAreaContrastRegionPaths,
   getColorAreaGamutBoundaryPoints,

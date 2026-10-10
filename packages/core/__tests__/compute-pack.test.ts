@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   definePlane,
-  getPackedPlaneQueryTransferables,
-  packPlaneQueryResults,
   parse,
-  runPackedPlaneQueries,
   runPlaneQueries,
-  unpackPlaneQueryResults,
-  type PackedPlaneQueryResult,
   type PlaneQueryResult,
 } from '../src/index.js';
+import {
+  getPackedPlaneQueryTransferables,
+  packPlaneQueryResults,
+  runPackedPlaneQueries,
+  unpackPlaneQueryResults,
+  type PackedPlaneQueryResult,
+} from '../src/compute/index.js';
 
 function makePackedBoundaryResult(): PackedPlaneQueryResult {
   return {

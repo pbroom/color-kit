@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import type { PlaneQueryTrace } from '../src/index.js';
 import {
   createJsPlaneComputeBackend,
   createPlaneComputeScheduler,
-  type PlaneQueryTrace,
   type PlaneComputeBackend,
   type PlaneComputeRequest,
-} from '../src/index.js';
+} from '../src/compute/index.js';
 import { applyComputeTraceMetadata } from '../src/compute/trace-metadata.js';
 
 const schedulerRequest: PlaneComputeRequest = {

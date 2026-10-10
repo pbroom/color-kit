@@ -121,7 +121,7 @@ export interface PlaneAxis<Model extends PlaneModel = PlaneModel> {
   /**
    * Optional channel range for this axis.
    *
-   * Defaults to `PLANE_DEFAULT_RANGES[channel]` when omitted.
+   * Defaults to `PLANE_MODEL_DEFAULT_RANGES[model][channel]` when omitted.
    */
   range?: [number, number];
 }

@@ -147,9 +147,6 @@ export interface PlaneSense {
   gradient: (query: Omit<PlaneGradientQuery, 'kind'>) => PlaneGradientResult;
 }
 
-/** Alias kept for API readability and migration ergonomics. */
-export type PlaneSenseApi = PlaneSense;
-
 /** A resolved plane instance augmented with fluent sensing helpers. */
 export interface PlaneWithSense extends PlaneSense, Plane {}
 

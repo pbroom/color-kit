@@ -5,10 +5,10 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import {
   inP3Gamut,
   inSrgbGamut,
-  packPlaneQueryResults,
   toSrgbGamut,
   type Color,
 } from '@color-kit/core';
+import { packPlaneQueryResults } from '@color-kit/core/compute';
 import * as colorAreaApi from '@color-kit/driver';
 import { ChromaBandLayer } from '../src/chroma-band-layer.js';
 import { ColorArea } from '../src/color-area.js';

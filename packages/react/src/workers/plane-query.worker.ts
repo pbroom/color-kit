@@ -1,8 +1,8 @@
 import {
   createPlaneComputeScheduler,
   getPackedPlaneQueryTransferables,
-} from '@color-kit/core';
-import type { PlaneComputeRequest } from '@color-kit/core';
+} from '@color-kit/core/compute';
+import type { PlaneComputeRequest } from '@color-kit/core/compute';
 import type {
   PlaneQueryWorkerRequest,
   PlaneQueryWorkerResponse,
