@@ -1356,6 +1356,18 @@ html:not(.dark) .prose .shiki span {
   border-radius: 0.36rem;
 }
 
+/* Opt-in for pages with wide GFM tables: scroll tables sideways on narrow
+   screens instead of letting the clipped main column cut them off. */
+.prose-api.docs-scroll-tables table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.prose-api.docs-scroll-tables :not(pre) > code {
+  overflow-wrap: anywhere;
+}
+
 .prose-api .api-returns {
   margin-top: 0.4rem;
   font-size: 0.86rem;

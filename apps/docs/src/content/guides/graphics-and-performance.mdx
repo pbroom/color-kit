@@ -1,0 +1,275 @@
+import {
+  DemoSource,
+  LinearMixDemo,
+  MixIntoDemo,
+  Recommendation,
+  WebglGradientDemo,
+} from '@/components/graphics-demos';
+
+<p className="docs-kicker">Guides</p>
+
+# Graphics & Performance APIs
+
+<div className="docs-lede">
+  Three additions for renderers, animation loops, and GPU code: mixing in linear
+  light, allocation-free <code>*Into</code> functions, and tuple and typed-array
+  output. All three are additive. The existing object API and its defaults do
+  not change.
+</div>
+
+<div className="prose-api docs-scroll-tables">
+
+## Where these ideas come from
+
+The three APIs borrow from the color module of [pmndrs/math](https://github.com/pmndrs/math) (`math/color`), which serves three.js-style renderers:
+
+- **Linear-light `lerp`.** pmndrs stores every color as linear sRGB, so `color.lerp` averages light. color-kit now offers that blend as `mix(a, b, t, { space: 'linear-srgb' })`.
+- **`out`-first, allocation-free functions.** Every pmndrs operation writes into an `out` argument and returns it. color-kit adds `mixInto`, `toOklabInto`, `toSrgbGamutInto`, and more with the same shape.
+- **Array-based colors.** A pmndrs `Color` is a `[r, g, b]` tuple that fits straight into GPU buffers. color-kit adds `toLinearSrgbArray`, `packColors`, and friends, which write tuples and typed arrays.
+
+color-kit keeps its own strengths: OKLCH as the working model, CSS Color 4 gamut mapping, WCAG and APCA contrast, and the Plane API's gamut and contrast geometry.
+
+| Feature                  | pmndrs `math/color`                                       | color-kit                                                                                  |
+| ------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Color value              | `[r, g, b]` tuple, linear sRGB                            | `{ l, c, h, alpha }` OKLCH object, plus tuple / typed-array interop (new)                  |
+| Spaces                   | linear sRGB, sRGB, linear Display P3 (matrix only), HSL   | OKLCH, OKLab, sRGB, linear sRGB, Display P3, linear P3, HSL, HSV, HCT                      |
+| Interpolation            | `color.lerp` in linear light                              | `mix` / `interpolate` / `generateScale` in 6 spaces with CSS hue methods; OKLCH by default |
+| Allocation style         | `out`-first everywhere                                    | Object-returning API first, `*Into` variants for hot paths (new)                           |
+| Arithmetic               | `add`, `sub`, `multiply`, `multiplyScalar`                | Not provided; write to arrays and do the math there                                        |
+| Out-of-gamut handling    | `color.clamp` (per-channel clip)                          | `toSrgbGamut` / `toP3Gamut` (CSS Color 4 chroma reduction), `inSrgbGamut` / `inP3Gamut`    |
+| Contrast / accessibility | `color.luminance` (Rec. 709)                              | `relativeLuminance`, WCAG 2.1 `contrastRatio`, `contrastAPCA`                              |
+| Parsing / output         | Hex strings, numbers, tuples; `toCSS` as `rgb()`, `toHex` | CSS Color 4 `parse`; `toCss` as `hex`, `rgb`, `hsl`, `oklch`, `oklab`, `p3`                |
+| Geometry                 | None                                                      | Plane API: gamut boundaries and contrast regions as SVG paths                              |
+
+## 1. Linear-light mixing
+
+**Use it for compositing and lighting.** Averaging colors in linear light gives the same result as overlapping lights, blur, downsampling, and GPU blending. That is the right model for a renderer, a particle system, or matching what three.js does to vertex colors.
+
+**Keep OKLCH for UI ramps.** Linear light is not perceptually even. Its midpoints look too light, which is why a UI ramp built in linear light bunches up at the bright end. OKLCH and OKLab give evenly spaced steps and keep the hue.
+
+<LinearMixDemo />
+
+The first row calls `generateScale(a, b, steps)` and `mix(a, b)` with no options, which is the legacy OKLCH default. The `{ space: 'oklch' }` row takes the CSS `color-mix()` path instead. The two agree for colors with a clear hue but can differ near gray: the CSS path treats an OKLCH hue as powerless only at chroma ≤ 4e-6 (the CSS Color 4 value), while the legacy default uses 0.001. The strips and midpoint stats above come from this file:
+
+<DemoSource file="linear-mix.ts" />
+
+### API
+
+```ts
+import { generateScale, interpolate, mix, parse } from 'color-kit';
+
+const red = parse('#ff0000');
+const lime = parse('#00ff00');
+
+mix(red, lime); // OKLCH, the default (unchanged)
+mix(red, lime, 0.5, { space: 'linear-srgb' }); // average light: #bcbc00
+mix(red, lime, 0.5, { space: 'srgb' }); // gamma-encoded average: #7f8000
+
+interpolate(red, lime, 0.25, { space: 'oklab' });
+generateScale(red, lime, 7, { space: 'linear-srgb' });
+
+// CSS color-mix() parity: hue methods and premultiplied alpha.
+mix(red, lime, 0.5, { space: 'oklch', hue: 'longer', premultiplied: true });
+```
+
+`space` accepts `'oklch' | 'oklab' | 'srgb' | 'linear-srgb' | 'p3' | 'linear-p3'`, named after CSS `color-mix()` (`linear-srgb` is `srgb-linear`, `p3` is `display-p3`). See [Scale](/docs/api/scale#interpolation-options) for the full option reference.
+
+### Compared with the default
+
+Midpoints at `t = 0.5`, from `pnpm --filter @color-kit/core bench:mix-space`. Y is unclamped relative luminance from linear sRGB, computed the same way as in the live demo, so the numbers match. The option-less default and `{ space: 'oklch' }` give identical results for these pairs. Hex values are clipped for display.
+
+| Pair          | Space                   | Hex       | OKLab L | Y      | In sRGB |
+| ------------- | ----------------------- | --------- | ------- | ------ | ------- |
+| red ↔ lime    | default / oklch         | `#f99500` | 0.7472  | 0.4021 | no      |
+| red ↔ lime    | oklab                   | `#d0a800` | 0.7472  | 0.4159 | yes     |
+| red ↔ lime    | srgb                    | `#7f8000` | 0.5790  | 0.1986 | yes     |
+| red ↔ lime    | linear-srgb / linear-p3 | `#bcbc00` | 0.7683  | 0.4639 | yes     |
+| red ↔ lime    | p3                      | `#b4961a` | 0.6814  | 0.3164 | yes     |
+| black ↔ white | oklch / oklab           | `#636363` | 0.5000  | 0.1250 | yes     |
+| black ↔ white | srgb / p3               | `#807f80` | 0.5982  | 0.2140 | yes     |
+| black ↔ white | linear-srgb / linear-p3 | `#bcbcbc` | 0.7937  | 0.5000 | yes     |
+
+- The option-less `mix` / `generateScale` default is OKLCH, and passing no options keeps the exact old results.
+- Linear light averages luminance: the red-to-lime midpoint's Y (0.4639) is exactly the mean of the endpoints', and the black-to-white midpoint sits at half the light (Y = 0.5), which reads as a light gray (OKLab L ≈ 0.79). OKLCH puts it at half the perceived lightness (L = 0.5).
+- Gamma-encoded `srgb` is what CSS gradients do by default. It darkens the red-to-lime midpoint to a muddy olive.
+- OKLCH can leave the gamut even when both ends are inside it. Mixing in-gamut colors in `srgb` or `linear-srgb` always stays in sRGB. No option does gamut mapping; use `toSrgbGamut` / `toP3Gamut` for a displayable color.
+- `t = 0` and `t = 1` return exact copies of the endpoints. If the interpolated alpha is exactly 0 (for example, both endpoints fully transparent), the channels fall back to straight-alpha interpolation instead of collapsing to transparent black; this is a deliberate deviation from CSS and colorjs.io.
+- Apart from that fallback, results match colorjs.io to within 4e-15. Cost per call: about 21 ns for the legacy default, 29 ns for `oklch`, 66 ns for `oklab`, 116 ns for `linear-srgb`, 211 ns for `srgb`, and 228 ns for `p3`.
+
+<Recommendation verdict="adopt in addition; keep OKLCH as the default">
+
+Linear light is physically correct for compositing, blur and downsampling, lighting, and matching GPU and three.js blending. OKLCH and OKLab are still better for UI ramps, because their steps are perceptually even and keep the hue. Changing the default would silently change every existing `mix` and scale result and every plane gradient.
+
+</Recommendation>
+
+## 2. Allocation-free `*Into` variants
+
+**Use them in per-frame loops.** Animation ticks, pointer-drag handlers, and per-pixel loops can call a color function thousands of times a second. The allocating API returns a new object each call, and those objects become garbage. The `*Into` variants take an `out` object first, write the result into it, and return it.
+
+Before, one new `Color` per frame:
+
+```ts
+import { mix } from 'color-kit';
+
+function tick(t: number) {
+  const color = mix(from, to, t, { space: 'linear-srgb' }); // allocates
+  draw(color);
+}
+```
+
+After, one `out` object reused for the whole animation:
+
+```ts
+import { mixInto } from 'color-kit';
+
+const out = { l: 0, c: 0, h: 0, alpha: 1 };
+const options = { space: 'linear-srgb' } as const;
+
+function tick(t: number) {
+  mixInto(out, from, to, t, options); // writes into out, returns out
+  draw(out);
+}
+```
+
+The demo below runs that loop with `requestAnimationFrame` and writes straight to the DOM, so React does not re-render each frame. The CSS hex string still allocates. In a real renderer you would write `out` into a uniform instead. The demo pauses while it is scrolled offscreen, and it starts paused when the OS reduced-motion setting is on, following changes to that setting live.
+
+<MixIntoDemo />
+
+<DemoSource file="mix-into-loop.ts" />
+
+The new functions:
+
+- **Conversions:** `toOklabInto`, `fromOklabInto`, `toLinearSrgbInto`, `fromLinearSrgbInto`, `toRgbInto`, `fromRgbInto`, `toP3Into`, `fromP3Into`.
+- **Low-level:** `srgbToLinearInto`, `linearToSrgbInto`, `linearRgbToOklabInto`, `oklabToLinearRgbInto`, `oklabToOklchInto`, `oklchToOklabInto`, `linearSrgbToLinearP3Into`, `linearP3ToLinearSrgbInto`, `linearP3ToP3Into`, `p3ToLinearP3Into`.
+- **Blending:** `mixInto`, `interpolateInto`.
+- **Gamut:** `toSrgbGamutInto`, `toP3GamutInto`.
+
+`out` may be one of the inputs, so `mixInto(a, a, b, t)` blends `b` into `a` in place. The allocating functions are now thin wrappers over the same kernels, and their results are bit-identical (0 mismatches over 100k inputs across 30 functions).
+
+### Benchmark
+
+From `pnpm --filter @color-kit/core bench:into`: 1e6 operations on Node 24. "Before" is the release before `*Into`. Each cell is ns/op, bytes allocated per op, and the number of garbage collections over the run.
+
+| Operation                    | Before (ns / B) | Allocating now (ns / B / GCs) | `*Into` (ns / B / GCs) |
+| ---------------------------- | --------------- | ----------------------------- | ---------------------- |
+| `toOklab`                    | 7.4 / 8         | 8.3 / 4 / 1                   | 14.0 / 0.2 / 0         |
+| `toLinearSrgb`               | 19.3 / 64       | 17.9 / 9 / 2                  | 19.5 / 0.2 / 0         |
+| `fromRgb`                    | 62.5 / 210      | 65.4 / 104 / 25               | 63.1 / 1.1 / 0         |
+| `toP3`                       | 63.4 / n/a      | 52.6 / 104 / 25               | 51.0 / 0.1 / 0         |
+| `mix` (linear-srgb)          | 124.5 / n/a     | 113.9 / 120 / 28              | 101.3 / 0.1 / 0        |
+| `toSrgbGamut` (out of gamut) | 482 / n/a       | 373 / 120 / 28                | 352 / 0.1 / 0          |
+| `toP3Gamut` (out of gamut)   | 542 / n/a       | 390 / 120 / 28                | 381 / 0.1 / 0          |
+
+- `*Into` removes the garbage: GC counts drop to zero. It does not reliably make a single call faster: `toOklab` is slower through `*Into`. In a tight, fully inlined loop V8 can scalar-replace the allocating version's objects, so there is little allocation left to remove.
+- The kernel refactor behind `*Into` made the existing gamut mapping 20–28% faster with no API change.
+
+### What did not work
+
+We tried switching the React `ColorPlane` CPU pixel loop to `*Into` and then dropped the change. GC counts fell (103 → 61, 103 → 31, 216 → 93, 313 → 140), but frame time did not improve: about 24 → 25 ms and 17 → 18 ms on the plain paths. The clamp paths got 8–10% slower (137 → 151 ms and 154 → 166 ms).
+
+The cause is V8 double boxing. When V8 cannot fully optimize a large loop, it boxes each double stored into an object field such as `out.l`, which costs about as much as the allocation it replaced. For real zero-allocation per-pixel work, write into typed arrays instead (section 3). Typed-array elements are stored unboxed: a `Float32Array`, which `packColors` returns by default, holds 32-bit floats, so writes never box but values round to float32 precision (under 1e-5 ΔE_OK inside the P3 gamut). Pass a `Float64Array` as `out` when you need full double precision.
+
+<Recommendation verdict="adopt in addition; the object API stays primary">
+
+`*Into` mainly reduces GC count, not ns/op. Use it in animation and drag loops where GC pauses cause dropped frames. For per-pixel or per-vertex work, prefer typed-array writes such as `packColors`, which avoid both allocation and double boxing.
+
+</Recommendation>
+
+## 3. Array & GPU interop
+
+**Use it wherever a color goes into a buffer.** Examples include a three.js `Color` or `BufferAttribute`, a WebGL `uniform3fv`, and a WebGPU storage buffer. These APIs all want flat floats in a known space, usually linear sRGB.
+
+- **Writers:** `to{LinearSrgb,Srgb,LinearP3,P3,Oklab,Oklch}Array(color, out?, offset = 0, { clamp? })`, plus `*Array4` variants that add alpha.
+- **Readers:** `from*Array(array, offset = 0)` and `from*Array4`.
+- **Batch:** `packColors(colors, space, out?, { alpha?, stride?, offset?, clamp? })` and `unpackColors(array, space, { ... })`.
+- **Types:** `ColorTuple`, `ColorTuple4`.
+
+Output is unclamped floats by default, which is what HDR and linear-light pipelines expect. There is no gamut-mapping option; compose it instead, for example `toLinearSrgbArray(toSrgbGamut(color), out)`. Values match colorjs.io to within 7e-15, and Float32 precision stays under 1e-5 ΔE_OK inside the P3 gamut. `toLinearSrgbArray` costs 617 B gzipped and `packColors` + `unpackColors` 2.3 kB. The everyday import does not grow.
+
+The demo packs four corner colors with `packColors` into one reused `Float32Array` and uploads it as WebGL2 vertex colors. With `'linearSrgb'`, the GPU interpolates light and the fragment shader encodes to sRGB at the end. With `'srgb'`, the GPU interpolates gamma-encoded values, as a CSS gradient does. Compare the red-to-lime top edge in both modes. If the browser drops the WebGL context, the demo rebuilds the renderer and redraws when the context is restored (`watchContextLoss` below).
+
+<WebglGradientDemo />
+
+<DemoSource file="webgl-gradient.ts" />
+
+### three.js recipe
+
+three.js's working color space is `srgb-linear`, so linear-sRGB floats go straight in:
+
+```ts
+import * as THREE from 'three';
+import {
+  packColors,
+  parse,
+  toCss,
+  toLinearSrgbArray,
+  toSrgbGamut,
+} from 'color-kit';
+
+const green = parse('oklch(0.7 0.25 150)'); // outside sRGB
+
+// Before: a CSS string round trip. 8-bit, and clipped to sRGB.
+material.color.setStyle(toCss(green)); // '#00c537'
+
+// After: exact floats in three.js's working space.
+material.color.fromArray(toLinearSrgbArray(green));
+// [-0.0937, 0.5598, 0.0385]: unclamped, so wide-gamut and HDR
+// pipelines keep the real color.
+
+// Need an sRGB-safe color? Gamut map first to keep the hue, then write.
+material.color.fromArray(toLinearSrgbArray(toSrgbGamut(green)));
+
+// Per-vertex colors: one Float32Array for the whole mesh.
+geometry.setAttribute(
+  'color',
+  new THREE.BufferAttribute(packColors(colors, 'linearSrgb'), 3),
+);
+```
+
+`setStyle(toCss(c))` loses information twice:
+
+- **8-bit quantization.** A hex string has 256 levels per channel. Nearby colors round to the same value, and three.js decodes those rounded values back to linear floats, so smooth ramps and lighting built from them can band.
+- **Clipping.** `toCss` clips each channel to the sRGB range. The out-of-gamut green above has a negative linear red channel. Clipping it to 0 shifts the hue and lightness instead of reducing chroma as `toSrgbGamut` would.
+
+`fromArray(toLinearSrgbArray(c))` is an exact, unclamped round trip, checked against three.js r186 source and tests. `packColors` output also works directly as a vertex-color `BufferAttribute`.
+
+For WebGL uniforms and WebGPU buffers:
+
+```ts
+const scratch = new Float32Array(3);
+gl.uniform3fv(colorLocation, toLinearSrgbArray(color, scratch));
+
+// WGSL: @group(0) @binding(0) var<storage, read> palette: array<vec4f>;
+const data = packColors(colors, 'linearSrgb', undefined, { alpha: true });
+device.queue.writeBuffer(buffer, 0, data);
+```
+
+### Object and string output vs array writers
+
+| API                                  | Output                                                                                   | Range and precision                                                                                                | Allocation                | Use for                                   |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------- | ----------------------------------------- |
+| `toRgb(c)`                           | `{ r, g, b, alpha }`                                                                     | 0–255 integers, clipped to sRGB                                                                                    | New object                | Canvas 2D, UI readouts                    |
+| `toP3(c)`                            | `{ r, g, b, alpha }`                                                                     | 0–1 gamma-encoded, clipped to P3                                                                                   | New object                | UI readouts, P3 CSS                       |
+| `toCss(c, format)`                   | String (`hex`, `rgb`, `hsl`, `oklch`, `oklab`, `p3`; unknown formats fall back to `hex`) | `hex`/`rgb`/`hsl` are 8-bit or rounded and clipped to sRGB; `p3` clipped to P3; `oklch`/`oklab` rounded, unclamped | New string                | CSS, serialization                        |
+| `toLinearSrgbArray(c, out?)`         | `[r, g, b]` or your typed array                                                          | Unclamped float, linear light                                                                                      | None when `out` is passed | three.js `Color`, GL uniforms, lighting   |
+| `toSrgbArray` / `toP3Array(c, out?)` | `[r, g, b]` gamma-encoded 0–1                                                            | Unclamped float (sign mirrored, like colorjs.io)                                                                   | None when `out` is passed | Shaders that output to an encoded surface |
+| `toOklabArray` / `toOklchArray`      | `[L, a, b]` / `[l, c, h]`                                                                | Float                                                                                                              | None when `out` is passed | Shader-side OKLab math                    |
+| `packColors(colors, space, out?)`    | `Float32Array` (or your array)                                                           | Float32, optional alpha, stride, and offset                                                                        | One buffer for all colors | Vertex attributes, storage buffers        |
+
+<Recommendation verdict="adopt in addition">
+
+`toRgb`, `toP3`, and `toCss` remain the right tools for UI, serialization, and CSS. For three.js, `fromArray(toLinearSrgbArray(c))` should become the recommended path over `setStyle(toCss(c))`. For GPU buffers, `packColors` writes every color into one typed array with no per-color objects.
+
+</Recommendation>
+
+## Summary
+
+| Idea                | What it's for                                           | Existing counterpart                   | Recommendation                     | Why                                                                                                                          |
+| ------------------- | ------------------------------------------------------- | -------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Linear-light mixing | Compositing, blur, lighting, matching GPU blending      | `mix` / `generateScale` in OKLCH       | Add alongside; OKLCH stays default | Physically correct for light, but perceptually uneven for UI ramps. Changing the default would change every existing result. |
+| `*Into` variants    | Per-frame animation and pointer-drag loops              | Object-returning conversions and `mix` | Add alongside; object API primary  | Cuts GC count to zero at similar ns/op. V8 double boxing limits wins in large loops.                                         |
+| Array & GPU interop | three.js, WebGL uniforms, WebGPU buffers, vertex colors | `toRgb`, `toP3`, `toCss`               | Add alongside                      | Exact unclamped floats in the renderer's space, instead of 8-bit clipped strings. Typed arrays store unboxed float32 values. |
+
+None of the three replaces an existing API.
+
+</div>
