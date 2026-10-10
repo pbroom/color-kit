@@ -563,4 +563,55 @@ describe('ColorInput', () => {
     expect(input.getAttribute('aria-valuemax')).toBe('255');
     expect(Number(input.getAttribute('aria-valuenow'))).toBeCloseTo(17, 3);
   });
+
+  it('renders a consumer aria-label once, on the spinbutton only', () => {
+    const { container } = render(
+      <ColorInput
+        model="oklch"
+        channel="c"
+        requested={parse('#ff0000')}
+        onChangeRequested={vi.fn()}
+        aria-label="Accent chroma"
+      />,
+    );
+
+    expect(container.querySelectorAll('[aria-label]')).toHaveLength(1);
+    expect(screen.getByRole('spinbutton').getAttribute('aria-label')).toBe(
+      'Accent chroma',
+    );
+    expect(
+      container.querySelector('[data-color-input]')?.hasAttribute('aria-label'),
+    ).toBe(false);
+  });
+
+  it('keeps the default label and forwards aria-labelledby to the spinbutton', () => {
+    const { container, rerender } = render(
+      <ColorInput
+        model="oklch"
+        channel="c"
+        requested={parse('#ff0000')}
+        onChangeRequested={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('spinbutton').getAttribute('aria-label')).toBe(
+      'OKLCH chroma value',
+    );
+
+    rerender(
+      <>
+        <span id="chroma-label">Accent chroma</span>
+        <ColorInput
+          model="oklch"
+          channel="c"
+          requested={parse('#ff0000')}
+          onChangeRequested={vi.fn()}
+          aria-labelledby="chroma-label"
+        />
+      </>,
+    );
+    const input = screen.getByRole('spinbutton', { name: 'Accent chroma' });
+    expect(input.getAttribute('aria-labelledby')).toBe('chroma-label');
+    expect(input.hasAttribute('aria-label')).toBe(false);
+    expect(container.querySelectorAll('[aria-labelledby]')).toHaveLength(1);
+  });
 });

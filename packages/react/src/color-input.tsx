@@ -94,7 +94,8 @@ interface ColorInputBaseProps extends Omit<
 
 /**
  * Props for `ColorInput`: a `model` with one of its channels, plus the
- * shared input options. Other attributes go to the wrapper `div`.
+ * shared input options. `aria-label` and `aria-labelledby` go to the
+ * spinbutton `input`; other attributes go to the wrapper `div`.
  */
 export type ColorInputProps =
   | ({
@@ -123,6 +124,9 @@ const SCRUB_DRAG_START_THRESHOLD_PX = 2;
  * the optional `@color-kit/control-kit` peer. The public `color-kit` facade
  * does not ship `ColorInput` yet; use the workspace `@color-kit/react`
  * provider with this subpath so both share the same color context.
+ * The spinbutton `input` is the only labelled element: it takes `aria-label`
+ * (default: the channel label plus `' value'`, e.g. `'OKLCH chroma value'`)
+ * and `aria-labelledby`, which are not repeated on the wrapper.
  *
  * @throws {Error} When there is neither a `<Color>` ancestor nor both
  *   `requested` and `onChangeRequested`.
@@ -163,6 +167,8 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
       maxScrubRate = 120,
       precision,
       onInvalidCommit,
+      'aria-label': ariaLabel,
+      'aria-labelledby': ariaLabelledBy,
       ...props
     },
     ref,
@@ -345,7 +351,11 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
           ref={inputRef}
           type="text"
           role="spinbutton"
-          aria-label={props['aria-label'] ?? `${channelLabel} value`}
+          aria-label={
+            ariaLabel ??
+            (ariaLabelledBy === undefined ? `${channelLabel} value` : undefined)
+          }
+          aria-labelledby={ariaLabelledBy}
           aria-valuemin={resolvedRange[0]}
           aria-valuemax={resolvedRange[1]}
           aria-valuenow={channelValue}
