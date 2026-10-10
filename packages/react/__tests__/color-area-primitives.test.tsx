@@ -3,10 +3,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import {
+  contrastRatio,
   inP3Gamut,
   inSrgbGamut,
+  maxChromaAt,
+  toP3Gamut,
   toSrgbGamut,
   type Color,
+  type ContrastApcaPolarity,
+  type GamutTarget,
 } from '@color-kit/core';
 import { packPlaneQueryResults } from '@color-kit/core/compute';
 import * as colorAreaApi from '@color-kit/driver';
@@ -112,6 +117,57 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
+
+interface FillCase {
+  gamut: GamutTarget;
+  margin: (sample: Color, reference: Color) => number;
+  props: Partial<Parameters<typeof ContrastRegionLayer>[0]>;
+}
+
+/**
+ * Renders the fill and checks it against the public contrast check (against
+ * the gamut-mapped reference the layer measures from) on a grid of in-gamut
+ * samples that clearly pass or fail, away from the contour and the gamut
+ * edge. Returns the passing/failing sample counts.
+ */
+function expectFillMatchesCheck(
+  reference: Color,
+  { gamut, margin, props }: FillCase,
+): { passing: number; failing: number } {
+  const { container } = render(
+    <ColorArea requested={reference} onChangeRequested={() => {}}>
+      <ContrastRegionLayer gamut={gamut} {...props}>
+        <ContrastRegionFill dotOpacity={0} />
+      </ContrastRegionLayer>
+    </ColorArea>,
+  );
+  const pathData =
+    container
+      .querySelector('[data-color-area-contrast-region-fill] path')
+      ?.getAttribute('d') ?? '';
+  expect(pathData.length).toBeGreaterThan(0);
+
+  const mapped =
+    gamut === 'display-p3' ? toP3Gamut(reference) : toSrgbGamut(reference);
+  let passing = 0;
+  let failing = 0;
+  for (let l = 0.025; l < 1; l += 0.05) {
+    const edge = maxChromaAt(l, reference.h, { gamut });
+    for (let c = 0.005; c < edge * 0.9; c += 0.02) {
+      const sample: Color = { l, c, h: reference.h, alpha: 1 };
+      const value = margin(sample, mapped);
+      if (Math.abs(value) < 0.15) continue;
+      const point = { x: l * 100, y: (1 - c / 0.4) * 100 };
+      expect(
+        pathContainsPoint(pathData, point),
+        `l=${l.toFixed(3)} c=${c.toFixed(3)} margin=${value.toFixed(3)}`,
+      ).toBe(value > 0);
+      if (value > 0) passing += 1;
+      else failing += 1;
+    }
+  }
+  return { passing, failing };
+}
 
 describe('ColorArea primitives', () => {
   it('renders a default thumb when no explicit thumb child is provided', () => {
@@ -430,6 +486,77 @@ describe('ColorArea primitives', () => {
     };
     expect(pathContainsPoint(pathData, fallbackPoint)).toBe(false);
   });
+
+  // Out-of-gamut references map onto the gamut edge, where the reference
+  // point cannot pick the fill side, so these exercise the fill scoring.
+  it('fills the Display P3 side that passes the gamut-aware WCAG check', () => {
+    const reference: Color = { l: 0.62, c: 0.36, h: 150, alpha: 1 };
+    expect(inP3Gamut(reference)).toBe(false);
+
+    const counts = expectFillMatchesCheck(reference, {
+      gamut: 'display-p3',
+      margin: (sample, ref) =>
+        contrastRatio(sample, ref, { gamut: 'display-p3' }) / 3 - 1,
+      props: { threshold: 3 },
+    });
+    expect(counts.passing).toBeGreaterThan(0);
+    expect(counts.failing).toBeGreaterThan(0);
+  });
+
+  it.each<[ContrastApcaPolarity, 'dark' | 'light']>([
+    ['positive', 'dark'],
+    ['negative', 'light'],
+  ])(
+    'scores an ambiguous closure by APCA polarity (%s fills the %s side)',
+    (polarity, expectedSide) => {
+      // The contour splits the plotted boundary into a darker and a lighter
+      // half, and the reference sits above both (higher chroma), so only the
+      // fill scoring (APCA with polarity) can choose the side.
+      const y = (c: number) => 1 - c / 0.4;
+      vi.spyOn(colorAreaApi, 'getColorAreaGamutBoundaryPoints').mockReturnValue(
+        [
+          { l: 0.1, c: 0, x: 0.1, y: y(0) },
+          { l: 0.1, c: 0.1, x: 0.1, y: y(0.1) },
+          { l: 0.95, c: 0.1, x: 0.95, y: y(0.1) },
+          { l: 0.95, c: 0, x: 0.95, y: y(0) },
+        ],
+      );
+      vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths').mockReturnValue(
+        [
+          [
+            { l: 0.55, c: 0, x: 0.55, y: y(0) },
+            { l: 0.55, c: 0.1, x: 0.55, y: y(0.1) },
+          ],
+        ],
+      );
+
+      const reference: Color = { l: 0.55, c: 0.14, h: 250, alpha: 1 };
+      expect(inSrgbGamut(reference)).toBe(true);
+      const { container } = render(
+        <ColorArea requested={reference} onChangeRequested={() => {}}>
+          <ContrastRegionLayer
+            metric="apca"
+            threshold={0.15}
+            apcaPolarity={polarity}
+          >
+            <ContrastRegionFill dotOpacity={0} />
+          </ContrastRegionLayer>
+        </ColorArea>,
+      );
+
+      const pathData =
+        container
+          .querySelector('[data-color-area-contrast-region-fill] path')
+          ?.getAttribute('d') ?? '';
+      const at = (l: number) => ({ x: l * 100, y: y(0.05) * 100 });
+      expect(pathContainsPoint(pathData, at(0.3))).toBe(
+        expectedSide === 'dark',
+      );
+      expect(pathContainsPoint(pathData, at(0.8))).toBe(
+        expectedSide === 'light',
+      );
+    },
+  );
 
   it('closes right-edge arc without vertex kink on boundary', () => {
     const boundary = [

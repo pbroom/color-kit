@@ -11,8 +11,7 @@ import {
 } from 'react';
 import {
   contrastAPCA,
-  oklabToLinearRgb,
-  oklchToOklab,
+  contrastRatio,
   toP3Gamut,
   toSrgbGamut,
   type ContrastApcaPolarity,
@@ -346,39 +345,26 @@ function mapColorToGamut(color: Color, gamut: GamutTarget): Color {
   return gamut === 'display-p3' ? toP3Gamut(color) : toSrgbGamut(color);
 }
 
-function relativeLuminanceUnclamped(color: Color): number {
-  const linear = oklabToLinearRgb(
-    oklchToOklab({
-      l: color.l,
-      c: color.c,
-      h: color.h,
-      alpha: color.alpha,
-    }),
-  );
-  return 0.2126 * linear.r + 0.7152 * linear.g + 0.0722 * linear.b;
-}
-
-function contrastRatioUnclamped(color1: Color, color2: Color): number {
-  const l1 = relativeLuminanceUnclamped(color1);
-  const l2 = relativeLuminanceUnclamped(color2);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
+/**
+ * Signed margin of `sample` against the threshold (`>= 0` passes), measured
+ * with core's contrast metrics in the region's gamut so it agrees with the
+ * contrast region field that produced the paths.
+ */
 function evaluateContrastCriterionScore(
   sample: Color,
   mappedReference: Color,
+  gamut: GamutTarget,
   metric: ContrastMetric | undefined,
   threshold: number,
   apcaPolarity: ContrastApcaPolarity | undefined,
   apcaRole: ContrastApcaRole | undefined,
 ): number {
+  const options = { gamut };
   if (metric === 'apca') {
     const lc =
       (apcaRole ?? 'sample-text') === 'sample-background'
-        ? contrastAPCA(mappedReference, sample)
-        : contrastAPCA(sample, mappedReference);
+        ? contrastAPCA(mappedReference, sample, options)
+        : contrastAPCA(sample, mappedReference, options);
     if (apcaPolarity === 'positive') {
       return lc - threshold;
     }
@@ -387,7 +373,7 @@ function evaluateContrastCriterionScore(
     }
     return Math.abs(lc) - threshold;
   }
-  return contrastRatioUnclamped(sample, mappedReference) - threshold;
+  return contrastRatio(sample, mappedReference, options) - threshold;
 }
 
 function estimateRegionValidityScore(
@@ -440,6 +426,7 @@ function estimateRegionValidityScore(
       const score = evaluateContrastCriterionScore(
         mappedSample,
         mappedReference,
+        gamut,
         metric,
         threshold,
         apcaPolarity,

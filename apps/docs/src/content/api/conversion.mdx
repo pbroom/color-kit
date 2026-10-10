@@ -199,9 +199,14 @@ single value and returns the converted value; none of them accept options.
 | `linearP3ToLinearSrgb` | `P3`        | `LinearRgb` | Linear values                                        |
 | `linearP3ToP3`         | `P3`        | `P3`        | Applies gamma; clamps channels to `0–1`              |
 | `p3ToLinearP3`         | `P3`        | `P3`        | Removes gamma                                        |
+| `linearToSrgbChannel`  | `number`    | `number`    | Per-channel gamma encode (sRGB and Display P3)       |
+| `srgbToLinearChannel`  | `number`    | `number`    | Per-channel gamma decode (sRGB and Display P3)       |
 
 Only `linearToSrgb`, `rgbToHex`, and `linearP3ToP3` clamp their output; the
 OKLAB/OKLCH and matrix converters pass unclamped values through, which is what
-makes accurate gamut checks possible upstream.
+makes accurate gamut checks possible upstream. The per-channel transfer
+functions are extended range: negative inputs are sign-mirrored and values
+above 1 follow the same curve, so clamp the result when you need a
+displayable channel.
 
 </div>

@@ -20,15 +20,6 @@ export function clamp01(value: number): number {
   return value;
 }
 
-export function transferLinearToSrgbChannel(value: number): number {
-  const absValue = Math.abs(value);
-  const srgb =
-    absValue <= 0.0031308
-      ? 12.92 * absValue
-      : 1.055 * Math.pow(absValue, 1 / 2.4) - 0.055;
-  return clamp01(Math.sign(value) * srgb);
-}
-
 /**
  * OKLCH -> linear sRGB using core's full-precision OKLab matrices.
  */

@@ -9,18 +9,22 @@ import {
 } from 'react';
 import { assignRef } from './assign-ref.js';
 import { useColorStoreSelector } from './color-store.js';
-import { type Color, type GamutTarget } from '@color-kit/core';
+import {
+  linearToSrgbChannel,
+  type Color,
+  type GamutTarget,
+} from '@color-kit/core';
 import { colorFromColorAreaPosition } from '@color-kit/driver';
 import {
   COLOR_PLANE_FRAGMENT_SHADER_SOURCE,
   COLOR_PLANE_VERTEX_SHADER_SOURCE,
 } from './color-plane-shaders.js';
 import {
+  clamp01,
   inP3Linear,
   inSrgbLinear,
   mapToGamutLinear,
   oklchToLinearSrgb,
-  transferLinearToSrgbChannel,
 } from './color-plane-gamut-utils.js';
 import { useColorAreaContext } from './color-area-context.js';
 import { useOptionalColorContext } from './context.js';
@@ -152,9 +156,9 @@ function renderPixels(
       let alpha = sampled.alpha;
 
       if (!clipOutOfGamut) {
-        r = transferLinearToSrgbChannel(renderLinear.r);
-        g = transferLinearToSrgbChannel(renderLinear.g);
-        b = transferLinearToSrgbChannel(renderLinear.b);
+        r = clamp01(linearToSrgbChannel(renderLinear.r));
+        g = clamp01(linearToSrgbChannel(renderLinear.g));
+        b = clamp01(linearToSrgbChannel(renderLinear.b));
       } else {
         alpha = 0;
       }
@@ -225,8 +229,18 @@ function createWebglState(gl: WebGLRenderingContext): WebglState | null {
   const program = gl.createProgram();
   const buffer = gl.createBuffer();
 
-  if (!vertexShader || !fragmentShader || !program || !buffer) {
+  // Free whatever was created when setup fails part way, so a compile or
+  // link failure (or a missing uniform) does not leak GPU objects.
+  const release = (): null => {
+    if (vertexShader) gl.deleteShader(vertexShader);
+    if (fragmentShader) gl.deleteShader(fragmentShader);
+    if (program) gl.deleteProgram(program);
+    if (buffer) gl.deleteBuffer(buffer);
     return null;
+  };
+
+  if (!vertexShader || !fragmentShader || !program || !buffer) {
+    return release();
   }
 
   gl.shaderSource(vertexShader, COLOR_PLANE_VERTEX_SHADER_SOURCE);
@@ -238,7 +252,7 @@ function createWebglState(gl: WebGLRenderingContext): WebglState | null {
     !gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS) ||
     !gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)
   ) {
-    return null;
+    return release();
   }
 
   gl.attachShader(program, vertexShader);
@@ -246,7 +260,7 @@ function createWebglState(gl: WebGLRenderingContext): WebglState | null {
   gl.linkProgram(program);
 
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    return null;
+    return release();
   }
 
   const seed = gl.getUniformLocation(program, 'u_seed');
@@ -268,7 +282,7 @@ function createWebglState(gl: WebGLRenderingContext): WebglState | null {
     !gamut ||
     !edgeBehavior
   ) {
-    return null;
+    return release();
   }
 
   gl.useProgram(program);
