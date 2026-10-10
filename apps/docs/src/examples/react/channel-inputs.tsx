@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   formatColorStringInputValue,
   getSliderGradientStyles,
   parseColorStringInputValue,
 } from 'color-kit/driver';
-import { Color, useColorContext } from 'color-kit/react';
+import { Color, useColorContext, type ColorInteraction } from 'color-kit/react';
 
 const CHANNELS = [
   { channel: 'l', label: 'Lightness', range: [0, 1], step: 0.001 },
@@ -24,6 +24,7 @@ function ChannelSlider({
   step,
 }: (typeof CHANNELS)[number]) {
   const { requested, activeGamut, setChannel } = useColorContext();
+  const input = useRef<ColorInteraction>('pointer');
   // Sample the rail from the current color, so it previews what dragging
   // this channel would produce.
   const rail = getSliderGradientStyles({
@@ -42,9 +43,17 @@ function ChannelSlider({
         max={bounds[1]}
         step={step}
         value={requested[channel]}
+        // A native range reports keyboard and pointer changes alike; note
+        // which one started it so the update event names it.
+        onPointerDown={() => {
+          input.current = 'pointer';
+        }}
+        onKeyDown={() => {
+          input.current = 'keyboard';
+        }}
         onChange={(event) =>
           setChannel(channel, Number(event.currentTarget.value), {
-            interaction: 'pointer',
+            interaction: input.current,
           })
         }
         className={range}

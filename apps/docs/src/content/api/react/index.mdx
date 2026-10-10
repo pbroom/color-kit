@@ -11,11 +11,12 @@ import contrastSource, {
   code as contrastCode,
 } from '@/examples/react/contrast-region.tsx?highlighted';
 
-`color-kit/react` binds the engine to React state without rendering
-anything itself. It has two halves: state hooks that hold a color and share
-it, and plane hooks that render a color plane into your canvas and compute
-overlay geometry for your SVG. Elements, styles, pointer handling and ARIA
-are yours. Build them from plain elements with
+`color-kit/react` binds the engine to React state. This page builds
+pickers from its hooks, which render no elements themselves: state hooks
+that hold a color and share it, and plane hooks that paint a color plane
+into your canvas and compute overlay geometry for your SVG. With the hooks,
+elements, styles, pointer handling and ARIA are yours. Build them from plain
+elements with
 [`color-kit/driver`](/api/driver), which holds the picker math (pointer
 normalization, keyboard steps, value text), or with your own component
 library.
@@ -74,8 +75,12 @@ canvas.
 - [`useFallbackPoints`](/api/react/useFallbackPoints) places the color after
   gamut mapping into sRGB and into Display P3.
 
-Each returns memoized points plus SVG path data from
-[`toSvgPath`](/api/plane/toSvgPath), and draws nothing.
+`useGamutBoundary`, `useChromaBand` and `useContrastRegion` return
+memoized points plus SVG path data from
+[`toSvgPath`](/api/plane/toSvgPath). `useFallbackPoints` returns the `srgb`
+and `p3` points, without paths, and `useColorPlaneRenderer` returns a canvas
+handle (`ref`, `canvasKey`, the active `renderer`). None of them render
+elements.
 
 ## A picker from the hooks
 

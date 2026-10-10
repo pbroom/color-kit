@@ -75,13 +75,14 @@ function Choice<T extends string>({
 export default function ContrastRegionExample() {
   const [background, setBackground] = useState<Background>('white');
   const [level, setLevel] = useState<Level>('AA');
-  const { requested, setRequested } = useColor({
+  const { requested, displayed, setRequested } = useColor({
     defaultColor: 'oklch(0.5 0.16 150)',
   });
   return (
     <div className="grid max-w-96 gap-3">
       <PlanePicker
         color={requested}
+        displayed={displayed}
         onChange={setRequested}
         label="Text color lightness and chroma"
         axes={AXES}

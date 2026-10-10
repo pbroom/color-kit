@@ -1,5 +1,11 @@
+import { useRef } from 'react';
 import { getSliderGradientStyles } from 'color-kit/driver';
-import { Color, useColorContext, useGamutBoundary } from 'color-kit/react';
+import {
+  Color,
+  useColorContext,
+  useGamutBoundary,
+  type ColorInteraction,
+} from 'color-kit/react';
 import {
   PlanePicker,
   type PlaneOverlayProps,
@@ -33,6 +39,7 @@ function SrgbEdge({ color, axes, isDragging, quality }: PlaneOverlayProps) {
 function Picker() {
   const {
     requested,
+    displayed,
     setRequested,
     setChannel,
     activeGamut,
@@ -40,10 +47,12 @@ function Picker() {
     requestedCss,
     displayedCss,
   } = useColorContext();
+  const input = useRef<ColorInteraction>('pointer');
   return (
     <div className="grid max-w-80 gap-3">
       <PlanePicker
         color={requested}
+        displayed={displayed}
         onChange={setRequested}
         label="Lightness and chroma"
         className="aspect-[3/2] w-full rounded-sm"
@@ -57,9 +66,17 @@ function Picker() {
         max={360}
         step={0.1}
         value={requested.h}
+        // A native range reports keyboard and pointer changes alike; note
+        // which one started it so the update event names it.
+        onPointerDown={() => {
+          input.current = 'pointer';
+        }}
+        onKeyDown={() => {
+          input.current = 'keyboard';
+        }}
         onChange={(event) =>
           setChannel('h', Number(event.currentTarget.value), {
-            interaction: 'pointer',
+            interaction: input.current,
           })
         }
         className="h-3 w-full appearance-none rounded-full [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#fff] [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[#fff] [&::-moz-range-thumb]:bg-transparent"
