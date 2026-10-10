@@ -19,6 +19,10 @@
  *   coefficients, gamut-boundary epsilons, and gamut-mapping algorithm
  *   differences).
  *
+ * Interpolation (`mix` / `generateScale` with a `space` option) is compared
+ * against colorjs.io `mix` / `steps` with `premultiplied: true` for
+ * rectangular spaces, which is what CSS `color-mix()` does.
+ *
  * Set REFERENCE_ACCURACY_REPORT=1 to print the max observed error per area.
  */
 import { afterAll, describe, expect, it } from 'vitest';
@@ -32,6 +36,7 @@ import {
   fromOklab,
   fromP3,
   fromRgb,
+  generateScale,
   hslToRgb,
   hsvToRgb,
   inP3Gamut,
@@ -40,6 +45,7 @@ import {
   linearRgbToOklab,
   linearSrgbToLinearP3,
   linearToSrgb,
+  mix,
   oklabToLinearRgb,
   p3ToLinearP3,
   parse,
@@ -57,7 +63,11 @@ import {
   toRgb,
   toSrgbGamut,
 } from '../src/index.js';
-import type { Color } from '../src/index.js';
+import type {
+  Color,
+  HueInterpolationMethod,
+  InterpolationSpace,
+} from '../src/index.js';
 
 type Vec3 = [number, number, number];
 
@@ -1173,4 +1183,263 @@ describe('reference accuracy: gamut mapping', () => {
       max.assert();
     });
   }
+});
+
+// ─── Interpolation ──────────────────────────────────────────────────
+
+describe('reference accuracy: interpolation vs colorjs.io mix/range', () => {
+  // Separate PRNG so these samples do not shift the shared sequence the
+  // earlier suites draw from at test time.
+  const mixRandom = createRandom(0x313a);
+
+  const COLORJS_SPACE: Record<InterpolationSpace, string> = {
+    oklch: 'oklch',
+    oklab: 'oklab',
+    srgb: 'srgb',
+    'linear-srgb': 'srgb-linear',
+    p3: 'p3',
+    'linear-p3': 'p3-linear',
+  };
+  const RECTANGULAR: InterpolationSpace[] = [
+    'oklab',
+    'srgb',
+    'linear-srgb',
+    'p3',
+    'linear-p3',
+  ];
+  const HUE_METHODS: HueInterpolationMethod[] = [
+    'shorter',
+    'longer',
+    'increasing',
+    'decreasing',
+  ];
+  // Interior positions only: t = 0 and t = 1 return the inputs exactly (see
+  // the endpoint test below), whereas colorjs.io returns a round trip of its
+  // gamut-mapped inputs.
+  const T_VALUES = [0.1, 0.25, 0.5, 0.75, 0.9];
+
+  function mixAlpha(): number {
+    const roll = mixRandom();
+    if (roll < 0.5) return 1;
+    if (roll < 0.55) return 0;
+    return Math.round(mixRandom() * 1000) / 1000;
+  }
+
+  /** In-sRGB-gamut colors (so colorjs.io's input gamut mapping is a no-op). */
+  const IN_GAMUT: Color[] = [
+    ...EDGE_UNIT_RGB,
+    ...Array.from(
+      { length: 300 },
+      (): Vec3 => [mixRandom(), mixRandom(), mixRandom()],
+    ),
+  ].map((rgb) =>
+    fromRgb({ r: rgb[0] * 255, g: rgb[1] * 255, b: rgb[2] * 255, alpha: 1 }),
+  );
+  // Achromatic OKLCH endpoints with arbitrary stored hues. (Chroma is exactly
+  // 0: colorjs.io's range() drops the hue of tiny-but-nonzero OKLCH chroma on
+  // input, which would make the reference disagree by up to that chroma.)
+  IN_GAMUT.push(
+    { l: 0.5, c: 0, h: 123, alpha: 1 },
+    { l: 0.8, c: 0, h: 300, alpha: 1 },
+  );
+  const PAIRS: [Color, Color][] = IN_GAMUT.map((color, i) => [
+    { ...color, alpha: mixAlpha() },
+    { ...IN_GAMUT[(i * 7 + 3) % IN_GAMUT.length], alpha: mixAlpha() },
+  ]);
+
+  /**
+   * OKLCH-only pairs around the powerless-hue epsilon, e.g.
+   * oklch(0.5 0.00005 0), whose hue must still drive the mix. (Kept out of
+   * the rectangular comparisons: colorjs.io's range() drops such tiny hues
+   * when converting its inputs.)
+   */
+  const FAINT: Color[] = [
+    { l: 0.5, c: 0.00005, h: 0, alpha: 1 },
+    { l: 0.4, c: 0.00002, h: 200, alpha: 0.6 },
+    { l: 0.7, c: 0.000004, h: 90, alpha: 1 },
+    { l: 0.3, c: 0.000003, h: 300, alpha: 1 },
+  ];
+  const OKLCH_PAIRS: [Color, Color][] = [
+    ...PAIRS,
+    ...FAINT.flatMap((faint, i): [Color, Color][] => [
+      [faint, PAIRS[i * 11][1]],
+      [PAIRS[i * 17 + 1][0], faint],
+      [faint, FAINT[(i + 1) % FAINT.length]],
+    ]),
+  ];
+
+  /**
+   * CSS Color 4 OKLCH epsilon (spec sample code `OKLab_to_OKLCH`:
+   * `chroma <= 0.000004` makes the hue `none`). colorjs.io only treats an
+   * OKLCH hue as powerless when it is `none`, so the reference marks exactly
+   * those hues, and nothing above the epsilon.
+   */
+  const CSS_OKLCH_EPSILON = 0.000004;
+
+  /** colorjs.io input; a powerless OKLCH hue becomes `none` (NaN). */
+  function refInput(color: Color, powerlessHue: boolean): ColorJs {
+    const hue =
+      powerlessHue && color.c <= CSS_OKLCH_EPSILON ? Number.NaN : color.h;
+    return ref('oklch', [color.l, color.c, hue], color.alpha);
+  }
+
+  function oklabOf(color: Color): Vec3 {
+    const lab = toOklab(color);
+    return [lab.L, lab.a, lab.b];
+  }
+
+  /**
+   * CSS / colorjs.io keep the premultiplied (all-zero) channels when the
+   * interpolated alpha is exactly 0; color-kit interpolates with straight
+   * alpha there instead (documented deviation). Compare those samples against
+   * colorjs.io's straight-alpha mix.
+   */
+  function premultipliedAt(
+    a: Color,
+    b: Color,
+    t: number,
+    premultiplied: boolean,
+  ): boolean {
+    return premultiplied && a.alpha + (b.alpha - a.alpha) * t !== 0;
+  }
+
+  function describePair(a: Color, b: Color, t: number): string {
+    return fmt([a.l, a.c, a.h, a.alpha, b.l, b.c, b.h, b.alpha, t]);
+  }
+
+  it('t = 0 and t = 1 return the endpoints exactly in every space', () => {
+    const spaces: InterpolationSpace[] = [...RECTANGULAR, 'oklch'];
+    for (const space of spaces) {
+      for (const [a, b] of OKLCH_PAIRS) {
+        expect(mix(a, b, 0, { space })).toEqual(a);
+        expect(mix(a, b, 1, { space })).toEqual(b);
+        const scale = generateScale(a, b, 9, { space });
+        expect(scale[0]).toEqual(a);
+        expect(scale[8]).toEqual(b);
+      }
+    }
+  });
+
+  for (const space of RECTANGULAR) {
+    it(`mix in ${space} matches colorjs.io mix (premultiplied)`, () => {
+      const tracker = new Tracker(`mix in ${space} (OKLab)`, FLOAT_TOL);
+      const alpha = new Tracker(`mix in ${space} (alpha)`, FLOAT_TOL);
+      for (const [a, b] of PAIRS) {
+        for (const t of T_VALUES) {
+          const kit = mix(a, b, t, { space });
+          const reference = refInput(a, false).mix(refInput(b, false), t, {
+            space: COLORJS_SPACE[space],
+            premultiplied: premultipliedAt(a, b, t, true),
+          });
+          const expected = refCoords(reference, 'oklab');
+          tracker.observe(vecError(oklabOf(kit), expected), () =>
+            describePair(a, b, t),
+          );
+          alpha.observe(Math.abs(kit.alpha - reference.alpha), () =>
+            describePair(a, b, t),
+          );
+        }
+      }
+      tracker.assert();
+      alpha.assert();
+    });
+  }
+
+  for (const hue of HUE_METHODS) {
+    for (const premultiplied of [false, true]) {
+      it(`mix in oklch (hue: ${hue}, premultiplied: ${premultiplied}) matches colorjs.io`, () => {
+        const label = `mix in oklch ${hue}${premultiplied ? ' premult' : ''}`;
+        const lc = new Tracker(`${label} (L, C)`, FLOAT_TOL);
+        const h = new Tracker(`${label} (h, deg)`, HUE_TOL);
+        for (const [a, b] of OKLCH_PAIRS) {
+          for (const t of T_VALUES) {
+            const kit = mix(a, b, t, { space: 'oklch', hue, premultiplied });
+            const reference = refInput(a, true).mix(refInput(b, true), t, {
+              space: 'oklch',
+              hue,
+              premultiplied: premultipliedAt(a, b, t, premultiplied),
+            });
+            const [l, c, refHue] = reference.coords;
+            const err = lchError(kit, [
+              l ?? Number.NaN,
+              c ?? Number.NaN,
+              refHue ?? Number.NaN,
+            ]);
+            lc.observe(err.lc, () => describePair(a, b, t));
+            h.observe(err.h, () => describePair(a, b, t));
+          }
+        }
+        lc.assert();
+        h.assert();
+      });
+    }
+  }
+
+  it('generateScale with a space matches colorjs.io steps', () => {
+    const tracker = new Tracker('generateScale (OKLab)', FLOAT_TOL);
+    const spaces: InterpolationSpace[] = [...RECTANGULAR, 'oklch'];
+    for (const space of spaces) {
+      for (const [a, b] of PAIRS.slice(0, 40)) {
+        const kit = generateScale(a, b, 9, { space });
+        const reference = refInput(a, true).steps(refInput(b, true), {
+          space: COLORJS_SPACE[space],
+          steps: 9,
+          premultiplied: space !== 'oklch',
+        });
+        kit.forEach((color, i) => {
+          // Endpoints are exact; covered by the endpoint test.
+          if (i === 0 || i === 8) return;
+          const t = i / 8;
+          const stop = premultipliedAt(a, b, t, space !== 'oklch')
+            ? reference[i]
+            : refInput(a, true).mix(refInput(b, true), t, {
+                space: COLORJS_SPACE[space],
+                premultiplied: false,
+              });
+          tracker.observe(
+            vecError(oklabOf(color), refCoords(stop, 'oklab')),
+            () => `${space} ${describePair(a, b, i / 8)}`,
+          );
+        });
+      }
+    }
+    tracker.assert();
+  });
+
+  it('extended-range (out-of-gamut) inputs are interpolated unclamped', () => {
+    // colorjs.io's range() gamut-maps its inputs into the interpolation
+    // space first, whereas CSS color-mix() (and color-kit) keep extended
+    // values. So the reference here is built from colorjs.io conversions
+    // plus a hand-written premultiplied lerp.
+    const wide = OKLCH_SAMPLES.slice(0, 400);
+    for (const space of RECTANGULAR) {
+      const tracker = new Tracker(
+        `mix in ${space}, extended (OKLab)`,
+        FLOAT_TOL,
+      );
+      const id = COLORJS_SPACE[space];
+      for (let i = 0; i < wide.length; i += 1) {
+        const a = wide[i];
+        const b = wide[(i * 13 + 5) % wide.length];
+        const pa = refFromColor(a).to(id).coords;
+        const pb = refFromColor(b).to(id).coords;
+        for (const t of [0.25, 0.5, 0.8]) {
+          const alpha = a.alpha + (b.alpha - a.alpha) * t;
+          const premult = alpha !== 0;
+          const coords = [0, 1, 2].map((k) => {
+            const start = (pa[k] ?? 0) * (premult ? a.alpha : 1);
+            const end = (pb[k] ?? 0) * (premult ? b.alpha : 1);
+            const value = start + (end - start) * t;
+            return premult ? value / alpha : value;
+          }) as Vec3;
+          const expected = refCoords(ref(id, coords, alpha), 'oklab');
+          const kit = mix(a, b, t, { space });
+          tracker.observe(vecError(oklabOf(kit), expected), () =>
+            describePair(a, b, t),
+          );
+        }
+      }
+      tracker.assert();
+    }
+  });
 });

@@ -87,6 +87,11 @@ export {
 
 // Scale
 export { interpolate, generateScale, lightnessScale } from './scale/index.js';
+export type {
+  HueInterpolationMethod,
+  InterpolationOptions,
+  InterpolationSpace,
+} from './interpolation/index.js';
 
 // Manipulation
 export {

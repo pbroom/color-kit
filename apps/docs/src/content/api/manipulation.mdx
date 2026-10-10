@@ -133,20 +133,28 @@ const translucent = setAlpha(parse('#3b82f6'), 0.5);
 
 ## `mix`
 
-Interpolates two colors in OKLCH space. Lightness, chroma, and alpha are linearly interpolated; hue takes the shortest path around the hue circle, so mixing red and blue passes through purple rather than green.
+Interpolates two colors. By default it works in OKLCH space: lightness, chroma, and alpha are linearly interpolated, and hue takes the shortest path around the hue circle, so mixing red and blue passes through purple rather than green.
+
+Pass `options.space` to mix in another space with CSS `color-mix()` semantics. `'linear-srgb'` is the physically correct choice, because it averages light the way overlapping lights or a blur do. See [Interpolation options](/docs/api/scale#interpolation-options) for all the options and how they behave.
 
 ```ts
 import { mix, parse } from 'color-kit';
 
 const blend = mix(parse('#3b82f6'), parse('#ef4444'));
 const nearRed = mix(parse('#3b82f6'), parse('#ef4444'), 0.9);
+
+// Linear-light blend, like color-mix(in srgb-linear, ...)
+const light = mix(parse('#ff0000'), parse('#00ff00'), 0.5, {
+  space: 'linear-srgb',
+}); // #bcbc00
 ```
 
-| Parameter | Type     | Default | Description                                        |
-| --------- | -------- | ------- | -------------------------------------------------- |
-| `color1`  | `Color`  | —       | First color; returned when `t = 0`                 |
-| `color2`  | `Color`  | —       | Second color; returned when `t = 1`                |
-| `t`       | `number` | `0.5`   | Interpolation position along the shortest hue path |
+| Parameter | Type                   | Default | Description                                               |
+| --------- | ---------------------- | ------- | --------------------------------------------------------- |
+| `color1`  | `Color`                | —       | First color; returned when `t = 0`                        |
+| `color2`  | `Color`                | —       | Second color; returned when `t = 1`                       |
+| `t`       | `number`               | `0.5`   | Interpolation position                                    |
+| `options` | `InterpolationOptions` | —       | Space, hue method, and alpha handling (see `interpolate`) |
 
 <p className="api-returns">
   Returns a new interpolated <code>Color</code>.
