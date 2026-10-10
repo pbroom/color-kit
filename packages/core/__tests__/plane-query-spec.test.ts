@@ -195,9 +195,9 @@ function goldenCases(): Array<{
         plane: lc,
         queries: [{ kind: 'contrastRegion', reference, metric: 'wcag' }],
       },
-      budget: 1891,
+      budget: 128,
       bucketKey:
-        'contrastRegion|gamutRegion:none|contrast:wcag|priority:idle|quality:medium|profile:balanced|budget:lg',
+        'contrastRegion|gamutRegion:none|contrast:wcag|priority:idle|quality:medium|profile:balanced|budget:sm',
     },
     {
       name: 'contrast boundary shallow apca',
@@ -209,13 +209,13 @@ function goldenCases(): Array<{
             reference: dark,
             metric: 'apca',
             apcaPolarity: 'positive',
-            hybridMaxDepth: 4,
+            maxDepth: 4,
           },
         ],
       },
-      budget: 1549,
+      budget: 160,
       bucketKey:
-        'contrastBoundary|gamutRegion:none|contrast:apca:positive:sample-text|priority:idle|quality:medium|profile:balanced|budget:lg',
+        'contrastBoundary|gamutRegion:none|contrast:apca:positive:sample-text|priority:idle|quality:medium|profile:balanced|budget:sm',
     },
     {
       name: 'contrast region coarse drag',
@@ -228,14 +228,14 @@ function goldenCases(): Array<{
           {
             kind: 'contrastRegion',
             reference,
-            lightnessSteps: 32,
-            chromaSteps: 32,
+            initialSamples: 8,
+            maxDepth: 3,
           },
         ],
       },
-      budget: 485,
+      budget: 80,
       bucketKey:
-        'contrastRegion|gamutRegion:none|contrast:wcag|priority:drag|quality:high|profile:performance|budget:md',
+        'contrastRegion|gamutRegion:none|contrast:wcag|priority:drag|quality:high|profile:performance|budget:sm',
     },
     {
       name: 'mixed light queries',
@@ -262,12 +262,12 @@ function goldenCases(): Array<{
             reference,
             metric: 'apca',
             apcaRole: 'sample-background',
-            hybridErrorTolerance: 0.0005,
-            hybridMaxDepth: 9,
+            errorTolerance: 0.0005,
+            maxDepth: 9,
           },
         ],
       },
-      budget: 11586,
+      budget: 4326,
       bucketKey:
         'contrastRegion+gamutRegion|gamutRegion:srgb:viewport:hsl:h/s|contrast:apca:absolute:sample-background|priority:idle|quality:medium|profile:balanced|budget:xl',
     },

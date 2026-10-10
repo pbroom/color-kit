@@ -141,7 +141,7 @@ For the plane-integrated variants that return viewport-aware, plane-space result
 
 ## `contrastRegionPaths`
 
-Generates contour paths for the region that meets or exceeds the configured contrast criterion at a fixed hue. The solver finds chroma roots of the contrast field at adaptively refined lightness samples and joins them into paths.
+Generates contour paths for the region that meets or exceeds the configured contrast criterion at a fixed hue. Each side of the region (darker or lighter than the reference) is one luminance level curve; the solver traces it along rays from black and solves exactly where each piece meets the gamut edge.
 
 ```ts
 import { contrastRegionPaths, parse } from 'color-kit';
@@ -154,11 +154,11 @@ const paths = contrastRegionPaths(parse('#ffffff'), 220, {
 });
 ```
 
-| Parameter   | Type                                   | Default | Description                                    |
-| ----------- | -------------------------------------- | ------- | ---------------------------------------------- |
-| `reference` | `Color`                                | —       | Reference color (mapped into the target gamut) |
-| `hue`       | `number`                               | —       | Fixed hue angle in degrees                     |
-| `options`   | `ContrastRegionPathOptions` (optional) | `{}`    | Criterion and solver options (see below)       |
+| Parameter   | Type                                   | Default | Description                                                              |
+| ----------- | -------------------------------------- | ------- | ------------------------------------------------------------------------ |
+| `reference` | `Color`                                | —       | Reference color, measured as displayed in the target gamut (see `gamut`) |
+| `hue`       | `number`                               | —       | Fixed hue angle in degrees                                               |
+| `options`   | `ContrastRegionPathOptions` (optional) | `{}`    | Criterion and solver options (see below)                                 |
 
 <p className="api-returns">
   Returns <code>{'ContrastRegionPoint[][]'}</code> &mdash; contour paths of{' '}
@@ -178,42 +178,39 @@ const paths = contrastRegionPaths(parse('#ffffff'), 220, {
 
 ### Sampling options
 
-| Option              | Type                     | Default  | Description                                                                                                                                    |
-| ------------------- | ------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gamut`             | `'srgb' \| 'display-p3'` | `'srgb'` | Target gamut; both the reference and every sample are gamut-mapped before evaluation                                                           |
-| `maxChroma`         | `number`                 | `0.4`    | Upper chroma bound used for sampling                                                                                                           |
-| `alpha`             | `number`                 | `1`      | Alpha channel used while sampling                                                                                                              |
-| `lightnessSteps`    | `number`                 | `72`     | Initial lightness sampling density (clamped to 12&ndash;320), refined where the contour bends                                                  |
-| `chromaSteps`       | `number`                 | `96`     | Chroma root-bracketing density per lightness sample (clamped to 16&ndash;768)                                                                  |
-| `tolerance`         | `number`                 | —        | Search precision forwarded to `maxChromaAt`                                                                                                    |
-| `maxIterations`     | `number`                 | —        | Search iteration cap forwarded to `maxChromaAt`                                                                                                |
-| `simplifyTolerance` | `number`                 | off      | If set, runs Ramer&ndash;Douglas&ndash;Peucker simplification on each path; tolerance in normalized `(l, c)` space, e.g. `0.001`&ndash;`0.002` |
+| Option              | Type                     | Default  | Description                                                                                                                                                                                                            |
+| ------------------- | ------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gamut`             | `'srgb' \| 'display-p3'` | `'srgb'` | Target gamut: the reference and samples are measured as displayed in it, with channels clipped as `contrastRatio` / `contrastAPCA` clip them (an out-of-gamut reference is not gamut-mapped), and paths stay inside it |
+| `maxChroma`         | `number`                 | `0.4`    | Upper chroma bound of the region; paths end at this chroma                                                                                                                                                             |
+| `alpha`             | `number`                 | `1`      | Alpha channel used while sampling                                                                                                                                                                                      |
+| `initialSamples`    | `number`                 | `32`     | Initial samples per gamut chroma extent at the hue (integer `>= 2`, clamped to 512); each contour piece gets a share by its length (at least 1)                                                                        |
+| `errorTolerance`    | `number`                 | `0.0015` | Largest distance, in `(l, c)` units, of a sampled midpoint from its chord before the interval is split (`> 0`, clamped to at least `1e-6`)                                                                             |
+| `maxDepth`          | `number`                 | `6`      | Maximum halvings of an initial interval to meet `errorTolerance` (integer `>= 0`, clamped to 12); a few more are allowed while a chord leaves the gamut                                                                |
+| `simplifyTolerance` | `number`                 | off      | If set, runs Ramer&ndash;Douglas&ndash;Peucker simplification on each path; tolerance in normalized `(l, c)` space, e.g. `0.001`&ndash;`0.002`. Points are kept where a simplified segment would leave the gamut       |
 
-### Refinement options
+Invalid `initialSamples`, `maxDepth`, or `errorTolerance` values throw an `Error`. `clampContrastRegionSampling(options)` returns the `{ initialSamples, errorTolerance, maxDepth }` the solver runs with (defaults filled in and limits applied, without validating), for example to report the work actually done. Options of removed solvers throw a `TypeError` and are type errors:
 
-| Option                 | Type     | Default  | Description                                                                    |
-| ---------------------- | -------- | -------- | ------------------------------------------------------------------------------ |
-| `hybridMaxDepth`       | `number` | `7`      | Maximum adaptive lightness refinement depth                                    |
-| `hybridErrorTolerance` | `number` | `0.0015` | Maximum midpoint root deviation (in chroma units) before splitting an interval |
-
-The legacy marching-squares engine and its options (`engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`) were removed. Passing any of them is a type error and throws a `TypeError`.
+- the hybrid solver's `lightnessSteps`, `chromaSteps` (use `initialSamples`), `hybridMaxDepth` (use `maxDepth`), `hybridErrorTolerance` (use `errorTolerance`), and `tolerance` / `maxIterations` (which it forwarded to `maxChromaAt`);
+- the legacy marching-squares engine's `engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, and `adaptiveMaxDepth`.
 
 ```ts
 // Cheaper settings for interactive overlays (the ContrastRegionLayer defaults).
 const paths = contrastRegionPaths(parse('#ffffff'), 220, {
   level: 'AA',
-  lightnessSteps: 12,
-  chromaSteps: 16,
-  hybridMaxDepth: 3,
-  hybridErrorTolerance: 0.003,
+  initialSamples: 8,
+  errorTolerance: 0.004,
+  maxDepth: 3,
 });
 ```
 
 Solver notes:
 
-- Roots are placed only where pass/fail changes along chroma, and each strip between neighbouring lightness samples matches the contour's crossings (roots, chroma-axis crossings, and gamut-edge crossings) without crossing them. A path stays connected where the contour folds back in lightness, with a turning point at the fold tip, and ends exactly on the chroma axis or the gamut edge where it meets them (including the vertical boundary of a thin region at the top or bottom of the lightness range).
-- Paths are the contrast contour only: they do not run along the gamut edge. Open paths start at their lower-lightness end.
-- When the solver cannot resolve a field reliably, it returns its best-effort paths (possibly none) and records `degradedReason` in the query trace summary (`inspectPlaneQuery`).
+- Pass/fail depends only on a sample's displayed luminance (WCAG relative luminance or APCA screen luminance, with channels clipped to the target gamut exactly as `contrastRatio` / `contrastAPCA` clip them), so each side of the region is one level curve. Along a ray from black at the query hue that luminance never decreases inside the gamut, so each side crosses a ray at most once.
+- Where a piece starts and ends (on the chroma axis, the gamut edge, `maxChroma`, or the lightness bounds) is found on a fixed internal scan and solved to about `1e-14`, independently of the sampling options. Coarse sampling only coarsens the curve between those ends: it cannot merge, split, or drop pieces, and chords that would leave the gamut are split further.
+- Every returned point passes the public check (`contrastRatio` / `contrastAPCA` with the region's gamut) and is in the gamut per `inSrgbGamut` / `inP3Gamut`, including in their `GAMUT_EPSILON` slack (for example the slack sliver near black).
+- Gamut notches narrower than the scan (where the edge switches channel bound and back between two scan angles) are found too: next to every edge corner the scan checks one-sided slopes for a turn toward zero. Chords between path points are checked exactly against the gamut (each channel is a cubic along a chord) and split while they leave it.
+- Paths are the contrast contour only: they do not run along the gamut edge. They never fold or close, and open paths start at their lower-lightness end. When the threshold equals the contrast against white, only white passes on the light side and it is returned as a one-point path `[{ l: 1, c: 0 }]`.
+- The solver has no degraded mode; `inspectPlaneQuery` traces record it as solver `contrast-rays` with the sampling it ran with under `fidelity`, and `droppedPieceCount` counts contour pieces dropped because no end point passed the public checks (0 in every case tested).
 
 ## `contrastRegionPath`
 

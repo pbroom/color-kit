@@ -295,16 +295,14 @@ describe('plane api', () => {
     const contrastBoundary = query.contrastBoundary({
       reference: parse('#ffffff'),
       threshold: 4.5,
-      lightnessSteps: 20,
-      chromaSteps: 20,
+      initialSamples: 20,
     });
     expect(contrastBoundary.points.length).toBeGreaterThan(1);
 
     const contrastRegion = query.contrastRegion({
       reference: parse('#111827'),
       threshold: 3,
-      lightnessSteps: 20,
-      chromaSteps: 20,
+      initialSamples: 20,
     });
     expect(contrastRegion.paths.length).toBeGreaterThan(0);
 
@@ -454,10 +452,9 @@ describe('plane api', () => {
       kind: 'contrastRegion' as const,
       reference: parse('#111827'),
       threshold: 4.5,
-      lightnessSteps: 48,
-      chromaSteps: 64,
-      hybridMaxDepth: 6,
-      hybridErrorTolerance: 0.0015,
+      initialSamples: 48,
+      maxDepth: 6,
+      errorTolerance: 0.0015,
       simplifyTolerance: 0.0015,
     };
 
@@ -522,17 +519,16 @@ describe('plane api', () => {
     ).toBe(true);
   });
 
-  it('captures cusp, root, refinement, and branching trace stages for hybrid contrast regions', () => {
+  it('captures solver, fidelity, and path trace stages for contrast regions', () => {
     const inspection = inspectPlaneQuery(
       basePlane,
       {
         kind: 'contrastRegion',
         reference: parse('#f9fafb'),
         threshold: 4.5,
-        lightnessSteps: 88,
-        chromaSteps: 180,
-        hybridMaxDepth: 8,
-        hybridErrorTolerance: 0.0009,
+        initialSamples: 88,
+        maxDepth: 8,
+        errorTolerance: 0.0009,
         hue: 230,
       },
       {
@@ -543,29 +539,21 @@ describe('plane api', () => {
 
     expect(inspection.result.kind).toBe('contrastRegion');
     expect(inspection.result.paths.length).toBeGreaterThan(0);
-    expect(inspection.trace.summary.solver).toBe('contrast-hybrid');
-    expect(inspection.trace.stages.some((stage) => stage.kind === 'cusp')).toBe(
-      true,
+    expect(inspection.trace.summary.solver).toBe('contrast-rays');
+    expect(inspection.trace.summary.fidelity).toMatchObject({
+      resolution: 88,
+      maxDepth: 8,
+      errorTolerance: 0.0009,
+    });
+    expect(inspection.trace.stages.map((stage) => stage.kind)).toEqual([
+      'solver',
+      'paths',
+      'metrics',
+    ]);
+    const pathsStage = inspection.trace.stages[1];
+    expect(pathsStage.kind === 'paths' && pathsStage.paths?.length).toBe(
+      inspection.result.paths.length,
     );
-    expect(
-      inspection.trace.stages.some(
-        (stage) => stage.kind === 'hybridSamples' && stage.label === 'seed',
-      ),
-    ).toBe(true);
-    expect(
-      inspection.trace.stages.some(
-        (stage) => stage.kind === 'hybridSamples' && stage.label === 'refined',
-      ),
-    ).toBe(true);
-    expect(
-      inspection.trace.stages.some((stage) => stage.kind === 'rootBisection'),
-    ).toBe(true);
-    expect(
-      inspection.trace.stages.some((stage) => stage.kind === 'refinement'),
-    ).toBe(true);
-    expect(
-      inspection.trace.stages.some((stage) => stage.kind === 'branching'),
-    ).toBe(true);
   });
 
   it('keeps LC-only queries gated for non-OKLCH planes', () => {
@@ -585,16 +573,14 @@ describe('plane api', () => {
     const contrastBoundary = query.contrastBoundary({
       reference: parse('#ffffff'),
       threshold: 4.5,
-      lightnessSteps: 12,
-      chromaSteps: 12,
+      initialSamples: 12,
     });
     expect(contrastBoundary.points).toEqual([]);
 
     const contrastRegion = query.contrastRegion({
       reference: parse('#111827'),
       threshold: 3,
-      lightnessSteps: 12,
-      chromaSteps: 12,
+      initialSamples: 12,
     });
     expect(contrastRegion.paths).toEqual([]);
 

@@ -11,6 +11,7 @@ import type {
   PlaneDefinition,
 } from '../types.js';
 import {
+  assertContrastRegionPathOptions,
   contrastQueryBudget,
   contrastTelemetrySignature,
   toContrastRegionPathOptions,
@@ -38,9 +39,12 @@ export function getPlaneContrastBoundary(
 ): PlaneContrastBoundaryResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   // Validate before the non-L×C early return so every plane rejects an
-  // unsupported gamut (such as the removed 'p3') the same way.
+  // unsupported gamut (such as the removed 'p3'), a removed option, or an
+  // invalid criterion or sampling option the same way.
   assertGamutTarget(query.gamut, 'contrastBoundary()');
+  const options = toContrastRegionPathOptions(query);
   if (!usesLightnessAndChroma(resolvedPlane)) {
+    assertContrastRegionPathOptions(options);
     return {
       kind: 'contrastBoundary',
       hue: planeHue(resolvedPlane, query.hue),
@@ -49,12 +53,7 @@ export function getPlaneContrastBoundary(
   }
 
   const hue = planeHue(resolvedPlane, query.hue);
-  const path = contrastRegionPath(
-    query.reference,
-    hue,
-    toContrastRegionPathOptions(query),
-    trace,
-  );
+  const path = contrastRegionPath(query.reference, hue, options, trace);
 
   return {
     kind: 'contrastBoundary',

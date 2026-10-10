@@ -1,10 +1,18 @@
-import { REMOVED_CONTRAST_REGION_OPTIONS } from '../../contrast/region.js';
+import {
+  CONTRAST_REGION_DEFAULTS,
+  MAX_DEPTH_LIMIT,
+  MAX_INITIAL_SAMPLES,
+  REMOVED_CONTRAST_REGION_OPTIONS,
+  rejectRemovedContrastOptions,
+  resolveContrastCriterion,
+  resolveContrastSampling,
+} from '../../contrast/region-shared.js';
 import type { ContrastRegionPathOptions } from '../../contrast/types.js';
 import type { PlaneContrastQueryOptions } from '../types.js';
 
 /**
  * Picks the contrast solver options out of a plane contrast query. Options
- * removed with the legacy engine are forwarded unchanged, so
+ * removed with earlier solvers are forwarded unchanged, so
  * `contrastRegionPaths` rejects them exactly as it does for direct calls.
  */
 export function toContrastRegionPathOptions(
@@ -18,15 +26,12 @@ export function toContrastRegionPathOptions(
     apcaPreset: query.apcaPreset,
     apcaPolarity: query.apcaPolarity,
     apcaRole: query.apcaRole,
-    lightnessSteps: query.lightnessSteps,
-    chromaSteps: query.chromaSteps,
     maxChroma: query.maxChroma,
-    tolerance: query.tolerance,
-    maxIterations: query.maxIterations,
     alpha: query.alpha,
     simplifyTolerance: query.simplifyTolerance,
-    hybridMaxDepth: query.hybridMaxDepth,
-    hybridErrorTolerance: query.hybridErrorTolerance,
+    initialSamples: query.initialSamples,
+    errorTolerance: query.errorTolerance,
+    maxDepth: query.maxDepth,
   };
   const source = query as unknown as Record<string, unknown>;
   const target = options as Record<string, unknown>;
@@ -39,25 +44,49 @@ export function toContrastRegionPathOptions(
 }
 
 /**
- * Scheduler work estimate shared by contrast boundary and region queries.
+ * Validates solver options exactly as `contrastRegionPaths` does, for planes
+ * that return empty geometry without running the solver, so a query is
+ * rejected (or accepted) the same way on every plane.
+ */
+export function assertContrastRegionPathOptions(
+  options: ContrastRegionPathOptions,
+): void {
+  rejectRemovedContrastOptions(options, 'contrastRegionPaths()');
+  resolveContrastCriterion(options);
+  resolveContrastSampling(options);
+}
+
+/**
+ * Scheduler work estimate shared by contrast boundary and region queries:
+ * roughly the contour points traced, from the sampling options (invalid
+ * values fall back to the defaults; the query itself rejects them).
  */
 export function contrastQueryBudget(query: PlaneContrastQueryOptions): number {
-  const lightness = query.lightnessSteps ?? 72;
-  const chromaBrackets = query.chromaSteps ?? 96;
-  const depth = Math.max(0, query.hybridMaxDepth ?? 7);
+  const samples =
+    Number.isInteger(query.initialSamples) && query.initialSamples! >= 2
+      ? Math.min(MAX_INITIAL_SAMPLES, query.initialSamples!)
+      : CONTRAST_REGION_DEFAULTS.initialSamples;
+  const depth =
+    Number.isInteger(query.maxDepth) && query.maxDepth! >= 0
+      ? Math.min(MAX_DEPTH_LIMIT, query.maxDepth!)
+      : CONTRAST_REGION_DEFAULTS.maxDepth;
   const errorTolerance =
-    query.hybridErrorTolerance != null && query.hybridErrorTolerance > 0
-      ? query.hybridErrorTolerance
-      : 0.0015;
-  const precisionFactor = Math.min(3.2, Math.max(1, 0.0015 / errorTolerance));
-  const metricFactor = query.metric === 'apca' ? 1.12 : 1;
-  return Math.round(
-    lightness *
-      Math.sqrt(chromaBrackets) *
-      (1 + depth * 0.24) *
-      precisionFactor *
-      metricFactor,
+    Number.isFinite(query.errorTolerance) && query.errorTolerance! > 0
+      ? query.errorTolerance!
+      : CONTRAST_REGION_DEFAULTS.errorTolerance;
+  // Refinement stops at `depth` or at `errorTolerance`, whichever comes
+  // first; a contour's sag shrinks with the square of the interval, so each
+  // halving of the tolerance costs about sqrt(2) times the points.
+  const precisionFactor = Math.min(
+    2 ** (depth / 2),
+    Math.max(
+      1,
+      Math.sqrt(CONTRAST_REGION_DEFAULTS.errorTolerance / errorTolerance),
+    ),
   );
+  const metricFactor = query.metric === 'apca' ? 1.5 : 1;
+  // Fixed cost: the gamut-edge event scan (about 300 evaluations per side).
+  return Math.round(64 + samples * 2 * precisionFactor * metricFactor);
 }
 
 /**

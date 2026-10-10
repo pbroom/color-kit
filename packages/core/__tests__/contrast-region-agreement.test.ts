@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   contrastRatio,
   contrastRegionPaths,
+  inP3Gamut,
+  inSrgbGamut,
   maxChromaAt,
   parse,
   type GamutTarget,
@@ -154,8 +156,8 @@ const gamuts: GamutTarget[] = ['srgb', 'display-p3'];
 describe('contrast regions agree with a brute-force grid', () => {
   // The README hero query (OKLCH plane, WCAG AA) at hue 150. The passing set
   // is one connected region whose contrast contour runs from the chroma axis
-  // to the gamut edge. Before strip matching, the solver split it
-  // into two pieces with nothing between chroma 0.049 and 0.114.
+  // to the gamut edge. An earlier solver split it into two pieces with
+  // nothing between chroma 0.049 and 0.114.
   describe.each(
     references.flatMap((reference) =>
       gamuts.map((gamut) => [reference, gamut] as const),
@@ -179,24 +181,27 @@ describe('contrast regions agree with a brute-force grid', () => {
       const [path] = paths;
       const ends = [path[0], path[path.length - 1]].sort((a, b) => a.c - b.c);
       expect(ends[0].c).toBe(0);
-      expect(ends[1].c).toBeCloseTo(
-        maxChromaAt(ends[1].l, 150, { gamut, maxChroma: MAX_CHROMA }),
-        6,
-      );
-      // Every vertex is a root of the contrast margin.
+      // The outer end is on the gamut edge: in gamut, and out of gamut a
+      // hair further out in chroma.
+      const inGamut = gamut === 'display-p3' ? inP3Gamut : inSrgbGamut;
+      const outer = { l: ends[1].l, c: ends[1].c, h: 150, alpha: 1 };
+      expect(inGamut(outer)).toBe(true);
+      expect(inGamut({ ...outer, c: outer.c + 1e-7 })).toBe(false);
+      // Every vertex is on the contrast threshold, on its passing side.
       for (const point of path) {
         const ratio = contrastRatio(
           { l: point.l, c: point.c, h: 150, alpha: 1 },
           parse(reference),
           { gamut },
         );
-        expect(Math.abs(ratio - THRESHOLD)).toBeLessThan(1e-3);
+        expect(ratio).toBeGreaterThanOrEqual(THRESHOLD);
+        expect(ratio - THRESHOLD).toBeLessThan(1e-9);
       }
     });
   });
 
   // Hues from a 36-hue AA sweep where the contour folds back in lightness
-  // near the axis or the gamut edge. The old branch tracker left these as
+  // near the axis or the gamut edge. An earlier branch tracker left these as
   // two pieces or stopped short of the gamut edge (gaps up to 0.027).
   it.each([
     [90, '#ffffff'],
@@ -220,8 +225,8 @@ describe('contrast regions agree with a brute-force grid', () => {
   );
 
   // A mid-gray reference at 3:1 passes in two separate regions: one darker
-  // and one lighter than the reference. Strip matching must keep their
-  // contours apart instead of joining roots across the failing band.
+  // and one lighter than the reference. Their contours must stay apart
+  // instead of joining across the failing band.
   describe.each(
     [30, 150, 264].flatMap((hue) =>
       gamuts.map((gamut) => [hue, gamut] as const),
@@ -235,7 +240,7 @@ describe('contrast regions agree with a brute-force grid', () => {
       expect(truth.components).toBe(2);
     });
 
-    it('hybrid traces two separate contours', () => {
+    it('traces two separate contours', () => {
       const paths = contrastRegionPaths(parse(reference), hue, {
         threshold,
         gamut,

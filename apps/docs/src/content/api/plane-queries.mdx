@@ -26,14 +26,14 @@ runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
 ## Shared Notes
 
 - `samplingMode` on `gamutBoundary` / `chromaBand` selects `uniform` (fixed lightness stepping) or `adaptive` (recursive refinement).
-- Contrast queries take the same options as [`contrastRegionPaths`](/docs/api/contrast), validated the same way: the removed legacy-engine options (`engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`) throw a `TypeError`.
+- Contrast queries take the same options as [`contrastRegionPaths`](/docs/api/contrast), including the sampling options `initialSamples`, `errorTolerance`, and `maxDepth`, validated the same way: options of removed solvers (the hybrid solver's `lightnessSteps`, `chromaSteps`, `hybridMaxDepth`, `hybridErrorTolerance`, `tolerance`, `maxIterations`, and the legacy engine's `engine`, `samplingMode`, `edgeInterpolation`, `adaptiveBaseSteps`, `adaptiveMaxDepth`) throw a `TypeError`. Their scheduler budget scales with the sampling options.
 - `gamutRegion()` is viewport-first by default:
   - `scope: 'viewport'` returns only boundary fragments that intersect the current plane window.
   - `scope: 'full'` opts into offscreen boundary geometry for exports or overview visualizations.
 - `metric` is available for `contrastBoundary` / `contrastRegion`:
   - `wcag` &mdash; threshold uses ratio values such as `3`, `4.5`, `7`.
   - `apca` &mdash; threshold uses normalized `Lc` values (for example `0.3`, `0.45`, `0.6`) and supports `apcaPolarity` + `apcaRole`.
-- On planes that are not `oklch` with `l/c` (or `c/l`) axes, LC-specific queries intentionally return empty geometry.
+- On planes that are not `oklch` with `l/c` (or `c/l`) axes, LC-specific queries intentionally return empty geometry; contrast queries still validate their options first, so invalid or removed options throw on every plane.
 
 ## Query Capability Matrix
 

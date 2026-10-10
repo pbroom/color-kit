@@ -1,43 +1,24 @@
 import type { Color } from '../types.js';
 import type { InternalPlaneTraceContext } from '../trace/context.js';
-import { contrastRegionPathsHybrid } from './region-hybrid.js';
-import { validateSteps } from './region-shared.js';
+import { rejectRemovedContrastOptions } from './region-shared.js';
+import { solveContrastRegionPaths } from './region-solver.js';
 import type {
   ContrastRegionPathOptions,
   ContrastRegionPoint,
 } from './types.js';
 
 /**
- * Options that belonged to the removed legacy marching-squares engine. They
- * are rejected rather than ignored, so callers notice the removal.
- */
-export const REMOVED_CONTRAST_REGION_OPTIONS = [
-  'engine',
-  'samplingMode',
-  'edgeInterpolation',
-  'adaptiveBaseSteps',
-  'adaptiveMaxDepth',
-] as const;
-
-function rejectRemovedOptions(options: ContrastRegionPathOptions): void {
-  const bag = options as Record<string, unknown>;
-  for (const name of REMOVED_CONTRAST_REGION_OPTIONS) {
-    if (bag[name] !== undefined) {
-      throw new TypeError(
-        `contrastRegionPaths() option "${name}" was removed with the legacy contrast-region engine; tune the solver with lightnessSteps, chromaSteps, hybridMaxDepth, and hybridErrorTolerance`,
-      );
-    }
-  }
-}
-
-/**
  * Generate contour paths for the region that meets/exceeds
  * the configured contrast criterion at a fixed hue.
  *
- * Traces chroma roots of the contrast field at adaptively refined lightness
- * samples and joins them into paths. When the solver cannot fully resolve a
- * field it returns its best-effort paths and records `degradedReason` in the
- * query trace summary.
+ * Each side of the region (darker or lighter than the reference) is traced
+ * as one luminance level curve along rays from black. Contour pieces start
+ * and end exactly where the curve meets the gamut edge (with the
+ * `GAMUT_EPSILON` slack of `inSrgbGamut` / `inP3Gamut`), the chroma axis, or
+ * `maxChroma`; `initialSamples`, `errorTolerance`, and `maxDepth` only set
+ * how finely the curve between those ends is sampled. Every returned point
+ * passes `contrastRatio` / `contrastAPCA` with the region's gamut and is in
+ * that gamut.
  */
 export function contrastRegionPaths(
   reference: Color,
@@ -45,17 +26,8 @@ export function contrastRegionPaths(
   options: ContrastRegionPathOptions = {},
   trace?: InternalPlaneTraceContext | null,
 ): ContrastRegionPoint[][] {
-  rejectRemovedOptions(options);
-  if (options.lightnessSteps != null) {
-    validateSteps(
-      'contrastRegionPaths() lightnessSteps',
-      options.lightnessSteps,
-    );
-  }
-  if (options.chromaSteps != null) {
-    validateSteps('contrastRegionPaths() chromaSteps', options.chromaSteps);
-  }
-  return contrastRegionPathsHybrid(reference, hue, options, trace);
+  rejectRemovedContrastOptions(options, 'contrastRegionPaths()');
+  return solveContrastRegionPaths(reference, hue, options, trace);
 }
 
 /**

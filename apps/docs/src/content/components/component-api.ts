@@ -143,11 +143,11 @@ export const componentApiDocs: ComponentApiDocs = {
         'Use ContrastRegionFill as a child of ContrastRegionLayer for filled region and optional dot pattern; omit children for contour lines only.',
     },
     {
-      name: 'ContrastRegionLayer.lightnessSteps / chromaSteps / hybridMaxDepth / hybridErrorTolerance',
-      type: 'number / number / number / number',
-      defaultValue: '12 / 16 / 3 at high quality (2 medium, 1 low) / 0.003',
+      name: 'ContrastRegionLayer.initialSamples / errorTolerance / maxDepth',
+      type: 'number / number / number',
+      defaultValue: '8 / 0.004 / 3 at high quality (2 medium, 1 low)',
       description:
-        'Contrast-region solver settings, tuned for interactive use: about 0.25 ms per region with fills that match the contrast check to within 0.02% of the plane on average. Steps scale with quality. The legacy samplingMode, edgeInterpolation, adaptiveBaseSteps, and adaptiveMaxDepth props were removed.',
+        'Contrast-region solver sampling (see contrastRegionPaths), tuned for interactive use: fills match the contrast check to within 0.025% of the plane on average. initialSamples scales with quality (x0.68 medium, x0.45 low) and maxDepth follows it; while dragging the layer keeps the idle sampling. Where pieces start and end on the gamut edge does not depend on these settings. The hybrid solver props (lightnessSteps, chromaSteps, hybridMaxDepth, hybridErrorTolerance, tolerance, maxIterations) and the legacy samplingMode, edgeInterpolation, adaptiveBaseSteps, and adaptiveMaxDepth props were removed.',
     },
     {
       name: 'GamutBoundaryLayer.showPathPoints / pointProps',

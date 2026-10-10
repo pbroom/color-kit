@@ -252,10 +252,9 @@ describe('ColorArea primitives', () => {
     expect(spy).toHaveBeenCalled();
     const options = spy.mock.calls[spy.mock.calls.length - 1][3] ?? {};
     expect(options).toMatchObject({
-      lightnessSteps: 12,
-      chromaSteps: 16,
-      hybridMaxDepth: 3,
-      hybridErrorTolerance: 0.003,
+      initialSamples: 8,
+      maxDepth: 3,
+      errorTolerance: 0.004,
     });
     for (const removed of [
       'engine',
@@ -263,9 +262,98 @@ describe('ColorArea primitives', () => {
       'edgeInterpolation',
       'adaptiveBaseSteps',
       'adaptiveMaxDepth',
+      'lightnessSteps',
+      'chromaSteps',
+      'hybridMaxDepth',
+      'hybridErrorTolerance',
+      'tolerance',
+      'maxIterations',
     ]) {
       expect(options).not.toHaveProperty(removed);
     }
+  });
+
+  it('scales contrast-region sampling with quality', () => {
+    const spy = vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths');
+    const requested: Color = { l: 0.6, c: 0.08, h: 150, alpha: 1 };
+    const optionsAt = (quality: 'high' | 'medium' | 'low') => {
+      spy.mockClear();
+      const { unmount } = render(
+        <ColorArea requested={requested} onChangeRequested={() => {}}>
+          <ContrastRegionLayer
+            threshold={4.5}
+            quality={quality}
+            initialSamples={20}
+          />
+        </ColorArea>,
+      );
+      const options = spy.mock.calls[spy.mock.calls.length - 1][3] ?? {};
+      unmount();
+      return options;
+    };
+    expect(optionsAt('high')).toMatchObject({
+      initialSamples: 20,
+      maxDepth: 3,
+    });
+    expect(optionsAt('medium')).toMatchObject({
+      initialSamples: 14,
+      maxDepth: 2,
+    });
+    expect(optionsAt('low')).toMatchObject({ initialSamples: 9, maxDepth: 1 });
+  });
+
+  it('requests and reports the sampling clamped as the solver clamps it', async () => {
+    const spy = vi.spyOn(colorAreaApi, 'getColorAreaContrastRegionPaths');
+    const onMetrics = vi.fn();
+    render(
+      <ColorArea
+        requested={{ l: 0.6, c: 0.08, h: 150, alpha: 1 }}
+        onChangeRequested={() => {}}
+      >
+        <ContrastRegionLayer
+          threshold={4.5}
+          quality="high"
+          initialSamples={1000}
+          maxDepth={20}
+          errorTolerance={1e-9}
+          onMetrics={onMetrics}
+        />
+      </ColorArea>,
+    );
+    const clamped = { initialSamples: 512, maxDepth: 12, errorTolerance: 1e-6 };
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls[spy.mock.calls.length - 1][3]).toMatchObject(clamped);
+    await waitFor(() => expect(onMetrics).toHaveBeenCalled());
+    const latest = onMetrics.mock.calls[onMetrics.mock.calls.length - 1][0];
+    expect(latest).toMatchObject(clamped);
+  });
+
+  it.each([
+    ['lightnessSteps', 12],
+    ['chromaSteps', 16],
+    ['hybridMaxDepth', 3],
+    ['hybridErrorTolerance', 0.003],
+    ['tolerance', 1e-4],
+    ['maxIterations', 30],
+  ])('rejects the removed hybrid-solver prop %s', (name, value) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const props = { threshold: 4.5, [name]: value } as unknown as Parameters<
+      typeof ContrastRegionLayer
+    >[0];
+    expect(() =>
+      render(
+        <ColorArea
+          requested={{ l: 0.6, c: 0.08, h: 150, alpha: 1 }}
+          onChangeRequested={() => {}}
+        >
+          <ContrastRegionLayer {...props} />
+        </ColorArea>,
+      ),
+    ).toThrow(
+      new TypeError(
+        `ContrastRegionLayer prop "${name}" was removed with the hybrid contrast-region solver; tune the layer with initialSamples, errorTolerance, and maxDepth`,
+      ),
+    );
   });
 
   it('renders layer primitives with externally supplied plane geometry', () => {
@@ -376,12 +464,7 @@ describe('ColorArea primitives', () => {
     const requested: Color = { l: 0.68, c: 0.22, h: 245, alpha: 1 };
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ContrastRegionLayer
-          threshold={4.5}
-          lightnessSteps={32}
-          chromaSteps={32}
-          showPathPoints
-        >
+        <ContrastRegionLayer threshold={4.5} initialSamples={32} showPathPoints>
           <ContrastRegionFill
             fillColor="#88aaff"
             fillOpacity={0.2}
@@ -408,11 +491,7 @@ describe('ColorArea primitives', () => {
     const requested: Color = { l: 0.85, c: 0.08, h: 200, alpha: 1 };
     const { container } = render(
       <ColorArea requested={requested} onChangeRequested={() => {}}>
-        <ContrastRegionLayer
-          threshold={4.5}
-          lightnessSteps={32}
-          chromaSteps={32}
-        />
+        <ContrastRegionLayer threshold={4.5} initialSamples={32} />
       </ColorArea>,
     );
 
@@ -905,7 +984,7 @@ describe('ColorArea primitives', () => {
     expect(latest.scheduleReason).toBe('default-js');
     expect(latest.schedulerBucketCount).toBe(1);
     expect(latest.contrastMetric).toBe('wcag');
-    expect(latest.hybridMaxDepth).toBeGreaterThanOrEqual(1);
+    expect(latest.maxDepth).toBeGreaterThanOrEqual(1);
     // Metrics report the sampling the solver was asked to run with.
     const findOption = (value: unknown, key: string): unknown => {
       if (value == null || typeof value !== 'object') return undefined;
@@ -917,13 +996,13 @@ describe('ColorArea primitives', () => {
       return undefined;
     };
     const lastRequest = postedMessages[postedMessages.length - 1];
-    expect(latest.hybridMaxDepth).toBe(
-      findOption(lastRequest, 'hybridMaxDepth'),
+    expect(latest.maxDepth).toBe(findOption(lastRequest, 'maxDepth'));
+    expect(latest.initialSamples).toBe(
+      findOption(lastRequest, 'initialSamples'),
     );
-    expect(latest.lightnessSteps).toBe(
-      findOption(lastRequest, 'lightnessSteps'),
+    expect(latest.errorTolerance).toBe(
+      findOption(lastRequest, 'errorTolerance'),
     );
-    expect(latest.chromaSteps).toBe(findOption(lastRequest, 'chromaSteps'));
   });
 
   it.each([
