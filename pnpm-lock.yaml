@@ -245,8 +245,8 @@ importers:
         version: link:../driver
     devDependencies:
       '@color-kit/control-kit':
-        specifier: github:pbroom/control-kit#b9cd2cbb9427707f10751a694bb3c9ac8b5f7289
-        version: https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: github:pbroom/control-kit#e5aebdf2ff5a00c0b34af6b4176358ab93181bba
+        version: https://codeload.github.com/pbroom/control-kit/tar.gz/e5aebdf2ff5a00c0b34af6b4176358ab93181bba(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -554,8 +554,8 @@ packages:
   '@codesandbox/sandpack-themes@file:vendor/sandpack/sandpack-themes':
     resolution: {directory: vendor/sandpack/sandpack-themes, type: directory}
 
-  '@color-kit/control-kit@https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289':
-    resolution: {tarball: https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289}
+  '@color-kit/control-kit@https://codeload.github.com/pbroom/control-kit/tar.gz/e5aebdf2ff5a00c0b34af6b4176358ab93181bba':
+    resolution: {tarball: https://codeload.github.com/pbroom/control-kit/tar.gz/e5aebdf2ff5a00c0b34af6b4176358ab93181bba}
     version: 0.0.1
     engines: {node: '>=18'}
     peerDependencies:
@@ -5301,7 +5301,7 @@ snapshots:
 
   '@codesandbox/sandpack-themes@file:vendor/sandpack/sandpack-themes': {}
 
-  '@color-kit/control-kit@https://codeload.github.com/pbroom/control-kit/tar.gz/b9cd2cbb9427707f10751a694bb3c9ac8b5f7289(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@color-kit/control-kit@https://codeload.github.com/pbroom/control-kit/tar.gz/e5aebdf2ff5a00c0b34af6b4176358ab93181bba(@base-ui/react@1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@base-ui/react': 1.4.1(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       class-variance-authority: 0.7.1
