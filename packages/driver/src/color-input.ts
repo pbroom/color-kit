@@ -1,11 +1,20 @@
 import type { Color, Hsl, Rgb } from '@color-kit/core';
-import { fromHsl, fromRgb, toHsl, toRgb } from '@color-kit/core';
+import {
+  clamp,
+  fromHsl,
+  fromRgb,
+  isAchromatic,
+  normalizeHue,
+  toHsl,
+  toRgb,
+} from '@color-kit/core';
 import {
   formatPrimitiveValue,
   getPrimitiveSteppedValue,
   normalizePrimitiveValue,
 } from './primitive-number.js';
 import { parseColorInputExpression } from './color-input-parser.js';
+import { resolveIncomingRequested } from './color-state.js';
 import type { ParseColorInputExpressionOptions } from './color-input-parser.js';
 
 export { parseColorInputExpression } from './color-input-parser.js';
@@ -302,6 +311,12 @@ export function normalizeColorInputValue(
   );
 }
 
+/**
+ * Reads one channel of `color` in `model`. For an achromatic color (a gray,
+ * black or white) the HSL hue is not the canonical `0` but the HSL hue of the
+ * stored OKLCH hue: the hue of the 1%-saturated HSL color at the same
+ * lightness (clamped to 5-95%) whose OKLCH hue is `color.h`.
+ */
 export function getColorInputChannelValue<Model extends ColorInputModel>(
   color: Color,
   model: Model,
@@ -317,13 +332,180 @@ export function getColorInputChannelValue<Model extends ColorInputModel>(
   }
 
   if (model === 'hsl' && isHslColorInputChannel(channel)) {
-    const hsl = toHsl(color);
+    const hsl = toColorInputHsl(color);
     return hsl[channel];
   }
 
   return assertInvalidColorInputPair(model, channel);
 }
 
+/**
+ * OKLCH hues of the sRGB primaries and secondaries (HSL hues 0, 60, ..., 300,
+ * then red again at 360). Only used to seed `solveHslHue`.
+ */
+const HSL_HUE_ANCHORS = [
+  29.23, 109.77, 142.5, 194.77, 264.05, 328.36, 389.23,
+] as const;
+
+/**
+ * HSL saturation (percent) at which an achromatic color's HSL hue is read:
+ * the HSL hue shown for a gray is the one whose 1%-saturated color at the
+ * same HSL lightness has the stored OKLCH hue.
+ */
+const ACHROMATIC_HSL_PROBE_SATURATION = 1;
+
+/**
+ * HSL lightness range (percent) for that probe, so black and white (where
+ * every saturation is achromatic) still read a hue.
+ */
+const ACHROMATIC_HSL_PROBE_LIGHTNESS: readonly [number, number] = [5, 95];
+
+/** HSL hue bracket width (degrees) at which `solveHslHue` stops. */
+const HSL_HUE_SOLVE_TOLERANCE = 0.0001;
+
+function signedHueDelta(a: number, b: number): number {
+  return ((((a - b) % 360) + 540) % 360) - 180;
+}
+
+/** OKLCH hue of an HSL color, or `null` when that color is achromatic. */
+function oklchHueOfHsl(h: number, s: number, l: number): number | null {
+  const color = fromHsl({ h, s, l, alpha: 1 });
+  return isAchromatic(color.c) ? null : color.h;
+}
+
+/** Piecewise-linear OKLCH-to-HSL hue estimate between the sRGB primaries. */
+function estimateHslHue(oklchHue: number): number {
+  let hue = normalizeHue(oklchHue);
+  if (hue < HSL_HUE_ANCHORS[0]) hue += 360;
+  for (let index = 0; index < HSL_HUE_ANCHORS.length - 1; index += 1) {
+    const start = HSL_HUE_ANCHORS[index];
+    const end = HSL_HUE_ANCHORS[index + 1];
+    if (hue <= end) {
+      return (index + (hue - start) / (end - start)) * 60;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Finds the HSL hue whose color at HSL saturation `s` and lightness `l` has
+ * OKLCH hue `oklchHue`. At fixed `s` and `l` the OKLCH hue rises
+ * monotonically with the HSL hue, so this bisects a ±90° bracket around an
+ * estimate down to `HSL_HUE_SOLVE_TOLERANCE` (about 21 conversions). Returns
+ * `null` when `s` and `l` give an achromatic color (saturation 0, black or
+ * white) or the bracket misses.
+ */
+function solveHslHue(oklchHue: number, s: number, l: number): number | null {
+  const estimate = estimateHslHue(oklchHue);
+  let low = estimate - 90;
+  let high = estimate + 90;
+  const lowHue = oklchHueOfHsl(low, s, l);
+  const highHue = oklchHueOfHsl(high, s, l);
+  if (
+    lowHue === null ||
+    highHue === null ||
+    !(signedHueDelta(lowHue, oklchHue) < 0) ||
+    !(signedHueDelta(highHue, oklchHue) > 0)
+  ) {
+    return null;
+  }
+
+  while (high - low > HSL_HUE_SOLVE_TOLERANCE) {
+    const hue = (low + high) / 2;
+    const midHue = oklchHueOfHsl(hue, s, l);
+    if (midHue === null) return null;
+    if (signedHueDelta(midHue, oklchHue) < 0) {
+      low = hue;
+    } else {
+      high = hue;
+    }
+  }
+  return normalizeHue((low + high) / 2);
+}
+
+function achromaticHslProbeLightness(l: number): number {
+  return clamp(
+    l,
+    ACHROMATIC_HSL_PROBE_LIGHTNESS[0],
+    ACHROMATIC_HSL_PROBE_LIGHTNESS[1],
+  );
+}
+
+/** True for a gray, black or white that still carries a stored OKLCH hue. */
+function isAchromaticWithHue(color: Color): boolean {
+  return isAchromatic(color.c) && Number.isFinite(color.h);
+}
+
+/**
+ * `toHsl(color)`, except that an achromatic color reads the HSL hue of its
+ * stored OKLCH hue (see `ACHROMATIC_HSL_PROBE_SATURATION`) instead of the
+ * canonical achromatic HSL hue `0`.
+ */
+function toColorInputHsl(color: Color): Hsl {
+  const hsl = toHsl(color);
+  if (!isAchromaticWithHue(color)) return hsl;
+  const h = solveHslHue(
+    color.h,
+    ACHROMATIC_HSL_PROBE_SATURATION,
+    achromaticHslProbeLightness(hsl.l),
+  );
+  return h === null ? hsl : { ...hsl, h };
+}
+
+/**
+ * HSL edit of an achromatic color that still carries an OKLCH hue. A hue edit
+ * stays achromatic and stores the OKLCH hue of the typed HSL hue (the inverse
+ * of `toColorInputHsl`). A saturation edit picks the HSL hue at which the new
+ * saturation lands on the stored OKLCH hue. Other edits keep the stored hue.
+ */
+function colorFromAchromaticHslEdit(
+  color: Color,
+  hsl: Hsl,
+  channel: HslColorInputChannel,
+  value: number,
+): Color {
+  const next: Hsl = { ...hsl, [channel]: value };
+  if (channel === 'h') {
+    const converted = fromHsl(next);
+    if (!isAchromatic(converted.c)) return converted;
+    const h = oklchHueOfHsl(
+      value,
+      ACHROMATIC_HSL_PROBE_SATURATION,
+      achromaticHslProbeLightness(hsl.l),
+    );
+    return h === null
+      ? resolveIncomingRequested(color, converted, { explicitHue: false })
+      : { ...converted, h };
+  }
+  if (channel === 's' && value > 0) {
+    next.h = solveHslHue(color.h, value, hsl.l) ?? next.h;
+  }
+  return resolveIncomingRequested(color, fromHsl(next), {
+    explicitHue: false,
+  });
+}
+
+/**
+ * Returns `color` with one channel of `model` set to `value`.
+ *
+ * OKLCH edits overwrite only that channel. RGB and HSL edits convert the
+ * edited color back to OKLCH; when the result is achromatic (a gray, black
+ * or white, or HSL saturation `0`), it keeps `color.h` instead of the
+ * canonical achromatic hue `0` (see `resolveIncomingRequested`), so raising
+ * OKLCH chroma afterwards resumes that hue exactly.
+ *
+ * HSL edits of an achromatic `color` with a stored hue start from the HSL
+ * hue that `getColorInputChannelValue` reports for it, not `0`:
+ * - Raising HSL saturation picks the HSL hue at which the new saturation and
+ *   lightness have OKLCH hue `color.h` (to within 0.01°), so the gray turns
+ *   back into its previous hue instead of red. Black and white stay
+ *   achromatic and keep `color.h`.
+ * - An HSL hue edit keeps the color achromatic and stores the OKLCH hue of
+ *   the typed HSL hue, which the HSL hue field then reads back.
+ * - Lightness and alpha edits keep `color.h`.
+ *
+ * RGB edits away from a gray take whatever hue the new RGB values have.
+ */
 export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
   color: Color,
   model: Model,
@@ -343,16 +525,23 @@ export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
       ...rgb,
       [channel]: value,
     };
-    return fromRgb(next);
+    return resolveIncomingRequested(color, fromRgb(next), {
+      explicitHue: false,
+    });
   }
 
   if (model === 'hsl' && isHslColorInputChannel(channel)) {
-    const hsl = toHsl(color);
+    const hsl = toColorInputHsl(color);
+    if (isAchromaticWithHue(color)) {
+      return colorFromAchromaticHslEdit(color, hsl, channel, value);
+    }
     const next: Hsl = {
       ...hsl,
       [channel]: value,
     };
-    return fromHsl(next);
+    return resolveIncomingRequested(color, fromHsl(next), {
+      explicitHue: false,
+    });
   }
 
   return assertInvalidColorInputPair(model, channel);

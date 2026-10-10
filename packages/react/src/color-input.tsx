@@ -188,6 +188,12 @@ export const ColorInput = forwardRef<HTMLDivElement, ColorInputProps>(
         setRequested(nextColor, {
           interaction: details.interaction,
           ...(changedChannel ? { changedChannel } : {}),
+          // RGB/HSL edits convert through OKLab: an achromatic result keeps
+          // the latest requested hue instead of the converted hue 0. An HSL
+          // hue edit states the hue, so a gray takes the typed hue instead.
+          ...(model === 'oklch' || (model === 'hsl' && channel === 'h')
+            ? {}
+            : { explicitHue: false }),
         });
       },
       [changedChannel, channel, model, requested, setRequested],

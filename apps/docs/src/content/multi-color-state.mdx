@@ -35,7 +35,9 @@ export function Palette() {
 ## Key API
 
 - `state.colors[id]`: full `ColorState` per entry
-- `setRequested(id, requested, options?)`
+- `setRequested(id, requested, options?)`: pass `explicitHue: false` for a
+  color converted from hex, RGB, HSL or HSV, so an achromatic one keeps the
+  entry's hue (see React Primitives, "Hue of achromatic colors")
 - `setChannel(id, channel, value, options?)`
 - `setActiveGamut(gamut)` / `setActiveView(view)`
 - `addColor(id, color)` / `removeColor(id)` / `renameColor(id, nextId)`

@@ -2,6 +2,7 @@ import type { Color, GamutMapMethod } from '@color-kit/core';
 import { parse } from '@color-kit/core';
 import {
   createColorState,
+  resolveIncomingRequested,
   type ColorChannel,
   type ColorInteraction,
   type ColorSource,
@@ -219,14 +220,34 @@ function updateEntrySources(
 // All reducers below return the input model unchanged (same reference) when
 // the operation is a no-op, so callers can cheaply skip redundant updates.
 
+export interface SetMultiColorRequestedOptions {
+  /**
+   * Whether `requested.h` is an OKLCH hue the caller stated. When `false`
+   * and `requested` is achromatic, the entry's current requested hue is kept
+   * (see `resolveIncomingRequested`). Pass `false` for colors converted from
+   * hex, RGB, HSL, HSV or any non-OKLCH string.
+   * @default true
+   */
+  explicitHue?: boolean;
+}
+
+/**
+ * Replaces an entry's requested color. An achromatic `requested` keeps the
+ * entry's current hue when `options.explicitHue` is `false` or its hue is not
+ * finite (see `resolveIncomingRequested`).
+ */
 export function setMultiColorRequested(
   model: MultiColorModel,
   id: string,
-  requested: Color,
+  incoming: Color,
   source: ColorSource,
+  options: SetMultiColorRequestedOptions = {},
 ): MultiColorModel {
   const existing = model.entries[id];
   if (!existing) return model;
+  const requested = resolveIncomingRequested(existing.requested, incoming, {
+    explicitHue: options.explicitHue ?? true,
+  });
 
   return {
     ...model,

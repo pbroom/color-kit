@@ -168,7 +168,10 @@ export function useMultiColor(
       const source = resolveColorSource(interaction, options.source);
 
       applyUpdate(
-        (current) => setMultiColorRequested(current, id, requested, source),
+        (current) =>
+          setMultiColorRequested(current, id, requested, source, {
+            explicitHue: options.explicitHue,
+          }),
         interaction,
         id,
         options.changedChannel,
