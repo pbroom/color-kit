@@ -184,6 +184,28 @@ palette.setActiveGamut('srgb');
 
 `inSrgbGamut()` `inP3Gamut()` `toSrgbGamut()` `toP3Gamut()`
 
+### Allocation-free variants
+
+For per-pixel and per-frame loops, the hot-path functions have `*Into` twins that write into a caller-supplied `out` object (passed first) and return it. They create no result or intermediate objects and return bit-identical results to the allocating functions, which are thin wrappers over them. That is not a guarantee of zero heap allocation: JavaScript engines may still box the numbers written into object fields (V8 does in loops it does not fully inline and optimize), and V8 often optimizes away the allocating functions' short-lived objects anyway. The object-returning API stays the default; reach for `*Into` only where a profiler shows allocation or GC pressure, and benchmark the change at your call site.
+
+`toOklabInto()` `fromOklabInto()` `toLinearSrgbInto()` `fromLinearSrgbInto()` `toRgbInto()` `fromRgbInto()` `toP3Into()` `fromP3Into()` `mixInto()` `interpolateInto()` `toSrgbGamutInto()` `toP3GamutInto()`
+
+Low-level converters: `srgbToLinearInto()` `linearToSrgbInto()` `linearRgbToOklabInto()` `oklabToLinearRgbInto()` `oklabToOklchInto()` `oklchToOklabInto()` `linearSrgbToLinearP3Into()` `linearP3ToLinearSrgbInto()` `linearP3ToP3Into()` `p3ToLinearP3Into()`
+
+```ts
+import { interpolateInto, parse, toRgbInto } from 'color-kit';
+
+const from = parse('#3b82f6');
+const to = parse('#ef4444');
+const color = { l: 0, c: 0, h: 0, alpha: 1 };
+const rgb = { r: 0, g: 0, b: 0, alpha: 1 };
+for (let x = 0; x < width; x++) {
+  const t = width > 1 ? x / (width - 1) : 0; // a 1px strip shows `from`
+  toRgbInto(rgb, interpolateInto(color, from, to, t));
+  // write rgb.r / rgb.g / rgb.b into ImageData
+}
+```
+
 ## Development
 
 ```bash

@@ -13,6 +13,24 @@ export function interpolateOklchDefault(
   color2: Color,
   t: number,
 ): Color {
+  return interpolateOklchDefaultInto(
+    { l: 0, c: 0, h: 0, alpha: 1 },
+    color1,
+    color2,
+    t,
+  );
+}
+
+/**
+ * Allocation-free `interpolateOklchDefault()`. `out` may be the same object as
+ * either input.
+ */
+export function interpolateOklchDefaultInto(
+  out: Color,
+  color1: Color,
+  color2: Color,
+  t: number,
+): Color {
   // Handle hue interpolation via shortest path
   let h1 = color1.h;
   let h2 = color2.h;
@@ -39,12 +57,14 @@ export function interpolateOklchDefault(
     h = lerp(h1, h2, t);
   }
 
-  return {
-    l: lerp(color1.l, color2.l, t),
-    c: lerp(color1.c, color2.c, t),
-    h: normalizeHue(h),
-    alpha: lerp(color1.alpha, color2.alpha, t),
-  };
+  const l = lerp(color1.l, color2.l, t);
+  const c = lerp(color1.c, color2.c, t);
+  const alpha = lerp(color1.alpha, color2.alpha, t);
+  out.l = l;
+  out.c = c;
+  out.h = normalizeHue(h);
+  out.alpha = alpha;
+  return out;
 }
 
 /** Evenly sample `interpolateAt` from t = 0 to t = 1 inclusive. */

@@ -17,11 +17,14 @@ import {
   normalizeHue,
   srgbToLinearChannel,
 } from '../utils/index.js';
-import { linearRgbToOklab, oklabToLinearRgb } from '../conversion/oklab.js';
-import { oklabToOklch, oklchToOklab } from '../conversion/oklch.js';
 import {
-  linearP3ToLinearSrgb,
-  linearSrgbToLinearP3,
+  linearRgbToOklabInto,
+  oklabToLinearRgbInto,
+} from '../conversion/oklab.js';
+import { oklabToOklchInto, oklchToOklabInto } from '../conversion/oklch.js';
+import {
+  linearP3ToLinearSrgbInto,
+  linearSrgbToLinearP3Into,
 } from '../conversion/p3.js';
 
 /**
@@ -117,6 +120,34 @@ function isPowerless(color: Color): boolean {
   return !(color.c > ACHROMATIC_CHROMA_THRESHOLD) || !Number.isFinite(color.h);
 }
 
+/** Amount added to `h1` by the CSS Color 4 hue fix-up (0 or 360). */
+function hueFixup1(diff: number, method: HueInterpolationMethod): number {
+  switch (method) {
+    case 'increasing':
+      return 0;
+    case 'decreasing':
+      return diff > 0 ? 360 : 0;
+    case 'longer':
+      return diff > 0 && diff < 180 ? 360 : 0;
+    default:
+      return diff > 180 ? 360 : 0;
+  }
+}
+
+/** Amount added to `h2` by the CSS Color 4 hue fix-up (0 or 360). */
+function hueFixup2(diff: number, method: HueInterpolationMethod): number {
+  switch (method) {
+    case 'increasing':
+      return diff < 0 ? 360 : 0;
+    case 'decreasing':
+      return 0;
+    case 'longer':
+      return diff > 0 && diff < 180 ? 0 : diff > -180 && diff <= 0 ? 360 : 0;
+    default:
+      return diff > 180 ? 0 : diff < -180 ? 360 : 0;
+  }
+}
+
 /**
  * Apply the CSS Color 4 hue fix-up to a pair of hues already normalized to
  * `[0, 360)`.
@@ -127,77 +158,105 @@ export function fixupHues(
   method: HueInterpolationMethod,
 ): [number, number] {
   const diff = h2 - h1;
-  switch (method) {
-    case 'increasing':
-      if (diff < 0) h2 += 360;
-      break;
-    case 'decreasing':
-      if (diff > 0) h1 += 360;
-      break;
-    case 'longer':
-      if (diff > 0 && diff < 180) h1 += 360;
-      else if (diff > -180 && diff <= 0) h2 += 360;
-      break;
-    default:
-      if (diff > 180) h1 += 360;
-      else if (diff < -180) h2 += 360;
-  }
-  return [h1, h2];
+  return [h1 + hueFixup1(diff, method), h2 + hueFixup2(diff, method)];
 }
 
-function toLinearSrgb(color: Color): LinearRgb {
-  return oklabToLinearRgb(oklchToOklab(color));
+/**
+ * `lerp()` between two hues after the CSS Color 4 fix-up, without allocating
+ * the `fixupHues` tuple. The result is not normalized.
+ */
+function lerpHue(
+  h1: number,
+  h2: number,
+  t: number,
+  method: HueInterpolationMethod,
+): number {
+  const diff = h2 - h1;
+  return lerp(h1 + hueFixup1(diff, method), h2 + hueFixup2(diff, method), t);
 }
 
-function toSpaceCoords(color: Color, space: InterpolationSpace): Vec3 {
+// Scratch storage so interpolation allocates nothing. The endpoints are
+// snapshotted into START / END (all fields read first) before any scratch is
+// written, so an accessor on an input that re-enters interpolation or a
+// conversion cannot corrupt an in-flight mix.
+const START: Color = { l: 0, c: 0, h: 0, alpha: 1 };
+const END: Color = { l: 0, c: 0, h: 0, alpha: 1 };
+const LAB: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
+const LINEAR: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
+const P: Vec3 = [0, 0, 0];
+const Q: Vec3 = [0, 0, 0];
+const MIXED: Vec3 = [0, 0, 0];
+
+function toSpaceCoordsInto(
+  out: Vec3,
+  color: Color,
+  space: InterpolationSpace,
+): Vec3 {
+  const lab = oklchToOklabInto(LAB, color);
   if (space === 'oklab') {
-    const lab = oklchToOklab(color);
-    return [lab.L, lab.a, lab.b];
+    out[0] = lab.L;
+    out[1] = lab.a;
+    out[2] = lab.b;
+    return out;
   }
-  const linear =
-    space === 'p3' || space === 'linear-p3'
-      ? linearSrgbToLinearP3(toLinearSrgb(color))
-      : toLinearSrgb(color);
+  let linear = oklabToLinearRgbInto(LINEAR, lab);
+  if (space === 'p3' || space === 'linear-p3') {
+    linear = linearSrgbToLinearP3Into(LINEAR, linear);
+  }
   if (space === 'srgb' || space === 'p3') {
-    return [
-      encodeChannel(linear.r),
-      encodeChannel(linear.g),
-      encodeChannel(linear.b),
-    ];
+    out[0] = encodeChannel(linear.r);
+    out[1] = encodeChannel(linear.g);
+    out[2] = encodeChannel(linear.b);
+    return out;
   }
-  return [linear.r, linear.g, linear.b];
+  out[0] = linear.r;
+  out[1] = linear.g;
+  out[2] = linear.b;
+  return out;
 }
 
-function fromSpaceCoords(
+function fromSpaceCoordsInto(
+  out: Color,
   coords: Vec3,
   alpha: number,
   space: InterpolationSpace,
 ): Color {
-  let lab: Oklab;
+  const lab = LAB;
   if (space === 'oklab') {
-    lab = { L: coords[0], a: coords[1], b: coords[2], alpha };
+    lab.L = coords[0];
+    lab.a = coords[1];
+    lab.b = coords[2];
+    lab.alpha = alpha;
   } else {
-    let [r, g, b] = coords;
+    let r = coords[0];
+    let g = coords[1];
+    let b = coords[2];
     if (space === 'srgb' || space === 'p3') {
       r = decodeChannel(r);
       g = decodeChannel(g);
       b = decodeChannel(b);
     }
-    let linear: LinearRgb = { r, g, b, alpha };
+    const linear = LINEAR;
+    linear.r = r;
+    linear.g = g;
+    linear.b = b;
+    linear.alpha = alpha;
     if (space === 'p3' || space === 'linear-p3') {
-      linear = linearP3ToLinearSrgb(linear);
+      linearP3ToLinearSrgbInto(linear, linear);
     }
-    lab = linearRgbToOklab(linear);
+    linearRgbToOklabInto(lab, linear);
   }
-  const { l, c, h } = oklabToOklch(lab);
-  return { l, c, h, alpha };
+  oklabToOklchInto(out, lab);
+  out.alpha = alpha;
+  return out;
 }
 
 function inUnitRange(value: number): boolean {
   return value >= 0 && value <= 1;
 }
 
-function mixPolar(
+function mixPolarInto(
+  out: Color,
   color1: Color,
   color2: Color,
   t: number,
@@ -218,44 +277,43 @@ function mixPolar(
   } else if (powerless2) {
     h = normalizeHue(color1.h);
   } else {
-    const [h1, h2] = fixupHues(
-      normalizeHue(color1.h),
-      normalizeHue(color2.h),
-      hue,
+    h = normalizeHue(
+      lerpHue(normalizeHue(color1.h), normalizeHue(color2.h), t, hue),
     );
-    h = normalizeHue(lerp(h1, h2, t));
-  }
-
-  const alpha = lerp(color1.alpha, color2.alpha, t);
-  if (!premultiplied || alpha === 0) {
-    return {
-      l: lerp(color1.l, color2.l, t),
-      c: lerp(color1.c, color2.c, t),
-      h,
-      alpha,
-    };
   }
 
   const a1 = color1.alpha;
   const a2 = color2.alpha;
-  const scale = 1 / alpha;
-  return {
-    l: lerp(color1.l * a1, color2.l * a2, t) * scale,
-    c: lerp(color1.c * a1, color2.c * a2, t) * scale,
-    h,
-    alpha,
-  };
+  const alpha = lerp(a1, a2, t);
+  let l: number;
+  let c: number;
+  // Nothing to un-premultiply by at alpha 0: fall back to straight alpha.
+  if (!premultiplied || alpha === 0) {
+    l = lerp(color1.l, color2.l, t);
+    c = lerp(color1.c, color2.c, t);
+  } else {
+    const scale = 1 / alpha;
+    l = lerp(color1.l * a1, color2.l * a2, t) * scale;
+    c = lerp(color1.c * a1, color2.c * a2, t) * scale;
+  }
+
+  out.l = l;
+  out.c = c;
+  out.h = h;
+  out.alpha = alpha;
+  return out;
 }
 
-function mixRectangular(
+function mixRectangularInto(
+  out: Color,
   color1: Color,
   color2: Color,
   t: number,
   space: InterpolationSpace,
   premultiplied: boolean,
 ): Color {
-  const p = toSpaceCoords(color1, space);
-  const q = toSpaceCoords(color2, space);
+  const p = toSpaceCoordsInto(P, color1, space);
+  const q = toSpaceCoordsInto(Q, color2, space);
   const alpha = lerp(color1.alpha, color2.alpha, t);
   // Nothing to un-premultiply by at alpha 0: fall back to straight alpha.
   const premultiply = premultiplied && alpha !== 0;
@@ -265,7 +323,7 @@ function mixRectangular(
   // Only a true in-between mix (0 <= t <= 1) is a convex combination.
   const clampNoise = space !== 'oklab' && t >= 0 && t <= 1;
 
-  const out: Vec3 = [0, 0, 0];
+  const mixed = MIXED;
   for (let i = 0; i < 3; i += 1) {
     let value = lerp(p[i] * a1, q[i] * a2, t) * scale;
     // Rectangular RGB interpolation of two in-range channels is a convex
@@ -274,9 +332,62 @@ function mixRectangular(
     if (clampNoise && inUnitRange(p[i]) && inUnitRange(q[i])) {
       value = Math.min(Math.max(value, 0), 1);
     }
-    out[i] = value;
+    mixed[i] = value;
   }
-  return fromSpaceCoords(out, alpha, space);
+  return fromSpaceCoordsInto(out, mixed, alpha, space);
+}
+
+/**
+ * Interpolate two colors in the given space, writing the result into `out`
+ * (allocation-free). Same semantics and bit-identical results as
+ * `interpolateInSpace`; `out` may be the same object as either input.
+ */
+export function interpolateInSpaceInto(
+  out: Color,
+  color1: Color,
+  color2: Color,
+  t: number,
+  options: InterpolationOptions,
+): Color {
+  if (t === 0 || t === 1) {
+    // Exact endpoints: no conversion round trip, and a transparent endpoint
+    // keeps its color. Read before writing so `out` may alias the endpoint.
+    const endpoint = t === 0 ? color1 : color2;
+    const { l, c, h, alpha } = endpoint;
+    out.l = l;
+    out.c = c;
+    out.h = h;
+    out.alpha = alpha;
+    return out;
+  }
+  const space = options.space ?? 'oklch';
+  const hue = options.hue ?? 'shorter';
+  const premultiplied = options.premultiplied;
+
+  // Snapshot every endpoint field before any shared scratch is written.
+  const l1 = color1.l;
+  const c1 = color1.c;
+  const h1 = color1.h;
+  const alpha1 = color1.alpha;
+  const l2 = color2.l;
+  const c2 = color2.c;
+  const h2 = color2.h;
+  const alpha2 = color2.alpha;
+  const start = START;
+  start.l = l1;
+  start.c = c1;
+  start.h = h1;
+  start.alpha = alpha1;
+  const end = END;
+  end.l = l2;
+  end.c = c2;
+  end.h = h2;
+  end.alpha = alpha2;
+
+  if (space === 'oklch') {
+    return mixPolarInto(out, start, end, t, hue, premultiplied ?? false);
+  }
+  return mixRectangularInto(out, start, end, t, space, premultiplied ?? true);
 }
 
 /**
@@ -307,31 +418,12 @@ export function interpolateInSpace(
   t: number,
   options: InterpolationOptions = {},
 ): Color {
-  if (t === 0 || t === 1) {
-    const endpoint = t === 0 ? color1 : color2;
-    return {
-      l: endpoint.l,
-      c: endpoint.c,
-      h: endpoint.h,
-      alpha: endpoint.alpha,
-    };
-  }
-  const space = options.space ?? 'oklch';
-  if (space === 'oklch') {
-    return mixPolar(
-      color1,
-      color2,
-      t,
-      options.hue ?? 'shorter',
-      options.premultiplied ?? false,
-    );
-  }
-  return mixRectangular(
+  return interpolateInSpaceInto(
+    { l: 0, c: 0, h: 0, alpha: 1 },
     color1,
     color2,
     t,
-    space,
-    options.premultiplied ?? true,
+    options,
   );
 }
 
