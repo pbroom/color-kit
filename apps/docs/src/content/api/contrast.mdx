@@ -13,13 +13,16 @@
 ## Shared Notes
 
 - All functions take the internal `Color` representation (OKLCH: `l` in `[0, 1]`, `c` in `[0, ~0.4]`, `h` in degrees, `alpha` in `[0, 1]`).
-- Scalar helpers (`relativeLuminance`, `contrastRatio`, `contrastAPCA`, `meetsAA`, `meetsAAA`) convert through sRGB before measuring.
+- Scalar helpers (`relativeLuminance`, `contrastRatio`, `contrastAPCA`, `meetsAA`, `meetsAAA`) measure the color's **unrounded** sRGB channels, clipped to the display gamut. Results are continuous in the color and match colorjs.io for in-gamut colors. For 8-bit (hex) inputs they agree with byte-based tools to float precision.
+- Every scalar helper takes an optional `ContrastOptions` object as its last argument:
+  - `gamut` (`'srgb' | 'display-p3'`, default `'srgb'`) is the display gamut to clip to before measuring. Use `'display-p3'` to check colors shown on a P3 display.
+  - `precision` (`'exact' | '8bit'`, default `'exact'`) controls rounding. `'8bit'` quantizes the channels to 8 bits first, matching hex-based tools such as WebAIM and the color-kit 0.1 results.
 - `contrastAPCA` returns a **normalized** Lc value (roughly `-1.08` to `1.06`), not the conventional `-108`–`106` scale. Thresholds elsewhere in Color Kit (for example `apcaPreset`) use the same normalized scale: conventional Lc 60 is `0.6`.
-- The region helpers evaluate contrast with an unclamped luminance path so Display P3-only colors stay accurate instead of being silently clipped through sRGB.
+- The region helpers use the same measurement as the scalar helpers, with the region's `gamut`. A color inside a `gamut: 'display-p3'` region passes `contrastRatio(color, reference, { gamut: 'display-p3' })`.
 
 ## `relativeLuminance`
 
-Calculates relative luminance per [WCAG 2.1](https://www.w3.org/TR/WCAG21/#dfn-relative-luminance). The color is converted to sRGB, each channel is linearized, and the result is the weighted sum `0.2126 R + 0.7152 G + 0.0722 B`.
+Calculates relative luminance per [WCAG 2.1](https://www.w3.org/TR/WCAG21/#dfn-relative-luminance). The color is converted to linear sRGB and clipped to the gamut, without rounding. The result is the weighted sum `0.2126 R + 0.7152 G + 0.0722 B`.
 
 ```ts
 import { parse, relativeLuminance } from 'color-kit';
@@ -28,9 +31,10 @@ const y = relativeLuminance(parse('#3b82f6'));
 // ~0.21
 ```
 
-| Parameter | Type    | Default | Description      |
-| --------- | ------- | ------- | ---------------- |
-| `color`   | `Color` | —       | Color to measure |
+| Parameter | Type              | Default | Description                         |
+| --------- | ----------------- | ------- | ----------------------------------- |
+| `color`   | `Color`           | —       | Color to measure                    |
+| `options` | `ContrastOptions` | —       | `gamut` and `precision` (see above) |
 
 <p className="api-returns">
   Returns a <code>number</code> in `[0, 1]` (0 = black, 1 = white).
@@ -47,10 +51,11 @@ const ratio = contrastRatio(parse('#111827'), parse('#ffffff'));
 // ~17.7
 ```
 
-| Parameter | Type    | Default | Description  |
-| --------- | ------- | ------- | ------------ |
-| `color1`  | `Color` | —       | First color  |
-| `color2`  | `Color` | —       | Second color |
+| Parameter | Type              | Default | Description                         |
+| --------- | ----------------- | ------- | ----------------------------------- |
+| `color1`  | `Color`           | —       | First color                         |
+| `color2`  | `Color`           | —       | Second color                        |
+| `options` | `ContrastOptions` | —       | `gamut` and `precision` (see above) |
 
 <p className="api-returns">
   Returns a <code>number</code> between 1 and 21.
@@ -67,11 +72,12 @@ meetsAA(parse('#6b7280'), parse('#ffffff')); // false (4.5:1 required)
 meetsAA(parse('#6b7280'), parse('#ffffff'), true); // true (3:1 required)
 ```
 
-| Parameter   | Type      | Default | Description                          |
-| ----------- | --------- | ------- | ------------------------------------ |
-| `color1`    | `Color`   | —       | First color                          |
-| `color2`    | `Color`   | —       | Second color                         |
-| `largeText` | `boolean` | `false` | Use the large-text threshold (`3:1`) |
+| Parameter   | Type              | Default | Description                          |
+| ----------- | ----------------- | ------- | ------------------------------------ |
+| `color1`    | `Color`           | —       | First color                          |
+| `color2`    | `Color`           | —       | Second color                         |
+| `largeText` | `boolean`         | `false` | Use the large-text threshold (`3:1`) |
+| `options`   | `ContrastOptions` | —       | `gamut` and `precision` (see above)  |
 
 <p className="api-returns">
   Returns a <code>boolean</code>.
@@ -87,11 +93,12 @@ import { meetsAAA, parse } from 'color-kit';
 meetsAAA(parse('#111827'), parse('#ffffff')); // true
 ```
 
-| Parameter   | Type      | Default | Description                            |
-| ----------- | --------- | ------- | -------------------------------------- |
-| `color1`    | `Color`   | —       | First color                            |
-| `color2`    | `Color`   | —       | Second color                           |
-| `largeText` | `boolean` | `false` | Use the large-text threshold (`4.5:1`) |
+| Parameter   | Type              | Default | Description                            |
+| ----------- | ----------------- | ------- | -------------------------------------- |
+| `color1`    | `Color`           | —       | First color                            |
+| `color2`    | `Color`           | —       | Second color                           |
+| `largeText` | `boolean`         | `false` | Use the large-text threshold (`4.5:1`) |
+| `options`   | `ContrastOptions` | —       | `gamut` and `precision` (see above)    |
 
 <p className="api-returns">
   Returns a <code>boolean</code>.
@@ -115,10 +122,11 @@ const reversed = contrastAPCA(parse('#ffffff'), parse('#111827'));
 // negative (light text on dark background)
 ```
 
-| Parameter   | Type    | Default | Description      |
-| ----------- | ------- | ------- | ---------------- |
-| `textColor` | `Color` | —       | Foreground color |
-| `bgColor`   | `Color` | —       | Background color |
+| Parameter   | Type              | Default | Description                         |
+| ----------- | ----------------- | ------- | ----------------------------------- |
+| `textColor` | `Color`           | —       | Foreground color                    |
+| `bgColor`   | `Color`           | —       | Background color                    |
+| `options`   | `ContrastOptions` | —       | `gamut` and `precision` (see above) |
 
 <p className="api-returns">
   Returns a normalized Lc <code>number</code>, roughly between `-1.08` and

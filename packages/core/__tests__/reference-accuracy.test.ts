@@ -621,30 +621,36 @@ describe('reference accuracy: conversions vs colorjs.io', () => {
   });
 
   it('Color <-> HSL / HSV through the high-level API', () => {
-    // toHsl/toHsv go through toRgb, which quantizes to 8-bit; compare
-    // against colorjs.io applied to the same 8-bit sRGB value so this checks
-    // the pipeline wiring rather than re-measuring quantization.
-    const hslTracker = new Tracker('Color -> HSL (8-bit input, %)', FLOAT_TOL);
-    const hsvTracker = new Tracker('Color -> HSV (8-bit input, %)', FLOAT_TOL);
+    // toHsl/toHsv clip to sRGB like toRgb but do not quantize to 8-bit, so
+    // compare against colorjs.io applied to the same clipped, unrounded sRGB
+    // value.
+    const hslTracker = new Tracker('Color -> HSL (clipped sRGB, %)', FLOAT_TOL);
+    const hsvTracker = new Tracker('Color -> HSV (clipped sRGB, %)', FLOAT_TOL);
     const fromTracker = new Tracker('HSL/HSV -> Color (L, C)', FLOAT_TOL);
     for (const color of OKLCH_SAMPLES.slice(0, 800)) {
-      const rgb = toRgb(color);
-      const quantized = ref('srgb', [rgb.r / 255, rgb.g / 255, rgb.b / 255]);
+      const quantized = refFromColor(color)
+        .to('srgb')
+        .toGamut({ method: 'clip' });
+      // Grays carry ~1e-15 of float noise between channels, which colorjs.io
+      // turns into arbitrary saturation near white; color-kit snaps them to
+      // s = 0 (RGB_GRAY_DELTA), so saturation is compared off-gray only.
+      const [qr, qg, qb] = quantized.coords.map((v) => v ?? 0);
+      const gray = Math.max(qr, qg, qb) - Math.min(qr, qg, qb) <= 1e-10;
       const hsl = toHsl(color);
       const [, hs, hl] = refCoords(quantized, 'hsl');
       hslTracker.observe(
-        Math.max(Math.abs(hsl.s - hs), Math.abs(hsl.l - hl)),
+        Math.max(gray ? hsl.s : Math.abs(hsl.s - hs), Math.abs(hsl.l - hl)),
         () => fmt([color.l, color.c, color.h]),
       );
       const hsv = toHsv(color);
       const [, vs, vv] = refCoords(quantized, 'hsv');
       hsvTracker.observe(
-        Math.max(Math.abs(hsv.s - vs), Math.abs(hsv.v - vv)),
+        Math.max(gray ? hsv.s : Math.abs(hsv.s - vs), Math.abs(hsv.v - vv)),
         () => fmt([color.l, color.c, color.h]),
       );
 
       // fromHsl/fromHsv of the kit's own HSL/HSV must land on the same
-      // 8-bit sRGB color, i.e. the same OKLCH as the quantized reference.
+      // clipped sRGB color, i.e. the same OKLCH as the clipped reference.
       const expected = refCoords(quantized, 'oklch');
       fromTracker.observe(lchError(fromHsl(hsl), expected).lc, () =>
         fmt([hsl.h, hsl.s, hsl.l]),
@@ -1108,9 +1114,10 @@ describe('reference accuracy: gamut membership', () => {
 // ─── Contrast ───────────────────────────────────────────────────────
 
 describe('reference accuracy: contrast', () => {
-  // color-kit's contrast functions evaluate the 8-bit sRGB value of each
-  // color (via toRgb), so pairs are sampled as 8-bit sRGB to compare the
-  // metric math itself.
+  // color-kit's contrast functions measure the unrounded sRGB value of each
+  // color, clipped to the gamut. 8-bit pairs check the metric math on the
+  // values hex-based tools see; the OKLCH test below checks unrounded and
+  // out-of-gamut colors against colorjs.io applied to the clipped color.
   const pairs: [Vec3, Vec3][] = [
     [
       [0, 0, 0],
@@ -1179,6 +1186,57 @@ describe('reference accuracy: contrast', () => {
     expect(
       contrastRatio(toColor([0, 0, 0]), toColor([255, 255, 255])),
     ).toBeCloseTo(21, 12);
+  });
+
+  it('unrounded OKLCH colors match colorjs.io on the clipped sRGB value', () => {
+    // Same analytic WCAG tolerances as the 8-bit test above (coefficient
+    // difference only). colorjs.io measures extended-range sRGB without
+    // clipping, so the reference is given the sRGB-clipped color, which is
+    // what color-kit measures by default.
+    const luminance = new Tracker('relative luminance, OKLCH (Y)', 4e-5);
+    const ratio = new Tracker('WCAG 2.1 ratio, OKLCH (relative)', 1.6e-3);
+    const apca = new Tracker('APCA Lc, OKLCH (normalized)', FLOAT_TOL);
+    const clipped = (color: Color): ColorJs =>
+      refFromColor(color).to('srgb').toGamut({ method: 'clip' });
+    const samples = OKLCH_SAMPLES.slice(0, 1200);
+    for (let i = 0; i < samples.length; i += 1) {
+      const a = { ...samples[i], alpha: 1 };
+      const b = { ...samples[(i * 13 + 5) % samples.length], alpha: 1 };
+      const refA = clipped(a);
+      const refB = clipped(b);
+      const describePair = () =>
+        `${fmt([a.l, a.c, a.h])} vs ${fmt([b.l, b.c, b.h])}`;
+      luminance.observe(Math.abs(relativeLuminance(a) - refA.luminance), () =>
+        fmt([a.l, a.c, a.h]),
+      );
+      const expected = refA.contrast(refB, 'WCAG21');
+      ratio.observe(
+        Math.abs(contrastRatio(a, b) - expected) / expected,
+        describePair,
+      );
+      apca.observe(
+        Math.abs(contrastAPCA(a, b) - refB.contrast(refA, 'APCA') / 100),
+        describePair,
+      );
+    }
+    luminance.assert();
+    ratio.assert();
+    apca.assert();
+
+    // Regression: these used to be measured through 8-bit rounding
+    // (3.2520); colorjs.io gives 3.2635 (full-precision Y coefficients).
+    const teal: Color = { l: 0.6, c: 0.1, h: 200, alpha: 1 };
+    const cream: Color = { l: 0.95, c: 0.02, h: 90, alpha: 1 };
+    const reference = refFromColor(teal).contrast(
+      refFromColor(cream),
+      'WCAG21',
+    );
+    expect(reference).toBeCloseTo(3.2635, 4);
+    expect(contrastRatio(teal, cream)).toBeCloseTo(reference, 3);
+    expect(contrastRatio(teal, cream, { precision: '8bit' })).toBeCloseTo(
+      3.252,
+      3,
+    );
   });
 
   it('APCA Lc matches APCA-W3 0.0.98G-4g (colorjs.io "APCA")', () => {

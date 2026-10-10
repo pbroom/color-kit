@@ -7,10 +7,7 @@
  *   Color (OKLCH) -> OKLAB -> Linear sRGB -> sRGB -> Any format
  */
 
-import {
-  Hct as MaterialHct,
-  argbFromRgb,
-} from '@material/material-color-utilities';
+import { Hct as MaterialHct } from '@material/material-color-utilities';
 import type { Color, Rgb, Hsl, Hsv, Hct, Oklab, Oklch, P3 } from '../types.js';
 import { round } from '../utils/index.js';
 
@@ -20,6 +17,7 @@ import { rgbToHsl, hslToRgbUnrounded } from './hsl.js';
 import { rgbToHsv, hsvToRgbUnrounded } from './hsv.js';
 import { oklabToOklchInto, oklchToOklabInto } from './oklch.js';
 import { fromP3Into, fromRgbInto, toP3Into, toRgbInto } from './into.js';
+import { toHctUnrounded, toRgbUnrounded } from './unrounded.js';
 
 // Re-export individual converters for advanced use
 export {
@@ -94,9 +92,9 @@ export function fromHex(hex: string): Color {
   return fromRgb(hexToRgb(hex));
 }
 
-/** Convert a Color to HSL */
+/** Convert a Color to HSL (from unrounded, gamut-clipped sRGB) */
 export function toHsl(color: Color): Hsl {
-  return rgbToHsl(toRgb(color));
+  return rgbToHsl(toRgbUnrounded(color));
 }
 
 /**
@@ -107,22 +105,17 @@ export function fromHsl(hsl: Hsl): Color {
   return fromRgb(hslToRgbUnrounded(hsl));
 }
 
-/** Convert a Color to HSV */
+/** Convert a Color to HSV (from unrounded, gamut-clipped sRGB) */
 export function toHsv(color: Color): Hsv {
-  return rgbToHsv(toRgb(color));
+  return rgbToHsv(toRgbUnrounded(color));
 }
 
-/** Convert a Color to HCT (Material hue/chroma/tone model) */
+/**
+ * Convert a Color to HCT (Material hue/chroma/tone model), from unrounded,
+ * gamut-clipped sRGB
+ */
 export function toHct(color: Color): Hct {
-  const rgb = toRgb(color);
-  const argb = argbFromRgb(rgb.r, rgb.g, rgb.b);
-  const hct = MaterialHct.fromInt(argb);
-  return {
-    h: hct.hue,
-    c: hct.chroma,
-    t: hct.tone,
-    alpha: color.alpha,
-  };
+  return toHctUnrounded(color);
 }
 
 /** Convert HCT (Material hue/chroma/tone model) to a Color */

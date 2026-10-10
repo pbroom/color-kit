@@ -1,7 +1,16 @@
 import type { Rgb, Hsl } from '../types.js';
 import { normalizeHue } from '../utils/index.js';
 
-/** Convert sRGB (0-255) to HSL */
+/**
+ * Channel spread (on the 0-1 scale) at or below which an sRGB color is
+ * treated as gray by `rgbToHsl` / `rgbToHsv`: hue and saturation are 0.
+ * Unrounded grays from OKLCH carry ~1e-15 of float noise between channels,
+ * which would otherwise produce an arbitrary hue; 8-bit inputs differ by at
+ * least 1/255, so they are unaffected.
+ */
+export const RGB_GRAY_DELTA = 1e-10;
+
+/** Convert sRGB (0-255, fractional values allowed) to HSL */
 export function rgbToHsl(rgb: Rgb): Hsl {
   const r = rgb.r / 255;
   const g = rgb.g / 255;
@@ -15,7 +24,7 @@ export function rgbToHsl(rgb: Rgb): Hsl {
   let s = 0;
   const l = (max + min) / 2;
 
-  if (delta !== 0) {
+  if (delta > RGB_GRAY_DELTA) {
     s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
 
     if (max === r) {

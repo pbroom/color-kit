@@ -97,6 +97,8 @@ export type {
   ContrastApcaRole,
   ContrastHybridFallbackReason,
   ContrastMetric,
+  ContrastOptions,
+  ContrastPrecision,
   ContrastRegionLevel,
   ContrastRegionPoint,
   ContrastRegionPathOptions,
