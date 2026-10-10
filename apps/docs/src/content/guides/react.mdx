@@ -9,6 +9,10 @@ import ReactPicker from '@/examples/guides/react-picker.tsx';
 import pickerSource, {
   code as pickerCode,
 } from '@/examples/guides/react-picker.tsx?highlighted';
+import ControlledColor from '@/examples/react/color-provider.tsx';
+import controlledSource, {
+  code as controlledCode,
+} from '@/examples/react/color-provider.tsx?highlighted';
 import ChannelInputs from '@/examples/react/channel-inputs.tsx';
 import channelInputsSource, {
   code as channelInputsCode,
@@ -89,6 +93,19 @@ state with its setters (`setRequested`, `setChannel`, `setFromString`,
 hooks only need a color, so they work with either. For palettes and gradient
 stops, [`useMultiColor`](/api/react/useMultiColor) manages named entries with
 a shared active gamut.
+
+The live example below is controlled: it records each update's
+`interaction` and `changedChannel`, and the disabled switch stops pointer
+and keyboard input.
+
+<Example
+  of={ControlledColor}
+  source={controlledSource}
+  code={controlledCode}
+  filename="color-provider.tsx"
+  title="A controlled Color provider"
+  minHeight={330}
+/>
 
 ## The picker
 
