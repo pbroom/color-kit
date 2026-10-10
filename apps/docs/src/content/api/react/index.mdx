@@ -2,10 +2,6 @@ import PlanePickerExample from '@/examples/react/plane-picker.tsx';
 import planePickerSource, {
   code as planePickerCode,
 } from '@/examples/react/plane-picker.tsx?highlighted';
-import ControlledColor from '@/examples/react/color-provider.tsx';
-import controlledSource, {
-  code as controlledCode,
-} from '@/examples/react/color-provider.tsx?highlighted';
 import ContrastRegionExample from '@/examples/react/contrast-region.tsx';
 import contrastSource, {
   code as contrastCode,
@@ -137,14 +133,8 @@ and never for a no-op, and the event names the `interaction` (`pointer`,
 `interaction` to the setters so it is right. Build the initial state with
 [`createColorState`](/api/driver/createColorState).
 
-<Example
-  of={ControlledColor}
-  source={controlledSource}
-  code={controlledCode}
-  filename="color-provider.tsx"
-  title="A controlled Color provider"
-  minHeight={330}
-/>
+The [React guide](/guides/react#controlled) has a live controlled
+example.
 
 ## Contrast regions
 
