@@ -69,14 +69,24 @@ function DocsSidebarNav({
           <ul className="space-y-1">
             {section.items.map((item) => (
               <li key={item.href}>
-                <PrefetchLink
-                  to={item.href}
-                  className="ck-nav-link"
-                  data-active={pathname === item.href}
-                  onClick={onNavigate}
-                >
-                  {item.title}
-                </PrefetchLink>
+                {item.external ? (
+                  <a
+                    href={item.href}
+                    className="ck-nav-link"
+                    onClick={onNavigate}
+                  >
+                    {item.title}
+                  </a>
+                ) : (
+                  <PrefetchLink
+                    to={item.href}
+                    className="ck-nav-link"
+                    data-active={pathname === item.href}
+                    onClick={onNavigate}
+                  >
+                    {item.title}
+                  </PrefetchLink>
+                )}
               </li>
             ))}
           </ul>

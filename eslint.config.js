@@ -48,6 +48,9 @@ export default tseslint.config(
       '**/*.config.*',
       // Local agent tooling and worktrees (untracked checkouts of the repo).
       '.claude/**',
+      // Generated API reference (TypeDoc output and wrapper entries).
+      'apps/docs/public/reference/**',
+      'apps/docs/.typedoc/**',
     ],
   },
 );

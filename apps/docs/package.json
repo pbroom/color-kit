@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "pnpm run docs:api && vite",
+    "build": "pnpm run docs:api && vite build",
+    "docs:api": "node scripts/generate-api-reference.mjs",
     "preview": "vite preview",
     "test": "node scripts/check-plane-quick-start-sync.mjs && node scripts/check-component-doc-sources.mjs",
     "profile:color-area": "node scripts/profile-color-area.mjs",
@@ -49,6 +50,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "shiki": "^4.0.0",
     "tailwindcss": "^4.1.0",
+    "typedoc": "^0.28.20",
     "typescript": "^5.7.0",
     "vite": "^6.0.0"
   }
