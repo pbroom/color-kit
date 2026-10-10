@@ -19,19 +19,6 @@ const coreDistRoot = path.join(repoRoot, 'packages', 'core', 'dist');
 const driverDistRoot = path.join(repoRoot, 'packages', 'driver', 'dist');
 const reactDistRoot = path.join(repoRoot, 'packages', 'react', 'dist');
 
-// `@color-kit/react`'s `color-input` entry depends on the unpublished
-// `@color-kit/control-kit` peer, so the facade does not ship it until
-// control-kit is published. Its shared chunks stay (the root react entry uses
-// them); only the entry's own files are skipped.
-const excludedReactEntryFiles = new Set([
-  'color-input.js',
-  'color-input.js.map',
-  'color-input.cjs',
-  'color-input.cjs.map',
-  'color-input.d.ts',
-  'color-input.d.cts',
-]);
-
 const rewriteRules = [
   // Order matters: rewrite the longer specifiers before the bare core one.
   [/(["'])@color-kit\/driver\1/g, '$1color-kit/driver$1'],
@@ -68,20 +55,11 @@ async function assertPathExists(targetPath, label) {
   }
 }
 
-async function copyDirectory(
-  sourceDir,
-  targetDir,
-  rewriteImports,
-  excludedFiles = new Set(),
-) {
+async function copyDirectory(sourceDir, targetDir, rewriteImports) {
   await mkdir(targetDir, { recursive: true });
 
   const entries = await readdir(sourceDir, { withFileTypes: true });
   for (const entry of entries) {
-    if (!entry.isDirectory() && excludedFiles.has(entry.name)) {
-      continue;
-    }
-
     const sourcePath = path.join(sourceDir, entry.name);
     const targetPath = path.join(targetDir, entry.name);
 
@@ -112,12 +90,7 @@ async function main() {
 
   await copyDirectory(coreDistRoot, distRoot, false);
   await copyDirectory(driverDistRoot, path.join(distRoot, 'driver'), true);
-  await copyDirectory(
-    reactDistRoot,
-    path.join(distRoot, 'react'),
-    true,
-    excludedReactEntryFiles,
-  );
+  await copyDirectory(reactDistRoot, path.join(distRoot, 'react'), true);
 
   // Ship the repository's MIT license with the tarball (single source of
   // truth at the repo root; the copy is gitignored).

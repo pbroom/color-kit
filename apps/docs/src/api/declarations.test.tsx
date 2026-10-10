@@ -46,28 +46,26 @@ describe('generated API declaration fidelity', () => {
     );
   });
 
-  it('documents forwardRef primitives as components with their props', () => {
-    for (const name of ['-color-area', '-thumb', '-color-slider']) {
-      const symbol = readSymbol('react', `${name}.json`);
-      expect(symbol.kind).toBe('component');
-      expect(symbol.signatures).toHaveLength(1);
-      expect(symbol.signatures[0]!.params[0]!.type.text).toContain(
-        'RefAttributes<HTMLDivElement>',
-      );
-      expect(symbol.propsType).toBe(`${symbol.name}Props`);
-      expect(symbol.members.length).toBeGreaterThan(0);
-      const html = renderToStaticMarkup(
-        <MemoryRouter>
-          <SymbolReference symbol={symbol} />
-        </MemoryRouter>,
-      );
-      expect(html).toContain('id="members"');
-      expect(html).toContain('>Props</a>');
+  it('documents components with their props and hooks as functions', () => {
+    const color = readSymbol('react', '-color.json');
+    expect(color.kind).toBe('component');
+    expect(color.signatures).toHaveLength(1);
+    expect(color.propsType).toBe('ColorProps');
+    expect(color.members.length).toBeGreaterThan(0);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <SymbolReference symbol={color} />
+      </MemoryRouter>,
+    );
+    expect(html).toContain('id="members"');
+    expect(html).toContain('>Props</a>');
+    for (const name of [
+      'use-color-plane-renderer',
+      'use-gamut-boundary',
+      'use-contrast-region',
+    ]) {
+      expect(readSymbol('react', `${name}.json`).kind).toBe('function');
     }
-    const thumb = readSymbol('react', '-thumb.json');
-    expect(
-      thumb.members.find((member) => member.name === 'stepRatio')?.default,
-    ).toBe('0.01');
     expect(readSymbol('react', '-color-context.json').kind).toBe('const');
   });
 

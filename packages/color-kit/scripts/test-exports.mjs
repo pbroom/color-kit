@@ -67,12 +67,41 @@ function assertNotOnRoot(rootEntry) {
   }
 }
 
-// ColorPlane's shader sources and benchmark-selected renderer are internal.
+// The plane renderer's shader sources and benchmark-selected renderer are
+// internal, and color-kit/react ships hooks only: the UI components it used
+// to export were removed, not moved.
 const NOT_ON_REACT = [
   'BENCHMARK_SELECTED_COLOR_PLANE_RENDERER',
   'COLOR_PLANE_VERTEX_SHADER_SOURCE',
   'COLOR_PLANE_FRAGMENT_SHADER_SOURCE',
+  'ColorArea',
+  'ColorPlane',
+  'ColorSlider',
+  'ColorStringInput',
+  'ColorInput',
+  'ContrastRegionLayer',
+  'GamutBoundaryLayer',
+  'Thumb',
 ];
+
+const REACT_HOOKS = [
+  'useColor',
+  'useColorContext',
+  'useMultiColor',
+  'useColorStoreSelector',
+  'useColorPlaneRenderer',
+  'useGamutBoundary',
+  'useChromaBand',
+  'useContrastRegion',
+  'useFallbackPoints',
+  'useAdaptiveQuality',
+];
+
+function assertReactHooks(reactEntry) {
+  for (const name of REACT_HOOKS) {
+    assert.equal(typeof reactEntry[name], 'function', `${name} is missing`);
+  }
+}
 
 function assertNotOnReact(reactEntry) {
   for (const name of NOT_ON_REACT) {
@@ -113,10 +142,8 @@ assert.equal(typeof interop.packColors, 'function');
 assert.equal(root.toLinearSrgbArray, interop.toLinearSrgbArray);
 assert.equal(root.packColors, interop.packColors);
 assert.equal(typeof react.Color, 'function');
-assert.equal(typeof react.useColor, 'function');
-assert.equal('ColorInput' in react, false);
-// ColorInput depends on the unpublished @color-kit/control-kit, so the facade
-// does not expose `color-kit/react/color-input` until control-kit is published.
+assertReactHooks(react);
+// The control-kit-backed `color-input` subpath was removed with ColorInput.
 await assert.rejects(import('color-kit/react/color-input'), {
   code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
 });
@@ -157,7 +184,7 @@ assert.equal(typeof cjsHct.maxHctChromaForHue, 'function');
 assert.equal(typeof cjsInterop.toLinearSrgbArray, 'function');
 assert.equal(cjsRoot.packColors, cjsInterop.packColors);
 assert.equal(typeof cjsReact.Color, 'function');
-assert.equal('ColorInput' in cjsReact, false);
+assertReactHooks(cjsReact);
 assert.throws(() => require('color-kit/react/color-input'), {
   code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
 });

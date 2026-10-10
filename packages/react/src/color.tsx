@@ -9,24 +9,44 @@ export interface ColorProps extends UseColorOptions {
 }
 
 /**
- * Provides shared color state to all descendant color components.
+ * Provides shared color state to every component inside it.
  *
  * Accepts the same options as {@link useColor} (uncontrolled `defaultColor`,
  * or controlled `state` + `onChange`). Descendants subscribe to the slices
  * of state they read, so an uncontrolled provider does not rerender on color
  * changes and a drag only rerenders the components that depend on it.
+ * Read it with {@link useColorContext} or {@link useColorStoreSelector}.
  *
  * @see {@link useColorContext}
  *
  * @example
  * ```tsx
- * import { Color, ColorArea, ColorSlider, ColorStringInput } from 'color-kit/react';
+ * import { Color, useColorContext, useColorPlaneRenderer } from 'color-kit/react';
+ *
+ * function Plane() {
+ *   const { requested } = useColorContext();
+ *   const { ref, canvasKey } = useColorPlaneRenderer({ color: requested });
+ *   return <canvas ref={ref} key={canvasKey} style={{ width: 240, height: 160 }} />;
+ * }
+ *
+ * function Hue() {
+ *   const { requested, setChannel } = useColorContext();
+ *   return (
+ *     <input
+ *       type="range"
+ *       aria-label="Hue"
+ *       min={0}
+ *       max={360}
+ *       value={requested.h}
+ *       onChange={(event) => setChannel('h', Number(event.currentTarget.value))}
+ *     />
+ *   );
+ * }
  *
  * export const Picker = () => (
  *   <Color defaultColor="#ff6600">
- *     <ColorArea style={{ width: 240, height: 240 }} />
- *     <ColorSlider channel="h" />
- *     <ColorStringInput format="oklch" />
+ *     <Plane />
+ *     <Hue />
  *   </Color>
  * );
  * ```

@@ -1,35 +1,20 @@
 import type { ResolvedColorAreaAxes } from '@color-kit/driver';
+import type { ColorPlaneQualityLevel } from './use-adaptive-quality.js';
 
-/**
- * Sampling quality of a plane-query layer such as `GamutBoundaryLayer`:
- * `'auto'` follows the ColorArea's adaptive quality level; the others fix it.
- */
-export type ColorAreaLayerQuality = 'auto' | 'high' | 'medium' | 'low';
-
-export type ResolvedLayerQuality = Exclude<ColorAreaLayerQuality, 'auto'>;
-
-export function resolveQuality(
-  quality: ColorAreaLayerQuality,
-  contextQuality: ResolvedLayerQuality,
-): ResolvedLayerQuality {
-  if (quality === 'auto') {
-    return contextQuality;
-  }
-  return quality;
-}
+type ResolvedLayerQuality = ColorPlaneQualityLevel;
 
 export interface QualityStepMultipliers {
   medium: number;
   low: number;
 }
 
-/** Step multipliers for line-style layers (gamut boundary, chroma band). */
+/** Step multipliers for line queries (gamut boundary, chroma band). */
 export const LINE_QUALITY_STEP_MULTIPLIERS: QualityStepMultipliers = {
   medium: 0.72,
   low: 0.5,
 };
 
-/** Step multipliers for region-style layers (contrast region sampling). */
+/** Step multipliers for region queries (contrast region sampling). */
 export const REGION_QUALITY_STEP_MULTIPLIERS: QualityStepMultipliers = {
   medium: 0.68,
   low: 0.45,

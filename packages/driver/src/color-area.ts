@@ -725,7 +725,7 @@ export function getColorAreaFallbackPoint(
 }
 
 /**
- * Axis a ColorArea key acts on, or `null` when the key is not handled:
+ * Axis a color-area key acts on, or `null` when the key is not handled:
  * ArrowLeft/ArrowRight/Home/End act on x, ArrowUp/ArrowDown/PageUp/PageDown
  * on y.
  *
@@ -756,7 +756,7 @@ export function getColorAreaKeyAxis(key: string): 'x' | 'y' | null {
 }
 
 /**
- * Keyboard model for the 2D ColorArea thumb:
+ * Keyboard model for a 2D color-area thumb:
  * - Arrow Left/Right step the x axis; Arrow Up/Down step the y axis, by
  *   `stepRatio` of the axis range (up moves the thumb up).
  * - PageUp/PageDown step the y axis by `largeStepRatio`.

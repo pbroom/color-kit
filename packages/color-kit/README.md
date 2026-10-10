@@ -15,7 +15,7 @@ import { parse, definePlane, sense } from 'color-kit';
 ```
 
 ```tsx
-import { Color, ColorArea, useColor } from 'color-kit/react';
+import { Color, useColor, useColorPlaneRenderer } from 'color-kit/react';
 ```
 
 The root `color-kit` entry and `color-kit/core` expose the same core API.

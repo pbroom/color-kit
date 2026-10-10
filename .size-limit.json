@@ -47,5 +47,29 @@
     "import": "{ definePlane, sense, toSvgPath }",
     "gzip": true,
     "limit": "30 kB"
+  },
+  {
+    "name": "color-kit/react: Color + useColor",
+    "path": "packages/color-kit/dist/react/index.js",
+    "import": "{ Color, useColor }",
+    "ignore": ["react", "react-dom"],
+    "gzip": true,
+    "limit": "20 kB"
+  },
+  {
+    "name": "color-kit/react: useColorPlaneRenderer",
+    "path": "packages/color-kit/dist/react/index.js",
+    "import": "{ useColorPlaneRenderer }",
+    "ignore": ["react", "react-dom"],
+    "gzip": true,
+    "limit": "17 kB"
+  },
+  {
+    "name": "color-kit/react: plane geometry hooks",
+    "path": "packages/color-kit/dist/react/index.js",
+    "import": "{ useGamutBoundary, useChromaBand, useContrastRegion, useFallbackPoints }",
+    "ignore": ["react", "react-dom"],
+    "gzip": true,
+    "limit": "40 kB"
   }
 ]

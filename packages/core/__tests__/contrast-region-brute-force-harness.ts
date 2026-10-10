@@ -28,7 +28,7 @@ const MAX_CHROMA = 0.4;
 /** Largest allowed distance between the solver's paths and the truth. */
 export const AGREEMENT = 0.001;
 /**
- * `ContrastRegionLayer`'s interactive sampling (its defaults at high
+ * `useContrastRegion`'s interactive sampling (its defaults at high
  * quality), and the largest gap allowed at it.
  */
 export const INTERACTIVE: ContrastRegionPathOptions = {

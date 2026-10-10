@@ -131,7 +131,7 @@ describe('contrast-region solver regressions', () => {
   // more than 0.03 against the brute-force boundary here.
   const resolved: RegressionCase[] = [
     {
-      name: 'WCAG 3 at h180 on a dark teal reference (ContrastRegionLayer repro)',
+      name: 'WCAG 3 at h180 on a dark teal reference (React contrast-region overlay repro)',
       reference: DARK_TEAL,
       hue: 180,
       metric: 'wcag',

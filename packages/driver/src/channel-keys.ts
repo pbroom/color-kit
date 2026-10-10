@@ -1,6 +1,6 @@
 /**
  * Shared keyboard stepping and value-text helpers for slider-like controls
- * (ColorSlider and the ColorArea thumb).
+ * (a channel slider and a 2D color-area thumb).
  */
 
 export type ColorChannelKey = 'l' | 'c' | 'h' | 'alpha';

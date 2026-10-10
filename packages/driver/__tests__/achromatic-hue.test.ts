@@ -250,7 +250,7 @@ function hueDistance(a: number, b: number): number {
   return Math.abs(((((a - b) % 360) + 540) % 360) - 180);
 }
 
-describe('HSL ColorInput edits of a gray with a stored hue', () => {
+describe('HSL channel input edits of a gray with a stored hue', () => {
   const gray = colorFromColorInputChannelValue(BLUE, 'hsl', 's', 0);
 
   it('resumes the stored hue when saturation rises again, not red', () => {

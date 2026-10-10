@@ -14,10 +14,7 @@
       "color-kit/react": ["../../packages/react/src/index.ts"],
       "@color-kit/core": ["../../packages/core/src/index.ts"],
       "@color-kit/driver": ["../../packages/driver/src/index.ts"],
-      "@color-kit/react": ["../../packages/react/src/index.ts"],
-      "@color-kit/react/color-input": [
-        "../../packages/react/src/color-input.tsx"
-      ]
+      "@color-kit/react": ["../../packages/react/src/index.ts"]
     },
     "types": ["vite/client"]
   },
