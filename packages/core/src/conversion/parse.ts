@@ -8,12 +8,11 @@
 
 import type { Color } from '../types.js';
 import type { Matrix3 } from './matrices.js';
-import { clamp, normalizeHue } from '../utils/index.js';
+import { clamp, normalizeHue, srgbToLinearChannel } from '../utils/index.js';
 import { hslToRgbUnrounded } from './hsl.js';
 import { fromLinearSrgbInto, fromP3Into, fromRgbInto } from './into.js';
 import { namedColorHex } from './named-colors.js';
 import { oklabToOklchInto } from './oklch.js';
-import { p3ToLinearP3Into } from './p3.js';
 import { hexToRgb } from './srgb.js';
 import {
   fromXyzInto,
@@ -232,8 +231,11 @@ export function parse(input: string): Color {
         multiplyMatrix3(toXyz, v.map(linearize) as Vec3);
       switch (space) {
         case 'srgb':
-          // Display P3 shares the sign-extended sRGB transfer function.
-          fromLinearSrgbInto(out, p3ToLinearP3Into(rgb, rgb));
+          // Sign-extended sRGB transfer function (CSS Color 4).
+          rgb.r = srgbToLinearChannel(rgb.r);
+          rgb.g = srgbToLinearChannel(rgb.g);
+          rgb.b = srgbToLinearChannel(rgb.b);
+          fromLinearSrgbInto(out, rgb);
           break;
         case 'srgb-linear':
           fromLinearSrgbInto(out, rgb);

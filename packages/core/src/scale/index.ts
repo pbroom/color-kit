@@ -17,8 +17,11 @@ import {
  * t = 0 returns color1, t = 1 returns color2.
  *
  * Without `options` this interpolates OKLCH channels with the hue taking the
- * shortest path around the wheel (endpoints with chroma below `0.001` borrow
- * the other endpoint's hue), exactly as before `options` existed. Passing
+ * shortest path around the wheel; achromatic endpoints (chroma at or below
+ * `ACHROMATIC_CHROMA_THRESHOLD`) borrow the other endpoint's hue, at `t = 0`
+ * and `t = 1` too, so the hue is continuous in `t` (with `{ space: 'oklch' }`
+ * the endpoints are returned exactly instead). Option-less `mix()` gives
+ * identical results. Passing
  * `options` switches to CSS Color 4 interpolation in the chosen space; see
  * `mix()` for the option details.
  *

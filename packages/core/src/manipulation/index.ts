@@ -1,10 +1,11 @@
 import type { Color } from '../types.js';
-import { clamp, normalizeHue, lerp } from '../utils/index.js';
+import { clamp, normalizeHue } from '../utils/index.js';
 import {
   hasInterpolationOptions,
   interpolateInSpaceInto,
   type InterpolationOptions,
 } from '../interpolation/index.js';
+import { interpolateOklchDefaultInto } from '../scale/legacy.js';
 
 /** Increase lightness by a relative amount (0-1) */
 export function lighten(color: Color, amount: number): Color {
@@ -63,13 +64,18 @@ export function setAlpha(color: Color, alpha: number): Color {
  * t = 0 returns color1, t = 1 returns color2.
  * Default t = 0.5 (equal mix).
  *
- * Without `options` this interpolates L, C, hue (shortest path, with no
- * achromatic special-casing) and alpha as plain OKLCH channels, exactly as
- * before `options` existed. Passing `options` switches to CSS Color 4
- * `color-mix()` semantics in the chosen space: powerless (achromatic) hues
- * take the other color's hue, `options.hue` picks the hue arc, and
- * rectangular spaces interpolate with premultiplied alpha. Results are not
- * gamut mapped.
+ * Without `options` this interpolates L, C, hue (shortest path) and alpha
+ * as plain OKLCH channels, exactly like option-less `interpolate()`. In
+ * every mode a powerless (achromatic) hue — chroma at or below
+ * `ACHROMATIC_CHROMA_THRESHOLD` — takes the other color's hue, so mixing
+ * white into blue stays blue. Without `options` that includes `t = 0` and
+ * `t = 1`: an achromatic endpoint comes back with its own L, C and alpha but
+ * the other color's hue (CSS Color 4 missing-hue semantics), keeping the hue
+ * continuous in `t`, whereas `{ space: 'oklch' }` returns exact endpoints.
+ * Passing `options` switches to CSS Color 4
+ * `color-mix()` semantics in the chosen space: `options.hue` picks the hue
+ * arc, and rectangular spaces interpolate with premultiplied alpha. Results
+ * are not gamut mapped.
  *
  * @param color1 - First color; returned when `t = 0`
  * @param color2 - Second color; returned when `t = 1`
@@ -107,7 +113,7 @@ export function mix(
 /**
  * Allocation-free `mix()`: writes the mix of `color1` and `color2` into `out`
  * and returns it. Same semantics and bit-identical results as `mix()`,
- * including the option-less legacy OKLCH path. `out` may be the same object
+ * including the option-less OKLCH path. `out` may be the same object
  * as either input, so `mixInto(a, a, b, t)` blends `b` into `a` in place.
  *
  * @param out - Color to write the result into
@@ -141,25 +147,7 @@ export function mixInto(
     return interpolateInSpaceInto(out, color1, color2, t, options);
   }
 
-  // Handle hue interpolation via shortest path
-  let h1 = color1.h;
-  let h2 = color2.h;
-  const diff = h2 - h1;
-
-  if (diff > 180) {
-    h1 += 360;
-  } else if (diff < -180) {
-    h2 += 360;
-  }
-
-  const l = lerp(color1.l, color2.l, t);
-  const c = lerp(color1.c, color2.c, t);
-  const alpha = lerp(color1.alpha, color2.alpha, t);
-  out.l = l;
-  out.c = c;
-  out.h = normalizeHue(lerp(h1, h2, t));
-  out.alpha = alpha;
-  return out;
+  return interpolateOklchDefaultInto(out, color1, color2, t);
 }
 
 /** Invert a color (complement lightness and hue) */

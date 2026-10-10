@@ -1,10 +1,12 @@
 import type { Color } from '../types.js';
-import { normalizeHue, lerp } from '../utils/index.js';
+import { hasPowerlessHue, lerp, normalizeHue } from '../utils/index.js';
 
 /**
- * Option-less `interpolate()`: plain OKLCH channel interpolation with the hue
- * taking the shortest path; endpoints with chroma below `0.001` borrow the
- * other endpoint's hue. Kept in its own module so callers that only need the
+ * Option-less `interpolate()` / `mix()`: plain OKLCH channel interpolation
+ * (straight alpha) with the hue taking the shortest path. An endpoint whose
+ * hue is powerless (chroma at or below `ACHROMATIC_CHROMA_THRESHOLD`, or a
+ * non-finite hue) borrows the other endpoint's hue, as CSS Color 4 does for
+ * missing hues; when both are powerless the hue is `0`. Kept in its own module so callers that only need the
  * default (such as the plane gradient query) do not bundle the
  * interpolation-space engine.
  */
@@ -31,29 +33,26 @@ export function interpolateOklchDefaultInto(
   color2: Color,
   t: number,
 ): Color {
-  // Handle hue interpolation via shortest path
-  let h1 = color1.h;
-  let h2 = color2.h;
-  const diff = h2 - h1;
-
-  if (diff > 180) {
-    h1 += 360;
-  } else if (diff < -180) {
-    h2 += 360;
-  }
-
-  // If either color has near-zero chroma, use the other's hue
-  const achromatic1 = color1.c < 0.001;
-  const achromatic2 = color2.c < 0.001;
+  const powerless1 = hasPowerlessHue(color1);
+  const powerless2 = hasPowerlessHue(color2);
 
   let h: number;
-  if (achromatic1 && achromatic2) {
+  if (powerless1 && powerless2) {
     h = 0;
-  } else if (achromatic1) {
-    h = h2;
-  } else if (achromatic2) {
-    h = h1;
+  } else if (powerless1) {
+    h = color2.h;
+  } else if (powerless2) {
+    h = color1.h;
   } else {
+    // Shortest arc between the normalized hues (CSS `shorter`).
+    let h1 = normalizeHue(color1.h);
+    let h2 = normalizeHue(color2.h);
+    const diff = h2 - h1;
+    if (diff > 180) {
+      h1 += 360;
+    } else if (diff < -180) {
+      h2 += 360;
+    }
     h = lerp(h1, h2, t);
   }
 
