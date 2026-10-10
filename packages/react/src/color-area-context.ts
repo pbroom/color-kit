@@ -28,6 +28,8 @@ export interface ColorAreaContextValue {
   performanceProfile: ColorAreaPerformanceProfile;
   qualityLevel: ColorAreaQualityLevel;
   isDragging: boolean;
+  /** When true, the area and its thumb ignore pointer/keyboard input. */
+  disabled: boolean;
 }
 
 export const ColorAreaContext = createContext<ColorAreaContextValue | null>(

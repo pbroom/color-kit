@@ -3,6 +3,8 @@ export {
   COLOR_AREA_DEFAULT_RANGES,
   getColorAreaFallbackPoint,
   colorFromColorAreaKey,
+  getColorAreaKeyAxis,
+  getColorAreaValueText,
   colorFromColorAreaPosition,
   getColorAreaChromaBandPoints,
   getColorAreaContrastRegionPaths,
@@ -24,6 +26,7 @@ export type {
   ColorAreaGamutBoundaryOptions,
   ColorAreaGamutBoundaryPoint,
   ColorAreaKey,
+  ColorAreaKeyOptions,
   ResolvedColorAreaAxes,
   ResolvedColorAreaAxis,
 } from './color-area.js';
@@ -33,14 +36,17 @@ export {
   colorFromColorSliderKey,
   colorFromColorSliderPosition,
   getColorSliderLabel,
+  getColorSliderValueText,
   getColorSliderNormFromValue,
   getColorSliderThumbPosition,
   normalizeColorSliderPointer,
   resolveColorSliderRange,
+  resolveColorSliderWrap,
 } from './color-slider.js';
 export type {
   ColorSliderChannel,
   ColorSliderKey,
+  ColorSliderKeyOptions,
   ColorSliderOrientation,
 } from './color-slider.js';
 

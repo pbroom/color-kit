@@ -85,6 +85,11 @@ export interface ColorAreaProps extends Omit<
    * @default true
    */
   showDefaultThumb?: boolean;
+  /**
+   * Disables pointer and keyboard interaction. The thumb leaves the tab order
+   * and gets `aria-disabled`; the root and thumb get `data-disabled`.
+   */
+  disabled?: boolean;
 }
 
 function clamp01(value: number): number {
@@ -229,6 +234,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
       onInteractionFrame,
       thumb,
       showDefaultThumb = true,
+      disabled = false,
       onPointerDown,
       onPointerMove,
       onPointerUp,
@@ -275,6 +281,11 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
     const warnedMultiThumbRef = useRef(false);
     const warnedAxesRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
+    // Disabling mid-drag ends the drag (the refs and listeners are released
+    // in an effect).
+    if (disabled && isDragging) {
+      setIsDragging(false);
+    }
     const isDraggingRef = useRef(false);
     const [adaptiveQualityState, setAdaptiveQualityState] = useState<{
       profile: ColorAreaPerformanceProfile;
@@ -682,14 +693,34 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
 
     useEffect(() => stopWindowTracking, [stopWindowTracking]);
 
+    // Cancel an active drag when the area becomes disabled: drop the pending
+    // update and the drag listeners so its value cannot change while disabled.
+    useEffect(() => {
+      if (!disabled) return;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      pendingPositionRef.current = null;
+      activePointerIdRef.current = null;
+      isDraggingRef.current = false;
+      stopWindowTracking();
+    }, [disabled, stopWindowTracking]);
+
     const onRootPointerDown = useCallback(
       (event: ReactPointerEvent<HTMLDivElement>) => {
         onPointerDown?.(event);
-        if (event.defaultPrevented) {
+        if (event.defaultPrevented || disabled) {
           return;
         }
 
+        // preventDefault suppresses the compatibility mousedown (and with it
+        // the default focus), so move focus to the thumb explicitly.
         event.preventDefault();
+        const thumbNode = event.currentTarget.querySelector<HTMLElement>(
+          '[data-color-area-thumb]',
+        );
+        thumbNode?.focus({ preventScroll: true });
         isDraggingRef.current = true;
         setIsDragging(true);
         activePointerIdRef.current = event.pointerId;
@@ -711,7 +742,13 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
 
         commitFromPosition(clientX, clientY, { force: true });
       },
-      [commitFromPosition, onPointerDown, refreshRect, startWindowTracking],
+      [
+        commitFromPosition,
+        disabled,
+        onPointerDown,
+        refreshRect,
+        startWindowTracking,
+      ],
     );
 
     const onRootPointerMove = useCallback(
@@ -818,8 +855,10 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
         performanceProfile,
         qualityLevel,
         isDragging,
+        disabled,
       }),
       [
+        disabled,
         requested,
         setRequested,
         resolvedAxes,
@@ -836,6 +875,7 @@ export const ColorArea = forwardRef<HTMLDivElement, ColorAreaProps>(
           ref={setAreaRef}
           data-color-area=""
           data-dragging={isDragging || undefined}
+          data-disabled={disabled || undefined}
           data-performance-profile={performanceProfile}
           data-quality-level={qualityLevel}
           onPointerDown={onRootPointerDown}
