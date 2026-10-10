@@ -112,17 +112,17 @@ const color = parse('#7c3aed');
 
 toCss(color); // '#7c3aed'
 toCss(color, 'oklch'); // 'oklch(<l> <c> <h>)'
-toCss(color, 'p3'); // 'color(display-p3 <r> <g> <b>)'
+toCss(color, 'display-p3'); // 'color(display-p3 <r> <g> <b>)'
 ```
 
 <p className="api-returns">
   Returns <code>string</code>
 </p>
 
-| Parameter | Type             | Default  | Description                                                                                          |
-| --------- | ---------------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| `color`   | `Color`          | required | The color to serialize. Any non-finite channel throws a `RangeError`.                                |
-| `format`  | `CssColorFormat` | `'hex'`  | One of `'hex'`, `'rgb'`, `'hsl'`, `'oklch'`, `'oklab'`, `'p3'`. Unknown formats throw a `TypeError`. |
+| Parameter | Type             | Default  | Description                                                                                                  |
+| --------- | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
+| `color`   | `Color`          | required | The color to serialize. Any non-finite channel throws a `RangeError`.                                        |
+| `format`  | `CssColorFormat` | `'hex'`  | One of `'hex'`, `'rgb'`, `'hsl'`, `'oklch'`, `'oklab'`, `'display-p3'`. Unknown formats throw a `TypeError`. |
 
 Alpha is only included in the output when it is below `1` (as a `/ a` suffix,
 or as an 8-digit hex). Values are rounded per format: HSL to 1 decimal, OKLCH

@@ -173,7 +173,13 @@ export function fromP3(p3: P3): Color {
 }
 
 /** Output formats accepted by {@link toCss}. */
-export type CssColorFormat = 'hex' | 'rgb' | 'hsl' | 'oklch' | 'oklab' | 'p3';
+export type CssColorFormat =
+  | 'hex'
+  | 'rgb'
+  | 'hsl'
+  | 'oklch'
+  | 'oklab'
+  | 'display-p3';
 
 /**
  * Convert a Color to a CSS color string in the given format (default
@@ -220,7 +226,7 @@ export function toCss(color: Color, format: CssColorFormat = 'hex'): string {
           )} / ${round(lab.alpha, 3)})`
         : `oklab(${round(lab.L, 4)} ${round(lab.a, 4)} ${round(lab.b, 4)})`;
     }
-    case 'p3': {
+    case 'display-p3': {
       const p3 = toP3(color);
       return p3.alpha < 1
         ? `color(display-p3 ${round(p3.r, 4)} ${round(p3.g, 4)} ${round(
@@ -234,7 +240,7 @@ export function toCss(color: Color, format: CssColorFormat = 'hex'): string {
     }
     default:
       throw new TypeError(
-        `toCss: unknown format "${String(format)}" (expected hex, rgb, hsl, oklch, oklab or p3)`,
+        `toCss: unknown format "${String(format)}" (expected hex, rgb, hsl, oklch, oklab or display-p3)`,
       );
   }
 }

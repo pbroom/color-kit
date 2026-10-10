@@ -26,7 +26,7 @@ const CSS_FORMATS: CssColorFormat[] = [
   'hsl',
   'oklch',
   'oklab',
-  'p3',
+  'display-p3',
 ];
 
 describe('parse() rejects malformed input', () => {

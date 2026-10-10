@@ -37,7 +37,7 @@ import {
  * | `'oklab'`       | `oklab`               | rectangular                 |
  * | `'srgb'`        | `srgb`                | rectangular, gamma-encoded  |
  * | `'linear-srgb'` | `srgb-linear`         | rectangular, linear light   |
- * | `'p3'`          | `display-p3`          | rectangular, gamma-encoded  |
+ * | `'display-p3'`  | `display-p3`          | rectangular, gamma-encoded  |
  * | `'linear-p3'`   | `display-p3-linear`   | rectangular, linear light   |
  *
  * The two linear-light spaces are linear transforms of each other, so they
@@ -49,7 +49,7 @@ export type InterpolationSpace =
   | 'oklab'
   | 'srgb'
   | 'linear-srgb'
-  | 'p3'
+  | 'display-p3'
   | 'linear-p3';
 
 /**
@@ -179,10 +179,10 @@ function toSpaceCoordsInto(
     return out;
   }
   let linear = oklabToLinearRgbInto(LINEAR, lab);
-  if (space === 'p3' || space === 'linear-p3') {
+  if (space === 'display-p3' || space === 'linear-p3') {
     linear = linearSrgbToLinearP3Into(LINEAR, linear);
   }
-  if (space === 'srgb' || space === 'p3') {
+  if (space === 'srgb' || space === 'display-p3') {
     out[0] = linearToSrgbChannel(linear.r);
     out[1] = linearToSrgbChannel(linear.g);
     out[2] = linearToSrgbChannel(linear.b);
@@ -210,7 +210,7 @@ function fromSpaceCoordsInto(
     let r = coords[0];
     let g = coords[1];
     let b = coords[2];
-    if (space === 'srgb' || space === 'p3') {
+    if (space === 'srgb' || space === 'display-p3') {
       r = srgbToLinearChannel(r);
       g = srgbToLinearChannel(g);
       b = srgbToLinearChannel(b);
@@ -220,7 +220,7 @@ function fromSpaceCoordsInto(
     linear.g = g;
     linear.b = b;
     linear.alpha = alpha;
-    if (space === 'p3' || space === 'linear-p3') {
+    if (space === 'display-p3' || space === 'linear-p3') {
       linearP3ToLinearSrgbInto(linear, linear);
     }
     linearRgbToOklabInto(lab, linear);
@@ -328,6 +328,21 @@ export function interpolateInSpaceInto(
   t: number,
   options: InterpolationOptions,
 ): Color {
+  const space = options.space ?? 'oklch';
+  // Validate before the endpoint shortcut so an unknown space (such as the
+  // removed 'p3' spelling) throws for every `t`, including 0 and 1.
+  if (
+    space !== 'oklch' &&
+    space !== 'oklab' &&
+    space !== 'srgb' &&
+    space !== 'linear-srgb' &&
+    space !== 'display-p3' &&
+    space !== 'linear-p3'
+  ) {
+    throw new TypeError(
+      `Unknown interpolation space "${String(space)}"; expected 'oklch', 'oklab', 'srgb', 'linear-srgb', 'display-p3' or 'linear-p3'`,
+    );
+  }
   if (t === 0 || t === 1) {
     // Exact endpoints: no conversion round trip, and a transparent endpoint
     // keeps its color. Read before writing so `out` may alias the endpoint.
@@ -339,7 +354,6 @@ export function interpolateInSpaceInto(
     out.alpha = alpha;
     return out;
   }
-  const space = options.space ?? 'oklch';
   const hue = options.hue ?? 'shorter';
   const premultiplied = options.premultiplied;
 
@@ -376,7 +390,8 @@ export function interpolateInSpaceInto(
  * values outside `[0, 1]` extrapolate.
  *
  * Results are not gamut mapped. Interpolating two in-gamut colors in
- * `'srgb'` / `'linear-srgb'` stays inside sRGB, and in `'p3'` / `'linear-p3'`
+ * `'srgb'` / `'linear-srgb'` stays inside sRGB, and in `'display-p3'` /
+ * `'linear-p3'`
  * stays inside Display P3. Extended-range (out-of-gamut) inputs keep their
  * negative or >1 channel values through the mix, so the result can also be
  * out of gamut; OKLCH and OKLab mixes of in-gamut colors can leave the gamut

@@ -339,7 +339,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
     (format?: CssColorFormat) =>
       toCss(
         displayed,
-        format ?? (state.activeGamut === 'display-p3' ? 'p3' : 'hex'),
+        format ?? (state.activeGamut === 'display-p3' ? 'display-p3' : 'hex'),
       ),
     [displayed, state.activeGamut],
   );

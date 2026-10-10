@@ -89,7 +89,7 @@ export interface SliderGradientStop {
   activeColor: Color;
   /** Deterministic sRGB fallback color for this stop. */
   srgbColor: Color;
-  /** CSS stop color in requested color space (`p3` or `rgb`). */
+  /** CSS stop color in requested color space (`display-p3` or `rgb`). */
   activeCss: string;
   /** CSS stop color in sRGB (`rgb(...)`). */
   srgbCss: string;
@@ -263,7 +263,7 @@ function mapToColorSpace(color: Color, colorSpace: SliderColorSpace): Color {
 
 function toActiveStopCss(color: Color, colorSpace: SliderColorSpace): string {
   if (colorSpace === 'display-p3') {
-    return toCss(color, 'p3');
+    return toCss(color, 'display-p3');
   }
   return toCss(color, 'rgb');
 }

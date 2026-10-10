@@ -103,7 +103,7 @@ function getOklchSliderRail(
   const thumbFillSrgb = toCss(toSrgbGamut(thumbColor), 'rgb');
   const thumbFillActive =
     gradient.colorSpace === 'display-p3'
-      ? toCss(toP3Gamut(thumbColor), 'p3')
+      ? toCss(toP3Gamut(thumbColor), 'display-p3')
       : thumbFillSrgb;
   const railStartSrgb = startStop?.srgbCss ?? gradient.srgbBackgroundColor;
   const railEndSrgb = endStop?.srgbCss ?? railStartSrgb;
@@ -137,7 +137,9 @@ function DemoDisplaySwatch({
 }) {
   const srgbBackground = toCss(toSrgbGamut(requested), 'rgb');
   const activeBackground =
-    gamut === 'display-p3' ? toCss(toP3Gamut(requested), 'p3') : srgbBackground;
+    gamut === 'display-p3'
+      ? toCss(toP3Gamut(requested), 'display-p3')
+      : srgbBackground;
   return (
     <div
       className={className}
