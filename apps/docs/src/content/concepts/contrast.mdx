@@ -1,0 +1,100 @@
+---
+title: Contrast
+description: WCAG and APCA measured on unrounded, displayed channels, and contrast regions that agree with those measurements point for point.
+order: 50
+---
+
+import ContrastAgreement from '@/examples/guides/contrast-agreement.tsx';
+import exampleSource, {
+  code as exampleCode,
+} from '@/examples/guides/contrast-agreement.tsx?highlighted';
+
+## Two metrics
+
+[`contrastRatio`](/api/core/contrastRatio) is WCAG 2.1: symmetric, from 1 to
+21, with [`meetsAA`](/api/core/meetsAA) at 4.5:1 (3:1 for large text) and
+[`meetsAAA`](/api/core/meetsAAA) at 7:1.
+[`contrastAPCA`](/api/core/contrastAPCA) is APCA-W3 0.0.98G-4g: text first,
+background second, positive for dark on light and negative for light on
+dark. It returns Lc normalized to about `-1.08` to `1.06`; multiply by 100
+for the conventional scale.
+
+```ts title="metrics.ts"
+import { contrastAPCA, contrastRatio, meetsAA, parse } from 'color-kit';
+
+const gray = parse('#777');
+const white = parse('#fff');
+contrastRatio(gray, white); // → ≈ 4.478
+meetsAA(gray, white); // → false
+contrastAPCA(gray, white); // → ≈ 0.7111 (Lc 71.1)
+```
+
+## Unrounded by default
+
+Measurements use the color's exact channels, so the result is continuous in
+the color and `#777` misses AA at 4.478 instead of rounding up. Hex-based
+tools measure 8-bit values; pass `{ precision: '8bit' }` to match them. Near
+a threshold the two can disagree, so measure the value you ship.
+
+```ts title="precision.ts"
+import { contrastRatio, parse, toCss } from 'color-kit';
+
+const blue = parse('oklch(0.56725 0.12 250)');
+const white = parse('#fff');
+contrastRatio(blue, white); // → ≈ 4.4996, fails AA
+contrastRatio(blue, white, { precision: '8bit' }); // → ≈ 4.5055, passes
+toCss(blue, 'hex'); // → '#387aba'
+```
+
+## Measured as displayed
+
+A color outside the display gamut is measured the way the display renders it
+by clipping: channels are clipped to the `gamut` option (`'srgb'` by default,
+or `'display-p3'`). If you paint a gamut-mapped color, measure that one.
+
+```ts title="displayed.ts"
+import { contrastRatio, parse, toSrgbGamut } from 'color-kit';
+
+const green = parse('oklch(0.75 0.22 150)'); // outside sRGB
+const black = parse('#000');
+contrastRatio(green, black); // → ≈ 10.37 (clipped to sRGB)
+contrastRatio(green, black, { gamut: 'display-p3' }); // → ≈ 10.26
+contrastRatio(toSrgbGamut(green), black); // → ≈ 10.21 (what you paint)
+```
+
+## Regions agree with checks
+
+[`contrastRegionPaths`](/api/core/contrastRegionPaths), and the plane's
+`contrastRegion` query, return the edge of the area at one hue that meets a
+level against a reference. A point inside passes `contrastRatio` or
+`contrastAPCA` with the same gamut. This is exact, not approximate, because of
+how the solver works:
+
+- Both metrics see a sample only through one displayed luminance, computed by
+  the same code the checks use. Each side of the region is one level curve of
+  that luminance.
+- Along a ray from black at a fixed hue, every linear channel scales by the
+  same cube, so displayed luminance never decreases inside the gamut. Each
+  side crosses a ray at most once, and a bracketed solve finds the crossing.
+- Where a curve meets the gamut edge, the chroma axis or `maxChroma` is solved
+  on a fixed internal scan, to about `1e-14`. The sampling options
+  (`initialSamples`, `errorTolerance`, `maxDepth`) only set how finely the
+  curve between those ends is drawn; they cannot merge, split or drop pieces.
+
+Every returned point passes the public check and is in gamut per
+`inSrgbGamut` or `inP3Gamut`. Traces report the solver as `'contrast-rays'`.
+
+## Try it
+
+The contour is re-checked here with the public functions. Each sample is a
+contour point painted on the reference, labelled with its contrast measured
+before rounding (the default `'exact'` precision). Rounded to hex, a point
+this close to the edge can land on either side of the threshold; see
+[Unrounded by default](#unrounded-by-default).
+
+<Example
+  of={ContrastAgreement}
+  source={exampleSource}
+  code={exampleCode}
+  filename="contrast-agreement.tsx"
+/>

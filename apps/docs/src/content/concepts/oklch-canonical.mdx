@@ -1,0 +1,85 @@
+---
+title: OKLCH-canonical colors
+navTitle: OKLCH-canonical
+description: Every color-kit value is one OKLCH object. Formats are only input and output; the math happens in one perceptual space.
+order: 10
+---
+
+import OklchInspector from '@/examples/guides/oklch-inspector.tsx';
+import inspectorSource, {
+  code as inspectorCode,
+} from '@/examples/guides/oklch-inspector.tsx?highlighted';
+
+## One value type
+
+A [`Color`](/api/core/Color) is a plain object, `{ l, c, h, alpha }`:
+
+- `l`: lightness, from `0` (black) to `1` (white).
+- `c`: chroma, from `0` (gray) upward. sRGB peaks around `0.32` and Display
+  P3 around `0.37`; there is no hard upper bound.
+- `h`: hue in degrees.
+- `alpha`: opacity, from `0` to `1`.
+
+Every function takes and returns this shape. Hex, `rgb()`, `hsl()`,
+`color(display-p3 …)` and the rest are formats at the edges:
+[`parse`](/api/core/parse) and the `from*` functions bring them in, and
+[`toCss`](/api/core/toCss) and the `to*` functions take them out. A `Color` is
+not tied to a gamut, so it can describe a color no display can show. Mapping
+it to one is a separate, explicit step (see
+[Requested vs displayed](/concepts/requested-vs-displayed)).
+
+## Why OKLCH
+
+OKLCH is the polar form of OKLab, a perceptually uniform space: equal steps
+in `l`, `c` or `h` look like roughly equal changes. Lightness becomes a
+reliable axis for contrast, and hue holds still when chroma is reduced to fit
+a gamut. HSL's lightness does not mean much: `hsl(60 100% 50%)` and
+`hsl(240 100% 50%)` share `50%` but sit at OKLCH lightness `0.968` and
+`0.452`.
+
+## Hue normalization
+
+Hues that color-kit produces are in `[0, 360)`: from `parse`, the
+conversions, `adjustHue`, harmony helpers and plane definitions. A hue you
+write in an object literal is kept as written, so normalize it with
+[`normalizeHue`](/api/core/normalizeHue) before comparing.
+
+```ts title="hue.ts"
+import { normalizeHue, parse, toCss } from 'color-kit';
+
+parse('oklch(0.7 0.15 -30)').h; // → 330
+toCss({ l: 0.5, c: 0.1, h: -30, alpha: 1 }, 'oklch'); // → 'oklch(0.5 0.1 -30)'
+normalizeHue(-30); // → 330
+```
+
+## Achromatic hue
+
+A gray has no hue. At chroma at or below
+[`ACHROMATIC_CHROMA_THRESHOLD`](/api/core/ACHROMATIC_CHROMA_THRESHOLD)
+(`0.000004`, the CSS Color 4 epsilon) the hue is _powerless_:
+[`isAchromatic`](/api/core/isAchromatic) returns `true` and conversions report
+`h: 0`. Interpolation treats a powerless hue as missing, so a mix from gray
+takes the other endpoint's hue instead of sweeping through red.
+
+```ts title="achromatic.ts"
+import { isAchromatic, mix, parse } from 'color-kit';
+
+const gray = parse('#808080'); // { l: 0.5999, c: 3.3e-16, h: 0, alpha: 1 }
+isAchromatic(gray.c); // → true
+mix(gray, parse('#3b82f6')).h; // → ≈ 259.81, the blue's hue
+```
+
+Picker state goes one step further and keeps the previous hue when a gray
+arrives, so raising chroma again resumes it. That rule lives in the driver;
+see [hue preservation for grays](/concepts/requested-vs-displayed#hue-preservation-for-grays).
+
+## Try it
+
+Type any CSS Color 4 string. The swatch paints the color mapped into sRGB.
+
+<Example
+  of={OklchInspector}
+  source={inspectorSource}
+  code={inspectorCode}
+  filename="oklch-inspector.tsx"
+/>

@@ -1,0 +1,132 @@
+---
+title: A headless color picker
+navTitle: Headless picker
+description: Build a picker in any framework, or none, from color-kit/driver's state reducers, geometry, keyboard model and drag controller.
+order: 10
+---
+
+import HeadlessPickerDemo from '@/examples/driver/headless-picker-demo.tsx';
+import pickerSource, {
+  code as pickerCode,
+} from '@/examples/driver/headless-picker.ts?highlighted';
+
+## What the driver owns
+
+`color-kit/driver` is a picker without a view: pure functions over a
+[`ColorState`](/api/driver/ColorState), plus the geometry, keyboard and
+pointer models a picker needs. `color-kit/react` is one binding built on it.
+The example on this page is another, in plain DOM code, so it works under any
+framework.
+
+## State
+
+[`createColorState`](/api/driver/createColorState) builds the state from a
+requested color: the request, its sRGB and Display P3 mappings, the active
+gamut and view, and out-of-gamut flags. Four reducers update it:
+[`setColorRequested`](/api/driver/setColorRequested),
+[`setColorChannel`](/api/driver/setColorChannel),
+[`setColorActiveGamut`](/api/driver/setColorActiveGamut) and
+[`setColorActiveView`](/api/driver/setColorActiveView). Each returns the same
+object for a no-op, so `next === state` is enough to skip a render.
+`createColorState` and `setColorActiveGamut` check the gamut with
+[`assertGamutTarget`](/api/plane/assertGamutTarget), so `'p3'` throws the same
+`TypeError` as the plane queries.
+
+```ts title="state.ts"
+import { parse, toHex } from 'color-kit';
+import { createColorState, setColorChannel } from 'color-kit/driver';
+
+const state = createColorState(parse('#3b82f6'));
+const next = setColorChannel(state, 'l', 0.4, 'user');
+toHex(next.requested); // → '#003baa'
+setColorChannel(next, 'l', 0.4, 'user') === next; // → true
+```
+
+## Geometry
+
+A 2D area maps two OKLCH channels to a rectangle.
+[`resolveColorAreaAxes`](/api/driver/resolveColorAreaAxes) defaults to
+lightness on `x` and chroma on `y`. Pointer input goes through
+[`normalizeColorAreaPointer`](/api/driver/normalizeColorAreaPointer) (client
+pixels to clamped `[0, 1]`, `y` down) and
+[`colorFromColorAreaPosition`](/api/driver/colorFromColorAreaPosition);
+[`getColorAreaThumbPosition`](/api/driver/getColorAreaThumbPosition) goes
+back. Sliders have the same trio:
+[`normalizeColorSliderPointer`](/api/driver/normalizeColorSliderPointer),
+[`colorFromColorSliderPosition`](/api/driver/colorFromColorSliderPosition) and
+[`getColorSliderThumbPosition`](/api/driver/getColorSliderThumbPosition).
+
+## Keyboard and ARIA
+
+[`colorFromColorAreaKey`](/api/driver/colorFromColorAreaKey) and
+[`colorFromColorSliderKey`](/api/driver/colorFromColorSliderKey) implement
+arrows, Page Up/Down and Home/End, wrapping hue and clamping the rest. They
+return `null` for keys they do not handle, so call `preventDefault` only when
+they return a color. [`getColorAreaValueText`](/api/driver/getColorAreaValueText)
+and [`getColorSliderValueText`](/api/driver/getColorSliderValueText) produce
+`aria-valuetext` such as `Lightness 60%, Chroma 0.1` and `Hue 213°`. A
+slider exposes one number, so the area thumb, like the React `Thumb`, sets
+`aria-valuenow`, `aria-valuemin` and `aria-valuemax` from the x axis and
+`aria-roledescription="2D slider"`; the value text names both axes.
+
+## Drag throttling
+
+[`createPointerDragController`](/api/driver/createPointerDragController)
+commits `start` and `end` immediately and coalesces moves to at most one
+commit per animation frame. Moves within `dragEpsilon` (default `0.0005`) are
+skipped and commits are capped at `maxUpdateHz` (default 60); a rate-limited
+point is retried on the next frame, never dropped. Pass a frame scheduler as
+the second argument to drive drags deterministically in tests.
+
+The controller tracks one drag, not one pointer. The binding records the
+`pointerId` that started the drag, captures it, and ignores other pointers
+until that one lifts or is cancelled, so a second finger cannot steer or end
+the drag.
+
+## Typed input
+
+[`parseColorInputExpression`](/api/driver/parseColorInputExpression) turns
+text typed into a channel field into a number;
+[`resolveColorInputDraftValue`](/api/driver/resolveColorInputDraftValue) then
+clamps or wraps it. A `%` is a position in the channel's range, also inside
+an expression, while input that starts with an operator is relative to the
+current value and its `%` is a share of the span.
+
+```ts title="input.ts"
+import { parseColorInputExpression } from 'color-kit/driver';
+
+const options = {
+  currentValue: 120,
+  range: [100, 200] as [number, number],
+  allowExpressions: true,
+};
+parseColorInputExpression('50%', options); // → 150
+parseColorInputExpression('50% * 2', options); // → 300
+parseColorInputExpression('+10%', options); // → 130
+```
+
+## Painting
+
+[`getSliderGradientStyles`](/api/driver/getSliderGradientStyles) returns
+`linear-gradient()` strings for a rail, in Display P3 by default with an sRGB
+fallback. [`getColorDisplayStyles`](/api/driver/getColorDisplayStyles) returns
+a `background` and `backgroundColor` pair: P3 where the browser supports it,
+sRGB underneath. For overlays,
+[`getColorAreaGamutBoundaryPoints`](/api/driver/getColorAreaGamutBoundaryPoints)
+and
+[`getColorAreaContrastRegionPaths`](/api/driver/getColorAreaContrastRegionPaths)
+return plane geometry in area coordinates.
+
+## The picker
+
+`bindPicker` takes six elements and returns a cleanup function. Drag the area
+or the rail, or focus a thumb and use the arrow keys (Shift for larger
+steps). A React component renders the markup and calls it from an effect.
+
+<Example
+  of={HeadlessPickerDemo}
+  source={pickerSource}
+  code={pickerCode}
+  filename="headless-picker.ts"
+  minHeight={300}
+/>

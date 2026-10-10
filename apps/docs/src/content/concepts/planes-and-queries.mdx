@@ -1,0 +1,99 @@
+---
+title: Planes and queries
+description: Fix every channel but two, then ask the plane questions. Answers come back as geometry you can draw.
+order: 30
+---
+
+import PlaneQueries from '@/examples/guides/plane-queries.tsx';
+import exampleSource, {
+  code as exampleCode,
+} from '@/examples/guides/plane-queries.tsx?highlighted';
+
+## A plane is two axes and a fixed rest
+
+A color picker's 2D area, a gamut diagram and a contrast map are all the same
+object: two channels of one model on `x` and `y`, every other channel held
+still. [`definePlane`](/api/plane/definePlane) describes one.
+
+```ts title="plane.ts"
+import { definePlane, planeToColor } from 'color-kit/plane';
+
+const plane = definePlane({ fixed: { h: 264 } });
+plane.x; // → { channel: 'l', range: [0, 1] }
+plane.y; // → { channel: 'c', range: [0.4, 0] }
+planeToColor(plane, { x: 0.5, y: 0.5 }); // → { l: 0.5, c: 0.2, h: 264, alpha: 1 }
+```
+
+The default is OKLCH lightness by chroma. Coordinates are normalized:
+`{ x: 0, y: 0 }` is the start of each range and `{ x: 1, y: 1 }` the end. The
+chroma range runs `[0.4, 0]`, so high chroma sits at `y = 0`, the top of an
+SVG. Other models are `rgb`, `hsl`, `hsv`, `oklab`, `hct` and `display-p3`;
+channel names are type-checked per model.
+[`definePlaneFromColor`](/api/plane/definePlaneFromColor) fills the fixed
+channels from an anchor color.
+
+## Ask with `sense`
+
+[`sense(plane)`](/api/plane/sense) binds the query helpers to a plane. Each
+returns a typed result whose `kind` matches the query:
+
+| Query              | Answers                                                  |
+| ------------------ | -------------------------------------------------------- |
+| `gamutRegion`      | the in-gamut area visible in the plane window, as paths  |
+| `gamutBoundary`    | the max-chroma edge of a gamut, from black to white      |
+| `contrastRegion`   | the area that meets a contrast level against a reference |
+| `contrastBoundary` | the threshold contour on its own                         |
+| `chromaBand`       | a tonal strip at one requested chroma                    |
+| `fallbackPoint`    | where an out-of-gamut color lands once mapped            |
+| `gradient`         | evenly spaced points between two colors, projected       |
+
+`gamutBoundary`, `contrastBoundary`, `contrastRegion` and `chromaBand` answer
+on OKLCH lightness-by-chroma planes and return empty geometry on others.
+`gamutRegion`, `fallbackPoint` and `gradient` work on every model.
+
+The same queries exist as data: [`runPlaneQuery`](/api/plane/runPlaneQuery)
+takes `{ kind: 'gamutRegion', gamut: 'srgb' }`, which can be cached with
+[`PlaneQueryCache`](/api/plane/PlaneQueryCache), sent to a worker, or batched
+through `color-kit/compute`.
+
+## SVG output
+
+Query points are normalized plane coordinates.
+[`toSvgPath`](/api/plane/toSvgPath) and
+[`toSvgCompoundPath`](/api/plane/toSvgCompoundPath) scale them by 100 by
+default, so the result drops into `viewBox="0 0 100 100"`.
+
+```tsx title="region.tsx"
+import { definePlane, sense, toSvgCompoundPath } from 'color-kit/plane';
+
+const region = sense(definePlane({ fixed: { h: 264 } })).gamutRegion({
+  gamut: 'srgb',
+});
+const d = toSvgCompoundPath(region.visibleRegion.paths, { closeLoop: true });
+
+<svg viewBox="0 0 100 100">
+  <path d={d} />
+</svg>;
+```
+
+## Tracing
+
+[`inspectPlaneQuery`](/api/plane/inspectPlaneQuery) runs a query and returns
+`{ result, trace }`. The summary names the solver (`'analytic-lc'` for an
+OKLCH gamut region, `'contrast-rays'` for contrast), counts samples and
+points, records the sampling it ran with under `fidelity`, and times the run
+in `totalTimeMs`. `trace.stages` lists each solver step. Use it to debug a
+surprising path and to budget interactive work.
+
+## Try it
+
+The filled shape is `gamutRegion` for sRGB, the dashed line `gamutBoundary`
+for Display P3, and the heavy line the `contrastRegion` edge for WCAG AA
+against white: every in-gamut color to its left passes.
+
+<Example
+  of={PlaneQueries}
+  source={exampleSource}
+  code={exampleCode}
+  filename="plane-queries.tsx"
+/>

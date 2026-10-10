@@ -1,0 +1,28 @@
+`color-kit/hct` answers gamut questions in Material Design's HCT space: CAM16
+hue and chroma with L\* tone, the space Material's tonal palettes are built
+in. The root `color-kit` entry re-exports the same functions.
+
+## Domains
+
+- **Chroma limits.** [`maxHctChromaAtTone`](/api/hct/maxHctChromaAtTone)
+  returns the largest chroma sRGB can realize at a hue and tone.
+- **Hue peaks.** [`maxHctChromaForHue`](/api/hct/maxHctChromaForHue)
+  returns the peak chroma of a hue and the tone where it occurs;
+  [`maxHctPeakToneForHue`](/api/hct/maxHctPeakToneForHue) returns just the
+  tone. Both interpolate a cached per-hue lookup table by default
+  (`method: 'lut'`) and search tone directly with `method: 'direct'`.
+
+Conversion lives in the root entry: [`toHct`](/api/core/toHct) and
+[`fromHct`](/api/core/fromHct) convert between `Color` and
+`{ h, c, t, alpha }`. `fromHct` uses Material's solver, which reduces chroma
+to fit sRGB, so its results are always in sRGB and quantized to 8 bits.
+
+```ts title="tones.ts"
+import { maxHctChromaAtTone, maxHctChromaForHue } from 'color-kit/hct';
+
+maxHctChromaForHue(250); // → { c: ≈ 61.71, t: ≈ 64.22 }
+maxHctChromaAtTone(250, 90); // → ≈ 21.00, light tones hold little chroma
+```
+
+Use these limits to build HCT tonal ramps that ask only for chroma sRGB can
+deliver, instead of letting `fromHct` reduce it silently.

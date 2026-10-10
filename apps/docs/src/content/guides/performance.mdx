@@ -1,0 +1,99 @@
+---
+title: Performance
+description: Where color-kit spends time, how to keep per-frame and per-pixel loops free of garbage, and the knobs that make plane queries cheap.
+order: 50
+---
+
+import HotLoopBenchDemo from '@/examples/guides/hot-loop-bench-demo.tsx';
+import benchSource, {
+  code as benchCode,
+} from '@/examples/guides/hot-loop-bench.ts?highlighted';
+
+## Where the time goes
+
+Most calls cost tens of nanoseconds. Gamut mapping an out-of-gamut color is
+the expensive scalar operation, at roughly half a microsecond, because it
+bisects chroma. Plane queries take fractions of a millisecond to a few
+milliseconds. Optimize the loops that run per pixel, per vertex or per frame;
+leave the rest on the readable object API.
+
+## `*Into` variants
+
+Every hot conversion has an `out`-first twin that writes into an object you
+own and returns it: `toOklabInto`, `toLinearSrgbInto`, `toRgbInto`,
+`toP3Into` and their `from*` pairs, the low-level steps, `mixInto`,
+`interpolateInto`, [`toSrgbGamutInto`](/api/core/toSrgbGamutInto) and
+[`toP3GamutInto`](/api/core/toP3GamutInto). `out` may be an input, so
+`mixInto(a, a, b, t)` blends in place. Results are bit-identical to the
+allocating functions.
+
+They avoid result objects, not necessarily garbage. From
+`pnpm --filter @color-kit/core bench:into` (1,000,000 calls, Node 24):
+
+| Operation                    | Allocating ns · GCs | `*Into` ns · GCs |
+| ---------------------------- | ------------------- | ---------------- |
+| `toOklab`                    | 9.1 · 1             | 13.5 · 0         |
+| `mix` (default)              | 25.6 · 1            | 25.7 · 0         |
+| `toRgb`                      | 58.8 · 44           | 61.6 · 44        |
+| `toSrgbGamut` (out of gamut) | 464 · 312           | 454 · 298        |
+
+Time per call barely moves. Where V8 cannot fully optimize, it boxes each
+double stored into an object field such as `out.l`, which allocates about as
+much as the object it replaced. Reach for `*Into` in animation and drag
+loops, where fewer collections mean fewer dropped frames, and measure.
+
+## Typed arrays for per-pixel work
+
+Typed-array elements are stored unboxed, so writing floats into one never
+allocates. The interop writers take an `out` array and an offset:
+`toSrgbArray(color, buffer, i * 3)` writes three floats in place, and
+[`packColors`](/api/interop/packColors) fills a whole buffer. Combine them
+with `toSrgbGamutInto` and a per-pixel loop allocates nothing. See
+[GPU and three.js](/guides/gpu-interop) for layouts.
+
+## Mix space
+
+`mix` and `interpolate` default to OKLCH, the cheapest space and the right
+one for UI ramps. Linear light (`{ space: 'linear-srgb' }`) is right for
+compositing, blur and lighting, and matches GPU blending: the black-to-white
+midpoint is half the light (`#bcbcbc`) rather than half the perceived
+lightness (`#636363`). It costs more. From `bench:mix-space` (200,000 mixes):
+OKLCH 29 ns, OKLab 70 ns, linear sRGB 139 ns, sRGB 243 ns, Display P3 258 ns.
+
+## Plane queries
+
+- **Cache.** [`PlaneQueryCache`](/api/plane/PlaneQueryCache) is an LRU (128
+  entries by default) keyed by plane and query;
+  [`runCachedPlaneQuery`](/api/plane/runCachedPlaneQuery) runs a query only
+  on a miss.
+- **Move it off the main thread.**
+  [`runPlaneCompute`](/api/compute/runPlaneCompute) returns results packed
+  into typed arrays, and
+  [`getPackedPlaneQueryTransferables`](/api/compute/getPackedPlaneQueryTransferables)
+  lists the buffers to transfer from a worker without copying.
+- **Sample coarsely while dragging.** Contrast regions take `initialSamples`
+  (default 32), `errorTolerance` (0.0015) and `maxDepth` (6).
+  `ContrastRegionLayer` uses 8, 0.004 and at most 3 for interaction. Contour
+  ends are solved exactly either way; coarse settings only draw the curve
+  between them with fewer points.
+- **Use the lookup tables.** [`maxChromaForHue`](/api/core/maxChromaForHue)
+  interpolates a cached per-hue table by default; `method: 'direct'` solves
+  exactly per call.
+- **Let the area adapt.** `ColorArea`'s `performanceProfile="auto"` lowers
+  raster resolution and layer sampling while pointer updates are slow and
+  restores them after. `maxUpdateHz` and `dragEpsilon` cap the commit rate.
+
+## Try it
+
+Both loops map 40,000 colors into sRGB and write them to one `Float32Array`.
+The first allocates a mapped color and a tuple per color; the second reuses
+one scratch color and writes straight into the buffer. Expect similar
+times: the difference is garbage collected later, which a timer around the
+loop does not see. Numbers vary by browser and machine.
+
+<Example
+  of={HotLoopBenchDemo}
+  source={benchSource}
+  code={benchCode}
+  filename="hot-loop-bench.ts"
+/>

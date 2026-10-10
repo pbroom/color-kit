@@ -1,32 +1,107 @@
 ---
 title: Requested vs displayed
-description: color-kit tracks the color you asked for separately from the color a display can show, so intent survives gamut mapping.
+description: color-kit keeps the color you asked for apart from the color a display can show, so intent survives gamut mapping.
 order: 20
 ---
 
-## Two colors, one value
+import RequestedDisplayed from '@/examples/guides/requested-displayed.tsx';
+import exampleSource, {
+  code as exampleCode,
+} from '@/examples/guides/requested-displayed.tsx?highlighted';
+
+## Two colors, one state
 
 A user can pick a color no screen can show. Clamping it in place would move
-the picker thumb, lose the choice on the next edit, and make undo lie. color-kit
-keeps two values instead:
+the picker thumb, lose the choice on the next edit, and make undo lie.
+color-kit keeps two values instead:
 
-- **requested**: the exact OKLCH color that was asked for.
-- **displayed**: the requested color mapped into the output gamut, used only
+- **requested**: the OKLCH color that was asked for, never clamped.
+- **displayed**: the requested color mapped into an output gamut, used only
   to paint.
 
-<Swatch
-  color="oklch(0.7 0.25 30)"
-  gamut="srgb"
-  label="Mapped for an sRGB display"
-/>
+[`createColorState`](/api/driver/createColorState) in `color-kit/driver`
+holds both, mapped into sRGB and Display P3 at once:
 
-## Mapping changes chroma only
+```ts title="state.ts"
+import { createColorState } from 'color-kit/driver';
 
-`toSrgbGamut` and `toP3Gamut` reduce chroma at fixed lightness and hue by
-default. Lightness-driven measurements, like contrast regions on a plane, stay
-put when the gamut changes.
+const state = createColorState({ l: 0.75, c: 0.22, h: 150, alpha: 1 });
+state.displayed.srgb.c; // → ≈ 0.2065 (reduced to fit sRGB)
+state.displayed.p3.c; // → 0.22 (fits P3 as requested)
+state.meta.outOfGamut; // → { srgb: true, p3: false }
+```
 
-<Callout tone="note">
-  The full concept page covers the driver's dual state, the `activeGamut`
-  switch, and when to paint each value.
+Store, serialize and edit `requested`. Paint the displayed color for the
+active gamut ([`getActiveDisplayedColor`](/api/driver/getActiveDisplayedColor)).
+Switching an sRGB preview to P3 restores the chroma, because nothing was
+thrown away.
+
+## Two mapping methods
+
+[`toSrgbGamut`](/api/core/toSrgbGamut) and
+[`toP3Gamut`](/api/core/toP3Gamut) return colors already in gamut unchanged.
+Otherwise `method` picks the algorithm:
+
+- `'chroma-reduction'` (default) bisects chroma at fixed lightness and hue.
+  Both are preserved exactly, which keeps contrast regions, plane geometry and
+  slider tracks in place when the gamut changes.
+- `'css'` runs the CSS Color 4 algorithm that browsers and colorjs.io use. It
+  stops as soon as clipping moves the color by less than one just-noticeable
+  difference (0.02 ΔE OK) and returns the clipped color: more chroma, with
+  small shifts in lightness and hue.
+
+```ts title="methods.ts"
+import { parse, toCss, toSrgbGamut } from 'color-kit';
+
+const coral = parse('oklch(0.7 0.25 30)');
+toCss(toSrgbGamut(coral), 'oklch'); // → 'oklch(0.7 0.1915 30)'
+toCss(toSrgbGamut(coral, { method: 'css' }), 'oklch'); // → 'oklch(0.6831 0.2062 30.18)'
+```
+
+The driver records its choice in `meta.gamutMapMethod`; pass `gamutMapMethod`
+to `createColorState` to change it.
+
+## Hue preservation for grays
+
+Hue has to survive zero chroma, or a picker forgets it the moment a user drags
+to the gray axis.
+
+- **Mapping.** `'chroma-reduction'` never writes `h`. Even at the lightness
+  endpoints, where the result snaps to black or white with `c: 0`, the hue is
+  kept: `toSrgbGamut({ l: 1, c: 0.2, h: 250, alpha: 1 })` returns `h: 250`.
+  `'css'` converts its clipped color back to OKLCH, so a near-gray result can
+  report another hue.
+- **Incoming colors.** Hex, `rgb()` and `hsl()` grays convert to `h: 0`.
+  [`setColorRequested`](/api/driver/setColorRequested) with
+  `explicitHue: false` keeps the previous hue instead
+  ([`resolveIncomingRequested`](/api/driver/resolveIncomingRequested) is the
+  rule on its own). The React setters `setFromString`, `setFromRgb`,
+  `setFromHsl` and `setFromHsv` apply it for you.
+
+```ts title="gray.ts"
+import { parse } from 'color-kit';
+import { createColorState, setColorRequested } from 'color-kit/driver';
+
+const blue = createColorState(parse('#3b82f6'));
+const gray = setColorRequested(blue, parse('#808080'), 'user', {
+  explicitHue: false,
+});
+gray.requested.h === blue.requested.h; // → true
+```
+
+<Callout tone="warning">
+  Do not write a `'css'` mapping result back into `requested`. Its lightness and
+  hue have moved, so the next edit starts from a color the user never picked.
 </Callout>
+
+## Try it
+
+Raise chroma past the sRGB edge, then past the P3 edge. With
+`chroma-reduction` lightness and hue never move; with `css` they drift.
+
+<Example
+  of={RequestedDisplayed}
+  source={exampleSource}
+  code={exampleCode}
+  filename="requested-displayed.tsx"
+/>
