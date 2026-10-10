@@ -169,6 +169,8 @@ describe('Color API helpers', () => {
     expect(() => fallback('rec2020')).toThrow(/unknown gamut "rec2020"/);
     expect(() => fallback(null)).toThrow(TypeError);
     expect(() => fallback('')).toThrow(TypeError);
+    expect(() => fallback(undefined)).toThrow(TypeError);
+    expect(() => fallback(undefined)).toThrow(/gamut is required/);
     expect(fallback('srgb').gamut).toBe('srgb');
     expect(fallback('display-p3').gamut).toBe('display-p3');
   });
