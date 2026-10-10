@@ -343,7 +343,22 @@ a.tok-name:hover {
   font-size: 0.875em;
 }
 
+/* Export names have no spaces to wrap at: a long one (39 characters at
+   most today) breaks inside the name rather than widening the page. */
+.doc-header .doc-title[data-mono] {
+  overflow-wrap: anywhere;
+  hyphens: none;
+}
+
+@media (max-width: 40rem) {
+  .doc-header .doc-title[data-mono] {
+    font-size: var(--text-3);
+  }
+}
+
 .api-eyebrow {
+  min-width: 0;
+  overflow-wrap: anywhere;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;

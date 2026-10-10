@@ -1,0 +1,279 @@
+/* ⌘K search dialog. Loaded with the dialog chunk, never on first paint. */
+
+.search-dialog {
+  position: fixed;
+  top: min(12vh, 120px);
+  left: 50%;
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  width: min(640px, calc(100vw - var(--space-8)));
+  max-height: min(580px, calc(100dvh - 24vh));
+  overflow: hidden;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--bg);
+  transform: translateX(-50%);
+  transition:
+    opacity var(--duration-2) var(--ease-out),
+    transform var(--duration-2) var(--ease-out);
+}
+
+.search-dialog[data-starting-style],
+.search-dialog[data-ending-style] {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-4px) scale(0.99);
+}
+
+.search-dialog__field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+  height: 52px;
+  padding: 0 var(--space-4);
+  border-bottom: var(--hairline) solid var(--line);
+  color: var(--fg-4);
+}
+
+.search-dialog__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  color: var(--fg);
+  font-size: var(--text-3);
+}
+
+.search-dialog__input:focus-visible {
+  outline: none;
+}
+
+.search-dialog__input::placeholder {
+  color: var(--fg-4);
+}
+
+.search-dialog__esc {
+  padding: 1px 5px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+
+/* Touch screens have no Escape key: a close button instead. */
+.search-dialog__close {
+  display: none;
+  margin-right: calc(-1 * var(--space-2));
+}
+
+.search-dialog__results {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--space-6) var(--space-2);
+}
+
+.search-dialog__results:empty {
+  display: none;
+}
+
+.search-hit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+/* Symbols: name | kind and entry point, on one line. */
+.search-hit[data-kind='symbol'] {
+  align-items: center;
+  padding-block: 6px;
+}
+
+.search-hit__kind {
+  display: inline-block;
+  min-width: 9ch;
+  margin-right: var(--space-3);
+  color: var(--fg-4);
+}
+
+.search-hit[data-first]::before {
+  content: attr(data-section);
+  grid-column: 1 / -1;
+  margin: var(--space-3) 0 var(--space-1) calc(-1 * var(--space-1));
+  color: var(--fg-4);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.search-hit[data-first]:first-child::before {
+  margin-top: 0;
+}
+
+.search-hit[aria-selected='true'] {
+  background: var(--bg-active);
+}
+
+.search-hit__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg);
+  font-size: var(--text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-hit[data-kind='symbol'] .search-hit__title {
+  font-family: var(--font-mono);
+  font-size: var(--text-1);
+}
+
+.search-hit__meta {
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.search-hit[aria-selected='true'] .search-hit__meta {
+  color: var(--fg-3);
+}
+
+.search-hit__excerpt {
+  display: -webkit-box;
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--fg-3);
+  font-size: var(--text-1);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.search-hit__excerpt mark {
+  background: none;
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.search-dialog__status {
+  flex: none;
+  margin: 0;
+  padding: 0 var(--space-4);
+  color: var(--fg-4);
+  font-size: var(--text-1);
+}
+
+.search-dialog__status:not(:empty) {
+  padding-block: var(--space-4);
+}
+
+.search-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex: none;
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border-top: var(--hairline) solid var(--line);
+  color: var(--fg-4);
+  font-size: 11px;
+}
+
+.search-dialog__keys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.search-dialog__keys > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.search-dialog__keys kbd {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 4px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+}
+
+.search-dialog__clear {
+  margin-left: auto;
+  color: var(--fg-3);
+  font-size: 11px;
+}
+
+.search-dialog__clear:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+/* Phones: the dialog is the screen. */
+@media (max-width: 40rem) {
+  .search-dialog {
+    inset: 0;
+    width: 100%;
+    max-height: none;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    transform: none;
+  }
+
+  .search-dialog[data-starting-style],
+  .search-dialog[data-ending-style] {
+    transform: translateY(8px);
+  }
+
+  .search-dialog__esc,
+  .search-dialog__keys,
+  .search-dialog__footer:not(:has(.search-dialog__clear)) {
+    display: none;
+  }
+
+  .search-dialog__close {
+    display: inline-grid;
+  }
+
+  .search-dialog__input {
+    font-size: 16px; /* No iOS zoom-on-focus. */
+  }
+
+  .search-hit {
+    padding-block: var(--space-3);
+  }
+}
+
+/* Touch: no keyboard hints, but keep Clear recent reachable. */
+@media (hover: none) {
+  .search-dialog__keys,
+  .search-dialog__footer:not(:has(.search-dialog__clear)) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-dialog {
+    transition: opacity var(--duration-2) var(--ease-out);
+  }
+}

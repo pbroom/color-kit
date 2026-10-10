@@ -1,0 +1,598 @@
+/*
+ * /api/map. Achromatic like the rest of the chrome: kinds read by shape and
+ * fill (runtime values filled, types hollow), never by hue. The accent only
+ * marks focus.
+ */
+
+.api-map {
+  display: grid;
+  /* A minmax track, so the ledger table scrolls instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+/* ---------- Toolbar ---------- */
+
+.api-map__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.api-map__find,
+.api-map__entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.api-map__find {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.api-map__entry .field {
+  width: auto;
+  padding-right: var(--space-6);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.api-map__find .field {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.api-map__label {
+  color: var(--fg-4);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.api-map__kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.api-map__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  border: var(--hairline) solid var(--line);
+  border-radius: 999px;
+  color: var(--fg-3);
+  font-size: 12px;
+  transition:
+    background-color var(--duration-1) var(--ease-out),
+    border-color var(--duration-1) var(--ease-out),
+    color var(--duration-1) var(--ease-out);
+}
+
+.api-map__chip:hover {
+  border-color: var(--line-strong);
+  color: var(--fg);
+}
+
+.api-map__chip[aria-pressed='true'] {
+  border-color: var(--fg-3);
+  background: var(--bg-active);
+  color: var(--fg);
+}
+
+/* ---------- Canvas ---------- */
+
+.api-map__frame {
+  position: relative;
+  min-width: 0;
+}
+
+.api-map__canvas {
+  display: block;
+  width: 100%;
+  height: clamp(420px, 62vh, 640px);
+  overflow: hidden;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle, var(--line) 0.75px, transparent 1px) 0 0 / 16px 16px,
+    var(--bg-subtle);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.api-map__canvas:active {
+  cursor: grabbing;
+}
+
+.api-map__canvas:focus-visible {
+  outline-offset: 0;
+}
+
+/* First view before any interaction (prerender, hydration): keep in sync
+   with `initialView` in use-pan-zoom.ts. */
+.api-map__viewport[data-pristine] {
+  transform: translate(24px, 0);
+}
+
+@media (max-width: 40rem) {
+  .api-map__canvas {
+    height: clamp(360px, 58vh, 520px);
+  }
+
+  .api-map__viewport[data-pristine] {
+    transform: translate(16px, 0) scale(0.8);
+  }
+}
+
+.api-map__controls {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  overflow: hidden;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.api-map__controls .icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 0;
+}
+
+.api-map__controls .icon-button + .icon-button {
+  border-left: var(--hairline) solid var(--line);
+}
+
+.api-map__hint {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-3);
+  margin: 0;
+  color: var(--fg-4);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+@media (hover: none) {
+  .api-map__hint {
+    display: none;
+  }
+}
+
+.api-map__empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg-3);
+  font-size: var(--text-1);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+/* ---------- Tree ---------- */
+
+.map-link {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.map-node {
+  cursor: pointer;
+  outline: none;
+}
+
+.map-node__hit {
+  fill: transparent;
+}
+
+.map-node__ring {
+  fill: none;
+  stroke: none;
+}
+
+.map-node:focus-visible .map-node__ring {
+  stroke: var(--focus-ring-color);
+  stroke-width: 2;
+}
+
+.map-node__label {
+  fill: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  paint-order: stroke;
+  stroke: var(--bg-subtle);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.map-node[data-type='root'] .map-node__label {
+  fill: var(--fg);
+  font-weight: 600;
+}
+
+.map-node[data-type='domain'] .map-node__label,
+.map-node[data-type='reexports'] .map-node__label {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.map-node[data-type='entry'] .map-node__label {
+  fill: var(--fg);
+  font-weight: 500;
+}
+
+.map-node__count {
+  fill: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.map-node[data-reexport] .map-node__label {
+  fill: var(--fg-4);
+}
+
+.map-node[data-deprecated] .map-node__label {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.map-node:hover .map-node__label,
+.map-node:focus-visible .map-node__label {
+  fill: var(--fg);
+}
+
+.map-node[data-type='symbol']:hover .map-node__label {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+.map-node__match {
+  fill: var(--fg);
+  font-weight: 700;
+}
+
+/* Marks: filled = runtime value, hollow = type only, dashed = re-export. */
+.map-mark {
+  fill: var(--fg-2);
+  stroke: var(--fg-2);
+  stroke-width: 1.4;
+}
+
+.map-mark[data-kind='type'] {
+  fill: var(--bg-subtle);
+}
+
+.map-mark[data-reexport] {
+  fill: var(--bg-subtle);
+  stroke: var(--fg-4);
+  stroke-dasharray: 2 1.6;
+}
+
+.map-mark--group {
+  fill: var(--fg-3);
+  stroke: var(--fg-3);
+  stroke-width: 1.5;
+}
+
+.map-mark--group[data-open] {
+  fill: var(--bg-subtle);
+}
+
+/* New nodes fade in; nothing else moves on its own. */
+@media (prefers-reduced-motion: no-preference) {
+  .map-node-pos,
+  .map-link {
+    animation: map-enter var(--duration-2) var(--ease-out);
+  }
+}
+
+@keyframes map-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- Status, detail line, legend ---------- */
+
+.api-map__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.api-map__count {
+  margin: 0;
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.api-map__actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.api-map__text-button {
+  height: 26px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius);
+  color: var(--fg-3);
+  font-size: 12px;
+  transition:
+    background-color var(--duration-1) var(--ease-out),
+    color var(--duration-1) var(--ease-out);
+}
+
+.api-map__text-button:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+/* Fixed height so hovering never shifts the page below. */
+.map-inspector {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-height: 112px;
+  padding: var(--space-3) var(--space-4);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+}
+
+.map-inspector p {
+  margin: 0;
+}
+
+.map-inspector__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--space-3);
+}
+
+.map-inspector__name {
+  color: var(--fg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.map-inspector__name[data-mono] {
+  font-family: var(--font-mono);
+  font-size: var(--text-1);
+}
+
+.map-inspector__meta {
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.map-inspector__summary,
+.map-inspector__lede {
+  max-width: 72ch;
+  color: var(--fg-3);
+  font-size: var(--text-1);
+  line-height: 1.5;
+}
+
+.map-inspector__import {
+  overflow: hidden;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-inspector__open {
+  justify-self: start;
+  margin-top: var(--space-1);
+  color: var(--fg);
+  font-size: var(--text-1);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.map-inspector__open::after {
+  content: ' →';
+}
+
+.map-inspector__open:hover {
+  text-decoration-color: currentColor;
+}
+
+.api-map__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  color: var(--fg-4);
+  font-size: 12px;
+  list-style: none;
+}
+
+.api-map__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-legend-mark {
+  display: inline-block;
+  flex: none;
+  overflow: visible;
+}
+
+.map-legend-mark .map-mark[data-kind='type'],
+.map-legend-mark .map-mark[data-reexport],
+.map-legend-mark .map-mark--group[data-open] {
+  fill: var(--bg);
+}
+
+/* ---------- Ledger ---------- */
+
+.map-ledger {
+  margin-top: var(--space-10);
+}
+
+.map-ledger__title {
+  margin: 0;
+  color: var(--fg);
+  font-size: var(--text-4);
+  font-weight: 600;
+  letter-spacing: var(--tracking-heading);
+  line-height: var(--leading-tight);
+}
+
+.map-ledger__lede {
+  max-width: var(--prose-w);
+  margin: var(--space-3) 0 var(--space-5);
+  color: var(--fg-3);
+}
+
+.map-ledger__scroll {
+  /* Contain the cells' visually hidden labels, or their static position
+     past the scroll edge widens the page on phones. */
+  position: relative;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+}
+
+.map-ledger__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-ledger__table th,
+.map-ledger__table td {
+  padding: 7px var(--space-3);
+  border-bottom: var(--hairline) solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.map-ledger__table th:first-child {
+  text-align: left;
+}
+
+.map-ledger__table thead th {
+  color: var(--fg-4);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.map-ledger__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.map-ledger__table tbody th {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.map-ledger__table tbody th a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.map-ledger__table tbody th a:hover {
+  text-decoration-color: currentColor;
+}
+
+.map-ledger__table td {
+  color: var(--fg-3);
+}
+
+.map-ledger__table td[data-zero] {
+  color: var(--fg-4);
+}
+
+.map-ledger__strong {
+  color: var(--fg) !important;
+  font-weight: 600;
+}
+
+.map-ledger__table tfoot th,
+.map-ledger__table tfoot td {
+  border-bottom: 0;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.map-ledger__table tfoot th {
+  font-family: var(--font-sans);
+}
+
+.map-ledger__meter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.map-ledger__track {
+  display: inline-block;
+  width: 40px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--bg-active);
+}
+
+.map-ledger__bar {
+  display: block;
+  height: 100%;
+  background: var(--fg-3);
+  transform-origin: left;
+}
+
+.map-ledger__show {
+  height: 24px;
+  padding: 0 var(--space-2);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  color: var(--fg-3);
+  font-size: 12px;
+}
+
+.map-ledger__show:hover {
+  border-color: var(--line-strong);
+  color: var(--fg);
+}
