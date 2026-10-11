@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.2.0
+## 0.1.0-next.0
+
+Initial npm prerelease, published under the `next` dist-tag. Includes the
+unpublished 0.2.0 development changes listed below.
 
 ### Minor Changes
 
