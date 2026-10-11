@@ -15,7 +15,7 @@ import quickSource, {
 <InstallLine />
 
 color-kit is published under the `next` tag until 1.0. React is optional:
-only `color-kit/react` needs it.
+only `@pbroom/color-kit/react` needs it.
 
 ## Parse a color
 
@@ -24,7 +24,7 @@ Every value is an OKLCH [`Color`](/api/core/Color): lightness `l` from 0 to
 reads any CSS Color 4 string.
 
 ```ts title="parse.ts"
-import { parse } from 'color-kit';
+import { parse } from '@pbroom/color-kit';
 
 const coral = parse('oklch(0.7 0.25 30)');
 // → { l: 0.7, c: 0.25, h: 30, alpha: 1 }
@@ -37,7 +37,7 @@ asked for and maps a copy for the display, reducing chroma only, so lightness
 and hue hold still.
 
 ```ts title="gamut.ts"
-import { inSrgbGamut, toCss, toSrgbGamut } from 'color-kit';
+import { inSrgbGamut, toCss, toSrgbGamut } from '@pbroom/color-kit';
 
 inSrgbGamut(coral); // → false
 const shown = toSrgbGamut(coral);
@@ -49,7 +49,7 @@ toCss(shown, 'oklch'); // → 'oklch(0.7 0.1915 30)'
 Measure contrast on the color you paint.
 
 ```ts title="contrast.ts"
-import { contrastRatio, parse } from 'color-kit';
+import { contrastRatio, parse } from '@pbroom/color-kit';
 
 contrastRatio(shown, parse('#fff')).toFixed(2); // → '2.90'
 ```

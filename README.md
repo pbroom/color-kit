@@ -12,18 +12,18 @@ Most color libraries convert and manipulate colors. color-kit does that too — 
 
 ## Packages
 
-Everything ships in one npm package, [`color-kit`](./packages/color-kit), split into subpath entry points so you only load what you import:
+Everything ships in one npm package, [`@pbroom/color-kit`](./packages/color-kit), split into subpath entry points so you only load what you import:
 
-| Import path         | What it contains                                                                                                     |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `color-kit`         | The core engine: parsing, conversion, contrast (WCAG, APCA), harmony, manipulation, gamut mapping, and plane queries |
-| `color-kit/core`    | Alias of the root entry                                                                                              |
-| `color-kit/plane`   | Plane definitions and geometry queries only (`definePlane`, `sense`, `toSvgPath`)                                    |
-| `color-kit/compute` | Plane compute scheduling on the JS backend, with telemetry                                                           |
-| `color-kit/hct`     | HCT helpers, isolating the bundled Material color utilities solver                                                   |
-| `color-kit/interop` | Tuples and typed arrays for GPU pipelines, three.js, and WebGL/WebGPU                                                |
-| `color-kit/driver`  | Framework-agnostic interaction driver: color state, area/slider/input mapping, expression parsing                    |
-| `color-kit/react`   | React state hooks plus plane renderer and geometry hooks (optional peers: `react`, `react-dom` 19+)                  |
+| Import path                 | What it contains                                                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `@pbroom/color-kit`         | The core engine: parsing, conversion, contrast (WCAG, APCA), harmony, manipulation, gamut mapping, and plane queries |
+| `@pbroom/color-kit/core`    | Alias of the root entry                                                                                              |
+| `@pbroom/color-kit/plane`   | Plane definitions and geometry queries only (`definePlane`, `sense`, `toSvgPath`)                                    |
+| `@pbroom/color-kit/compute` | Plane compute scheduling on the JS backend, with telemetry                                                           |
+| `@pbroom/color-kit/hct`     | HCT helpers, isolating the bundled Material color utilities solver                                                   |
+| `@pbroom/color-kit/interop` | Tuples and typed arrays for GPU pipelines, three.js, and WebGL/WebGPU                                                |
+| `@pbroom/color-kit/driver`  | Framework-agnostic interaction driver: color state, area/slider/input mapping, expression parsing                    |
+| `@pbroom/color-kit/react`   | React state hooks plus plane renderer and geometry hooks (optional peers: `react`, `react-dom` 19+)                  |
 
 The full generated API reference for every entry point lives in the docs site under **API Reference → Full API (generated)** (build it locally with `pnpm docs:api`).
 
@@ -38,16 +38,16 @@ This project is intentionally in a pre-production phase:
 
 ## React Baseline
 
-- `color-kit/react` targets React `19+`.
+- `@pbroom/color-kit/react` targets React `19+`.
 - Workspace defaults pin React and React DOM to the latest `19.x`.
 - Docs builds run the React Compiler (`babel-plugin-react-compiler`) by default.
 - Repo lint enforces compiler-safe patterns (`react-hooks` recommended-latest + `react-compiler` rule).
-- Decision: `color-kit/react` stays lint-enforced (not compiler-precompiled) for now, since the current `tsup` library pipeline does not run Babel compiler transforms.
+- Decision: `@pbroom/color-kit/react` stays lint-enforced (not compiler-precompiled) for now, since the current `tsup` library pipeline does not run Babel compiler transforms.
 
 ## Install
 
 ```bash
-pnpm add color-kit@next
+pnpm add @pbroom/color-kit@next
 ```
 
 ## Quick Start
@@ -57,7 +57,7 @@ pnpm add color-kit@next
 Define a plane through a color space and query its geometry:
 
 ```ts
-import { definePlane, sense, toSvgPath } from 'color-kit';
+import { definePlane, sense, toSvgPath } from '@pbroom/color-kit';
 
 const plane = definePlane({
   model: 'oklch',
@@ -76,7 +76,13 @@ This is the layer that powers gamut visualizations, contrast-safe pickers, and o
 ### Everyday toolkit
 
 ```typescript
-import { parse, toHex, lighten, contrastRatio, complementary } from 'color-kit';
+import {
+  parse,
+  toHex,
+  lighten,
+  contrastRatio,
+  complementary,
+} from '@pbroom/color-kit';
 
 // Parse CSS Color 4 strings: hex, named colors, rgb(), hsl(), lab(), oklch(), color()
 const blue = parse('#3b82f6');
@@ -95,14 +101,14 @@ const comp = complementary(blue);
 
 ### Driver (framework-agnostic UI logic)
 
-`color-kit/driver` holds the interaction math that powers color UI without
+`@pbroom/color-kit/driver` holds the interaction math that powers color UI without
 depending on any framework: area/slider/input coordinate mapping, expression
 parsing, slider gradient sampling, and the dual requested/displayed color
 state model. Use it to drive React, Svelte, vanilla DOM, or canvas UIs alike.
 
 ```typescript
-import { parse } from 'color-kit';
-import * as ColorApi from 'color-kit/driver';
+import { parse } from '@pbroom/color-kit';
+import * as ColorApi from '@pbroom/color-kit/driver';
 
 const state = ColorApi.createColorState(parse('#3b82f6'));
 
@@ -134,7 +140,7 @@ import {
   useColor,
   useColorPlaneRenderer,
   useGamutBoundary,
-} from 'color-kit/react';
+} from '@pbroom/color-kit/react';
 
 function PlanePreview() {
   const { requested } = useColor({ defaultColor: '#3b82f6' });
@@ -238,7 +244,7 @@ For per-pixel and per-frame loops, the hot-path functions have `*Into` twins tha
 Low-level converters: `srgbToLinearInto()` `linearToSrgbInto()` `linearRgbToOklabInto()` `oklabToLinearRgbInto()` `oklabToOklchInto()` `oklchToOklabInto()` `linearSrgbToLinearP3Into()` `linearP3ToLinearSrgbInto()` `linearP3ToP3Into()` `p3ToLinearP3Into()`
 
 ```ts
-import { interpolateInto, parse, toRgbInto } from 'color-kit';
+import { interpolateInto, parse, toRgbInto } from '@pbroom/color-kit';
 
 const from = parse('#3b82f6');
 const to = parse('#ef4444');
@@ -253,14 +259,14 @@ for (let x = 0; x < width; x++) {
 
 ### Array Interop (GPU, three.js, WebGL/WebGPU)
 
-Also available as `color-kit/interop`.
+Also available as `@pbroom/color-kit/interop`.
 
 `to<Space>Array()` `to<Space>Array4()` `from<Space>Array()` `from<Space>Array4()` `packColors()` `unpackColors()`, where `<Space>` is `LinearSrgb`, `Srgb`, `LinearP3`, `P3`, `Oklab`, or `Oklch`.
 
 Writers take `(color, out?, offset = 0, { clamp? })`, write into any `number[]` or typed array without allocating, and emit unclamped floats by default. `*Array4` variants append alpha. To gamut-map instead of clip, compose: `toLinearSrgbArray(toSrgbGamut(color), out)` or `packColors(colors.map(toSrgbGamut), 'linearSrgb')`.
 
 ```ts
-import { toLinearSrgbArray, packColors } from 'color-kit/interop';
+import { toLinearSrgbArray, packColors } from '@pbroom/color-kit/interop';
 
 // three.js stores linear sRGB (its default working color space).
 mesh.material.color.fromArray(toLinearSrgbArray(color));
@@ -298,7 +304,7 @@ pnpm dev:full
 
 ## Publishing (Maintainers)
 
-Versions and the `color-kit` changelog come from [Changesets](https://github.com/changesets/changesets): add one with `pnpm changeset`, and merging the automated "Version Packages" PR bumps the version. Publishing stays manual. See [CONTRIBUTING.md](./CONTRIBUTING.md#releases) for the full flow.
+Versions and the `@pbroom/color-kit` changelog come from [Changesets](https://github.com/changesets/changesets): add one with `pnpm changeset`, and merging the automated "Version Packages" PR bumps the version. Publishing stays manual. See [CONTRIBUTING.md](./CONTRIBUTING.md#releases) for the full flow.
 
 ```bash
 # Validate pre-production policy, then publish color-kit to npm @next

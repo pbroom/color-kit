@@ -59,7 +59,7 @@ function pointInPolygon(point: PlanePoint, polygon: PlanePoint[]): boolean {
  * @see {@link nearestPointOnPath}
  * @example
  * ```ts
- * import { containsPoint } from 'color-kit/plane';
+ * import { containsPoint } from '@pbroom/color-kit/plane';
  *
  * const outer = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
  * const hole = [{ x: 0.25, y: 0.25 }, { x: 0.75, y: 0.25 }, { x: 0.75, y: 0.75 }, { x: 0.25, y: 0.75 }];
@@ -93,7 +93,7 @@ export function containsPoint(region: PlaneRegion, point: PlanePoint): boolean {
  * @returns `hypot(a.x - b.x, a.y - b.y)`.
  * @example
  * ```ts
- * import { pointDistance } from 'color-kit/plane';
+ * import { pointDistance } from '@pbroom/color-kit/plane';
  *
  * pointDistance({ x: 0, y: 0 }, { x: 0.3, y: 0.4 }); // → 0.5
  * ```
@@ -136,7 +136,7 @@ function projectToSegment(
  * @see {@link pointDistance}
  * @example
  * ```ts
- * import { nearestPointOnPath } from 'color-kit/plane';
+ * import { nearestPointOnPath } from '@pbroom/color-kit/plane';
  *
  * const path = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }];
  *
@@ -281,7 +281,7 @@ function booleanRegion(
  * @see {@link differenceRegions}
  * @example
  * ```ts
- * import { containsPoint, unionRegions } from 'color-kit/plane';
+ * import { containsPoint, unionRegions } from '@pbroom/color-kit/plane';
  *
  * const square = (x0: number, y0: number, x1: number, y1: number) => ({
  *   paths: [[{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]],
@@ -322,7 +322,7 @@ export function unionRegions(
  * @see {@link differenceRegions}
  * @example
  * ```ts
- * import { containsPoint, intersectRegions, sense } from 'color-kit/plane';
+ * import { containsPoint, intersectRegions, sense } from '@pbroom/color-kit/plane';
  *
  * // Default OKLCH plane: x = lightness, y = chroma (0.4 at the top, 0 at the bottom).
  * const srgb = sense({ model: 'oklch', fixed: { h: 250 } }).gamutRegion({ gamut: 'srgb' });
@@ -362,7 +362,7 @@ export function intersectRegions(
  * @see {@link intersectRegions}
  * @example
  * ```ts
- * import { containsPoint, differenceRegions, sense } from 'color-kit/plane';
+ * import { containsPoint, differenceRegions, sense } from '@pbroom/color-kit/plane';
  *
  * const view = sense({ model: 'oklch', fixed: { h: 250 } });
  * const p3 = view.gamutRegion({ gamut: 'display-p3' }).visibleRegion;

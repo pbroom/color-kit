@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { parse } from 'color-kit';
+import { parse } from '@pbroom/color-kit';
 import { DEMO_ROWS, midpointStats, mixStrip } from './linear-mix.js';
 import { DemoFrame } from './demo-frame.js';
 

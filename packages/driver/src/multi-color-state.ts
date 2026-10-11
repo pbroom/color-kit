@@ -167,7 +167,7 @@ function normalizeInputColors(
  *
  * @example
  * ```ts
- * import { createMultiColorModel } from 'color-kit/driver';
+ * import { createMultiColorModel } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * model.order; // → ['bg', 'fg']
@@ -218,11 +218,11 @@ export function createMultiColorModel(
  *
  * @example
  * ```ts
- * import { toHex } from 'color-kit';
+ * import { toHex } from '@pbroom/color-kit';
  * import {
  *   createMultiColorModel,
  *   materializeMultiColorState,
- * } from 'color-kit/driver';
+ * } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * const state = materializeMultiColorState(model);
@@ -264,12 +264,12 @@ export function materializeMultiColorState(
  *
  * @example
  * ```ts
- * import { toHex } from 'color-kit';
+ * import { toHex } from '@pbroom/color-kit';
  * import {
  *   createMultiColorModel,
  *   materializeMultiColorState,
  *   multiColorModelFromState,
- * } from 'color-kit/driver';
+ * } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * const roundTrip = multiColorModelFromState(materializeMultiColorState(model));
@@ -355,11 +355,11 @@ export interface SetMultiColorRequestedOptions {
  *
  * @example
  * ```ts
- * import { parse, toHex } from 'color-kit';
+ * import { parse, toHex } from '@pbroom/color-kit';
  * import {
  *   createMultiColorModel,
  *   setMultiColorRequested,
- * } from 'color-kit/driver';
+ * } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * const next = setMultiColorRequested(model, 'fg', parse('#808080'), 'user', {
@@ -402,8 +402,8 @@ export function setMultiColorRequested(
  *
  * @example
  * ```ts
- * import { toHex } from 'color-kit';
- * import { createMultiColorModel, setMultiColorChannel } from 'color-kit/driver';
+ * import { toHex } from '@pbroom/color-kit';
+ * import { createMultiColorModel, setMultiColorChannel } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * const next = setMultiColorChannel(model, 'fg', 'l', 0.4, 'user');
@@ -449,7 +449,7 @@ export function setMultiColorChannel(
  * import {
  *   createMultiColorModel,
  *   setMultiColorActiveGamut,
- * } from 'color-kit/driver';
+ * } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * const next = setMultiColorActiveGamut(model, 'srgb', 'user');
@@ -481,7 +481,7 @@ export function setMultiColorActiveGamut(
  * import {
  *   createMultiColorModel,
  *   setMultiColorActiveView,
- * } from 'color-kit/driver';
+ * } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * const next = setMultiColorActiveView(model, 'hsl', 'user');
@@ -508,7 +508,7 @@ export function setMultiColorActiveView(
  *
  * @example
  * ```ts
- * import { createMultiColorModel, selectMultiColorEntry } from 'color-kit/driver';
+ * import { createMultiColorModel, selectMultiColorEntry } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * selectMultiColorEntry(model, 'fg').selectedId; // → 'fg'
@@ -538,7 +538,7 @@ export function selectMultiColorEntry(
  *
  * @example
  * ```ts
- * import { addMultiColorEntry, createMultiColorModel } from 'color-kit/driver';
+ * import { addMultiColorEntry, createMultiColorModel } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * const next = addMultiColorEntry(model, 'accent', '#f97316');
@@ -572,7 +572,7 @@ export function addMultiColorEntry(
  *
  * @example
  * ```ts
- * import { createMultiColorModel, removeMultiColorEntry } from 'color-kit/driver';
+ * import { createMultiColorModel, removeMultiColorEntry } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * const next = removeMultiColorEntry(model, 'bg');
@@ -614,7 +614,7 @@ export function removeMultiColorEntry(
  *
  * @example
  * ```ts
- * import { createMultiColorModel, renameMultiColorEntry } from 'color-kit/driver';
+ * import { createMultiColorModel, renameMultiColorEntry } from '@pbroom/color-kit/driver';
  *
  * const model = createMultiColorModel({ colors: { bg: '#ffffff', fg: '#3b82f6' } });
  * renameMultiColorEntry(model, 'fg', 'text').order; // → ['bg', 'text']

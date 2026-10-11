@@ -7,7 +7,7 @@ import {
   parse,
   toCss,
   type Color,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 import { Range, Readout, Toggle } from './controls';
 
 const REFERENCES = { white: parse('#ffffff'), black: parse('#000000') };

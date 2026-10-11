@@ -150,7 +150,7 @@ function sortBucketsByRecentUse(
  * @see {@link runScheduledPlaneCompute}
  * @example
  * ```ts
- * import { createPlaneComputeScheduler } from 'color-kit/compute';
+ * import { createPlaneComputeScheduler } from '@pbroom/color-kit/compute';
  *
  * const scheduler = createPlaneComputeScheduler({ options: { maxTelemetryBuckets: 16 } });
  * const response = scheduler.run({

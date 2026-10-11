@@ -7,7 +7,7 @@ import {
   toOklab,
   type Color,
   type InterpolationOptions,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 
 export interface DemoRow {
   id: string;

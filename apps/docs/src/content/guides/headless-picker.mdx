@@ -1,7 +1,7 @@
 ---
 title: A headless color picker
 navTitle: Headless picker
-description: Build a picker in any framework, or none, from color-kit/driver's state reducers, geometry, keyboard model and drag controller.
+description: Build a picker in any framework, or none, from @pbroom/color-kit/driver's state reducers, geometry, keyboard model and drag controller.
 order: 10
 ---
 
@@ -12,9 +12,9 @@ import pickerSource, {
 
 ## What the driver owns
 
-`color-kit/driver` is a picker without a view: pure functions over a
+`@pbroom/color-kit/driver` is a picker without a view: pure functions over a
 [`ColorState`](/api/driver/ColorState), plus the geometry, keyboard and
-pointer models a picker needs. `color-kit/react` is one binding built on it.
+pointer models a picker needs. `@pbroom/color-kit/react` is one binding built on it.
 The example on this page is another, in plain DOM code, so it works under any
 framework.
 
@@ -33,8 +33,8 @@ object for a no-op, so `next === state` is enough to skip a render.
 `TypeError` as the plane queries.
 
 ```ts title="state.ts"
-import { parse, toHex } from 'color-kit';
-import { createColorState, setColorChannel } from 'color-kit/driver';
+import { parse, toHex } from '@pbroom/color-kit';
+import { createColorState, setColorChannel } from '@pbroom/color-kit/driver';
 
 const state = createColorState(parse('#3b82f6'));
 const next = setColorChannel(state, 'l', 0.4, 'user');
@@ -93,7 +93,7 @@ an expression, while input that starts with an operator is relative to the
 current value and its `%` is a share of the span.
 
 ```ts title="input.ts"
-import { parseColorInputExpression } from 'color-kit/driver';
+import { parseColorInputExpression } from '@pbroom/color-kit/driver';
 
 const options = {
   currentValue: 120,

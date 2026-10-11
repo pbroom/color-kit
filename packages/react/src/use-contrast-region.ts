@@ -226,8 +226,8 @@ function useMappedReference(reference: Color, gamut: GamutTarget): Color {
  *
  * @example
  * ```tsx
- * import { parse, type Color } from 'color-kit';
- * import { useContrastRegion } from 'color-kit/react';
+ * import { parse, type Color } from '@pbroom/color-kit';
+ * import { useContrastRegion } from '@pbroom/color-kit/react';
  *
  * const white = parse('#ffffff');
  *

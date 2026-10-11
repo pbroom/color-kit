@@ -79,7 +79,7 @@ function resolveHctMaxChromaAtTone(hue: number, tone: number): number {
  *
  * @example
  * ```ts
- * import { maxHctChromaAtTone } from 'color-kit/hct';
+ * import { maxHctChromaAtTone } from '@pbroom/color-kit/hct';
  *
  * maxHctChromaAtTone(250, 50); // → ≈ 52.34
  * ```
@@ -235,7 +235,7 @@ function resolveHctHuePeak(
  *
  * @example
  * ```ts
- * import { maxHctChromaForHue } from 'color-kit/hct';
+ * import { maxHctChromaForHue } from '@pbroom/color-kit/hct';
  *
  * maxHctChromaForHue(250); // → { c: ≈ 61.71, t: ≈ 64.22 }
  * ```
@@ -260,7 +260,7 @@ export function maxHctChromaForHue(
  *
  * @example
  * ```ts
- * import { maxHctPeakToneForHue } from 'color-kit/hct';
+ * import { maxHctPeakToneForHue } from '@pbroom/color-kit/hct';
  *
  * maxHctPeakToneForHue(250); // → ≈ 64.22
  * ```

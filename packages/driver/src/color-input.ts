@@ -289,7 +289,7 @@ function resolveStepValue(value: number | undefined, fallback: number): number {
  *
  * @example
  * ```ts
- * import { resolveColorInputRange } from 'color-kit/driver';
+ * import { resolveColorInputRange } from '@pbroom/color-kit/driver';
  *
  * resolveColorInputRange('rgb', 'r'); // → [0, 255]
  * resolveColorInputRange('oklch', 'c', [0, 0.5]); // → [0, 0.5]
@@ -312,7 +312,7 @@ export function resolveColorInputRange<Model extends ColorInputModel>(
  *
  * @example
  * ```ts
- * import { resolveColorInputWrap } from 'color-kit/driver';
+ * import { resolveColorInputWrap } from '@pbroom/color-kit/driver';
  *
  * resolveColorInputWrap('hsl', 'h'); // → true
  * resolveColorInputWrap('oklch', 'l'); // → false
@@ -336,7 +336,7 @@ export function resolveColorInputWrap<Model extends ColorInputModel>(
  *
  * @example
  * ```ts
- * import { resolveColorInputSteps } from 'color-kit/driver';
+ * import { resolveColorInputSteps } from '@pbroom/color-kit/driver';
  *
  * resolveColorInputSteps('oklch', 'h');
  * // → { step: 1, fineStep: 0.1, coarseStep: 10, pageStep: 45 }
@@ -371,7 +371,7 @@ export function resolveColorInputSteps<Model extends ColorInputModel>(
  *
  * @example
  * ```ts
- * import { getColorInputLabel } from 'color-kit/driver';
+ * import { getColorInputLabel } from '@pbroom/color-kit/driver';
  *
  * getColorInputLabel('oklch', 'c'); // → 'OKLCH chroma'
  * getColorInputLabel('hsl', 's'); // → 'Saturation'
@@ -414,7 +414,7 @@ const COLOR_INPUT_GLYPHS: ColorInputChannelTable<string> = {
  *
  * @example
  * ```ts
- * import { getColorInputChannelGlyph } from 'color-kit/driver';
+ * import { getColorInputChannelGlyph } from '@pbroom/color-kit/driver';
  *
  * getColorInputChannelGlyph('oklch', 'c'); // → 'C'
  * getColorInputChannelGlyph('rgb', 'alpha'); // → 'α'
@@ -435,7 +435,7 @@ export function getColorInputChannelGlyph<Model extends ColorInputModel>(
  *
  * @example
  * ```ts
- * import { getColorInputChangedChannel } from 'color-kit/driver';
+ * import { getColorInputChangedChannel } from '@pbroom/color-kit/driver';
  *
  * getColorInputChangedChannel('oklch', 'h'); // → 'h'
  * getColorInputChangedChannel('rgb', 'r'); // → undefined
@@ -458,7 +458,7 @@ export function getColorInputChangedChannel<Model extends ColorInputModel>(
  *
  * @example
  * ```ts
- * import { normalizeColorInputValue } from 'color-kit/driver';
+ * import { normalizeColorInputValue } from '@pbroom/color-kit/driver';
  *
  * normalizeColorInputValue(400, [0, 360], true); // → 40
  * normalizeColorInputValue(-20, [0, 360], true); // → 340
@@ -491,8 +491,8 @@ export function normalizeColorInputValue(
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { getColorInputChannelValue } from 'color-kit/driver';
+ * import { parse } from '@pbroom/color-kit';
+ * import { getColorInputChannelValue } from '@pbroom/color-kit/driver';
  *
  * const blue = parse('#3b82f6');
  * getColorInputChannelValue(blue, 'rgb', 'r'); // → 59
@@ -697,8 +697,8 @@ function colorFromAchromaticHslEdit(
  *
  * @example
  * ```ts
- * import { parse, toHex } from 'color-kit';
- * import { colorFromColorInputChannelValue } from 'color-kit/driver';
+ * import { parse, toHex } from '@pbroom/color-kit';
+ * import { colorFromColorInputChannelValue } from '@pbroom/color-kit/driver';
  *
  * const blue = parse('#3b82f6');
  * toHex(colorFromColorInputChannelValue(blue, 'rgb', 'r', 255)); // → '#ff82f6'
@@ -758,7 +758,7 @@ export function colorFromColorInputChannelValue<Model extends ColorInputModel>(
  *
  * @example
  * ```ts
- * import { getColorInputPrecisionFromStep } from 'color-kit/driver';
+ * import { getColorInputPrecisionFromStep } from '@pbroom/color-kit/driver';
  *
  * getColorInputPrecisionFromStep(1); // → 0
  * getColorInputPrecisionFromStep(0.01); // → 2
@@ -795,7 +795,7 @@ export function getColorInputPrecisionFromStep(step: number): number {
  *
  * @example
  * ```ts
- * import { formatColorInputChannelValue } from 'color-kit/driver';
+ * import { formatColorInputChannelValue } from '@pbroom/color-kit/driver';
  *
  * formatColorInputChannelValue(0.62795, 3); // → '0.628'
  * formatColorInputChannelValue(120, 2); // → '120'
@@ -821,7 +821,7 @@ export function formatColorInputChannelValue(
  *
  * @example
  * ```ts
- * import { resolveColorInputDraftValue } from 'color-kit/driver';
+ * import { resolveColorInputDraftValue } from '@pbroom/color-kit/driver';
  *
  * const alpha = { currentValue: 0.3, range: [0, 1] as [number, number] };
  * resolveColorInputDraftValue('50%', alpha); // → 0.5
@@ -863,8 +863,8 @@ export function resolveColorInputDraftValue(
  *
  * @example
  * ```ts
- * import { parse, toHex } from 'color-kit';
- * import { colorFromColorInputKey } from 'color-kit/driver';
+ * import { parse, toHex } from '@pbroom/color-kit';
+ * import { colorFromColorInputKey } from '@pbroom/color-kit/driver';
  *
  * const blue = parse('#3b82f6');
  * const options = { step: 10, range: [0, 255] as [number, number] };

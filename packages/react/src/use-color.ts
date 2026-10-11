@@ -245,7 +245,7 @@ function resolveInitialColor(defaultColor?: string | Color): Color {
  *
  * @example
  * ```tsx
- * import { useColor } from 'color-kit/react';
+ * import { useColor } from '@pbroom/color-kit/react';
  *
  * function Swatch() {
  *   const color = useColor({ defaultColor: '#3b82f6' });

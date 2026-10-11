@@ -61,7 +61,7 @@ Display P3 is the **primary** output target; sRGB is the fallback when P3 is not
 
 ### No runtime dependencies
 
-`color-kit` has **no runtime dependencies** and no external color library for conversion or gamut math, which is implemented in-house. The one exception is HCT: core bundles the HCT solver from [Material color utilities](https://github.com/material-foundation/material-color-utilities) (Apache-2.0) at build time, so it ships inside the package rather than as a dependency. Its notice ships in `THIRD_PARTY_NOTICES.md`.
+`@pbroom/color-kit` has **no runtime dependencies** and no external color library for conversion or gamut math, which is implemented in-house. The one exception is HCT: core bundles the HCT solver from [Material color utilities](https://github.com/material-foundation/material-color-utilities) (Apache-2.0) at build time, so it ships inside the package rather than as a dependency. Its notice ships in `THIRD_PARTY_NOTICES.md`.
 
 > **Why:** Keeps bundle size minimal and allows full control over precision, gamut mapping behavior, and edge cases (e.g. degenerate L/C/H). Tree-shaking stays effective because consumers only pay for what they import. The main alternative, [culori](https://github.com/nicksrandall/culori), is excellent but would delegate gamut mapping and conversion details; color-kit needs those to stay fixed for the requested/displayed contract and for consistent overlay geometry.
 
@@ -151,9 +151,9 @@ During pointer drag, **pointer move** updates a high-frequency preview (requeste
 
 ### Hooks, not components
 
-`color-kit/react` ships **hooks only**: state hooks that hold and share a color, and plane hooks that render a color plane into a caller's canvas and compute overlay geometry. It renders no elements and imposes no markup, styles or input handling.
+`@pbroom/color-kit/react` ships **hooks only**: state hooks that hold and share a color, and plane hooks that render a color plane into a caller's canvas and compute overlay geometry. It renders no elements and imposes no markup, styles or input handling.
 
-> **Why:** Consumers bring their own design system and component library. Generic UI controls (planes, sliders, inputs) are not color-specific and belong in a UI kit such as [control-kit](https://github.com/pbroom/control-kit); what is color-specific is the state model, the plane raster and the plane geometry. The former `ColorArea`, `ColorSlider`, `ColorInput`, `ColorStringInput` and layer components were removed rather than moved: apps compose the hooks with their own (or control-kit's) elements, and `color-kit/driver` supplies the framework-agnostic picker math (pointer normalization, drag coalescing, keyboard steps, value text).
+> **Why:** Consumers bring their own design system and component library. Generic UI controls (planes, sliders, inputs) are not color-specific and belong in a UI kit such as [control-kit](https://github.com/pbroom/control-kit); what is color-specific is the state model, the plane raster and the plane geometry. The former `ColorArea`, `ColorSlider`, `ColorInput`, `ColorStringInput` and layer components were removed rather than moved: apps compose the hooks with their own (or control-kit's) elements, and `@pbroom/color-kit/driver` supplies the framework-agnostic picker math (pointer normalization, drag coalescing, keyboard steps, value text).
 
 ### Color context provider model
 
@@ -222,7 +222,7 @@ The public API favors **fewer, stable entry points** and **composition** over la
 
 ### Distribution: npm
 
-The public package is published to **npm** as `color-kit`, with `color-kit/react` as the React subpath and `color-kit/driver` for framework-agnostic interaction state.
+The public package is published to **npm** as `@pbroom/color-kit`, with `@pbroom/color-kit/react` as the React subpath and `@pbroom/color-kit/driver` for framework-agnostic interaction state.
 
 > **Why:** Consumers get versioned dependencies and tree-shaking from a single package. (An earlier shadcn-style copy-source registry was removed to keep the surface focused on the engine.)
 

@@ -102,7 +102,7 @@ export interface ContrastRegionSampling {
  *
  * @example
  * ```ts
- * import { clampContrastRegionSampling } from 'color-kit';
+ * import { clampContrastRegionSampling } from '@pbroom/color-kit';
  *
  * clampContrastRegionSampling({ initialSamples: 1000, errorTolerance: 0 });
  * // → { initialSamples: 512, errorTolerance: 0.000001, maxDepth: 6 }

@@ -98,8 +98,8 @@ export function modelColorToPlane(
  *
  * @example
  * ```ts
- * import { toHex } from 'color-kit';
- * import { definePlane, planeToColor } from 'color-kit/plane';
+ * import { toHex } from '@pbroom/color-kit';
+ * import { definePlane, planeToColor } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } }); // x: l, y: c in [0.4, 0]
  * const color = planeToColor(plane, { x: 0.6, y: 0.75 });
@@ -136,7 +136,7 @@ export function planeToColorUnclamped(
  *
  * @example
  * ```ts
- * import { colorToPlane, definePlane } from 'color-kit/plane';
+ * import { colorToPlane, definePlane } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } }); // x: l, y: c in [0.4, 0]
  * colorToPlane(plane, { l: 0.6, c: 0.1, h: 264, alpha: 1 });
@@ -174,7 +174,7 @@ export function colorToPlaneUnclamped(
  *
  * @example
  * ```ts
- * import { definePlane, usesLightnessAndChroma } from 'color-kit/plane';
+ * import { definePlane, usesLightnessAndChroma } from '@pbroom/color-kit/plane';
  *
  * usesLightnessAndChroma(definePlane({ fixed: { h: 264 } })); // → true
  * usesLightnessAndChroma(
@@ -227,8 +227,8 @@ const SATURATED_HUE_SAMPLES: Partial<
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { definePlane, definePlaneFromColor, planeHue } from 'color-kit/plane';
+ * import { parse } from '@pbroom/color-kit';
+ * import { definePlane, definePlaneFromColor, planeHue } from '@pbroom/color-kit/plane';
  *
  * planeHue(definePlane({ fixed: { h: 264 } })); // → 264
  * planeHue(definePlane({ fixed: { h: 264 } }), -30); // → 330

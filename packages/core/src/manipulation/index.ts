@@ -19,7 +19,7 @@ import { interpolateOklchDefaultInto } from '../scale/legacy.js';
  *
  * @example
  * ```ts
- * import { lighten, parse } from 'color-kit';
+ * import { lighten, parse } from '@pbroom/color-kit';
  *
  * lighten(parse('oklch(0.6 0.1 250)'), 0.5); // → { l: 0.8, c: 0.1, h: 250, alpha: 1 }
  * ```
@@ -43,7 +43,7 @@ export function lighten(color: Color, amount: number): Color {
  *
  * @example
  * ```ts
- * import { darken, parse } from 'color-kit';
+ * import { darken, parse } from '@pbroom/color-kit';
  *
  * darken(parse('oklch(0.6 0.1 250)'), 0.5); // → { l: 0.3, c: 0.1, h: 250, alpha: 1 }
  * ```
@@ -79,7 +79,7 @@ const SATURATE_CHROMA_SPAN = 0.4;
  *
  * @example
  * ```ts
- * import { parse, saturate } from 'color-kit';
+ * import { parse, saturate } from '@pbroom/color-kit';
  *
  * saturate(parse('oklch(0.7 0.1 250)'), 0.25); // → { l: 0.7, c: 0.2, h: 250, alpha: 1 }
  * saturate(parse('oklch(0.85 0.36 145)'), 0.25).c; // → ≈ 0.46 (not capped at 0.4)
@@ -106,7 +106,7 @@ export function saturate(color: Color, amount: number): Color {
  *
  * @example
  * ```ts
- * import { desaturate, parse } from 'color-kit';
+ * import { desaturate, parse } from '@pbroom/color-kit';
  *
  * desaturate(parse('oklch(0.7 0.2 250)'), 0.5); // → { l: 0.7, c: 0.1, h: 250, alpha: 1 }
  * ```
@@ -129,7 +129,7 @@ export function desaturate(color: Color, amount: number): Color {
  *
  * @example
  * ```ts
- * import { adjustHue, parse } from 'color-kit';
+ * import { adjustHue, parse } from '@pbroom/color-kit';
  *
  * adjustHue(parse('oklch(0.7 0.1 300)'), 90); // → { l: 0.7, c: 0.1, h: 30, alpha: 1 }
  * ```
@@ -151,7 +151,7 @@ export function adjustHue(color: Color, degrees: number): Color {
  *
  * @example
  * ```ts
- * import { parse, setAlpha, toCss } from 'color-kit';
+ * import { parse, setAlpha, toCss } from '@pbroom/color-kit';
  *
  * toCss(setAlpha(parse('#3b82f6'), 0.5), 'rgb'); // → 'rgb(59 130 246 / 0.5)'
  * ```
@@ -194,7 +194,7 @@ export function setAlpha(color: Color, alpha: number): Color {
  *
  * @example
  * ```ts
- * import { mix, parse, toHex } from 'color-kit';
+ * import { mix, parse, toHex } from '@pbroom/color-kit';
  *
  * const red = parse('#ff0000');
  * const lime = parse('#00ff00');
@@ -229,7 +229,7 @@ export function mix(
  *
  * @example
  * ```ts
- * import { mixInto, parse } from 'color-kit';
+ * import { mixInto, parse } from '@pbroom/color-kit';
  *
  * const red = parse('#ff0000');
  * const lime = parse('#00ff00');
@@ -265,7 +265,7 @@ export function mixInto(
  *
  * @example
  * ```ts
- * import { invert, parse } from 'color-kit';
+ * import { invert, parse } from '@pbroom/color-kit';
  *
  * invert(parse('oklch(0.3 0.1 30)')); // → { l: 0.7, c: 0.1, h: 210, alpha: 1 }
  * ```
@@ -289,7 +289,7 @@ export function invert(color: Color): Color {
  *
  * @example
  * ```ts
- * import { grayscale, parse, toHex } from 'color-kit';
+ * import { grayscale, parse, toHex } from '@pbroom/color-kit';
  *
  * toHex(grayscale(parse('oklch(0.7 0.15 30)'))); // → '#9e9e9e'
  * ```

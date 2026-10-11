@@ -37,7 +37,7 @@ import {
  *
  * @example
  * ```ts
- * import { interpolate, parse, toHex } from 'color-kit';
+ * import { interpolate, parse, toHex } from '@pbroom/color-kit';
  *
  * const a = parse('#3b82f6');
  * const b = parse('#ef4444');
@@ -74,7 +74,7 @@ export function interpolate(
  *
  * @example
  * ```ts
- * import { interpolateInto, parse, toRgbInto } from 'color-kit';
+ * import { interpolateInto, parse, toRgbInto } from '@pbroom/color-kit';
  *
  * const a = parse('#3b82f6');
  * const b = parse('#ef4444');
@@ -111,7 +111,7 @@ export function interpolateInto(
  *
  * @example
  * ```ts
- * import { generateScale, parse, toHex } from 'color-kit';
+ * import { generateScale, parse, toHex } from '@pbroom/color-kit';
  *
  * generateScale(parse('#f00'), parse('#00f'), 5).map(toHex);
  * // → ['#ff0000', '#e8007b', '#ba00c2', '#7a00f4', '#0000ff']
@@ -146,7 +146,7 @@ export function generateScale(
  *
  * @example
  * ```ts
- * import { lightnessScale, parse } from 'color-kit';
+ * import { lightnessScale, parse } from '@pbroom/color-kit';
  *
  * lightnessScale(parse('oklch(0.6 0.1 250)'), 3, [0.2, 0.8]).map((c) => c.l);
  * // → [0.2, 0.5, 0.8]

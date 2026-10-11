@@ -74,7 +74,7 @@ function runPlaneQueryInternal(
  *
  * @example
  * ```ts
- * import { definePlane, runPlaneQuery } from 'color-kit/plane';
+ * import { definePlane, runPlaneQuery } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } }); // OKLCH, x: l, y: c
  * const result = runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
@@ -107,7 +107,7 @@ export function runPlaneQuery(
  *
  * @example
  * ```ts
- * import { definePlane, runPlaneQueries } from 'color-kit/plane';
+ * import { definePlane, runPlaneQueries } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } });
  * const results = runPlaneQueries(plane, [
@@ -165,7 +165,7 @@ export function runPlaneQueries(
  *
  * @example
  * ```ts
- * import { definePlane, inspectPlaneQuery } from 'color-kit/plane';
+ * import { definePlane, inspectPlaneQuery } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } }); // OKLCH, x: l, y: c
  * const { result, trace } = inspectPlaneQuery(plane, { kind: 'gamutRegion' });
@@ -209,8 +209,8 @@ export function inspectPlaneQuery<Result extends PlaneQuery = PlaneQuery>(
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { definePlane, inspectPlaneQueries } from 'color-kit/plane';
+ * import { parse } from '@pbroom/color-kit';
+ * import { definePlane, inspectPlaneQueries } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } });
  * const inspections = inspectPlaneQueries(
@@ -286,8 +286,8 @@ export interface PlaneSense {
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { definePlane, sense } from 'color-kit/plane';
+ * import { parse } from '@pbroom/color-kit';
+ * import { definePlane, sense } from '@pbroom/color-kit/plane';
  *
  * const plane = sense(definePlane({ fixed: { h: 264 } }));
  * const white = parse('#ffffff');
@@ -325,8 +325,8 @@ export function sense(planeDefinition: PlaneDefinition): PlaneSense {
  *
  * @example
  * ```ts
- * import { toHex } from 'color-kit';
- * import { colorAtPlanePoint } from 'color-kit/plane';
+ * import { toHex } from '@pbroom/color-kit';
+ * import { colorAtPlanePoint } from '@pbroom/color-kit/plane';
  *
  * toHex(colorAtPlanePoint({ fixed: { h: 264 } }, { x: 0.6, y: 0.75 }));
  * // → '#617fbc'

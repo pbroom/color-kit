@@ -19,11 +19,11 @@ color-kit keeps two values instead:
 - **displayed**: the requested color mapped into an output gamut, used only
   to paint.
 
-[`createColorState`](/api/driver/createColorState) in `color-kit/driver`
+[`createColorState`](/api/driver/createColorState) in `@pbroom/color-kit/driver`
 holds both, mapped into sRGB and Display P3 at once:
 
 ```ts title="state.ts"
-import { createColorState } from 'color-kit/driver';
+import { createColorState } from '@pbroom/color-kit/driver';
 
 const state = createColorState({ l: 0.75, c: 0.22, h: 150, alpha: 1 });
 state.displayed.srgb.c; // → ≈ 0.2065 (reduced to fit sRGB)
@@ -51,7 +51,7 @@ Otherwise `method` picks the algorithm:
   small shifts in lightness and hue.
 
 ```ts title="methods.ts"
-import { parse, toCss, toSrgbGamut } from 'color-kit';
+import { parse, toCss, toSrgbGamut } from '@pbroom/color-kit';
 
 const coral = parse('oklch(0.7 0.25 30)');
 toCss(toSrgbGamut(coral), 'oklch'); // → 'oklch(0.7 0.1915 30)'
@@ -79,8 +79,8 @@ to the gray axis.
   `setFromHsl` and `setFromHsv` apply it for you.
 
 ```ts title="gray.ts"
-import { parse } from 'color-kit';
-import { createColorState, setColorRequested } from 'color-kit/driver';
+import { parse } from '@pbroom/color-kit';
+import { createColorState, setColorRequested } from '@pbroom/color-kit/driver';
 
 const blue = createColorState(parse('#3b82f6'));
 const gray = setColorRequested(blue, parse('#808080'), 'user', {

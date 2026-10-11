@@ -138,7 +138,7 @@ let warnedMissingCanvasKey = false;
  *
  * @example
  * ```tsx
- * import { useColor, useColorPlaneRenderer } from 'color-kit/react';
+ * import { useColor, useColorPlaneRenderer } from '@pbroom/color-kit/react';
  *
  * export function Plane() {
  *   const { requested } = useColor({ defaultColor: '#3b82f6' });

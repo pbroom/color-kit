@@ -41,7 +41,7 @@ import type {
  *
  * @example
  * ```ts
- * import { contrastRegionPaths, parse } from 'color-kit';
+ * import { contrastRegionPaths, parse } from '@pbroom/color-kit';
  *
  * const paths = contrastRegionPaths(parse('#808080'), 250, {
  *   level: 'AA-large',
@@ -76,7 +76,7 @@ export function contrastRegionPaths(
  *
  * @example
  * ```ts
- * import { contrastRegionPath, parse } from 'color-kit';
+ * import { contrastRegionPath, parse } from '@pbroom/color-kit';
  *
  * const path = contrastRegionPath(parse('#fff'), 250); // AA (4.5:1) vs white
  * path.length; // → 57

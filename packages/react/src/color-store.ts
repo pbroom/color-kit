@@ -36,9 +36,9 @@ export interface ColorStore {
  *
  * @example
  * ```ts
- * import { createColorStore } from 'color-kit/react';
- * import { createColorState } from 'color-kit/driver';
- * import { parse, toHex } from 'color-kit';
+ * import { createColorStore } from '@pbroom/color-kit/react';
+ * import { createColorState } from '@pbroom/color-kit/driver';
+ * import { parse, toHex } from '@pbroom/color-kit';
  *
  * const store = createColorStore(createColorState(parse('#3b82f6')));
  * const unsubscribe = store.subscribe(() => console.log('changed'));
@@ -91,7 +91,7 @@ const noopSubscribe = () => () => {};
  * @example
  * ```tsx
  * import { useContext } from 'react';
- * import { ColorContext, useColorStoreSelector } from 'color-kit/react';
+ * import { ColorContext, useColorStoreSelector } from '@pbroom/color-kit/react';
  *
  * function HueLabel() {
  *   const context = useContext(ColorContext);

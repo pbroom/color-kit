@@ -24,7 +24,7 @@ import {
  *   JSON (the hero's prerendered frame).
  *
  * A dedicated, watch-free Vite server runs the modules (`ssrLoadModule`), so
- * TypeScript, `@/` and `color-kit/*` resolve exactly as in the site.
+ * TypeScript, `@/` and `@pbroom/color-kit/*` resolve exactly as in the site.
  */
 
 const ARROW = '→';

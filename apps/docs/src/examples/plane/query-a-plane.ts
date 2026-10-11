@@ -1,5 +1,5 @@
-import { parse } from 'color-kit';
-import { definePlane, sense } from 'color-kit/plane';
+import { parse } from '@pbroom/color-kit';
+import { definePlane, sense } from '@pbroom/color-kit/plane';
 
 // Chroma across, lightness up, at the hue of sRGB blue.
 const plane = sense(

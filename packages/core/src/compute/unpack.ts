@@ -202,9 +202,9 @@ function validatePackedPlaneQueryResult(
  * Nothing is defaulted.
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { packPlaneQueryResults, unpackPlaneQueryResults } from 'color-kit/compute';
- * import { runPlaneQueries } from 'color-kit/plane';
+ * import { parse } from '@pbroom/color-kit';
+ * import { packPlaneQueryResults, unpackPlaneQueryResults } from '@pbroom/color-kit/compute';
+ * import { runPlaneQueries } from '@pbroom/color-kit/plane';
  *
  * const packed = packPlaneQueryResults(
  *   runPlaneQueries({ model: 'oklch' }, [

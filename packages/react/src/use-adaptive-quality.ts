@@ -98,7 +98,7 @@ function average(values: number[]): number {
  * @example
  * ```tsx
  * import { useRef } from 'react';
- * import { useAdaptiveQuality } from 'color-kit/react';
+ * import { useAdaptiveQuality } from '@pbroom/color-kit/react';
  *
  * // Wrap the function a drag controller calls once per frame.
  * function useTimedCommit(commit: () => void) {

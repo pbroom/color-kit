@@ -6,7 +6,7 @@ import {
   toLinearP3Array,
   toLinearSrgbArray,
   type Color,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 import { Range, Readout } from './controls';
 
 /** Unclamped linear channels: negative or above 1 means out of gamut. */

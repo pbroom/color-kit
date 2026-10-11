@@ -140,8 +140,8 @@ export interface MapDisplayedColorsOptions {
  *
  * @example
  * ```ts
- * import { toHex } from 'color-kit';
- * import { mapDisplayedColors } from 'color-kit/driver';
+ * import { toHex } from '@pbroom/color-kit';
+ * import { mapDisplayedColors } from '@pbroom/color-kit/driver';
  *
  * const mapped = mapDisplayedColors({ l: 0.75, c: 0.22, h: 150, alpha: 1 });
  * toHex(mapped.srgb); // → '#00d061'
@@ -185,7 +185,7 @@ export function mapDisplayedColors(
  *
  * @example
  * ```ts
- * import { createColorState } from 'color-kit/driver';
+ * import { createColorState } from '@pbroom/color-kit/driver';
  *
  * const state = createColorState({ l: 0.75, c: 0.22, h: 150, alpha: 1 });
  * state.requested.c; // → 0.22
@@ -229,12 +229,12 @@ export function createColorState(
  *
  * @example
  * ```ts
- * import { toHex } from 'color-kit';
+ * import { toHex } from '@pbroom/color-kit';
  * import {
  *   createColorState,
  *   getActiveDisplayedColor,
  *   setColorActiveGamut,
- * } from 'color-kit/driver';
+ * } from '@pbroom/color-kit/driver';
  *
  * const state = createColorState({ l: 0.75, c: 0.22, h: 150, alpha: 1 });
  * getActiveDisplayedColor(state).c; // → 0.22 (inside P3, unchanged)
@@ -255,7 +255,7 @@ export function getActiveDisplayedColor(state: ColorState): Color {
  *
  * @example
  * ```ts
- * import { resolveColorSource } from 'color-kit/driver';
+ * import { resolveColorSource } from '@pbroom/color-kit/driver';
  *
  * resolveColorSource('pointer'); // → 'user'
  * resolveColorSource('programmatic'); // → 'programmatic'
@@ -277,7 +277,7 @@ export function resolveColorSource(
  *
  * @example
  * ```ts
- * import { colorsEqual } from 'color-kit/driver';
+ * import { colorsEqual } from '@pbroom/color-kit/driver';
  *
  * const a = { l: 0.5, c: 0.1, h: 200, alpha: 1 };
  * const b = { l: 0.5004, c: 0.1, h: 200, alpha: 1 };
@@ -320,8 +320,8 @@ export interface ResolveIncomingRequestedOptions {
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { resolveIncomingRequested } from 'color-kit/driver';
+ * import { parse } from '@pbroom/color-kit';
+ * import { resolveIncomingRequested } from '@pbroom/color-kit/driver';
  *
  * const gray = resolveIncomingRequested(
  *   { l: 0.6, c: 0.15, h: 250, alpha: 1 },
@@ -376,8 +376,8 @@ export interface SetColorRequestedOptions extends MapDisplayedColorsOptions {
  *
  * @example
  * ```ts
- * import { parse, toHex } from 'color-kit';
- * import { createColorState, setColorRequested } from 'color-kit/driver';
+ * import { parse, toHex } from '@pbroom/color-kit';
+ * import { createColorState, setColorRequested } from '@pbroom/color-kit/driver';
  *
  * const state = createColorState(parse('#3b82f6'));
  * const gray = parse('#808080');
@@ -422,8 +422,8 @@ export function setColorRequested(
  *
  * @example
  * ```ts
- * import { parse, toHex } from 'color-kit';
- * import { createColorState, setColorChannel } from 'color-kit/driver';
+ * import { parse, toHex } from '@pbroom/color-kit';
+ * import { createColorState, setColorChannel } from '@pbroom/color-kit/driver';
  *
  * const state = createColorState(parse('#3b82f6'));
  * const next = setColorChannel(state, 'l', 0.4, 'user');
@@ -463,8 +463,8 @@ export function setColorChannel(
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { createColorState, setColorActiveGamut } from 'color-kit/driver';
+ * import { parse } from '@pbroom/color-kit';
+ * import { createColorState, setColorActiveGamut } from '@pbroom/color-kit/driver';
  *
  * const state = createColorState(parse('#3b82f6'));
  * const next = setColorActiveGamut(state, 'srgb', 'user');
@@ -495,8 +495,8 @@ export function setColorActiveGamut(
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { createColorState, setColorActiveView } from 'color-kit/driver';
+ * import { parse } from '@pbroom/color-kit';
+ * import { createColorState, setColorActiveView } from '@pbroom/color-kit/driver';
  *
  * const state = createColorState(parse('#3b82f6'));
  * const next = setColorActiveView(state, 'hsl', 'user');

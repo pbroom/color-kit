@@ -9,7 +9,7 @@ import {
   toSrgbGamut,
   tryParse,
   type Color,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 import { Chip, Readout } from './controls';
 
 const WHITE = parse('#fff');

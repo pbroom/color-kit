@@ -21,7 +21,7 @@ export interface ColorProps extends UseColorOptions {
  *
  * @example
  * ```tsx
- * import { Color, useColorContext, useColorPlaneRenderer } from 'color-kit/react';
+ * import { Color, useColorContext, useColorPlaneRenderer } from '@pbroom/color-kit/react';
  *
  * function Plane() {
  *   const { requested } = useColorContext();

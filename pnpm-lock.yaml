@@ -78,12 +78,12 @@ importers:
       '@mdx-js/rollup':
         specifier: ^3.0.0
         version: 3.1.1(rollup@4.57.1)
+      '@pbroom/color-kit':
+        specifier: workspace:*
+        version: link:../../packages/color-kit
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      color-kit:
-        specifier: workspace:*
-        version: link:../../packages/color-kit
       d3-hierarchy:
         specifier: ^3.1.2
         version: 3.1.2

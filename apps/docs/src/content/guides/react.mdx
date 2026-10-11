@@ -1,5 +1,5 @@
 ---
-title: Building with color-kit/react
+title: Building with @pbroom/color-kit/react
 navTitle: React
 description: Build a picker from color-kit's React hooks and plain elements, then choose between uncontrolled and controlled state.
 order: 20
@@ -20,10 +20,10 @@ import channelInputsSource, {
 
 ## The pieces
 
-The hooks in `color-kit/react` render no elements. They hold state and
+The hooks in `@pbroom/color-kit/react` render no elements. They hold state and
 compute what a picker draws; the elements, their styles and their input
 handling are yours. Build
-them from plain HTML with [`color-kit/driver`](/guides/headless-picker),
+them from plain HTML with [`@pbroom/color-kit/driver`](/guides/headless-picker),
 which holds the picker math, or host them in your own components.
 
 - [`Color`](/api/react/Color) provides shared state to everything inside it;
@@ -65,9 +65,13 @@ setter calls in one event compose, each building on the last.
 
 ```tsx title="controlled.tsx"
 import { useState } from 'react';
-import { parse } from 'color-kit';
-import { createColorState } from 'color-kit/driver';
-import { Color, useColorContext, useColorPlaneRenderer } from 'color-kit/react';
+import { parse } from '@pbroom/color-kit';
+import { createColorState } from '@pbroom/color-kit/driver';
+import {
+  Color,
+  useColorContext,
+  useColorPlaneRenderer,
+} from '@pbroom/color-kit/react';
 
 function Plane() {
   const { requested } = useColorContext();

@@ -36,7 +36,7 @@ export const DEFAULT_GAMUT_BOUNDARY_STEPS = 100;
  *
  * @example
  * ```ts
- * import { gamutBoundaryPath } from 'color-kit';
+ * import { gamutBoundaryPath } from '@pbroom/color-kit';
  *
  * gamutBoundaryPath(250, { steps: 4 });
  * // → [

@@ -21,14 +21,14 @@
     "limit": "710 B"
   },
   {
-    "name": "color-kit/interop: toLinearSrgbArray",
+    "name": "@pbroom/color-kit/interop: toLinearSrgbArray",
     "path": "packages/color-kit/dist/interop/index.js",
     "import": "{ toLinearSrgbArray }",
     "gzip": true,
     "limit": "710 B"
   },
   {
-    "name": "color-kit/interop: packColors + unpackColors",
+    "name": "@pbroom/color-kit/interop: packColors + unpackColors",
     "path": "packages/color-kit/dist/interop/index.js",
     "import": "{ packColors, unpackColors }",
     "gzip": true,
@@ -42,14 +42,14 @@
     "limit": "30 kB"
   },
   {
-    "name": "color-kit/plane: definePlane + sense + toSvgPath",
+    "name": "@pbroom/color-kit/plane: definePlane + sense + toSvgPath",
     "path": "packages/color-kit/dist/plane/index.js",
     "import": "{ definePlane, sense, toSvgPath }",
     "gzip": true,
     "limit": "30 kB"
   },
   {
-    "name": "color-kit/react: Color + useColor",
+    "name": "@pbroom/color-kit/react: Color + useColor",
     "path": "packages/color-kit/dist/react/index.js",
     "import": "{ Color, useColor }",
     "ignore": ["react", "react-dom"],
@@ -57,7 +57,7 @@
     "limit": "20 kB"
   },
   {
-    "name": "color-kit/react: useColorPlaneRenderer",
+    "name": "@pbroom/color-kit/react: useColorPlaneRenderer",
     "path": "packages/color-kit/dist/react/index.js",
     "import": "{ useColorPlaneRenderer }",
     "ignore": ["react", "react-dom"],
@@ -65,7 +65,7 @@
     "limit": "17 kB"
   },
   {
-    "name": "color-kit/react: plane geometry hooks",
+    "name": "@pbroom/color-kit/react: plane geometry hooks",
     "path": "packages/color-kit/dist/react/index.js",
     "import": "{ useGamutBoundary, useChromaBand, useContrastRegion, useFallbackPoints }",
     "ignore": ["react", "react-dom"],

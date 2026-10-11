@@ -24,7 +24,7 @@ import {
  *
  * @example
  * ```ts
- * import { linearRgbToOklabInto } from 'color-kit';
+ * import { linearRgbToOklabInto } from '@pbroom/color-kit';
  *
  * const lab = { L: 0, a: 0, b: 0, alpha: 1 };
  * linearRgbToOklabInto(lab, { r: 1, g: 0, b: 0, alpha: 1 });
@@ -72,7 +72,7 @@ export function linearRgbToOklabInto(out: Oklab, rgb: LinearRgb): Oklab {
  *
  * @example
  * ```ts
- * import { linearRgbToOklab } from 'color-kit';
+ * import { linearRgbToOklab } from '@pbroom/color-kit';
  *
  * linearRgbToOklab({ r: 1, g: 0, b: 0, alpha: 1 });
  * // → ≈ { L: 0.628, a: 0.2249, b: 0.1258, alpha: 1 }
@@ -93,7 +93,7 @@ export function linearRgbToOklab(rgb: LinearRgb): Oklab {
  *
  * @example
  * ```ts
- * import { oklabToLinearRgbInto } from 'color-kit';
+ * import { oklabToLinearRgbInto } from '@pbroom/color-kit';
  *
  * const linear = { r: 0, g: 0, b: 0, alpha: 1 };
  * oklabToLinearRgbInto(linear, { L: 0.7, a: 0.1, b: 0.1, alpha: 1 });
@@ -139,7 +139,7 @@ export function oklabToLinearRgbInto(out: LinearRgb, lab: Oklab): LinearRgb {
  *
  * @example
  * ```ts
- * import { oklabToLinearRgb } from 'color-kit';
+ * import { oklabToLinearRgb } from '@pbroom/color-kit';
  *
  * oklabToLinearRgb({ L: 0.7, a: 0.1, b: 0.1, alpha: 1 });
  * // → ≈ { r: 0.785, g: 0.2117, b: 0.0769, alpha: 1 }

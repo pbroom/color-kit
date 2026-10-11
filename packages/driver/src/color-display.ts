@@ -21,8 +21,8 @@ export interface ColorDisplayStyles {
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { getColorDisplayHex } from 'color-kit/driver';
+ * import { parse } from '@pbroom/color-kit';
+ * import { getColorDisplayHex } from '@pbroom/color-kit/driver';
  *
  * getColorDisplayHex(parse('#3b82f6')); // → '#3b82f6'
  * getColorDisplayHex({ ...parse('#3b82f6'), alpha: 0.5 }); // → '#3b82f680'
@@ -48,7 +48,7 @@ export function getColorDisplayHex(color: Color): string {
  *
  * @example
  * ```ts
- * import { createColorState, getColorDisplayStyles } from 'color-kit/driver';
+ * import { createColorState, getColorDisplayStyles } from '@pbroom/color-kit/driver';
  *
  * const state = createColorState({ l: 0.75, c: 0.22, h: 150, alpha: 1 });
  * getColorDisplayStyles(state.displayed.p3, state.displayed.srgb, state.activeGamut);

@@ -254,7 +254,7 @@ export interface ColorAreaChromaBandOptions {
  *
  * @example
  * ```ts
- * import { resolveColorAreaRange } from 'color-kit/driver';
+ * import { resolveColorAreaRange } from '@pbroom/color-kit/driver';
  *
  * resolveColorAreaRange('c'); // → [0, 0.4]
  * resolveColorAreaRange('h', [0, 180]); // → [0, 180]
@@ -273,7 +273,7 @@ export function resolveColorAreaRange(
  *
  * @example
  * ```ts
- * import { resolveColorAreaAxes } from 'color-kit/driver';
+ * import { resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * resolveColorAreaAxes();
  * // → { x: { channel: 'l', range: [0, 1] }, y: { channel: 'c', range: [0, 0.4] } }
@@ -303,7 +303,7 @@ export function resolveColorAreaAxes(
  *
  * @example
  * ```ts
- * import { areColorAreaAxesDistinct } from 'color-kit/driver';
+ * import { areColorAreaAxesDistinct } from '@pbroom/color-kit/driver';
  *
  * areColorAreaAxesDistinct({ x: { channel: 'l' }, y: { channel: 'c' } }); // → true
  * areColorAreaAxesDistinct({ x: { channel: 'l' }, y: { channel: 'l' } }); // → false
@@ -349,11 +349,11 @@ export interface ColorAreaPlaneDefinition {
  * Builds the plain plane definition for a color area's axes and reference
  * color. This is the single source of truth for plane payloads sent to
  * plane-query workers and other transport boundaries. The result is plain
- * JSON and can be passed to `definePlane` from `color-kit/plane`.
+ * JSON and can be passed to `definePlane` from `@pbroom/color-kit/plane`.
  *
  * @example
  * ```ts
- * import { resolveColorAreaAxes, toColorAreaPlaneDefinition } from 'color-kit/driver';
+ * import { resolveColorAreaAxes, toColorAreaPlaneDefinition } from '@pbroom/color-kit/driver';
  *
  * toColorAreaPlaneDefinition(resolveColorAreaAxes(), { l: 0.6, c: 0.1, h: 250, alpha: 1 });
  * // → { model: 'oklch',
@@ -406,7 +406,7 @@ function planeToUiPoint(point: { x: number; y: number }): {
  *
  * @example
  * ```ts
- * import { getColorAreaThumbPosition, resolveColorAreaAxes } from 'color-kit/driver';
+ * import { getColorAreaThumbPosition, resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * const axes = resolveColorAreaAxes(); // x: l [0, 1], y: c [0, 0.4]
  * getColorAreaThumbPosition({ l: 0.6, c: 0.1, h: 250, alpha: 1 }, axes);
@@ -444,7 +444,7 @@ export interface ColorAreaPointerRect {
  *
  * @example
  * ```ts
- * import { normalizeColorAreaPointer } from 'color-kit/driver';
+ * import { normalizeColorAreaPointer } from '@pbroom/color-kit/driver';
  *
  * const rect = { left: 100, top: 20, width: 200, height: 100 };
  * normalizeColorAreaPointer(150, 40, rect); // → { x: 0.25, y: 0.2 }
@@ -477,7 +477,7 @@ export function normalizeColorAreaPointer(
  *
  * @example
  * ```ts
- * import { colorFromColorAreaPosition, resolveColorAreaAxes } from 'color-kit/driver';
+ * import { colorFromColorAreaPosition, resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * const axes = resolveColorAreaAxes(); // x: l [0, 1], y: c [0, 0.4]
  * colorFromColorAreaPosition({ l: 0.6, c: 0.1, h: 250, alpha: 1 }, axes, 0.25, 0.5);
@@ -519,7 +519,7 @@ export function colorFromColorAreaPosition(
  *
  * @example
  * ```ts
- * import { getColorAreaGamutBoundaryPoints, resolveColorAreaAxes } from 'color-kit/driver';
+ * import { getColorAreaGamutBoundaryPoints, resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * const points = getColorAreaGamutBoundaryPoints(250, resolveColorAreaAxes());
  * points.length; // → 101
@@ -575,7 +575,7 @@ export function getColorAreaGamutBoundaryPoints(
  *
  * @example
  * ```ts
- * import { getColorAreaContrastRegionPaths, resolveColorAreaAxes } from 'color-kit/driver';
+ * import { getColorAreaContrastRegionPaths, resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * const white = { l: 1, c: 0, h: 0, alpha: 1 };
  * const paths = getColorAreaContrastRegionPaths(white, 250, resolveColorAreaAxes(), { level: 'AA' });
@@ -629,7 +629,7 @@ export function getColorAreaContrastRegionPaths(
  *
  * @example
  * ```ts
- * import { getColorAreaChromaBandPoints, resolveColorAreaAxes } from 'color-kit/driver';
+ * import { getColorAreaChromaBandPoints, resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * const color = { l: 0.6, c: 0.1, h: 250, alpha: 1 };
  * const band = getColorAreaChromaBandPoints(color, color.h, resolveColorAreaAxes());
@@ -685,7 +685,7 @@ export function getColorAreaChromaBandPoints(
  *
  * @example
  * ```ts
- * import { getColorAreaFallbackPoint, resolveColorAreaAxes } from 'color-kit/driver';
+ * import { getColorAreaFallbackPoint, resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * const point = getColorAreaFallbackPoint(resolveColorAreaAxes(), {
  *   color: { l: 0.7, c: 0.35, h: 150, alpha: 1 },
@@ -731,7 +731,7 @@ export function getColorAreaFallbackPoint(
  *
  * @example
  * ```ts
- * import { getColorAreaKeyAxis } from 'color-kit/driver';
+ * import { getColorAreaKeyAxis } from '@pbroom/color-kit/driver';
  *
  * getColorAreaKeyAxis('ArrowUp'); // → 'y'
  * getColorAreaKeyAxis('Home'); // → 'x'
@@ -771,7 +771,7 @@ export function getColorAreaKeyAxis(key: string): 'x' | 'y' | null {
  *
  * @example
  * ```ts
- * import { colorFromColorAreaKey, resolveColorAreaAxes } from 'color-kit/driver';
+ * import { colorFromColorAreaKey, resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * const axes = resolveColorAreaAxes(); // x: l [0, 1], y: c [0, 0.4]
  * const color = { l: 0.6, c: 0.1, h: 250, alpha: 1 };
@@ -837,7 +837,7 @@ export function colorFromColorAreaKey(
  *
  * @example
  * ```ts
- * import { getColorAreaValueText, resolveColorAreaAxes } from 'color-kit/driver';
+ * import { getColorAreaValueText, resolveColorAreaAxes } from '@pbroom/color-kit/driver';
  *
  * getColorAreaValueText({ l: 0.6, c: 0.1, h: 250, alpha: 1 }, resolveColorAreaAxes());
  * // → 'Lightness 60%, Chroma 0.1'

@@ -1,6 +1,6 @@
-`color-kit/driver` is the logic of a color picker without a view. It holds
+`@pbroom/color-kit/driver` is the logic of a color picker without a view. It holds
 picker state as plain data, maps pointer and keyboard input to colors, and
-produces the strings a view paints. `color-kit/react` is built on it; a Vue,
+produces the strings a view paints. `@pbroom/color-kit/react` is built on it; a Vue,
 Svelte or web-component binding can be too.
 
 ## Domains
@@ -23,13 +23,13 @@ Svelte or web-component binding can be too.
   fallback, and parsing and formatting for channel and string inputs.
 
 ```ts title="state.ts"
-import { parse, toCss } from 'color-kit';
+import { parse, toCss } from '@pbroom/color-kit';
 import {
   createColorState,
   getColorAreaThumbPosition,
   getColorAreaValueText,
   resolveColorAreaAxes,
-} from 'color-kit/driver';
+} from '@pbroom/color-kit/driver';
 
 const state = createColorState(parse('oklch(0.7 0.25 150)'));
 state.meta.outOfGamut; // → { srgb: true, p3: false }

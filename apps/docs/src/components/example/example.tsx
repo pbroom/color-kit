@@ -23,7 +23,7 @@ export interface HighlightedSource {
  * source that runs it.
  *
  * - Examples are real files under `src/examples/<entry>/<name>.tsx` that
- *   import `color-kit/*` the way users do, default-export a component, and
+ *   import `@pbroom/color-kit/*` the way users do, default-export a component, and
  *   are type-checked (and prerender-tested) with the site.
  * - `of`: that component, rendered live inside the example frame.
  * - `source`: build-time Shiki HTML of the same file from a `?highlighted`

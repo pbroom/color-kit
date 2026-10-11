@@ -1,4 +1,4 @@
-`color-kit/plane` turns color questions into geometry. A plane fixes every
+`@pbroom/color-kit/plane` turns color questions into geometry. A plane fixes every
 channel of a color model but two and maps those two to normalized `x` and
 `y`. Queries against it return points and paths you can draw, hit-test or
 cache. It powers the React plane hooks' overlays, but nothing in it depends
@@ -33,13 +33,13 @@ on a UI.
   result with the solver's trace.
 
 ```ts title="hit-test.ts"
-import { parse } from 'color-kit';
+import { parse } from '@pbroom/color-kit';
 import {
   colorToPlane,
   containsPoint,
   definePlane,
   sense,
-} from 'color-kit/plane';
+} from '@pbroom/color-kit/plane';
 
 const plane = definePlane({ fixed: { h: 290 } }); // OKLCH lightness × chroma
 const srgb = sense(plane).gamutRegion({ gamut: 'srgb' });

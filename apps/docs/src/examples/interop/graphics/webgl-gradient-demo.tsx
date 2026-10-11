@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { packColors, parse } from 'color-kit';
+import { packColors, parse } from '@pbroom/color-kit';
 import {
   createGradientRenderer,
   watchContextLoss,

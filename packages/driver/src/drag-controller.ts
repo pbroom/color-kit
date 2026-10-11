@@ -107,7 +107,7 @@ const UPDATE_RATE_SLOP_MS = 1;
  *
  * @example
  * ```ts
- * import { resolveMaxUpdateHz } from 'color-kit/driver';
+ * import { resolveMaxUpdateHz } from '@pbroom/color-kit/driver';
  *
  * resolveMaxUpdateHz(120); // → 120
  * resolveMaxUpdateHz(0); // → 60
@@ -126,7 +126,7 @@ export function resolveMaxUpdateHz(value: number | undefined): number {
  *
  * @example
  * ```ts
- * import { resolveDragEpsilon } from 'color-kit/driver';
+ * import { resolveDragEpsilon } from '@pbroom/color-kit/driver';
  *
  * resolveDragEpsilon(0); // → 0
  * resolveDragEpsilon(-1); // → 0.0005
@@ -147,7 +147,7 @@ export function resolveDragEpsilon(value: number | undefined): number {
  *
  * @example
  * ```ts
- * import { createDefaultFrameScheduler } from 'color-kit/driver';
+ * import { createDefaultFrameScheduler } from '@pbroom/color-kit/driver';
  *
  * const scheduler = createDefaultFrameScheduler();
  * const handle = scheduler.requestFrame(() => console.log('frame'));
@@ -193,7 +193,7 @@ function isFinitePoint(point: DragPoint | null): point is DragPoint {
  *
  * @example
  * ```ts
- * import { createPointerDragController, normalizeColorAreaPointer } from 'color-kit/driver';
+ * import { createPointerDragController, normalizeColorAreaPointer } from '@pbroom/color-kit/driver';
  *
  * const rect = { left: 0, top: 0, width: 200, height: 100 };
  * const drag = createPointerDragController<{ clientX: number; clientY: number }>({

@@ -83,7 +83,7 @@ export function getTargetRows(gamut: GamutTarget): TargetRows {
  *
  * @example
  * ```ts
- * import { isLinearRgbInGamut } from 'color-kit';
+ * import { isLinearRgbInGamut } from '@pbroom/color-kit';
  *
  * isLinearRgbInGamut(0, 0.5, 1); // → true
  * isLinearRgbInGamut(1.0001, 0.5, 0.2); // → true (within the epsilon slack)
@@ -106,7 +106,7 @@ export function isLinearRgbInGamut(r: number, g: number, b: number): boolean {
  *
  * @example
  * ```ts
- * import { inSrgbGamut } from 'color-kit';
+ * import { inSrgbGamut } from '@pbroom/color-kit';
  *
  * inSrgbGamut({ l: 0.7, c: 0.1, h: 150, alpha: 1 }); // → true
  * inSrgbGamut({ l: 0.7, c: 0.2, h: 150, alpha: 1 }); // → false
@@ -130,7 +130,7 @@ export function inSrgbGamut(color: Color): boolean {
  *
  * @example
  * ```ts
- * import { inP3Gamut, inSrgbGamut } from 'color-kit';
+ * import { inP3Gamut, inSrgbGamut } from '@pbroom/color-kit';
  *
  * const green = { l: 0.7, c: 0.2, h: 150, alpha: 1 };
  * inP3Gamut(green); // → true
@@ -312,7 +312,7 @@ function resolveMethod(options: GamutMapOptions | undefined): GamutMapMethod {
  *
  * @example
  * ```ts
- * import { toSrgbGamutInto } from 'color-kit';
+ * import { toSrgbGamutInto } from '@pbroom/color-kit';
  *
  * const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
  * toSrgbGamutInto(mapped, { l: 0.7, c: 0.35, h: 150, alpha: 1 });
@@ -337,7 +337,7 @@ export function toSrgbGamutInto(
  *
  * @example
  * ```ts
- * import { toP3GamutInto } from 'color-kit';
+ * import { toP3GamutInto } from '@pbroom/color-kit';
  *
  * const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
  * toP3GamutInto(mapped, { l: 0.7, c: 0.4, h: 150, alpha: 1 });
@@ -373,7 +373,7 @@ export function toP3GamutInto(
  *
  * @example
  * ```ts
- * import { toSrgbGamut } from 'color-kit';
+ * import { toSrgbGamut } from '@pbroom/color-kit';
  *
  * const vivid = { l: 0.7, c: 0.35, h: 150, alpha: 1 };
  * toSrgbGamut(vivid); // → { l: 0.7, c: ≈ 0.1928, h: 150, alpha: 1 }
@@ -400,7 +400,7 @@ export function toSrgbGamut(color: Color, options?: GamutMapOptions): Color {
  *
  * @example
  * ```ts
- * import { toP3Gamut } from 'color-kit';
+ * import { toP3Gamut } from '@pbroom/color-kit';
  *
  * toP3Gamut({ l: 0.7, c: 0.35, h: 150, alpha: 1 });
  * // → { l: 0.7, c: ≈ 0.2689, h: 150, alpha: 1 }

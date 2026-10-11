@@ -426,7 +426,7 @@ export function planeModelSpec(model: PlaneModel): PlaneModelSpec {
  *
  * @example
  * ```ts
- * import { planeModelChannels } from 'color-kit/plane';
+ * import { planeModelChannels } from '@pbroom/color-kit/plane';
  *
  * planeModelChannels('oklab'); // → ['L', 'a', 'b']
  * planeModelChannels('hct'); // → ['h', 'c', 't']
@@ -452,7 +452,7 @@ export function planeModelChannels(model: PlaneModel): readonly PlaneChannel[] {
  *
  * @example
  * ```ts
- * import { planeModelDefaultRange } from 'color-kit/plane';
+ * import { planeModelDefaultRange } from '@pbroom/color-kit/plane';
  *
  * planeModelDefaultRange('oklch', 'c'); // → [0.4, 0]
  * planeModelDefaultRange('hsl', 'l'); // → [100, 0]

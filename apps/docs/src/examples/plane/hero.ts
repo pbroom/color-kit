@@ -1,4 +1,10 @@
-import { inP3Gamut, parse, toP3Into, toRgbInto, type Color } from 'color-kit';
+import {
+  inP3Gamut,
+  parse,
+  toP3Into,
+  toRgbInto,
+  type Color,
+} from '@pbroom/color-kit';
 import {
   definePlane,
   sense,
@@ -7,7 +13,7 @@ import {
   type Plane,
   type PlaneBoundaryPoint,
   type PlaneRegionPoint,
-} from 'color-kit/plane';
+} from '@pbroom/color-kit/plane';
 
 /** One hue of OKLCH: lightness left to right, chroma bottom to top. */
 export function hueSlice(hue: number): Plane<'oklch'> {

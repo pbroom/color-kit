@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toCss } from 'color-kit';
+import { toCss } from '@pbroom/color-kit';
 import { contrastPalette } from './contrast-palette';
 import { Range } from './controls';
 

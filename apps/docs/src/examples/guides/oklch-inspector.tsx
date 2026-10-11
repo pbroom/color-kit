@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { isAchromatic, toCss, toSrgbGamut, tryParse } from 'color-kit';
+import { isAchromatic, toCss, toSrgbGamut, tryParse } from '@pbroom/color-kit';
 import { Chip, Readout, Toggle } from './controls';
 
 const PRESETS = [

@@ -17,7 +17,7 @@ import {
   toP3Gamut,
   toSrgbGamut,
   type Color,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 
 export type ThemeName = 'light' | 'dark';
 

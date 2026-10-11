@@ -64,7 +64,7 @@ export const COLOR_SLIDER_DEFAULT_RANGES: Record<
  *
  * @example
  * ```ts
- * import { resolveColorSliderRange } from 'color-kit/driver';
+ * import { resolveColorSliderRange } from '@pbroom/color-kit/driver';
  *
  * resolveColorSliderRange('c'); // → [0, 0.4]
  * resolveColorSliderRange('h', [0, 180]); // → [0, 180]
@@ -83,7 +83,7 @@ export function resolveColorSliderRange(
  *
  * @example
  * ```ts
- * import { getColorSliderLabel } from 'color-kit/driver';
+ * import { getColorSliderLabel } from '@pbroom/color-kit/driver';
  *
  * getColorSliderLabel('alpha'); // → 'Opacity'
  * ```
@@ -99,7 +99,7 @@ export function getColorSliderLabel(channel: ColorSliderChannel): string {
  *
  * @example
  * ```ts
- * import { getColorSliderValueText } from 'color-kit/driver';
+ * import { getColorSliderValueText } from '@pbroom/color-kit/driver';
  *
  * getColorSliderValueText('h', 213.4); // → 'Hue 213°'
  * getColorSliderValueText('c', 0.12345); // → 'Chroma 0.123'
@@ -118,7 +118,7 @@ export function getColorSliderValueText(
  *
  * @example
  * ```ts
- * import { resolveColorSliderWrap } from 'color-kit/driver';
+ * import { resolveColorSliderWrap } from '@pbroom/color-kit/driver';
  *
  * resolveColorSliderWrap('h'); // → true
  * resolveColorSliderWrap('l'); // → false
@@ -140,7 +140,7 @@ export function resolveColorSliderWrap(
  *
  * @example
  * ```ts
- * import { getColorSliderThumbPosition } from 'color-kit/driver';
+ * import { getColorSliderThumbPosition } from '@pbroom/color-kit/driver';
  *
  * getColorSliderThumbPosition({ l: 0.6, c: 0.1, h: 250, alpha: 1 }, 'c', [0, 0.4]); // → 0.25
  * ```
@@ -159,7 +159,7 @@ export function getColorSliderThumbPosition(
  *
  * @example
  * ```ts
- * import { getColorSliderNormFromValue } from 'color-kit/driver';
+ * import { getColorSliderNormFromValue } from '@pbroom/color-kit/driver';
  *
  * getColorSliderNormFromValue(90, [0, 360]); // → 0.25
  * getColorSliderNormFromValue(500, [0, 360]); // → 1
@@ -184,7 +184,7 @@ export function getColorSliderNormFromValue(
  *
  * @example
  * ```ts
- * import { colorFromColorSliderPosition } from 'color-kit/driver';
+ * import { colorFromColorSliderPosition } from '@pbroom/color-kit/driver';
  *
  * colorFromColorSliderPosition({ l: 0.6, c: 0.1, h: 250, alpha: 1 }, 'h', 0.5, [0, 360]);
  * // → { l: 0.6, c: 0.1, h: 180, alpha: 1 }
@@ -220,7 +220,7 @@ export function colorFromColorSliderPosition(
  *
  * @example
  * ```ts
- * import { normalizeColorSliderPointer } from 'color-kit/driver';
+ * import { normalizeColorSliderPointer } from '@pbroom/color-kit/driver';
  *
  * normalizeColorSliderPointer('horizontal', 150, 100, 200); // → 0.25
  * normalizeColorSliderPointer('vertical', 150, 100, 200); // → 0.75
@@ -261,7 +261,7 @@ export function normalizeColorSliderPointer(
  *
  * @example
  * ```ts
- * import { colorFromColorSliderKey } from 'color-kit/driver';
+ * import { colorFromColorSliderKey } from '@pbroom/color-kit/driver';
  *
  * const color = { l: 0.6, c: 0.1, h: 350, alpha: 1 };
  * colorFromColorSliderKey(color, 'h', 'PageUp', 0.01, [0, 360]); // → { l: 0.6, c: 0.1, h: 26, alpha: 1 }

@@ -33,7 +33,7 @@ const PROBE: Color = { l: 0, c: 0, h: 0, alpha: 1 };
  *
  * @example
  * ```ts
- * import { maxChromaAt } from 'color-kit';
+ * import { maxChromaAt } from '@pbroom/color-kit';
  *
  * maxChromaAt(0.6, 250); // → 0.16982421875
  * maxChromaAt(0.6, 250, { gamut: 'display-p3' }); // → 0.21923828125

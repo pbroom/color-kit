@@ -6,7 +6,7 @@ import {
   toP3Gamut,
   toSrgbGamut,
   type Color,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 
 export type SwatchGamut = 'srgb' | 'display-p3';
 type ColorInput = string | Color;

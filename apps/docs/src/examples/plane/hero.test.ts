@@ -6,7 +6,7 @@ import {
   parse,
   toP3,
   toRgb,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 import { hueSlice, paintPlane, queryHue } from './hero';
 
 type Point = { x: number; y: number };

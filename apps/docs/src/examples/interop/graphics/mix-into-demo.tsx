@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { parse, toHex, type InterpolationSpace } from 'color-kit';
+import { parse, toHex, type InterpolationSpace } from '@pbroom/color-kit';
 import { startMixIntoLoop } from './mix-into-loop.js';
 import { DemoFrame } from './demo-frame.js';
 

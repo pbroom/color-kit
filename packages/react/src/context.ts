@@ -20,7 +20,7 @@ export type ColorContextValue = UseColorReturn;
  * @example
  * ```tsx
  * import { useContext } from 'react';
- * import { ColorContext, useColorStoreSelector } from 'color-kit/react';
+ * import { ColorContext, useColorStoreSelector } from '@pbroom/color-kit/react';
  *
  * function ActiveGamutBadge() {
  *   const context = useContext(ColorContext);
@@ -78,7 +78,7 @@ function withStateSnapshot(
  *
  * @example
  * ```tsx
- * import { Color, useColorContext } from 'color-kit/react';
+ * import { Color, useColorContext } from '@pbroom/color-kit/react';
  *
  * function Swatch() {
  *   const { displayedCss, setChannel } = useColorContext();

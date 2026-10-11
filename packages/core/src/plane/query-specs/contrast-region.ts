@@ -47,8 +47,8 @@ import { countPlanePaths, toPlaneBoundaryPoint } from './shared.js';
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { definePlane, getPlaneContrastRegion } from 'color-kit/plane';
+ * import { parse } from '@pbroom/color-kit';
+ * import { definePlane, getPlaneContrastRegion } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } });
  * const { paths } = getPlaneContrastRegion(plane, {

@@ -1,4 +1,4 @@
-import { definePlane, sense, toSvgPath } from 'color-kit/plane';
+import { definePlane, sense, toSvgPath } from '@pbroom/color-kit/plane';
 
 // The default OKLCH plane: lightness across, chroma up, at one hue.
 const plane = sense(definePlane({ fixed: { h: 264 } }));

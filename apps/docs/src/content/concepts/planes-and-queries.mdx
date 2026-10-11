@@ -16,7 +16,7 @@ object: two channels of one model on `x` and `y`, every other channel held
 still. [`definePlane`](/api/plane/definePlane) describes one.
 
 ```ts title="plane.ts"
-import { definePlane, planeToColor } from 'color-kit/plane';
+import { definePlane, planeToColor } from '@pbroom/color-kit/plane';
 
 const plane = definePlane({ fixed: { h: 264 } });
 plane.x; // → { channel: 'l', range: [0, 1] }
@@ -54,7 +54,7 @@ on OKLCH lightness-by-chroma planes and return empty geometry on others.
 The same queries exist as data: [`runPlaneQuery`](/api/plane/runPlaneQuery)
 takes `{ kind: 'gamutRegion', gamut: 'srgb' }`, which can be cached with
 [`PlaneQueryCache`](/api/plane/PlaneQueryCache), sent to a worker, or batched
-through `color-kit/compute`.
+through `@pbroom/color-kit/compute`.
 
 ## SVG output
 
@@ -64,7 +64,7 @@ Query points are normalized plane coordinates.
 default, so the result drops into `viewBox="0 0 100 100"`.
 
 ```tsx title="region.tsx"
-import { definePlane, sense, toSvgCompoundPath } from 'color-kit/plane';
+import { definePlane, sense, toSvgCompoundPath } from '@pbroom/color-kit/plane';
 
 const region = sense(definePlane({ fixed: { h: 264 } })).gamutRegion({
   gamut: 'srgb',

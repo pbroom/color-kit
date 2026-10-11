@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { toCss, type Color, type GamutMapMethod } from 'color-kit';
-import { createColorState } from 'color-kit/driver';
+import { toCss, type Color, type GamutMapMethod } from '@pbroom/color-kit';
+import { createColorState } from '@pbroom/color-kit/driver';
 import { Chip, Range, Readout, Toggle } from './controls';
 
 const METHODS = [

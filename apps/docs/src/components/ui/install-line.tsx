@@ -61,9 +61,9 @@ function chooseManager(manager: PackageManager): void {
  * `<InstallLine />`: the install command with a package-manager toggle.
  *
  * Contract:
- * - `packages`: what to install, default `['color-kit']`.
+ * - `packages`: what to install, default `['@pbroom/color-kit']`.
  * - `tag`: dist-tag appended to every package, default `'next'` (pre-1.0,
- *   the docs track `color-kit@next`). Pass `null` for none.
+ *   the docs track `@pbroom/color-kit@next`). Pass `null` for none.
  * - `dev`: install as a dev dependency.
  * - The chosen manager persists and syncs across every InstallLine on the
  *   site. Prerendered HTML shows pnpm; the stored choice applies after
@@ -76,7 +76,7 @@ export interface InstallLineProps {
 }
 
 export function InstallLine({
-  packages = ['color-kit'],
+  packages = ['@pbroom/color-kit'],
   tag = 'next',
   dev = false,
 }: InstallLineProps) {

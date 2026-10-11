@@ -9,7 +9,7 @@ import { routes, type SiteRoute } from '@/site/routes';
  * ⌘K symbol hits from the generated API routes: synchronous, no network,
  * ranked ahead of pages and prose. Ranking, best first:
  *
- * 0. exact name (`Color` matches both `color-kit` and `color-kit/react`)
+ * 0. exact name (`Color` matches both `@pbroom/color-kit` and `@pbroom/color-kit/react`)
  * 1. name prefix (`contrast` → `contrastRatio`)
  * 2. camelCase word prefix (`ratio` → `contrastRatio`, `cR` initials too)
  * 3. substring
@@ -80,7 +80,7 @@ function rank(item: Indexed, query: string): number {
 
 export function entryLabel(entry: string | undefined): string | undefined {
   if (!entry) return undefined;
-  return entry === 'core' ? 'color-kit' : `color-kit/${entry}`;
+  return entry === 'core' ? '@pbroom/color-kit' : `@pbroom/color-kit/${entry}`;
 }
 
 export const apiSymbolSearch: SymbolSearchProvider = (rawQuery, limit) => {

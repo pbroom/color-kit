@@ -24,7 +24,7 @@ const [P3SR, P3SG, P3SB] = LINEAR_P3_TO_LINEAR_SRGB;
  *
  * @example
  * ```ts
- * import { linearSrgbToLinearP3Into } from 'color-kit';
+ * import { linearSrgbToLinearP3Into } from '@pbroom/color-kit';
  *
  * const p3 = { r: 0, g: 0, b: 0, alpha: 1 };
  * linearSrgbToLinearP3Into(p3, { r: 1, g: 0, b: 0, alpha: 1 });
@@ -55,7 +55,7 @@ export function linearSrgbToLinearP3Into(out: P3, rgb: LinearRgb): P3 {
  *
  * @example
  * ```ts
- * import { linearSrgbToLinearP3 } from 'color-kit';
+ * import { linearSrgbToLinearP3 } from '@pbroom/color-kit';
  *
  * linearSrgbToLinearP3({ r: 1, g: 0, b: 0, alpha: 1 });
  * // → ≈ { r: 0.8225, g: 0.0332, b: 0.0171, alpha: 1 }
@@ -76,7 +76,7 @@ export function linearSrgbToLinearP3(rgb: LinearRgb): P3 {
  *
  * @example
  * ```ts
- * import { linearP3ToLinearSrgbInto } from 'color-kit';
+ * import { linearP3ToLinearSrgbInto } from '@pbroom/color-kit';
  *
  * const linear = { r: 0, g: 0, b: 0, alpha: 1 };
  * linearP3ToLinearSrgbInto(linear, { r: 1, g: 0, b: 0, alpha: 1 });
@@ -107,7 +107,7 @@ export function linearP3ToLinearSrgbInto(out: LinearRgb, p3: P3): LinearRgb {
  *
  * @example
  * ```ts
- * import { linearP3ToLinearSrgb } from 'color-kit';
+ * import { linearP3ToLinearSrgb } from '@pbroom/color-kit';
  *
  * linearP3ToLinearSrgb({ r: 1, g: 0, b: 0, alpha: 1 });
  * // → ≈ { r: 1.2249, g: -0.0421, b: -0.0196, alpha: 1 }
@@ -129,7 +129,7 @@ export function linearP3ToLinearSrgb(p3: P3): LinearRgb {
  *
  * @example
  * ```ts
- * import { linearP3ToP3Into } from 'color-kit';
+ * import { linearP3ToP3Into } from '@pbroom/color-kit';
  *
  * const p3 = { r: 0, g: 0, b: 0, alpha: 1 };
  * linearP3ToP3Into(p3, { r: 0.2, g: 0.5, b: 0.8, alpha: 1 });
@@ -160,7 +160,7 @@ export function linearP3ToP3Into(out: P3, linear: P3): P3 {
  *
  * @example
  * ```ts
- * import { linearP3ToP3 } from 'color-kit';
+ * import { linearP3ToP3 } from '@pbroom/color-kit';
  *
  * linearP3ToP3({ r: 0.2, g: 0.5, b: 0.8, alpha: 1 });
  * // → ≈ { r: 0.4845, g: 0.7354, b: 0.9063, alpha: 1 }
@@ -181,7 +181,7 @@ export function linearP3ToP3(linear: P3): P3 {
  *
  * @example
  * ```ts
- * import { p3ToLinearP3Into } from 'color-kit';
+ * import { p3ToLinearP3Into } from '@pbroom/color-kit';
  *
  * const linear = { r: 0, g: 0, b: 0, alpha: 1 };
  * p3ToLinearP3Into(linear, { r: 1, g: 0.5, b: 0, alpha: 1 });
@@ -212,7 +212,7 @@ export function p3ToLinearP3Into(out: P3, p3: P3): P3 {
  *
  * @example
  * ```ts
- * import { p3ToLinearP3 } from 'color-kit';
+ * import { p3ToLinearP3 } from '@pbroom/color-kit';
  *
  * p3ToLinearP3({ r: 1, g: 0.5, b: 0, alpha: 1 }); // → ≈ { r: 1, g: 0.214, b: 0, alpha: 1 }
  * ```

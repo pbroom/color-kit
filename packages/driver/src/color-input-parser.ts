@@ -283,7 +283,7 @@ function parseSimpleNumber(
  *
  * @example
  * ```ts
- * import { parseColorInputExpression } from 'color-kit/driver';
+ * import { parseColorInputExpression } from '@pbroom/color-kit/driver';
  *
  * const options = { currentValue: 100, range: [0, 360] as [number, number] };
  * parseColorInputExpression('50%', options); // → 180

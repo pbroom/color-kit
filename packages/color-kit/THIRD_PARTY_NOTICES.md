@@ -1,6 +1,6 @@
 # Third-party notices
 
-The `color-kit` package is licensed under the MIT License (see `LICENSE`). Its
+The `@pbroom/color-kit` package is licensed under the MIT License (see `LICENSE`). Its
 build output bundles portions of the following third-party software, which is
 distributed under its own license.
 
@@ -10,7 +10,7 @@ distributed under its own license.
 - Source: https://github.com/material-foundation/material-color-utilities
 - License: Apache License 2.0
 - Copyright 2021 Google LLC
-- Bundled into: the HCT color space support (`color-kit/hct` and the HCT
+- Bundled into: the HCT color space support (`@pbroom/color-kit/hct` and the HCT
   conversions exported from the root entry). Only the `hct/` and `utils/`
   modules are included, inlined unmodified apart from bundling.
 

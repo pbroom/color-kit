@@ -19,13 +19,13 @@ const QUESTIONS = [
     question: 'Where does the gamut end?',
     call: 'sense(plane).gamutRegion()',
     to: '/api/plane',
-    where: 'color-kit/plane',
+    where: '@pbroom/color-kit/plane',
   },
   {
     question: 'Does this text pass AA?',
     call: 'contrastRatio(text, background)',
     to: '/api/core',
-    where: 'color-kit',
+    where: '@pbroom/color-kit',
   },
 ];
 

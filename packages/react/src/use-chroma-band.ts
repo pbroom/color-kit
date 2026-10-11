@@ -83,8 +83,8 @@ export interface UseChromaBandOptions extends ColorPlaneQueryOptions {
  *
  * @example
  * ```tsx
- * import { useChromaBand } from 'color-kit/react';
- * import type { Color } from 'color-kit';
+ * import { useChromaBand } from '@pbroom/color-kit/react';
+ * import type { Color } from '@pbroom/color-kit';
  *
  * export function TonalStrip({ color }: { color: Color }) {
  *   const band = useChromaBand({ color }, { mode: 'proportional', gamut: 'display-p3' });

@@ -1,6 +1,6 @@
 # Agent Workspace Guidance
 
-color-kit is a queryable color engine: `@color-kit/core` (published via the `color-kit` facade) with `@color-kit/driver` and `@color-kit/react` as supported consumers. `apps/docs` is a lean API docs site for those packages.
+color-kit is a queryable color engine: `@color-kit/core` (published via the `@pbroom/color-kit` facade) with `@color-kit/driver` and `@color-kit/react` as supported consumers. `apps/docs` is a lean API docs site for those packages.
 
 ## Branch and PR Workflow
 
@@ -27,7 +27,7 @@ color-kit is a queryable color engine: `@color-kit/core` (published via the `col
 - Components with a `color?: Color` prop must `Omit<HTMLAttributes, 'color'>`.
 - Keep `eslint` and `@eslint/js` on the same major version.
 - When renaming a public symbol pre-launch, hard-cut over: update local and root barrel exports, internal callers, and docs in one pass.
-- In the `color-kit` facade, copy each package's built `dist/` subtree and rewrite specifiers in `.js`, `.cjs`, `.d.ts`, `.d.cts`; build type producers before DTS consumers.
+- In the `@pbroom/color-kit` facade, copy each package's built `dist/` subtree and rewrite specifiers in `.js`, `.cjs`, `.d.ts`, `.d.cts`; build type producers before DTS consumers.
 - Before calling a CSS selector dead, search class-name prefixes and template interpolation, not just exact literals.
 
 ## Learnings

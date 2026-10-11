@@ -7,13 +7,13 @@ import contrastSource, {
   code as contrastCode,
 } from '@/examples/react/contrast-region.tsx?highlighted';
 
-`color-kit/react` binds the engine to React state. This page builds
+`@pbroom/color-kit/react` binds the engine to React state. This page builds
 pickers from its hooks, which render no elements themselves: state hooks
 that hold a color and share it, and plane hooks that paint a color plane
 into your canvas and compute overlay geometry for your SVG. With the hooks,
 elements, styles, pointer handling and ARIA are yours. Build them from plain
 elements with
-[`color-kit/driver`](/api/driver), which holds the picker math (pointer
+[`@pbroom/color-kit/driver`](/api/driver), which holds the picker math (pointer
 normalization, keyboard steps, value text), or with your own component
 library.
 
@@ -188,5 +188,5 @@ supplies the parts a picker needs:
 - Read single fields with `useColorStoreSelector` rather than
   `useColorContext` in components that re-render often.
 
-The guide [Building with color-kit/react](/guides/react) assembles these parts
+The guide [Building with @pbroom/color-kit/react](/guides/react) assembles these parts
 into one picker.

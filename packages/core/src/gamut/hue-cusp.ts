@@ -203,7 +203,7 @@ function sampleHueCuspLut(
  *
  * @example
  * ```ts
- * import { maxChromaForHue } from 'color-kit';
+ * import { maxChromaForHue } from '@pbroom/color-kit';
  *
  * maxChromaForHue(250); // → { l: ≈ 0.6614, c: ≈ 0.1872 }
  * maxChromaForHue(250, { gamut: 'display-p3' }); // → { l: ≈ 0.6227, c: ≈ 0.2276 }

@@ -43,7 +43,7 @@ import {
  *
  * @example
  * ```ts
- * import { definePlane, getPlaneGamutBoundary } from 'color-kit/plane';
+ * import { definePlane, getPlaneGamutBoundary } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } }); // OKLCH, x: l, y: c
  * const { points } = getPlaneGamutBoundary(plane, { steps: 50 });
