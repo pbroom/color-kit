@@ -16,7 +16,7 @@ import type { GamutTarget } from './types.js';
  *
  * @example
  * ```ts
- * import { assertGamutTarget } from 'color-kit/plane';
+ * import { assertGamutTarget } from '@pbroom/color-kit/plane';
  *
  * assertGamutTarget('display-p3', 'render()'); // returns; narrows the type
  * assertGamutTarget('p3', 'render()');

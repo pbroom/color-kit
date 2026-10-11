@@ -20,7 +20,7 @@ dark. It returns Lc normalized to about `-1.08` to `1.06`; multiply by 100
 for the conventional scale.
 
 ```ts title="metrics.ts"
-import { contrastAPCA, contrastRatio, meetsAA, parse } from 'color-kit';
+import { contrastAPCA, contrastRatio, meetsAA, parse } from '@pbroom/color-kit';
 
 const gray = parse('#777');
 const white = parse('#fff');
@@ -37,7 +37,7 @@ tools measure 8-bit values; pass `{ precision: '8bit' }` to match them. Near
 a threshold the two can disagree, so measure the value you ship.
 
 ```ts title="precision.ts"
-import { contrastRatio, parse, toCss } from 'color-kit';
+import { contrastRatio, parse, toCss } from '@pbroom/color-kit';
 
 const blue = parse('oklch(0.56725 0.12 250)');
 const white = parse('#fff');
@@ -53,7 +53,7 @@ by clipping: channels are clipped to the `gamut` option (`'srgb'` by default,
 or `'display-p3'`). If you paint a gamut-mapped color, measure that one.
 
 ```ts title="displayed.ts"
-import { contrastRatio, parse, toSrgbGamut } from 'color-kit';
+import { contrastRatio, parse, toSrgbGamut } from '@pbroom/color-kit';
 
 const green = parse('oklch(0.75 0.22 150)'); // outside sRGB
 const black = parse('#000');

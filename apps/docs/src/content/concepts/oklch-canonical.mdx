@@ -45,7 +45,7 @@ write in an object literal is kept as written, so normalize it with
 [`normalizeHue`](/api/core/normalizeHue) before comparing.
 
 ```ts title="hue.ts"
-import { normalizeHue, parse, toCss } from 'color-kit';
+import { normalizeHue, parse, toCss } from '@pbroom/color-kit';
 
 parse('oklch(0.7 0.15 -30)').h; // → 330
 toCss({ l: 0.5, c: 0.1, h: -30, alpha: 1 }, 'oklch'); // → 'oklch(0.5 0.1 -30)'
@@ -62,7 +62,7 @@ A gray has no hue. At chroma at or below
 takes the other endpoint's hue instead of sweeping through red.
 
 ```ts title="achromatic.ts"
-import { isAchromatic, mix, parse } from 'color-kit';
+import { isAchromatic, mix, parse } from '@pbroom/color-kit';
 
 const gray = parse('#808080'); // { l: 0.5999, c: 3.3e-16, h: 0, alpha: 1 }
 isAchromatic(gray.c); // → true

@@ -97,7 +97,7 @@ export function filterShowingEntry(
 }
 
 export function importPathOf(entry: string): string {
-  return entry === 'core' ? 'color-kit' : `color-kit/${entry}`;
+  return entry === 'core' ? '@pbroom/color-kit' : `@pbroom/color-kit/${entry}`;
 }
 
 function group(
@@ -200,7 +200,7 @@ export function buildTree(
       {
         id: '',
         type: 'root',
-        label: 'color-kit',
+        label: '@pbroom/color-kit',
         href: '/api',
         entry: '',
       },
@@ -208,7 +208,7 @@ export function buildTree(
     ) ?? {
       id: '',
       type: 'root',
-      label: 'color-kit',
+      label: '@pbroom/color-kit',
       href: '/api',
       entry: '',
       count: 0,

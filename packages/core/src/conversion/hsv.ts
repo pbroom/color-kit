@@ -14,7 +14,7 @@ import { RGB_GRAY_DELTA } from './hsl.js';
  *
  * @example
  * ```ts
- * import { rgbToHsv } from 'color-kit';
+ * import { rgbToHsv } from '@pbroom/color-kit';
  *
  * rgbToHsv({ r: 255, g: 0, b: 0, alpha: 1 }); // → { h: 0, s: 100, v: 100, alpha: 1 }
  * ```
@@ -121,7 +121,7 @@ export function hsvToRgbUnrounded(hsv: Hsv): Rgb {
  *
  * @example
  * ```ts
- * import { hsvToRgb } from 'color-kit';
+ * import { hsvToRgb } from '@pbroom/color-kit';
  *
  * hsvToRgb({ h: 210, s: 50, v: 80, alpha: 1 }); // → { r: 102, g: 153, b: 204, alpha: 1 }
  * ```

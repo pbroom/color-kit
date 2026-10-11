@@ -24,7 +24,7 @@
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@mdx-js/rollup": "^3.0.0",
     "clsx": "^2.1.1",
-    "color-kit": "workspace:*",
+    "@pbroom/color-kit": "workspace:*",
     "d3-hierarchy": "^3.1.2",
     "d3-shape": "^3.2.0",
     "lucide-react": "^0.575.0",

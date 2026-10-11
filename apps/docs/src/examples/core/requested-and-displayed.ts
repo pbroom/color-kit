@@ -6,7 +6,7 @@ import {
   toCss,
   toHex,
   toSrgbGamut,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 
 // A vivid violet: inside Display P3, outside sRGB.
 const requested = parse('oklch(0.62 0.23 285)');

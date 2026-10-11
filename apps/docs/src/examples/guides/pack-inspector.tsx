@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { parse, toCss, toSrgbGamut } from 'color-kit';
-import { packColors, unpackColors, type ArraySpace } from 'color-kit/interop';
+import { parse, toCss, toSrgbGamut } from '@pbroom/color-kit';
+import {
+  packColors,
+  unpackColors,
+  type ArraySpace,
+} from '@pbroom/color-kit/interop';
 import { Toggle } from './controls';
 
 const SPACES = [

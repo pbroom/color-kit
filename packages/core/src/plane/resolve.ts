@@ -158,7 +158,7 @@ function validateDistinctAxes(definition: Plane): void {
  *
  * @example
  * ```ts
- * import { resolvePlaneDefinition } from 'color-kit/plane';
+ * import { resolvePlaneDefinition } from '@pbroom/color-kit/plane';
  *
  * const plane = resolvePlaneDefinition({ model: 'hsv' });
  * plane.x; // → { channel: 'h', range: [0, 360] }
@@ -227,7 +227,7 @@ export function resolvePlaneDefinition(
  *
  * @example
  * ```ts
- * import { definePlane } from 'color-kit/plane';
+ * import { definePlane } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({
  *   model: 'oklch',
@@ -276,8 +276,8 @@ export function definePlane(planeObject: PlaneDefinition = {}): Plane {
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { definePlaneFromColor } from 'color-kit/plane';
+ * import { parse } from '@pbroom/color-kit';
+ * import { definePlaneFromColor } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlaneFromColor(parse('#7c3aed'), {
  *   model: 'hsl',

@@ -34,7 +34,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 - **Priority:** P0
 - **Status:** Completed 2026-05-25; **Obsolete (2026-09-25)** — the shadcn `registry/` directory and `scripts/check-registry-sync.mjs` were removed in the aggressive cleanup, so there is no registry surface left to drift.
 - **Evidence:**
-  - `registry/components/color-input.tsx` now mirrors the canonical `packages/react/src/color-input.tsx` adapter and delegates parsing/scrubbing to `color-kit/react` + `color-kit/control-kit`.
+  - `registry/components/color-input.tsx` now mirrors the canonical `packages/react/src/color-input.tsx` adapter and delegates parsing/scrubbing to `@pbroom/color-kit/react` + `@pbroom/color-kit/control-kit`.
   - `scripts/check-registry-sync.mjs` runs through `pnpm check:preprod` so CI rejects color-input registry drift, missing registry dependencies, or a reintroduced local parser/scrub fork.
   - `registry/components/color-area.tsx` remains an intentional standalone registry subset; known gaps are performance profiles, worker-backed queries, and Legend State integration from `@color-kit/react`.
   - `packages/react/src/color-input.tsx` (303 lines) is the canonical thin adapter over `usePrimitiveValueInput` + `api/color-input.ts`.
@@ -304,7 +304,7 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-012 — Extract `useColorAreaPointerInteraction` and explicit thumb slot
 
 - **Priority:** P2
-- **Status:** Closed (superseded): `ColorArea` and `Thumb` were removed from `color-kit/react`. Adaptive quality moved to `useAdaptiveQuality`, and pointer handling belongs to callers through the driver's `createPointerDragController`.
+- **Status:** Closed (superseded): `ColorArea` and `Thumb` were removed from `@pbroom/color-kit/react`. Adaptive quality moved to `useAdaptiveQuality`, and pointer handling belongs to callers through the driver's `createPointerDragController`.
 - **Evidence:**
   - `packages/react/src/color-area.tsx` — 813 lines; ~300 lines of pointer/RAF/coalesced-events logic in one narrative.
   - Adaptive quality from measured frame times; window-level drag continuation — cohesive but dense.

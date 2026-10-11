@@ -94,8 +94,8 @@ export interface UseGamutBoundaryOptions extends ColorPlaneQueryOptions {
  *
  * @example
  * ```tsx
- * import { useGamutBoundary } from 'color-kit/react';
- * import type { Color } from 'color-kit';
+ * import { useGamutBoundary } from '@pbroom/color-kit/react';
+ * import type { Color } from '@pbroom/color-kit';
  *
  * export function GamutEdges({ color }: { color: Color }) {
  *   const srgb = useGamutBoundary({ color }, { gamut: 'srgb' });

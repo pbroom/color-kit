@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { parse } from 'color-kit';
+import { parse } from '@pbroom/color-kit';
 import { bindPicker } from './headless-picker';
 
 const thumbClass =

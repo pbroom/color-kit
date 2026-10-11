@@ -3,8 +3,12 @@ import {
   formatColorStringInputValue,
   getSliderGradientStyles,
   parseColorStringInputValue,
-} from 'color-kit/driver';
-import { Color, useColorContext, type ColorInteraction } from 'color-kit/react';
+} from '@pbroom/color-kit/driver';
+import {
+  Color,
+  useColorContext,
+  type ColorInteraction,
+} from '@pbroom/color-kit/react';
 
 const CHANNELS = [
   { channel: 'l', label: 'Lightness', range: [0, 1], step: 0.001 },

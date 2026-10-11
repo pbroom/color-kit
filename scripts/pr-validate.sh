@@ -227,7 +227,7 @@ if [[ -z "$BASE_REF" ]]; then
 fi
 
 MERGE_BASE="$(git merge-base "$HEAD_REF" "$BASE_REF")"
-WORKSPACE_BUILD_COMMAND="pnpm --filter @color-kit/core build && pnpm --filter @color-kit/driver build && pnpm --filter @color-kit/react build && pnpm --filter color-kit build && pnpm --filter @color-kit/docs build"
+WORKSPACE_BUILD_COMMAND="pnpm --filter @color-kit/core build && pnpm --filter @color-kit/driver build && pnpm --filter @color-kit/react build && pnpm --filter @pbroom/color-kit build && pnpm --filter @color-kit/docs build"
 
 changed_files=()
 profiles=()
@@ -352,8 +352,8 @@ if [[ "$react_changed" == "1" && "$workspace_changed" == "0" ]]; then
 fi
 
 if [[ "$umbrella_changed" == "1" && "$workspace_changed" == "0" ]]; then
-  add_command "color-kit-build" "pnpm --filter color-kit build"
-  add_command "color-kit-test" "pnpm --filter color-kit test"
+  add_command "color-kit-build" "pnpm --filter @pbroom/color-kit build"
+  add_command "color-kit-test" "pnpm --filter @pbroom/color-kit test"
 fi
 
 if [[ "$docs_changed" == "1" && "$workspace_changed" == "0" ]]; then

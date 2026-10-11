@@ -1,11 +1,11 @@
 import { useRef } from 'react';
-import { getSliderGradientStyles } from 'color-kit/driver';
+import { getSliderGradientStyles } from '@pbroom/color-kit/driver';
 import {
   Color,
   useColorContext,
   useGamutBoundary,
   type ColorInteraction,
-} from 'color-kit/react';
+} from '@pbroom/color-kit/react';
 import {
   PlanePicker,
   type PlaneOverlayProps,

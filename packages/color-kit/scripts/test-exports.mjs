@@ -44,7 +44,7 @@ function assertDefaultSchedulerTelemetry(computeEntry) {
 }
 
 // The compute engine and the marching-squares contour helpers are not part
-// of the root barrel: compute lives only on `color-kit/compute`, and the
+// of the root barrel: compute lives only on `@pbroom/color-kit/compute`, and the
 // contour helpers are internal.
 const NOT_ON_ROOT = [
   'createJsPlaneComputeBackend',
@@ -68,7 +68,7 @@ function assertNotOnRoot(rootEntry) {
 }
 
 // The plane renderer's shader sources and benchmark-selected renderer are
-// internal, and color-kit/react ships hooks only: the UI components it used
+// internal, and @pbroom/color-kit/react ships hooks only: the UI components it used
 // to export were removed, not moved.
 const NOT_ON_REACT = [
   'BENCHMARK_SELECTED_COLOR_PLANE_RENDERER',
@@ -109,14 +109,14 @@ function assertNotOnReact(reactEntry) {
   }
 }
 
-const root = await import('color-kit');
-const core = await import('color-kit/core');
-const driver = await import('color-kit/driver');
-const plane = await import('color-kit/plane');
-const compute = await import('color-kit/compute');
-const hct = await import('color-kit/hct');
-const interop = await import('color-kit/interop');
-const react = await import('color-kit/react');
+const root = await import('@pbroom/color-kit');
+const core = await import('@pbroom/color-kit/core');
+const driver = await import('@pbroom/color-kit/driver');
+const plane = await import('@pbroom/color-kit/plane');
+const compute = await import('@pbroom/color-kit/compute');
+const hct = await import('@pbroom/color-kit/hct');
+const interop = await import('@pbroom/color-kit/interop');
+const react = await import('@pbroom/color-kit/react');
 
 assert.equal(typeof root.definePlane, 'function');
 assert.equal(typeof root.sense, 'function');
@@ -144,7 +144,7 @@ assert.equal(root.packColors, interop.packColors);
 assert.equal(typeof react.Color, 'function');
 assertReactHooks(react);
 // The control-kit-backed `color-input` subpath was removed with ColorInput.
-await assert.rejects(import('color-kit/react/color-input'), {
+await assert.rejects(import('@pbroom/color-kit/react/color-input'), {
   code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
 });
 
@@ -160,14 +160,14 @@ assertNotOnRoot(core);
 assertNotOnReact(react);
 assertDefaultSchedulerTelemetry(compute);
 
-const cjsRoot = require('color-kit');
-const cjsCore = require('color-kit/core');
-const cjsDriver = require('color-kit/driver');
-const cjsPlane = require('color-kit/plane');
-const cjsCompute = require('color-kit/compute');
-const cjsHct = require('color-kit/hct');
-const cjsInterop = require('color-kit/interop');
-const cjsReact = require('color-kit/react');
+const cjsRoot = require('@pbroom/color-kit');
+const cjsCore = require('@pbroom/color-kit/core');
+const cjsDriver = require('@pbroom/color-kit/driver');
+const cjsPlane = require('@pbroom/color-kit/plane');
+const cjsCompute = require('@pbroom/color-kit/compute');
+const cjsHct = require('@pbroom/color-kit/hct');
+const cjsInterop = require('@pbroom/color-kit/interop');
+const cjsReact = require('@pbroom/color-kit/react');
 
 assert.equal(typeof cjsRoot.definePlane, 'function');
 assert.equal(typeof cjsCore.definePlane, 'function');
@@ -185,7 +185,7 @@ assert.equal(typeof cjsInterop.toLinearSrgbArray, 'function');
 assert.equal(cjsRoot.packColors, cjsInterop.packColors);
 assert.equal(typeof cjsReact.Color, 'function');
 assertReactHooks(cjsReact);
-assert.throws(() => require('color-kit/react/color-input'), {
+assert.throws(() => require('@pbroom/color-kit/react/color-input'), {
   code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
 });
 assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);

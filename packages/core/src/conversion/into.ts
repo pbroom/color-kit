@@ -45,7 +45,7 @@ const LINEAR_P3: P3 = { r: 0, g: 0, b: 0, alpha: 1 };
  *
  * @example
  * ```ts
- * import { parse, toOklabInto } from 'color-kit';
+ * import { parse, toOklabInto } from '@pbroom/color-kit';
  *
  * const lab = { L: 0, a: 0, b: 0, alpha: 1 };
  * toOklabInto(lab, parse('#3b82f6'));
@@ -66,7 +66,7 @@ export function toOklabInto(out: Oklab, color: Color): Oklab {
  *
  * @example
  * ```ts
- * import { fromOklabInto } from 'color-kit';
+ * import { fromOklabInto } from '@pbroom/color-kit';
  *
  * const color = { l: 0, c: 0, h: 0, alpha: 1 };
  * fromOklabInto(color, { L: 0.7, a: 0, b: 0.1, alpha: 1 });
@@ -88,7 +88,7 @@ export function fromOklabInto(out: Color, lab: Oklab): Color {
  *
  * @example
  * ```ts
- * import { parse, toLinearSrgbInto } from 'color-kit';
+ * import { parse, toLinearSrgbInto } from '@pbroom/color-kit';
  *
  * const linear = { r: 0, g: 0, b: 0, alpha: 1 };
  * toLinearSrgbInto(linear, parse('color(display-p3 1 0 0)'));
@@ -109,7 +109,7 @@ export function toLinearSrgbInto(out: LinearRgb, color: Color): LinearRgb {
  *
  * @example
  * ```ts
- * import { fromLinearSrgbInto, toHex } from 'color-kit';
+ * import { fromLinearSrgbInto, toHex } from '@pbroom/color-kit';
  *
  * const color = { l: 0, c: 0, h: 0, alpha: 1 };
  * fromLinearSrgbInto(color, { r: 1, g: 0.2, b: 0, alpha: 1 });
@@ -130,7 +130,7 @@ export function fromLinearSrgbInto(out: Color, linear: LinearRgb): Color {
  *
  * @example
  * ```ts
- * import { parse, toRgbInto } from 'color-kit';
+ * import { parse, toRgbInto } from '@pbroom/color-kit';
  *
  * const rgb = { r: 0, g: 0, b: 0, alpha: 1 };
  * toRgbInto(rgb, parse('oklch(0.7 0.15 30)'));
@@ -151,7 +151,7 @@ export function toRgbInto(out: Rgb, color: Color): Rgb {
  *
  * @example
  * ```ts
- * import { fromRgbInto, toCss } from 'color-kit';
+ * import { fromRgbInto, toCss } from '@pbroom/color-kit';
  *
  * const color = { l: 0, c: 0, h: 0, alpha: 1 };
  * fromRgbInto(color, { r: 59, g: 130, b: 246, alpha: 1 });
@@ -172,7 +172,7 @@ export function fromRgbInto(out: Color, rgb: Rgb): Color {
  *
  * @example
  * ```ts
- * import { parse, toP3Into } from 'color-kit';
+ * import { parse, toP3Into } from '@pbroom/color-kit';
  *
  * const p3 = { r: 0, g: 0, b: 0, alpha: 1 };
  * toP3Into(p3, parse('#ff0000'));
@@ -196,7 +196,7 @@ export function toP3Into(out: P3, color: Color): P3 {
  *
  * @example
  * ```ts
- * import { fromP3Into, toCss } from 'color-kit';
+ * import { fromP3Into, toCss } from '@pbroom/color-kit';
  *
  * const color = { l: 0, c: 0, h: 0, alpha: 1 };
  * fromP3Into(color, { r: 1, g: 0, b: 0, alpha: 1 });

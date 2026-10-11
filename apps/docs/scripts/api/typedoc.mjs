@@ -1,5 +1,5 @@
 // Step 1 of the API reference: TypeDoc converts every public entry point of
-// the `color-kit` facade from source and writes its JSON model to
+// the `@pbroom/color-kit` facade from source and writes its JSON model to
 // `.typedoc/api.json`. `normalize.mjs` turns that into the site's model.
 //
 // Each entry gets a tiny wrapper (`export * from '<source>'`) tagged with

@@ -1,4 +1,4 @@
-import { packColors, type Color } from 'color-kit';
+import { packColors, type Color } from '@pbroom/color-kit';
 
 const VERTEX_SHADER = `#version 300 es
 in vec2 aPosition;

@@ -36,7 +36,9 @@ function score(name: string, query: string): number {
 
 function entryLabel(route: SiteRoute): string | undefined {
   if (!route.entry) return undefined;
-  return route.entry === 'core' ? 'color-kit' : `color-kit/${route.entry}`;
+  return route.entry === 'core'
+    ? '@pbroom/color-kit'
+    : `@pbroom/color-kit/${route.entry}`;
 }
 
 const defaultSymbolProvider: SymbolSearchProvider = (query, limit) =>

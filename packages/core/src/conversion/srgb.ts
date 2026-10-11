@@ -17,7 +17,7 @@ import { assertFinite } from './finite.js';
  *
  * @example
  * ```ts
- * import { srgbToLinearInto } from 'color-kit';
+ * import { srgbToLinearInto } from '@pbroom/color-kit';
  *
  * const linear = { r: 0, g: 0, b: 0, alpha: 1 };
  * srgbToLinearInto(linear, { r: 255, g: 128, b: 0, alpha: 1 });
@@ -48,7 +48,7 @@ export function srgbToLinearInto(out: LinearRgb, rgb: Rgb): LinearRgb {
  *
  * @example
  * ```ts
- * import { srgbToLinear } from 'color-kit';
+ * import { srgbToLinear } from '@pbroom/color-kit';
  *
  * srgbToLinear({ r: 255, g: 128, b: 0, alpha: 1 });
  * // → ≈ { r: 1, g: 0.2159, b: 0, alpha: 1 }
@@ -69,7 +69,7 @@ export function srgbToLinear(rgb: Rgb): LinearRgb {
  *
  * @example
  * ```ts
- * import { linearToSrgbInto } from 'color-kit';
+ * import { linearToSrgbInto } from '@pbroom/color-kit';
  *
  * const rgb = { r: 0, g: 0, b: 0, alpha: 1 };
  * linearToSrgbInto(rgb, { r: 1, g: 0.2, b: 0, alpha: 1 });
@@ -101,7 +101,7 @@ export function linearToSrgbInto(out: Rgb, linear: LinearRgb): Rgb {
  *
  * @example
  * ```ts
- * import { linearToSrgb } from 'color-kit';
+ * import { linearToSrgb } from '@pbroom/color-kit';
  *
  * linearToSrgb({ r: 1, g: 0.2, b: 0, alpha: 1 }); // → { r: 255, g: 124, b: 0, alpha: 1 }
  * linearToSrgb({ r: 1.2, g: 0.5, b: -0.1, alpha: 1 }); // → { r: 255, g: 188, b: 0, alpha: 1 }
@@ -124,7 +124,7 @@ export function linearToSrgb(linear: LinearRgb): Rgb {
  *
  * @example
  * ```ts
- * import { rgbToHex } from 'color-kit';
+ * import { rgbToHex } from '@pbroom/color-kit';
  *
  * rgbToHex({ r: 59, g: 130, b: 246, alpha: 1 }); // → '#3b82f6'
  * rgbToHex({ r: 59, g: 130, b: 246, alpha: 0.5 }); // → '#3b82f680'
@@ -153,7 +153,7 @@ const HEX_PATTERN = /^#?(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i;
  *
  * @example
  * ```ts
- * import { hexToRgb } from 'color-kit';
+ * import { hexToRgb } from '@pbroom/color-kit';
  *
  * hexToRgb('#3b82f6'); // → { r: 59, g: 130, b: 246, alpha: 1 }
  * hexToRgb('f008'); // → ≈ { r: 255, g: 0, b: 0, alpha: 0.5333 }

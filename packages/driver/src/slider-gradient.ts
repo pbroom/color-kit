@@ -357,7 +357,7 @@ function toActiveStopCss(color: Color, colorSpace: SliderColorSpace): string {
  *
  * @example
  * ```ts
- * import { sampleSliderGradient } from 'color-kit/driver';
+ * import { sampleSliderGradient } from '@pbroom/color-kit/driver';
  *
  * const stops = sampleSliderGradient({
  *   model: 'oklch',
@@ -422,7 +422,7 @@ export function sampleSliderGradient(
  *
  * @example
  * ```ts
- * import { getSliderGradientStyles } from 'color-kit/driver';
+ * import { getSliderGradientStyles } from '@pbroom/color-kit/driver';
  *
  * const styles = getSliderGradientStyles({
  *   model: 'oklch',

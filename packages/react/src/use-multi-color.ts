@@ -147,7 +147,7 @@ function createUpdateEvent(
  *
  * @example
  * ```tsx
- * import { useMultiColor } from 'color-kit/react';
+ * import { useMultiColor } from '@pbroom/color-kit/react';
  *
  * function Palette() {
  *   const palette = useMultiColor({

@@ -83,7 +83,7 @@ export {
  *
  * @example
  * ```ts
- * import { parse, toRgb } from 'color-kit';
+ * import { parse, toRgb } from '@pbroom/color-kit';
  *
  * toRgb(parse('#3b82f6')); // → { r: 59, g: 130, b: 246, alpha: 1 }
  * toRgb(parse('oklch(0.7 0.3 150)')); // → { r: 0, g: 203, b: 0, alpha: 1 } (clipped)
@@ -103,7 +103,7 @@ export function toRgb(color: Color): Rgb {
  *
  * @example
  * ```ts
- * import { fromRgb, toCss } from 'color-kit';
+ * import { fromRgb, toCss } from '@pbroom/color-kit';
  *
  * toCss(fromRgb({ r: 59, g: 130, b: 246, alpha: 1 }), 'oklch');
  * // → 'oklch(0.6231 0.188 259.81)'
@@ -127,7 +127,7 @@ export function fromRgb(rgb: Rgb): Color {
  *
  * @example
  * ```ts
- * import { parse, toHex } from 'color-kit';
+ * import { parse, toHex } from '@pbroom/color-kit';
  *
  * toHex(parse('oklch(0.7 0.15 30)')); // → '#ed7665'
  * toHex(parse('rgb(59 130 246 / 0.5)')); // → '#3b82f680'
@@ -150,7 +150,7 @@ export function toHex(color: Color): string {
  *
  * @example
  * ```ts
- * import { fromHex, toCss } from 'color-kit';
+ * import { fromHex, toCss } from '@pbroom/color-kit';
  *
  * toCss(fromHex('#3b82f6'), 'oklch'); // → 'oklch(0.6231 0.188 259.81)'
  * ```
@@ -172,7 +172,7 @@ export function fromHex(hex: string): Color {
  *
  * @example
  * ```ts
- * import { parse, toHsl } from 'color-kit';
+ * import { parse, toHsl } from '@pbroom/color-kit';
  *
  * toHsl(parse('#3b82f6')); // → ≈ { h: 217.22, s: 91.22, l: 59.8, alpha: 1 }
  * ```
@@ -193,7 +193,7 @@ export function toHsl(color: Color): Hsl {
  *
  * @example
  * ```ts
- * import { fromHsl, toHex } from 'color-kit';
+ * import { fromHsl, toHex } from '@pbroom/color-kit';
  *
  * toHex(fromHsl({ h: 200, s: 80, l: 40, alpha: 1 })); // → '#1481b8'
  * ```
@@ -215,7 +215,7 @@ export function fromHsl(hsl: Hsl): Color {
  *
  * @example
  * ```ts
- * import { parse, toHsv } from 'color-kit';
+ * import { parse, toHsv } from '@pbroom/color-kit';
  *
  * toHsv(parse('#3b82f6')); // → ≈ { h: 217.22, s: 76.02, v: 96.47, alpha: 1 }
  * ```
@@ -237,7 +237,7 @@ export function toHsv(color: Color): Hsv {
  *
  * @example
  * ```ts
- * import { parse, toHct } from 'color-kit';
+ * import { parse, toHct } from '@pbroom/color-kit';
  *
  * toHct(parse('#3b82f6')); // → ≈ { h: 266.34, c: 64.16, t: 55.63, alpha: 1 }
  * ```
@@ -259,7 +259,7 @@ export function toHct(color: Color): Hct {
  *
  * @example
  * ```ts
- * import { fromHct, toHex } from 'color-kit';
+ * import { fromHct, toHex } from '@pbroom/color-kit';
  *
  * toHex(fromHct({ h: 280, c: 40, t: 60, alpha: 1 })); // → '#838cd0'
  * ```
@@ -291,7 +291,7 @@ export function fromHct(hct: Hct): Color {
  *
  * @example
  * ```ts
- * import { fromHsv, toHex } from 'color-kit';
+ * import { fromHsv, toHex } from '@pbroom/color-kit';
  *
  * toHex(fromHsv({ h: 30, s: 100, v: 100, alpha: 1 })); // → '#ff8000'
  * ```
@@ -311,7 +311,7 @@ export function fromHsv(hsv: Hsv): Color {
  *
  * @example
  * ```ts
- * import { parse, toOklab } from 'color-kit';
+ * import { parse, toOklab } from '@pbroom/color-kit';
  *
  * toOklab(parse('oklch(0.7 0.1 0)')); // → { L: 0.7, a: 0.1, b: 0, alpha: 1 }
  * ```
@@ -331,7 +331,7 @@ export function toOklab(color: Color): Oklab {
  *
  * @example
  * ```ts
- * import { fromOklab } from 'color-kit';
+ * import { fromOklab } from '@pbroom/color-kit';
  *
  * fromOklab({ L: 0.7, a: 0, b: 0.1, alpha: 1 }); // → { l: 0.7, c: 0.1, h: 90, alpha: 1 }
  * ```
@@ -351,7 +351,7 @@ export function fromOklab(lab: Oklab): Color {
  *
  * @example
  * ```ts
- * import { parse, toOklch } from 'color-kit';
+ * import { parse, toOklch } from '@pbroom/color-kit';
  *
  * toOklch(parse('oklch(0.7 0.15 30)')); // → { l: 0.7, c: 0.15, h: 30, alpha: 1 }
  * ```
@@ -371,7 +371,7 @@ export function toOklch(color: Color): Oklch {
  *
  * @example
  * ```ts
- * import { fromOklch, toHex } from 'color-kit';
+ * import { fromOklch, toHex } from '@pbroom/color-kit';
  *
  * toHex(fromOklch({ l: 0.7, c: 0.15, h: 30, alpha: 1 })); // → '#ed7665'
  * ```
@@ -394,7 +394,7 @@ export function fromOklch(oklch: Oklch): Color {
  *
  * @example
  * ```ts
- * import { parse, toP3 } from 'color-kit';
+ * import { parse, toP3 } from '@pbroom/color-kit';
  *
  * toP3(parse('#ff0000')); // → ≈ { r: 0.9175, g: 0.2003, b: 0.1386, alpha: 1 }
  * ```
@@ -414,7 +414,7 @@ export function toP3(color: Color): P3 {
  *
  * @example
  * ```ts
- * import { fromP3, inSrgbGamut, toCss } from 'color-kit';
+ * import { fromP3, inSrgbGamut, toCss } from '@pbroom/color-kit';
  *
  * const red = fromP3({ r: 1, g: 0, b: 0, alpha: 1 });
  * toCss(red, 'oklch'); // → 'oklch(0.6486 0.2995 28.96)'
@@ -456,7 +456,7 @@ export type CssColorFormat =
  *
  * @example
  * ```ts
- * import { parse, toCss } from 'color-kit';
+ * import { parse, toCss } from '@pbroom/color-kit';
  *
  * const blue = parse('#3b82f6');
  * toCss(blue); // → '#3b82f6'

@@ -41,7 +41,7 @@ const CHROMA_BAND_CROSSING_ITERATIONS = 18;
  *
  * @example
  * ```ts
- * import { chromaBand } from 'color-kit';
+ * import { chromaBand } from '@pbroom/color-kit';
  *
  * chromaBand(250, 0.1, { steps: 4 }).map((color) => color.c);
  * // → [0, 0.070703125, 0.1, 0.1, 0]

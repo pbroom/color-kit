@@ -20,7 +20,7 @@ import {
 const core = (file: string) =>
   resolve(__dirname, '../../packages/core/src', file);
 
-/** `color-kit` subpaths (and their `@color-kit/*` twins) resolve to source. */
+/** `@pbroom/color-kit` subpaths (and their `@color-kit/*` twins) resolve to source. */
 const CORE_ENTRIES: Record<string, string> = {
   '': 'index.ts',
   '/core': 'index.ts',
@@ -71,7 +71,7 @@ export default defineConfig(({ isSsrBuild }) => ({
     alias: [
       { find: '@', replacement: resolve(__dirname, './src') },
       ...Object.entries(CORE_ENTRIES).flatMap(([subpath, file]) => {
-        const specifiers = [`color-kit${subpath}`];
+        const specifiers = [`@pbroom/color-kit${subpath}`];
         if (subpath !== '/core') {
           specifiers.push(`@color-kit/core${subpath}`);
         }
@@ -81,11 +81,11 @@ export default defineConfig(({ isSsrBuild }) => ({
         }));
       }),
       {
-        find: /^(?:color-kit|@color-kit)\/driver$/,
+        find: /^(?:@pbroom\/color-kit|@color-kit)\/driver$/,
         replacement: resolve(__dirname, '../../packages/driver/src/index.ts'),
       },
       {
-        find: /^(?:color-kit|@color-kit)\/react$/,
+        find: /^(?:@pbroom\/color-kit|@color-kit)\/react$/,
         replacement: resolve(__dirname, '../../packages/react/src/index.ts'),
       },
     ],

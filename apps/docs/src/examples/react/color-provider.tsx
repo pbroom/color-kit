@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
-import { parse } from 'color-kit';
-import { createColorState } from 'color-kit/driver';
+import { parse } from '@pbroom/color-kit';
+import { createColorState } from '@pbroom/color-kit/driver';
 import {
   Color,
   useColorContext,
   type ColorInteraction,
   type ColorUpdateEvent,
-} from 'color-kit/react';
+} from '@pbroom/color-kit/react';
 import { PlanePicker } from './plane-picker';
 
 const START = createColorState(parse('oklch(0.62 0.19 30)'));

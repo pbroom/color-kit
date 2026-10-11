@@ -1,4 +1,8 @@
-import { mixInto, type Color, type InterpolationSpace } from 'color-kit';
+import {
+  mixInto,
+  type Color,
+  type InterpolationSpace,
+} from '@pbroom/color-kit';
 
 /**
  * Animate between two colors every frame without allocating a Color per

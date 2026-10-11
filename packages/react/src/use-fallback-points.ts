@@ -27,9 +27,9 @@ export interface ColorPlaneFallbackPoints {
  *
  * @example
  * ```tsx
- * import { toHex } from 'color-kit';
- * import { useFallbackPoints } from 'color-kit/react';
- * import type { Color } from 'color-kit';
+ * import { toHex } from '@pbroom/color-kit';
+ * import { useFallbackPoints } from '@pbroom/color-kit/react';
+ * import type { Color } from '@pbroom/color-kit';
  *
  * export function SrgbMarker({ color }: { color: Color }) {
  *   const { srgb } = useFallbackPoints({ color });

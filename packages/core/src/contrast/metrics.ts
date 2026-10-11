@@ -123,7 +123,7 @@ function displayedSrgb(
  *
  * @example
  * ```ts
- * import { parse, relativeLuminance } from 'color-kit';
+ * import { parse, relativeLuminance } from '@pbroom/color-kit';
  *
  * relativeLuminance(parse('#777')); // → ≈ 0.1845
  * ```
@@ -165,7 +165,7 @@ export function wcagLuminanceOfLinear(r: number, g: number, b: number): number {
  *
  * @example
  * ```ts
- * import { contrastRatio, parse } from 'color-kit';
+ * import { contrastRatio, parse } from '@pbroom/color-kit';
  *
  * contrastRatio(parse('#777'), parse('#fff')); // → ≈ 4.478
  * contrastRatio(parse('#000'), parse('#fff')).toFixed(2); // → '21.00'
@@ -262,7 +262,7 @@ export function apcaLuminanceOfEncoded(
  *
  * @example
  * ```ts
- * import { contrastAPCA, parse } from 'color-kit';
+ * import { contrastAPCA, parse } from '@pbroom/color-kit';
  *
  * contrastAPCA(parse('#777'), parse('#fff')); // → ≈ 0.7111 (Lc 71.1)
  * contrastAPCA(parse('#fff'), parse('#000')); // → ≈ -1.0788 (reverse polarity)
@@ -323,7 +323,7 @@ export function apcaContrastOfLuminances(txtY: number, bgY: number): number {
  *
  * @example
  * ```ts
- * import { meetsAA, parse } from 'color-kit';
+ * import { meetsAA, parse } from '@pbroom/color-kit';
  *
  * meetsAA(parse('#777'), parse('#fff')); // → false (≈ 4.48:1)
  * meetsAA(parse('#777'), parse('#fff'), true); // → true
@@ -353,7 +353,7 @@ export function meetsAA(
  *
  * @example
  * ```ts
- * import { meetsAAA, parse } from 'color-kit';
+ * import { meetsAAA, parse } from '@pbroom/color-kit';
  *
  * meetsAAA(parse('#595959'), parse('#fff')); // → true
  * meetsAAA(parse('#666'), parse('#fff')); // → false

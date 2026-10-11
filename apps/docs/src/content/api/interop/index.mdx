@@ -1,4 +1,4 @@
-`color-kit/interop` moves colors into and out of flat number arrays: the
+`@pbroom/color-kit/interop` moves colors into and out of flat number arrays: the
 `vec3`/`vec4` floats that three.js, WebGL uniforms and WebGPU buffers expect.
 It replaces CSS strings as the bridge to a renderer, so values stay exact
 and unclamped instead of being rounded to 8 bits and clipped to sRGB.
@@ -20,8 +20,8 @@ clips RGB channels. Gamut mapping is composed rather than an option:
 `toLinearSrgbArray(toSrgbGamut(color), out)`.
 
 ```ts title="vertex-colors.ts"
-import { parse } from 'color-kit';
-import { packColors } from 'color-kit/interop';
+import { parse } from '@pbroom/color-kit';
+import { packColors } from '@pbroom/color-kit/interop';
 
 const colors = [parse('#3b82f6'), parse('oklch(0.7 0.25 150)')];
 const buffer = packColors(colors, 'linearSrgb', undefined, { alpha: true });

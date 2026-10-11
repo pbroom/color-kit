@@ -55,11 +55,11 @@ export interface ApiModel {
 export interface ApiEntrySummary {
   /** URL slug: `core`, `plane`, `interop`, `compute`, `hct`, `driver`, `react`. */
   slug: string;
-  /** Display title, the import path (`color-kit`, `color-kit/plane`). */
+  /** Display title, the import path (`@pbroom/color-kit`, `@pbroom/color-kit/plane`). */
   title: string;
   /** The specifier users write. */
   importPath: string;
-  /** Other specifiers for the same files (`color-kit/core`). */
+  /** Other specifiers for the same files (`@pbroom/color-kit/core`). */
   aliases: string[];
   /** One line. */
   summary: string;

@@ -6,7 +6,7 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react';
-import { toCss, type Color } from 'color-kit';
+import { toCss, type Color } from '@pbroom/color-kit';
 import {
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
@@ -16,7 +16,7 @@ import {
   normalizeColorAreaPointer,
   resolveColorAreaAxes,
   type ColorAreaAxes,
-} from 'color-kit/driver';
+} from '@pbroom/color-kit/driver';
 import {
   useAdaptiveQuality,
   useColor,
@@ -24,7 +24,7 @@ import {
   useGamutBoundary,
   type ColorPlaneQualityLevel,
   type SetRequestedOptions,
-} from 'color-kit/react';
+} from '@pbroom/color-kit/react';
 
 /** What an overlay needs to query the plane the canvas paints. */
 export interface PlaneOverlayProps {

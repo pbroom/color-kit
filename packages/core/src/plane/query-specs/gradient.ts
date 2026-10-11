@@ -39,8 +39,8 @@ function resolveGradientSteps(steps: number | undefined): number {
  *
  * @example
  * ```ts
- * import { parse, toHex } from 'color-kit';
- * import { definePlane, samplePlaneGradient } from 'color-kit/plane';
+ * import { parse, toHex } from '@pbroom/color-kit';
+ * import { definePlane, samplePlaneGradient } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } });
  * const { points } = samplePlaneGradient(plane, {

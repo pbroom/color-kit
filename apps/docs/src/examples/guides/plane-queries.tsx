@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { parse } from 'color-kit';
+import { parse } from '@pbroom/color-kit';
 import {
   definePlane,
   inspectPlaneQuery,
   sense,
   toSvgCompoundPath,
   toSvgPath,
-} from 'color-kit/plane';
+} from '@pbroom/color-kit/plane';
 import { Range, Readout } from './controls';
 
 const WHITE = parse('#ffffff');

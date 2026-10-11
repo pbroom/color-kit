@@ -18,7 +18,7 @@ import {
  *
  * @example
  * ```ts
- * import { oklabToOklchInto } from 'color-kit';
+ * import { oklabToOklchInto } from '@pbroom/color-kit';
  *
  * const lch = { l: 0, c: 0, h: 0, alpha: 1 };
  * oklabToOklchInto(lch, { L: 0.7, a: 0, b: 0.1, alpha: 1 });
@@ -57,7 +57,7 @@ export function oklabToOklchInto(out: Oklch, lab: Oklab): Oklch {
  *
  * @example
  * ```ts
- * import { oklabToOklch } from 'color-kit';
+ * import { oklabToOklch } from '@pbroom/color-kit';
  *
  * oklabToOklch({ L: 0.7, a: -0.1, b: 0, alpha: 1 }); // → { l: 0.7, c: 0.1, h: 180, alpha: 1 }
  * ```
@@ -76,7 +76,7 @@ export function oklabToOklch(lab: Oklab): Oklch {
  *
  * @example
  * ```ts
- * import { oklchToOklabInto } from 'color-kit';
+ * import { oklchToOklabInto } from '@pbroom/color-kit';
  *
  * const lab = { L: 0, a: 0, b: 0, alpha: 1 };
  * oklchToOklabInto(lab, { l: 0.7, c: 0.1, h: 0, alpha: 1 });
@@ -108,7 +108,7 @@ export function oklchToOklabInto(out: Oklab, oklch: Oklch): Oklab {
  *
  * @example
  * ```ts
- * import { oklchToOklab } from 'color-kit';
+ * import { oklchToOklab } from '@pbroom/color-kit';
  *
  * oklchToOklab({ l: 0.7, c: 0.1, h: 0, alpha: 1 }); // → { L: 0.7, a: 0.1, b: 0, alpha: 1 }
  * ```
@@ -129,7 +129,7 @@ export function oklchToOklab(oklch: Oklch): Oklab {
  *
  * @example
  * ```ts
- * import { oklchToColor } from 'color-kit';
+ * import { oklchToColor } from '@pbroom/color-kit';
  *
  * oklchToColor({ l: 0.7, c: 0.1, h: -30, alpha: 1 }); // → { l: 0.7, c: 0.1, h: 330, alpha: 1 }
  * ```
@@ -154,7 +154,7 @@ export function oklchToColor(oklch: Oklch): Color {
  *
  * @example
  * ```ts
- * import { colorToOklch } from 'color-kit';
+ * import { colorToOklch } from '@pbroom/color-kit';
  *
  * colorToOklch({ l: 0.7, c: 0.1, h: 400, alpha: 1 }); // → { l: 0.7, c: 0.1, h: 40, alpha: 1 }
  * ```

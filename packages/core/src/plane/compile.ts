@@ -65,7 +65,7 @@ function pathForPoints(
  *
  * @example
  * ```ts
- * import { toSvgPath } from 'color-kit/plane';
+ * import { toSvgPath } from '@pbroom/color-kit/plane';
  *
  * const points = [
  *   { x: 0, y: 1 },
@@ -102,7 +102,7 @@ export function toSvgPath(
  *   definePlane,
  *   getPlaneGamutRegion,
  *   toSvgCompoundPath,
- * } from 'color-kit/plane';
+ * } from '@pbroom/color-kit/plane';
  *
  * const region = getPlaneGamutRegion(definePlane({ fixed: { h: 264 } }));
  * const d = toSvgCompoundPath(region.visibleRegion.paths, { closeLoop: true });
@@ -155,7 +155,7 @@ function stableStringify(value: unknown): string {
  *
  * @example
  * ```ts
- * import { createPlaneQueryKey, definePlane } from 'color-kit/plane';
+ * import { createPlaneQueryKey, definePlane } from '@pbroom/color-kit/plane';
  *
  * const a = createPlaneQueryKey({ fixed: { h: 264 } }, { kind: 'gamutBoundary' });
  * const b = createPlaneQueryKey(definePlane({ fixed: { h: 264, alpha: 1 } }), {
@@ -202,7 +202,7 @@ const DEFAULT_PLANE_QUERY_CACHE_MAX_ENTRIES = 128;
  *
  * @example
  * ```ts
- * import { definePlane, PlaneQueryCache, runPlaneQuery } from 'color-kit/plane';
+ * import { definePlane, PlaneQueryCache, runPlaneQuery } from '@pbroom/color-kit/plane';
  *
  * const cache = new PlaneQueryCache({ maxEntries: 1 });
  * const plane = definePlane({ fixed: { h: 264 } });
@@ -298,7 +298,7 @@ export class PlaneQueryCache {
  *   getPlaneGamutBoundary,
  *   PlaneQueryCache,
  *   runCachedPlaneQuery,
- * } from 'color-kit/plane';
+ * } from '@pbroom/color-kit/plane';
  *
  * const cache = new PlaneQueryCache({ maxEntries: 32 });
  * const plane = definePlane({ fixed: { h: 264 } });

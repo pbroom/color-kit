@@ -21,9 +21,9 @@ export interface ApiRouteSymbol {
 export interface ApiRouteEntry {
   /** URL slug: `core`, `plane`, `interop`, `compute`, `hct`, `driver`, `react`. */
   slug: string;
-  /** Display title, e.g. `color-kit` for core and `color-kit/plane` for plane. */
+  /** Display title, e.g. `@pbroom/color-kit` for core and `@pbroom/color-kit/plane` for plane. */
   title: string;
-  /** The specifier users write: `color-kit`, `color-kit/plane`, … */
+  /** The specifier users write: `@pbroom/color-kit`, `@pbroom/color-kit/plane`, … */
   importPath: string;
   summary?: string;
   /** Symbols whose canonical home is this entry, in display order. */
@@ -40,51 +40,51 @@ export const API_ROUTE_FIXTURE: ApiRouteIndex = {
   entries: [
     {
       slug: 'core',
-      title: 'color-kit',
-      importPath: 'color-kit',
+      title: '@pbroom/color-kit',
+      importPath: '@pbroom/color-kit',
       summary:
         'Conversion, contrast, gamut mapping, harmony and manipulation, OKLCH-canonical.',
       symbols: [],
     },
     {
       slug: 'plane',
-      title: 'color-kit/plane',
-      importPath: 'color-kit/plane',
+      title: '@pbroom/color-kit/plane',
+      importPath: '@pbroom/color-kit/plane',
       summary: 'Define 2D color planes and query their regions and boundaries.',
       symbols: [],
     },
     {
       slug: 'interop',
-      title: 'color-kit/interop',
-      importPath: 'color-kit/interop',
+      title: '@pbroom/color-kit/interop',
+      importPath: '@pbroom/color-kit/interop',
       summary: 'Packed buffers and zero-allocation writers for canvas and GPU.',
       symbols: [],
     },
     {
       slug: 'compute',
-      title: 'color-kit/compute',
-      importPath: 'color-kit/compute',
+      title: '@pbroom/color-kit/compute',
+      importPath: '@pbroom/color-kit/compute',
       summary: 'Schedule plane compute on the JS backend, with telemetry.',
       symbols: [],
     },
     {
       slug: 'hct',
-      title: 'color-kit/hct',
-      importPath: 'color-kit/hct',
+      title: '@pbroom/color-kit/hct',
+      importPath: '@pbroom/color-kit/hct',
       summary: 'Material HCT conversion and tonal palettes.',
       symbols: [],
     },
     {
       slug: 'driver',
-      title: 'color-kit/driver',
-      importPath: 'color-kit/driver',
+      title: '@pbroom/color-kit/driver',
+      importPath: '@pbroom/color-kit/driver',
       summary: 'Headless picker state for any UI framework.',
       symbols: [],
     },
     {
       slug: 'react',
-      title: 'color-kit/react',
-      importPath: 'color-kit/react',
+      title: '@pbroom/color-kit/react',
+      importPath: '@pbroom/color-kit/react',
       summary:
         'React hooks: color state, a plane renderer and overlay geometry.',
       symbols: [],

@@ -72,7 +72,7 @@ import {
  *
  * @example
  * ```ts
- * import { definePlane, getPlaneGamutRegion } from 'color-kit/plane';
+ * import { definePlane, getPlaneGamutRegion } from '@pbroom/color-kit/plane';
  *
  * const region = getPlaneGamutRegion(definePlane({ fixed: { h: 264 } }));
  * region.solver; // → 'analytic-lc'

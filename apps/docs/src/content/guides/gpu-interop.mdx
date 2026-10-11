@@ -16,7 +16,7 @@ Renderers take color as flat floats in a known space, usually linear sRGB: a
 three.js `Color` or `BufferAttribute`, a WebGL `uniform3fv`, a WebGPU storage
 buffer. A CSS string is the wrong bridge. `toCss` and `toRgb` quantize to 8
 bits and clip each channel to sRGB, which bands smooth ramps and shifts the
-hue of wide-gamut colors. `color-kit/interop` writes the exact values
+hue of wide-gamut colors. `@pbroom/color-kit/interop` writes the exact values
 instead.
 
 ## One color
@@ -28,8 +28,8 @@ are `linearSrgb`, `srgb`, `linearP3`, `display-p3`, `oklab` and `oklch`.
 `out` and nothing is allocated.
 
 ```ts title="one.ts"
-import { parse, toSrgbGamut } from 'color-kit';
-import { toLinearSrgbArray } from 'color-kit/interop';
+import { parse, toSrgbGamut } from '@pbroom/color-kit';
+import { toLinearSrgbArray } from '@pbroom/color-kit/interop';
 
 const green = parse('oklch(0.7 0.25 150)'); // outside sRGB
 toLinearSrgbArray(green); // → ≈ [-0.0937, 0.5598, 0.0385]
@@ -61,7 +61,7 @@ import {
   fromLinearSrgbArray,
   packColors,
   toLinearSrgbArray,
-} from 'color-kit/interop';
+} from '@pbroom/color-kit/interop';
 
 material.color.fromArray(toLinearSrgbArray(color));
 const back = fromLinearSrgbArray(material.color.toArray());
@@ -79,7 +79,7 @@ geometry.setAttribute(
 ## WebGL and WebGPU
 
 ```ts title="gpu.ts"
-import { packColors, toLinearSrgbArray } from 'color-kit/interop';
+import { packColors, toLinearSrgbArray } from '@pbroom/color-kit/interop';
 
 // WebGL: reuse one scratch array per uniform.
 const scratch = new Float32Array(3);

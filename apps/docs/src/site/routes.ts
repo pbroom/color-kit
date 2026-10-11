@@ -195,7 +195,7 @@ const fixedRoutes: SiteRoute[] = [
   {
     path: '/',
     kind: 'home',
-    title: 'color-kit',
+    title: '@pbroom/color-kit',
     navTitle: 'Home',
     description: SITE_DESCRIPTION,
     section: null,

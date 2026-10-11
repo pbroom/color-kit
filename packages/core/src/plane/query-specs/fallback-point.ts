@@ -30,8 +30,8 @@ import { withFiniteHue } from './shared.js';
  *
  * @example
  * ```ts
- * import { parse, toHex } from 'color-kit';
- * import { definePlane, getPlaneFallbackPoint } from 'color-kit/plane';
+ * import { parse, toHex } from '@pbroom/color-kit';
+ * import { definePlane, getPlaneFallbackPoint } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } });
  * const { point } = getPlaneFallbackPoint(plane, {

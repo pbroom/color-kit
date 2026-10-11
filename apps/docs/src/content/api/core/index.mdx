@@ -1,7 +1,7 @@
-`color-kit` is the everyday import. Every function takes and returns the same
+`@pbroom/color-kit` is the everyday import. Every function takes and returns the same
 value, an OKLCH [`Color`](/api/core/Color) (`{ l, c, h, alpha }`), so results
 compose without conversions in between. It runs in any JavaScript runtime and
-has no React dependency. `color-kit/core` is an alias of this entry.
+has no React dependency. `@pbroom/color-kit/core` is an alias of this entry.
 
 ## Domains
 
@@ -43,7 +43,7 @@ import {
   parse,
   toCss,
   toSrgbGamut,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 
 const brand = parse('oklch(0.62 0.24 290)');
 inSrgbGamut(brand); // → false

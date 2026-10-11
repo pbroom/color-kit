@@ -405,7 +405,7 @@ export function interpolateInSpaceInto(
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
+ * import { parse } from '@pbroom/color-kit';
  * // Physically correct (linear-light) 50/50 blend of red and lime.
  * interpolateInSpace(parse('#f00'), parse('#0f0'), 0.5, {
  *   space: 'linear-srgb',

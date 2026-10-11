@@ -22,7 +22,7 @@ export const RGB_GRAY_DELTA = 1e-10;
  *
  * @example
  * ```ts
- * import { rgbToHsl } from 'color-kit';
+ * import { rgbToHsl } from '@pbroom/color-kit';
  *
  * rgbToHsl({ r: 0, g: 0, b: 255, alpha: 1 }); // → { h: 240, s: 100, l: 50, alpha: 1 }
  * ```
@@ -106,7 +106,7 @@ export function hslToRgbUnrounded(hsl: Hsl): Rgb {
  *
  * @example
  * ```ts
- * import { hslToRgb } from 'color-kit';
+ * import { hslToRgb } from '@pbroom/color-kit';
  *
  * hslToRgb({ h: 200, s: 80, l: 40, alpha: 1 }); // → { r: 20, g: 129, b: 184, alpha: 1 }
  * ```

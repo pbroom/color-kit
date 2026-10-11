@@ -1,7 +1,7 @@
 name: Version Packages
 
 # Opens (or updates) a "Version Packages" pull request on main whenever
-# unreleased changesets are merged. Merging that PR bumps `color-kit`'s version
+# unreleased changesets are merged. Merging that PR bumps `@pbroom/color-kit`'s version
 # and writes its CHANGELOG. This workflow never publishes: publishing to npm
 # stays a manual step (`pnpm publish:next`), so no npm token is used here.
 

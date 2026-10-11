@@ -4,13 +4,13 @@ import {
   parse,
   toSrgbGamut,
   type Color,
-} from 'color-kit';
+} from '@pbroom/color-kit';
 import {
   colorToPlane,
   definePlane,
   sense,
   toSvgCompoundPath,
-} from 'color-kit/plane';
+} from '@pbroom/color-kit/plane';
 
 const WHITE = parse('#ffffff');
 const BLACK = parse('#000000');

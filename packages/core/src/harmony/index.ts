@@ -20,7 +20,7 @@ function shiftHue(color: Color, degrees: number): Color {
  *
  * @example
  * ```ts
- * import { complementary, parse } from 'color-kit';
+ * import { complementary, parse } from '@pbroom/color-kit';
  *
  * complementary(parse('oklch(0.7 0.15 30)')); // → { l: 0.7, c: 0.15, h: 210, alpha: 1 }
  * ```
@@ -40,7 +40,7 @@ export function complementary(color: Color): Color {
  *
  * @example
  * ```ts
- * import { analogous, parse } from 'color-kit';
+ * import { analogous, parse } from '@pbroom/color-kit';
  *
  * analogous(parse('oklch(0.7 0.15 30)')).map((c) => c.h); // → [0, 30, 60]
  * ```
@@ -59,7 +59,7 @@ export function analogous(color: Color, angle: number = 30): Color[] {
  *
  * @example
  * ```ts
- * import { parse, triadic } from 'color-kit';
+ * import { parse, triadic } from '@pbroom/color-kit';
  *
  * triadic(parse('oklch(0.7 0.15 30)')).map((c) => c.h); // → [30, 150, 270]
  * ```
@@ -78,7 +78,7 @@ export function triadic(color: Color): Color[] {
  *
  * @example
  * ```ts
- * import { parse, tetradic } from 'color-kit';
+ * import { parse, tetradic } from '@pbroom/color-kit';
  *
  * tetradic(parse('oklch(0.7 0.15 30)')).map((c) => c.h); // → [30, 120, 210, 300]
  * ```
@@ -105,7 +105,7 @@ export function tetradic(color: Color): Color[] {
  *
  * @example
  * ```ts
- * import { parse, splitComplementary } from 'color-kit';
+ * import { parse, splitComplementary } from '@pbroom/color-kit';
  *
  * splitComplementary(parse('oklch(0.7 0.15 30)')).map((c) => c.h); // → [30, 180, 240]
  * ```

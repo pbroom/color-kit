@@ -67,7 +67,9 @@ function Reexports({ entry }: { entry: ApiEntry }) {
             <dt>
               <ApiLink to={`/api/${slug}`} className="reexports__entry">
                 <code>
-                  {slug === 'core' ? 'color-kit' : `color-kit/${slug}`}
+                  {slug === 'core'
+                    ? '@pbroom/color-kit'
+                    : `@pbroom/color-kit/${slug}`}
                 </code>
               </ApiLink>
               <span className="reexports__count">{items.length}</span>

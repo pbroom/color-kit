@@ -1,4 +1,4 @@
-// Entry points of the published `color-kit` facade, derived from
+// Entry points of the published `@pbroom/color-kit` facade, derived from
 // `packages/color-kit/package.json#exports`. Shared by the TypeDoc step, the
 // normalizer and the drift test so the three can never disagree.
 
@@ -71,7 +71,7 @@ function typesPath(target) {
 /**
  * @typedef {object} EntryPoint
  * @property {string} slug URL slug (`core`, `plane`, …).
- * @property {string} importPath Specifier users write (`color-kit/plane`).
+ * @property {string} importPath Specifier users write (`@pbroom/color-kit/plane`).
  * @property {string[]} aliases Other specifiers that resolve to the same files.
  * @property {string} subpath The `exports` key (`.`, `./plane`, …).
  * @property {string[]} subpaths Every `exports` key served by this entry.

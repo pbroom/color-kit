@@ -56,7 +56,7 @@ function distributeBatchDuration(totalMs: number, weights: number[]): number[] {
  * @see {@link createPlaneComputeScheduler}
  * @example
  * ```ts
- * import { createJsPlaneComputeBackend, runPlaneCompute } from 'color-kit/compute';
+ * import { createJsPlaneComputeBackend, runPlaneCompute } from '@pbroom/color-kit/compute';
  *
  * const backend = createJsPlaneComputeBackend();
  * const response = runPlaneCompute(

@@ -2,7 +2,7 @@
 export interface EntryPoint {
   /** URL slug (`core`, `plane`, …). */
   slug: string;
-  /** Specifier users write (`color-kit/plane`). */
+  /** Specifier users write (`@pbroom/color-kit/plane`). */
   importPath: string;
   /** Other specifiers that resolve to the same files. */
   aliases: string[];

@@ -1,4 +1,4 @@
-`color-kit/compute` runs batches of plane queries and returns the results
+`@pbroom/color-kit/compute` runs batches of plane queries and returns the results
 packed into typed arrays, ready to post from a worker without copying. Use
 it when queries are heavy or frequent enough to leave the main thread, or
 when you want timing telemetry about them.
@@ -25,11 +25,11 @@ when you want timing telemetry about them.
   ([`createJsPlaneComputeBackend`](/api/compute/createJsPlaneComputeBackend)).
 
 ```ts title="plane-worker.ts"
-import { parse } from 'color-kit';
+import { parse } from '@pbroom/color-kit';
 import {
   getPackedPlaneQueryTransferables,
   runPlaneCompute,
-} from 'color-kit/compute';
+} from '@pbroom/color-kit/compute';
 
 const { result } = runPlaneCompute({
   plane: { model: 'oklch', fixed: { h: 250 } },

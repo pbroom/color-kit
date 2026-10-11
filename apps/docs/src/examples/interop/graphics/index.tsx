@@ -8,7 +8,7 @@ import * as mixIntoSource from './mix-into-loop.ts?highlighted';
 import * as webglGradientSource from './webgl-gradient.ts?highlighted';
 
 /**
- * Graphics and performance demos for `color-kit/interop` and the
+ * Graphics and performance demos for `@pbroom/color-kit/interop` and the
  * allocation-free core APIs.
  *
  * In MDX, use the `*Example` components: each is an `<Example>` that runs

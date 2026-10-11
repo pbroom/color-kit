@@ -1,8 +1,8 @@
 # Docs examples
 
 Every example on the site is a real file in this folder, written the way a
-user would write it: it imports `color-kit`, `color-kit/plane`,
-`color-kit/react` and so on (resolved to package source), and it is
+user would write it: it imports `@pbroom/color-kit`, `@pbroom/color-kit/plane`,
+`@pbroom/color-kit/react` and so on (resolved to package source), and it is
 type-checked, linted and tested with the site. Pages show the file itself, so
 the code on the page is the code that ran.
 
@@ -42,7 +42,7 @@ the next line). The build runs the file in Node against color-kit source and
 writes the value into the comment, so results are computed, never typed:
 
 ```ts
-import { inSrgbGamut, parse, toHex, toSrgbGamut } from 'color-kit';
+import { inSrgbGamut, parse, toHex, toSrgbGamut } from '@pbroom/color-kit';
 
 const requested = parse('oklch(0.62 0.23 285)');
 inSrgbGamut(requested); // →
@@ -77,5 +77,5 @@ The implementation is `plugins/eval-example.ts`, called from
 `import value from './file.ts?build'` runs `file.ts` in Node at build time and
 inlines its exports as JSON. The home hero uses it for its first frame
 (`src/components/hero/initial-frame.ts`), so the prerendered SVG and the
-hydrating client read identical data while `color-kit/plane` loads lazily.
+hydrating client read identical data while `@pbroom/color-kit/plane` loads lazily.
 Exports must be JSON-serializable; cast the import to the producer's type.

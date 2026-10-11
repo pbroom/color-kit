@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
-import { parse, type Color } from 'color-kit';
-import type { ColorAreaAxes } from 'color-kit/driver';
-import { useColor, useContrastRegion } from 'color-kit/react';
+import { parse, type Color } from '@pbroom/color-kit';
+import type { ColorAreaAxes } from '@pbroom/color-kit/driver';
+import { useColor, useContrastRegion } from '@pbroom/color-kit/react';
 import { PlanePicker, type PlaneOverlayProps } from './plane-picker';
 
 const BACKGROUNDS = { white: parse('#ffffff'), black: parse('#000000') };

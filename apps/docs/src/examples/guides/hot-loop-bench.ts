@@ -1,5 +1,5 @@
-import { toSrgbGamut, toSrgbGamutInto, type Color } from 'color-kit';
-import { toSrgbArray } from 'color-kit/interop';
+import { toSrgbGamut, toSrgbGamutInto, type Color } from '@pbroom/color-kit';
+import { toSrgbArray } from '@pbroom/color-kit/interop';
 
 export interface BenchRow {
   name: string;

@@ -11,7 +11,7 @@
 - [ ] `pnpm format:check` passes
 - [ ] `pnpm size` stays within budget, if runtime code changed
 - [ ] `pnpm check:artifacts` passes, if package exports or packaging changed
-- [ ] Changeset added with `pnpm changeset` (targeting `color-kit`, `minor` for breaking changes while pre-1.0), or this change is not user-visible
+- [ ] Changeset added with `pnpm changeset` (targeting `@pbroom/color-kit`, `minor` for breaking changes while pre-1.0), or this change is not user-visible
 - [ ] Docs updated (`apps/docs` page or README) for new or changed public API
 
 ## Notes for reviewers

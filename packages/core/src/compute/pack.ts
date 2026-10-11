@@ -23,9 +23,9 @@ import type { PlaneQueryResult } from '../plane/types.js';
  * @see {@link getPackedPlaneQueryTransferables}
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { packPlaneQueryResults } from 'color-kit/compute';
- * import { runPlaneQueries } from 'color-kit/plane';
+ * import { parse } from '@pbroom/color-kit';
+ * import { packPlaneQueryResults } from '@pbroom/color-kit/compute';
+ * import { runPlaneQueries } from '@pbroom/color-kit/plane';
  *
  * const results = runPlaneQueries({ model: 'oklch' }, [
  *   { kind: 'gradient', from: parse('#000'), to: parse('#fff'), steps: 3 },
@@ -75,7 +75,7 @@ export function packPlaneQueryResults(
  * @returns The `pathRanges`, `pointXY`, `pointLC` and `pointColorLcha` buffers.
  * @example
  * ```ts
- * import { getPackedPlaneQueryTransferables, runPackedPlaneQueries } from 'color-kit/compute';
+ * import { getPackedPlaneQueryTransferables, runPackedPlaneQueries } from '@pbroom/color-kit/compute';
  *
  * const packed = runPackedPlaneQueries({
  *   plane: { model: 'oklch', fixed: { h: 250 } },

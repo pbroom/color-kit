@@ -25,7 +25,12 @@ lightness and break that ordering (see
 [Requested vs displayed](/concepts/requested-vs-displayed)).
 
 ```ts title="ramp.ts"
-import { contrastRatio, lightnessScale, parse, toSrgbGamut } from 'color-kit';
+import {
+  contrastRatio,
+  lightnessScale,
+  parse,
+  toSrgbGamut,
+} from '@pbroom/color-kit';
 
 const white = parse('#fff');
 const ramp = lightnessScale(parse('oklch(0.6 0.15 250)'), 5, [0.2, 0.9]).map(

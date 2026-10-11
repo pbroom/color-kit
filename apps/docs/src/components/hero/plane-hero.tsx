@@ -23,7 +23,7 @@ const L_TICKS = [0, 0.25, 0.5, 0.75, 1];
 
 let enginePromise: Promise<Engine> | null = null;
 
-/** `color-kit/plane` and the painter, loaded once after hydration. */
+/** `@pbroom/color-kit/plane` and the painter, loaded once after hydration. */
 function loadEngine(): Promise<Engine> {
   enginePromise ??= import('@/examples/plane/hero').catch((error: unknown) => {
     enginePromise = null;

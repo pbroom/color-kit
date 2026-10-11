@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { contrastRatio, parse } from 'color-kit';
+import { contrastRatio, parse } from '@pbroom/color-kit';
 import {
   CONTRAST_PAIRS,
   GRAY_LIGHTNESS,

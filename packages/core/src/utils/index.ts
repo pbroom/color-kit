@@ -12,7 +12,7 @@
  *
  * @example
  * ```ts
- * import { clamp } from 'color-kit';
+ * import { clamp } from '@pbroom/color-kit';
  *
  * clamp(1.2, 0, 1); // → 1
  * clamp(-5, 0, 255); // → 0
@@ -33,7 +33,7 @@ export function clamp(value: number, min: number, max: number): number {
  *
  * @example
  * ```ts
- * import { round } from 'color-kit';
+ * import { round } from '@pbroom/color-kit';
  *
  * round(0.62308, 3); // → 0.623
  * round(59.6); // → 60
@@ -63,7 +63,7 @@ export function radToDeg(radians: number): number {
  *
  * @example
  * ```ts
- * import { normalizeHue } from 'color-kit';
+ * import { normalizeHue } from '@pbroom/color-kit';
  *
  * normalizeHue(-30); // → 330
  * normalizeHue(370); // → 10
@@ -86,7 +86,7 @@ export { simplifyPolyline, type LcPoint } from './polyline-simplify.js';
  *
  * @example
  * ```ts
- * import { lerp } from 'color-kit';
+ * import { lerp } from '@pbroom/color-kit';
  *
  * lerp(0, 10, 0.25); // → 2.5
  * lerp(0, 10, 1.5); // → 15
@@ -120,7 +120,7 @@ export const ACHROMATIC_CHROMA_THRESHOLD = 0.000004;
  *
  * @example
  * ```ts
- * import { isAchromatic, parse } from 'color-kit';
+ * import { isAchromatic, parse } from '@pbroom/color-kit';
  *
  * isAchromatic(parse('#808080').c); // → true
  * isAchromatic(parse('#3b82f6').c); // → false
@@ -155,7 +155,7 @@ export function hasPowerlessHue(color: { c: number; h: number }): boolean {
  *
  * @example
  * ```ts
- * import { linearToSrgbChannel } from 'color-kit';
+ * import { linearToSrgbChannel } from '@pbroom/color-kit';
  *
  * linearToSrgbChannel(0.5).toFixed(4); // → '0.7354'
  * linearToSrgbChannel(-0.5).toFixed(4); // → '-0.7354'
@@ -181,7 +181,7 @@ export function linearToSrgbChannel(c: number): number {
  *
  * @example
  * ```ts
- * import { srgbToLinearChannel } from 'color-kit';
+ * import { srgbToLinearChannel } from '@pbroom/color-kit';
  *
  * srgbToLinearChannel(0.5).toFixed(4); // → '0.2140'
  * srgbToLinearChannel(1); // → 1

@@ -44,7 +44,7 @@ import {
  *
  * @example
  * ```ts
- * import { definePlane, getPlaneChromaBand } from 'color-kit/plane';
+ * import { definePlane, getPlaneChromaBand } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } });
  * const { points } = getPlaneChromaBand(plane, { requestedChroma: 0.1 });

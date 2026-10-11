@@ -84,7 +84,7 @@ function signedPow(value: number, exponent: number): number {
  *
  * @example
  * ```ts
- * import { parse, toCss, toHex } from 'color-kit';
+ * import { parse, toCss, toHex } from '@pbroom/color-kit';
  *
  * parse('oklch(0.7 0.15 30)'); // → { l: 0.7, c: 0.15, h: 30, alpha: 1 }
  * toCss(parse('rebeccapurple'), 'oklch'); // → 'oklch(0.4403 0.1603 303.37)'
@@ -316,7 +316,7 @@ export function parse(input: string): Color {
  *
  * @example
  * ```ts
- * import { toHex, tryParse } from 'color-kit';
+ * import { toHex, tryParse } from '@pbroom/color-kit';
  *
  * const color = tryParse('#3b82f6');
  * color && toHex(color); // → '#3b82f6'

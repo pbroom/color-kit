@@ -29,7 +29,7 @@ for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) {
 // declared peer.
 const declaredPeers = Object.keys(packageJson.peerDependencies ?? {});
 assert.equal(packageJson.dependencies, undefined);
-const allowedBarePackages = new Set(['color-kit', ...declaredPeers]);
+const allowedBarePackages = new Set(['@pbroom/color-kit', ...declaredPeers]);
 // The trailing lookahead skips computed specifiers such as tsup's
 // `require('u' + 'rl')` import.meta.url shim.
 const specifierPattern =

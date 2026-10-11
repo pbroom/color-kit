@@ -73,7 +73,7 @@ function getDefaultPlaneComputeScheduler(): PlaneComputeScheduler {
  * @see {@link runPackedPlaneQueries}
  * @example
  * ```ts
- * import { runPlaneCompute } from 'color-kit/compute';
+ * import { runPlaneCompute } from '@pbroom/color-kit/compute';
  *
  * const response = runPlaneCompute({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
@@ -102,7 +102,7 @@ export function runPlaneCompute(
  * @returns Packed results; decode with {@link unpackPlaneQueryResults}.
  * @example
  * ```ts
- * import { runPackedPlaneQueries } from 'color-kit/compute';
+ * import { runPackedPlaneQueries } from '@pbroom/color-kit/compute';
  *
  * const packed = runPackedPlaneQueries({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
@@ -132,7 +132,7 @@ export function runPackedPlaneQueries(
  * @see {@link createPlaneComputeScheduler}
  * @example
  * ```ts
- * import { runScheduledPlaneCompute } from 'color-kit/compute';
+ * import { runScheduledPlaneCompute } from '@pbroom/color-kit/compute';
  *
  * const response = runScheduledPlaneCompute({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
@@ -166,7 +166,7 @@ export function runScheduledPlaneCompute(
  *   resetDefaultPlaneComputeTelemetry,
  *   runScheduledPlaneCompute,
  *   type PlaneComputeRequest,
- * } from 'color-kit/compute';
+ * } from '@pbroom/color-kit/compute';
  *
  * resetDefaultPlaneComputeTelemetry();
  * const request: PlaneComputeRequest = {
@@ -195,7 +195,7 @@ export function getDefaultPlaneComputeTelemetrySnapshot() {
  *   getDefaultPlaneComputeTelemetrySnapshot,
  *   resetDefaultPlaneComputeTelemetry,
  *   runScheduledPlaneCompute,
- * } from 'color-kit/compute';
+ * } from '@pbroom/color-kit/compute';
  *
  * runScheduledPlaneCompute({
  *   plane: { model: 'oklch', fixed: { h: 250 } },

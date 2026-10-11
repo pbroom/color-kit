@@ -26,7 +26,7 @@ function mapRegion(
  * @see {@link rotateRegion}
  * @example
  * ```ts
- * import { translateRegion } from 'color-kit/plane';
+ * import { translateRegion } from '@pbroom/color-kit/plane';
  *
  * const square = { paths: [[{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 0.5 }, { x: 0, y: 0.5 }]] };
  *
@@ -63,7 +63,7 @@ export function translateRegion(
  * @see {@link rotateRegion}
  * @example
  * ```ts
- * import { scaleRegion } from 'color-kit/plane';
+ * import { scaleRegion } from '@pbroom/color-kit/plane';
  *
  * const full = { paths: [[{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }]] };
  *
@@ -104,7 +104,7 @@ export function scaleRegion(
  * @see {@link scaleRegion}
  * @example
  * ```ts
- * import { rotateRegion } from 'color-kit/plane';
+ * import { rotateRegion } from '@pbroom/color-kit/plane';
  *
  * const corner = { paths: [[{ x: 0.5, y: 0.5 }, { x: 1, y: 0.5 }, { x: 1, y: 1 }, { x: 0.5, y: 1 }]] };
  *
@@ -151,7 +151,7 @@ export function rotateRegion(
  * @see {@link planeToColor}
  * @example
  * ```ts
- * import { projectRegionBetweenPlanes, type PlaneDefinition } from 'color-kit/plane';
+ * import { projectRegionBetweenPlanes, type PlaneDefinition } from '@pbroom/color-kit/plane';
  *
  * const full: PlaneDefinition = { model: 'oklch', fixed: { h: 250 } };
  * // Same plane zoomed to lightness 0.5–1.

@@ -143,7 +143,7 @@ export interface PlaneQueryTraceSummary {
   samplingMode?: 'analytic' | 'uniform' | 'adaptive';
   /** Gamut-region queries: how the gamut relates to the viewport. */
   viewportRelation?: PlaneViewportRelation;
-  /** Compute backend that ran the query (set by `color-kit/compute`). */
+  /** Compute backend that ran the query (set by `@pbroom/color-kit/compute`). */
   backend?: PlaneComputeBackendKind;
   /** Scheduler telemetry bucket the request was filed under (scheduled runs only). */
   bucketKey?: string;
@@ -169,7 +169,7 @@ export interface PlaneQueryTraceSummary {
   };
   /**
    * Accumulated per-phase durations in milliseconds. Non-deterministic.
-   * Currently only `compute` and `marshal` are filled, by `color-kit/compute`
+   * Currently only `compute` and `marshal` are filled, by `@pbroom/color-kit/compute`
    * backends when a request asks for a trace; the other keys are reserved.
    */
   timings?: Partial<
@@ -330,7 +330,7 @@ export type PlaneQueryTraceStage =
  *
  * @example
  * ```ts
- * import { inspectPlaneQuery } from 'color-kit/plane';
+ * import { inspectPlaneQuery } from '@pbroom/color-kit/plane';
  *
  * const { trace } = inspectPlaneQuery({ model: 'oklch', fixed: { h: 250 } }, { kind: 'gamutRegion', gamut: 'srgb' });
  *

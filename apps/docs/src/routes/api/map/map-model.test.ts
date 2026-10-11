@@ -22,7 +22,8 @@ function entry(
   return {
     slug,
     title: slug,
-    importPath: slug === 'core' ? 'color-kit' : `color-kit/${slug}`,
+    importPath:
+      slug === 'core' ? '@pbroom/color-kit' : `@pbroom/color-kit/${slug}`,
     aliases: [],
     summary: `${slug} summary`,
     source: `packages/${slug}/src/index.ts`,
@@ -72,8 +73,8 @@ describe('API map model', () => {
   it('builds root → entry → domain → symbol, re-exports grouped apart', () => {
     const tree = buildTree(ENTRIES, DEFAULT_FILTER);
     expect(tree.children!.map((node) => node.label)).toEqual([
-      'color-kit',
-      'color-kit/plane',
+      '@pbroom/color-kit',
+      '@pbroom/color-kit/plane',
     ]);
     expect(tree.count).toBe(6);
     const core = tree.children![0]!;
@@ -132,7 +133,7 @@ describe('API map model', () => {
   it('counts exports per entry for the ledger', () => {
     const rows = ledgerRows(ENTRIES);
     expect(rows[0]).toMatchObject({
-      importPath: 'color-kit',
+      importPath: '@pbroom/color-kit',
       domains: 2,
       exports: 3,
       documented: 2,

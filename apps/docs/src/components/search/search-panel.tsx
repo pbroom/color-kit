@@ -48,7 +48,7 @@ const SECTION_LABELS: Record<Section, string> = {
 
 function importPath(entry: string | undefined): string | undefined {
   if (!entry) return undefined;
-  return entry === 'core' ? 'color-kit' : `color-kit/${entry}`;
+  return entry === 'core' ? '@pbroom/color-kit' : `@pbroom/color-kit/${entry}`;
 }
 
 /** Symbol hits: name, then kind and the entry point it imports from. */

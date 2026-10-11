@@ -17,7 +17,7 @@ most visibly in greens and reds: sRGB chroma peaks around `0.32`, P3 around
 `0.37`. A color can fit P3 and not sRGB.
 
 ```ts title="gamuts.ts"
-import { inP3Gamut, inSrgbGamut, parse } from 'color-kit';
+import { inP3Gamut, inSrgbGamut, parse } from '@pbroom/color-kit';
 
 const green = parse('oklch(0.75 0.22 150)');
 inSrgbGamut(green); // → false
@@ -62,7 +62,7 @@ driver's and React's active gamut. The old `'p3'` spelling was removed
 without an alias, and passing it throws a `TypeError` that says so.
 
 ```ts title="p3.ts"
-import { maxChromaAt } from 'color-kit';
+import { maxChromaAt } from '@pbroom/color-kit';
 
 maxChromaAt(0.5, 30, { gamut: 'p3' });
 // TypeError: maxChromaAt(): unknown gamut "p3". 'p3' is not supported; use 'display-p3'

@@ -1,9 +1,14 @@
 /**
- * A color picker with no framework: color-kit/driver supplies the state,
+ * A color picker with no framework: @pbroom/color-kit/driver supplies the state,
  * geometry, keyboard model and drag throttling; this file only touches the
  * DOM. Any binding (React, Vue, Svelte, web components) can wrap it.
  */
-import { toRgbInto, toSrgbGamutInto, type Color, type Rgb } from 'color-kit';
+import {
+  toRgbInto,
+  toSrgbGamutInto,
+  type Color,
+  type Rgb,
+} from '@pbroom/color-kit';
 import {
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
@@ -22,7 +27,7 @@ import {
   resolveColorAreaAxes,
   setColorRequested,
   type ColorState,
-} from 'color-kit/driver';
+} from '@pbroom/color-kit/driver';
 
 export interface PickerElements {
   /** 2D area: lightness on x, chroma on y. Contains `canvas` and `thumb`. */

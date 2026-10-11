@@ -15,8 +15,8 @@ export type ColorStringInputFormat = 'hex' | 'rgb' | 'hsl' | 'oklch';
  *
  * @example
  * ```ts
- * import { parse } from 'color-kit';
- * import { formatColorStringInputValue } from 'color-kit/driver';
+ * import { parse } from '@pbroom/color-kit';
+ * import { formatColorStringInputValue } from '@pbroom/color-kit/driver';
  *
  * const vivid = { l: 0.75, c: 0.22, h: 150, alpha: 1 };
  * formatColorStringInputValue(vivid, 'hex'); // → '#00d061'
@@ -41,8 +41,8 @@ export function formatColorStringInputValue(
  *
  * @example
  * ```ts
- * import { toHex } from 'color-kit';
- * import { parseColorStringInputValue } from 'color-kit/driver';
+ * import { toHex } from '@pbroom/color-kit';
+ * import { parseColorStringInputValue } from '@pbroom/color-kit/driver';
  *
  * toHex(parseColorStringInputValue('rebeccapurple')!); // → '#663399'
  * parseColorStringInputValue('#zzz'); // → null
@@ -61,7 +61,7 @@ export function parseColorStringInputValue(value: string): Color | null {
  *
  * @example
  * ```ts
- * import { isColorStringInputValueValid } from 'color-kit/driver';
+ * import { isColorStringInputValueValid } from '@pbroom/color-kit/driver';
  *
  * isColorStringInputValueValid('hsl(210 80% 50%)'); // → true
  * isColorStringInputValueValid('blue-ish'); // → false
@@ -87,7 +87,7 @@ const OKLCH_FUNCTION = /^oklch\(([\s\S]*)\)$/;
  *
  * @example
  * ```ts
- * import { hasExplicitOklchHue } from 'color-kit/driver';
+ * import { hasExplicitOklchHue } from '@pbroom/color-kit/driver';
  *
  * hasExplicitOklchHue('oklch(0.5 0 200)'); // → true
  * hasExplicitOklchHue('oklch(0.5 0 none)'); // → false
