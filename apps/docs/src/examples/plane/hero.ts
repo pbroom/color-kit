@@ -9,12 +9,12 @@ import {
   type PlaneRegionPoint,
 } from 'color-kit/plane';
 
-/** One hue of OKLCH: chroma left to right, lightness bottom to top. */
+/** One hue of OKLCH: lightness left to right, chroma bottom to top. */
 export function hueSlice(hue: number): Plane<'oklch'> {
   return definePlane({
     model: 'oklch',
-    x: { channel: 'c', range: [0, 0.4] },
-    y: { channel: 'l', range: [1, 0] },
+    x: { channel: 'l', range: [0, 1] },
+    y: { channel: 'c', range: [0.4, 0] },
     fixed: { h: hue },
   });
 }
@@ -69,14 +69,14 @@ function passingSide(
 ) {
   if (contour.length < 2) return { line: '', area: '', grayL: null };
   const line =
-    contour[0]!.x <= contour.at(-1)!.x ? contour : [...contour].reverse();
+    contour[0]!.y >= contour.at(-1)!.y ? contour : [...contour].reverse();
   const end = line.at(-1)!;
-  const edge = side === 'darker' ? 1 : 0; // plane y of black or white
+  const edge = side === 'darker' ? 0 : 1; // plane x of black or white
   const area = [
     ...line,
-    { x: 1, y: end.y },
-    { x: 1, y: edge },
-    { x: 0, y: edge },
+    { x: end.x, y: 0 },
+    { x: edge, y: 0 },
+    { x: edge, y: 1 },
   ];
   return {
     line: toSvgPath(line, svg),
@@ -96,14 +96,14 @@ const channels = { r: 0, g: 0, b: 0, alpha: 1 };
 export function paintPlane(image: ImageData, plane: Plane<'oklch'>): void {
   const { width, height, data } = image;
   const p3 = image.colorSpace === 'display-p3';
-  const [c0, c1] = plane.x.range;
-  const [l0, l1] = plane.y.range;
+  const [l0, l1] = plane.x.range;
+  const [c0, c1] = plane.y.range;
   color.h = plane.fixed.h ?? 0;
 
   for (let row = 0; row < height; row++) {
-    color.l = l0 + ((l1 - l0) * (row + 0.5)) / height;
+    color.c = c0 + ((c1 - c0) * (row + 0.5)) / height;
     for (let col = 0; col < width; col++) {
-      color.c = c0 + ((c1 - c0) * (col + 0.5)) / width;
+      color.l = l0 + ((l1 - l0) * (col + 0.5)) / width;
       const i = (row * width + col) * 4;
       if (!inP3Gamut(color)) {
         data[i + 3] = 0;

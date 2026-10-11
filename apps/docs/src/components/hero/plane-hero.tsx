@@ -19,7 +19,7 @@ const GRID = 160;
 const DRAG_DEGREES = 180;
 
 const C_TICKS = [0, 0.1, 0.2, 0.3, 0.4];
-const L_TICKS = [1, 0.75, 0.5, 0.25, 0];
+const L_TICKS = [0, 0.25, 0.5, 0.75, 1];
 
 let enginePromise: Promise<Engine> | null = null;
 
@@ -143,14 +143,14 @@ export function PlaneHero() {
     <figure className="hero" aria-label="Live OKLCH plane">
       <div className="hero__plot">
         <p className="hero__axis-title hero__axis-title--y" aria-hidden="true">
-          <b>L</b> lightness
+          <b>C</b> chroma
         </p>
         <div className="hero__axis hero__axis--y" aria-hidden="true">
-          {L_TICKS.map((tick) => (
+          {C_TICKS.map((tick) => (
             <span
               key={tick}
               className="hero__tick"
-              style={{ top: `${(1 - tick) * 100}%` }}
+              style={{ top: `${(1 - tick / 0.4) * 100}%` }}
             >
               {tick}
             </span>
@@ -228,18 +228,18 @@ export function PlaneHero() {
           </svg>
         </div>
         <div className="hero__axis hero__axis--x" aria-hidden="true">
-          {C_TICKS.map((tick) => (
+          {L_TICKS.map((tick) => (
             <span
               key={tick}
               className="hero__tick"
-              style={{ left: `${(tick / 0.4) * 100}%` }}
+              style={{ left: `${tick * 100}%` }}
             >
               {tick}
             </span>
           ))}
         </div>
         <p className="hero__axis-title hero__axis-title--x" aria-hidden="true">
-          chroma <b>C</b>
+          lightness <b>L</b>
         </p>
       </div>
 

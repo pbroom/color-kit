@@ -81,8 +81,8 @@
     transform: translateX(-100%);
   }
 
-  /* Axis titles sit outside the tick rows: lightness above the y axis,
-     chroma under the right end of the x axis. */
+  /* Axis titles sit outside the tick rows: chroma above the y axis,
+     lightness under the right end of the x axis. */
   .hero__axis-title {
     margin: 0;
     color: var(--fg-4);
