@@ -74,7 +74,9 @@ What changed, written for people who use the package. Include migration steps fo
 
 ## Releases
 
-The project is pre-1.0. `@pbroom/color-kit` stays on `0.x.y`, breaking changes land in minor releases, and npm publishes use the `next` dist-tag. Changesets runs in normal mode, not prerelease mode, so versions stay plain `0.x.y` with no `-next.N` suffix.
+The project is pre-1.0. `@pbroom/color-kit` stays on `0.x.y`, breaking changes land in minor releases, and npm publishes use the `next` dist-tag.
+
+The initial npm publication is the explicitly requested `0.1.0-next.0`, a one-time bootstrap prerelease. Changesets remains in normal mode: subsequent releases return to plain `0.x.y` versions rather than continuing a `-next.N` sequence. A patch from this bootstrap version finalizes `0.1.0`; a minor bump produces `0.2.0`. These versions still publish under the `next` dist-tag until 1.0 readiness.
 
 1. **Version PR (automated).** On every push to `main`, the [Version Packages workflow](.github/workflows/version-packages.yml) runs `changesets/action`. When unreleased changesets exist, it opens or updates a `chore: version packages` PR. That PR runs `pnpm version-packages` (`changeset version`, then `pnpm check:preprod`), which bumps `packages/color-kit/package.json`, writes `packages/color-kit/CHANGELOG.md`, and deletes the consumed changesets.
 2. **Review and merge** the version PR like any other. PRs opened with the default `GITHUB_TOKEN` don't trigger other workflows, so CI won't start on it automatically. Re-run CI on it, for example by closing and reopening the PR or pushing an empty commit, before you merge.
