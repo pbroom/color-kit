@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
+import { useLocation } from 'react-router';
 import { KindGlyph } from '@/components/api/kind-glyph';
 import { PrefetchLink } from '@/components/prefetch-link';
-import { routes, type NavItem } from '@/site/routes';
+import type { NavItem } from '@/site/routes';
 
 /**
  * An entry's symbols in the sidebar, one collapsible section per domain.
@@ -9,12 +10,15 @@ import { routes, type NavItem } from '@/site/routes';
  * tree, the home page first, never download it.
  */
 
-/** Symbol path → its domain slug (`/api/plane/definePlane` → `compile`). */
-const domainByPath = new Map(
-  routes
-    .filter((route) => route.kind === 'api-symbol')
-    .map((route) => [route.path, route.group ?? 'other']),
-);
+/** The category page a symbol anchor lives on (`/api/core/conversion`). */
+function pagePath(path: string): string {
+  return path.split('#')[0] ?? path;
+}
+
+/** `/api/core/conversion#toRgb` → `conversion`. */
+function domainOf(path: string): string {
+  return pagePath(path).split('/')[3] ?? 'other';
+}
 
 const TITLE_OVERRIDES: Record<string, string> = { hct: 'HCT' };
 
@@ -35,7 +39,7 @@ interface Domain {
 function groupByDomain(items: readonly NavItem[]): Domain[] {
   const domains = new Map<string, Domain>();
   for (const item of items) {
-    const slug = domainByPath.get(item.path) ?? 'other';
+    const slug = domainOf(item.path);
     let domain = domains.get(slug);
     if (!domain) {
       domain = { slug, items: [] };
@@ -52,11 +56,11 @@ function groupByDomain(items: readonly NavItem[]): Domain[] {
  */
 function SymbolLink({
   item,
-  currentPath,
+  current,
   onNavigate,
 }: {
   item: NavItem;
-  currentPath: string;
+  current: boolean;
   onNavigate?: () => void;
 }) {
   return (
@@ -65,7 +69,7 @@ function SymbolLink({
       className="nav-link"
       data-mono=""
       data-symbol=""
-      aria-current={currentPath === item.path ? 'page' : undefined}
+      aria-current={current ? 'location' : undefined}
       title={item.title}
       onClick={onNavigate}
     >
@@ -95,6 +99,7 @@ export default function SidebarSymbols({
   onNavigate,
 }: SidebarSymbolsProps) {
   const ids = useId();
+  const { hash } = useLocation();
   // Explicit open/closed choices; anything else follows the current page.
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const domains = groupByDomain(items);
@@ -104,7 +109,7 @@ export default function SidebarSymbols({
       {domains.map((domain) => {
         const key = domain.slug;
         const containsCurrent = domain.items.some(
-          (item) => item.path === currentPath,
+          (item) => pagePath(item.path) === currentPath,
         );
         const open = filtering || (toggled[key] ?? containsCurrent);
         const listId = `${ids}-${domain.slug}`;
@@ -132,7 +137,7 @@ export default function SidebarSymbols({
                   <li key={item.path}>
                     <SymbolLink
                       item={item}
-                      currentPath={currentPath}
+                      current={`${currentPath}${hash}` === item.path}
                       onNavigate={onNavigate}
                     />
                   </li>

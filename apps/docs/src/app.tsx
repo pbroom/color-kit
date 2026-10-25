@@ -16,16 +16,27 @@ import { useThemeSync } from './site/theme';
  */
 function useNavigationFocus(pathname: string, hash: string) {
   const previous = useRef<string | null>(null);
+  const previousHash = useRef(hash);
   useEffect(() => {
     if (previous.current === null) {
       previous.current = pathname;
       return;
     }
     if (previous.current === pathname) {
+      // Same page, new anchor (sidebar symbol links): scroll to it.
+      if (previousHash.current !== hash) {
+        previousHash.current = hash;
+        document
+          .getElementById(decodeURIComponent(hash.slice(1)))
+          ?.scrollIntoView();
+      }
       return;
     }
     previous.current = pathname;
-    const target = hash ? document.getElementById(hash.slice(1)) : null;
+    previousHash.current = hash;
+    const target = hash
+      ? document.getElementById(decodeURIComponent(hash.slice(1)))
+      : null;
     if (target) {
       target.scrollIntoView();
     } else {

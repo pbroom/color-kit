@@ -1,10 +1,17 @@
 import { use } from 'react';
 import type { ApiEntry, ApiReexport, ApiSymbolSummary } from '@/api/model';
 import { symbolHref } from '@/api/model';
-import { loadEntry, loadNarrative, preloadEntry } from '@/api/data';
+import {
+  loadEntry,
+  loadNarrative,
+  loadSymbol,
+  loadSymbolDoc,
+  preloadEntry,
+} from '@/api/data';
 import { ApiLink } from '@/components/api/api-link';
 import { ApiLabel, KindGlyph } from '@/components/api/kind-glyph';
 import { MdxContent } from '@/components/api/mdx-content';
+import { SymbolReference } from '@/components/api/symbol-reference';
 import { matchRoute, type RouteModuleProps } from '@/site/routes';
 
 if (typeof window !== 'undefined') {
@@ -16,6 +23,17 @@ if (typeof window !== 'undefined') {
 
 function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;
+}
+
+/** One symbol's full reference, as an anchored section of a category page. */
+function SymbolSection({ entry, name }: { entry: string; name: string }) {
+  const symbol = use(loadSymbol(entry, name));
+  const Notes = use(loadSymbolDoc(entry, name));
+  return (
+    <section className="api-symbol-section" aria-labelledby={name}>
+      <SymbolReference symbol={symbol} Notes={Notes} embedded />
+    </section>
+  );
 }
 
 function SymbolRow({
@@ -108,73 +126,95 @@ export default function ApiEntryPage({ route }: RouteModuleProps) {
     entry.symbols.map((symbol) => [symbol.name, symbol]),
   );
   const { counts } = entry;
+  const domains = route.domain
+    ? entry.domains.filter((domain) => domain.slug === route.domain)
+    : entry.domains;
+  const domainPage = domains[0];
 
   return (
     <>
       <header className="doc-header">
         <p className="doc-eyebrow">API</p>
-        <h1 className="doc-title" data-mono="">
-          {entry.importPath}
+        <h1 className="doc-title" data-mono={!domainPage ? '' : undefined}>
+          {domainPage?.title ?? entry.importPath}
         </h1>
-        <p className="doc-lede">{entry.summary}</p>
-        <p className="entry-facts">
-          <span>{plural(counts.symbols, 'export')}</span>
-          <span>{plural(counts.values, 'value')}</span>
-          <span>{plural(counts.types, 'type')}</span>
-          {counts.reexports > 0 ? (
-            <span>{plural(counts.reexports, 're-export')}</span>
-          ) : null}
-          {entry.aliases.map((alias) => (
-            <span key={alias}>
-              also <code>{alias}</code>
-            </span>
-          ))}
+        <p className="doc-lede">
+          {domainPage
+            ? `${domainPage.symbols.length} exports from ${entry.importPath}.`
+            : entry.summary}
         </p>
+        {!domainPage ? (
+          <p className="entry-facts">
+            <span>{plural(counts.symbols, 'export')}</span>
+            <span>{plural(counts.values, 'value')}</span>
+            <span>{plural(counts.types, 'type')}</span>
+            {counts.reexports > 0 ? (
+              <span>{plural(counts.reexports, 're-export')}</span>
+            ) : null}
+            {entry.aliases.map((alias) => (
+              <span key={alias}>
+                also <code>{alias}</code>
+              </span>
+            ))}
+          </p>
+        ) : null}
       </header>
       <div className="prose">
-        {Narrative ? <MdxContent Content={Narrative} /> : null}
-        <nav className="domain-index breakout" aria-label="Domains">
-          {entry.domains.map((domain) => (
-            <a
-              key={domain.slug}
-              className="domain-index__link"
-              href={`#domain-${domain.slug}`}
-            >
-              {domain.title}
-              <span className="domain-index__count">
-                {domain.symbols.length}
-              </span>
-            </a>
-          ))}
-          {counts.reexports > 0 ? (
-            <a className="domain-index__link" href="#reexports">
-              Re-exported
-              <span className="domain-index__count">{counts.reexports}</span>
-            </a>
-          ) : null}
-        </nav>
-        {entry.domains.map((domain) => (
-          <section
-            key={domain.slug}
-            className="domain breakout"
-            aria-labelledby={`domain-${domain.slug}`}
-          >
-            <h2 id={`domain-${domain.slug}`}>
-              <a className="heading-anchor" href={`#domain-${domain.slug}`}>
+        {!domainPage && Narrative ? <MdxContent Content={Narrative} /> : null}
+        {!domainPage ? (
+          <nav className="domain-index breakout" aria-label="Domains">
+            {entry.domains.map((domain) => (
+              <a
+                key={domain.slug}
+                className="domain-index__link"
+                href={`#domain-${domain.slug}`}
+              >
                 {domain.title}
+                <span className="domain-index__count">
+                  {domain.symbols.length}
+                </span>
               </a>
-            </h2>
-            <ul className="symbol-list">
-              {domain.symbols.map((name) => {
-                const symbol = bySymbol.get(name);
-                return symbol ? (
-                  <SymbolRow key={name} entry={entry.slug} symbol={symbol} />
-                ) : null;
-              })}
-            </ul>
-          </section>
-        ))}
-        {entry.reexports.length > 0 ? <Reexports entry={entry} /> : null}
+            ))}
+            {counts.reexports > 0 ? (
+              <a className="domain-index__link" href="#reexports">
+                Re-exported
+                <span className="domain-index__count">{counts.reexports}</span>
+              </a>
+            ) : null}
+          </nav>
+        ) : null}
+        {domainPage
+          ? domainPage.symbols.map((name) => (
+              <SymbolSection key={name} entry={entry.slug} name={name} />
+            ))
+          : domains.map((domain) => (
+              <section
+                key={domain.slug}
+                className="domain breakout"
+                aria-labelledby={`domain-${domain.slug}`}
+              >
+                <h2 id={`domain-${domain.slug}`}>
+                  <a className="heading-anchor" href={`#domain-${domain.slug}`}>
+                    {domain.title}
+                  </a>
+                </h2>
+                <ul className="symbol-list">
+                  {domain.symbols.map((name) => {
+                    const symbol = bySymbol.get(name);
+                    return symbol ? (
+                      <SymbolRow
+                        key={name}
+                        entry={entry.slug}
+                        symbol={symbol}
+                      />
+                    ) : null;
+                  })}
+                </ul>
+              </section>
+            ))}
+        {!domainPage && entry.reexports.length > 0 ? (
+          <Reexports entry={entry} />
+        ) : null}
       </div>
     </>
   );

@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { createContext, Fragment, useContext } from 'react';
 import type { ApiSignature as ApiSignatureModel, ApiSymbol } from '@/api/model';
 import type { MdxPage } from '@/api/data';
 import { Callout } from '@/components/ui/callout';
@@ -10,13 +10,22 @@ import { RichBlocks, RichCompact, RichInlines } from './rich-text';
 import { ApiSignature } from './signature';
 import { TypeView } from './type-link';
 
+/**
+ * Embedded references (a category page with many symbols) prefix their
+ * heading ids with the symbol name and drop one heading level.
+ */
+const AnchorPrefix = createContext('');
+
 function Heading({ id, children }: { id: string; children: string }) {
+  const prefix = useContext(AnchorPrefix);
+  const anchor = prefix ? `${prefix}-${id}` : id;
+  const Tag = prefix ? 'h3' : 'h2';
   return (
-    <h2 id={id}>
-      <a className="heading-anchor" href={`#${id}`}>
+    <Tag id={anchor}>
+      <a className="heading-anchor" href={`#${anchor}`}>
         {children}
       </a>
-    </h2>
+    </Tag>
   );
 }
 
@@ -101,13 +110,15 @@ function SignatureDetails({
 
 /** Group heading for overloads: `Overload 2 of 3`. */
 function OverloadHeading({ index, total }: { index: number; total: number }) {
-  const id = `overload-${index + 1}`;
+  const prefix = useContext(AnchorPrefix);
+  const id = `${prefix ? `${prefix}-` : ''}overload-${index + 1}`;
+  const Tag = prefix ? 'h3' : 'h2';
   return (
-    <h2 id={id} className="api-overload">
+    <Tag id={id} className="api-overload">
       <a className="heading-anchor" href={`#${id}`}>
         Overload {index + 1} of {total}
       </a>
-    </h2>
+    </Tag>
   );
 }
 
@@ -119,9 +130,12 @@ function OverloadHeading({ index, total }: { index: number; total: number }) {
 export function SymbolReference({
   symbol,
   Notes,
+  embedded = false,
 }: {
   symbol: ApiSymbol;
   Notes?: MdxPage | null;
+  /** Render as a section of a category page, anchored at `#<name>`. */
+  embedded?: boolean;
 }) {
   const { comment } = symbol;
   const [lede, ...description] = comment.summary;
@@ -142,29 +156,44 @@ export function SymbolReference({
         : 'Properties';
 
   return (
-    <>
-      <header className="doc-header">
-        <p className="doc-eyebrow api-eyebrow">
-          <ApiLink to={`/api/${symbol.entry}`} className="api-eyebrow__link">
-            {symbol.importPath}
-          </ApiLink>
-          <span aria-hidden="true">/</span>
-          <ApiLink
-            to={`/api/${symbol.entry}#domain-${symbol.domain}`}
-            className="api-eyebrow__link"
-          >
-            {symbol.domainTitle}
-          </ApiLink>
-        </p>
-        <h1 className="doc-title" data-mono="">
-          {symbol.name}
-        </h1>
-        {lede?.type === 'p' ? (
-          <p className="doc-lede">
-            <RichInlines nodes={lede.children} />
+    <AnchorPrefix value={embedded ? symbol.name : ''}>
+      {embedded ? (
+        <header className="api-symbol-section__header">
+          <h2 id={symbol.name} className="api-symbol-section__title">
+            <a className="heading-anchor" href={`#${symbol.name}`}>
+              <code>{symbol.name}</code>
+            </a>
+          </h2>
+          {lede?.type === 'p' ? (
+            <p className="api-symbol-section__lede">
+              <RichInlines nodes={lede.children} />
+            </p>
+          ) : null}
+        </header>
+      ) : (
+        <header className="doc-header">
+          <p className="doc-eyebrow api-eyebrow">
+            <ApiLink to={`/api/${symbol.entry}`} className="api-eyebrow__link">
+              {symbol.importPath}
+            </ApiLink>
+            <span aria-hidden="true">/</span>
+            <ApiLink
+              to={`/api/${symbol.entry}#domain-${symbol.domain}`}
+              className="api-eyebrow__link"
+            >
+              {symbol.domainTitle}
+            </ApiLink>
           </p>
-        ) : null}
-      </header>
+          <h1 className="doc-title" data-mono="">
+            {symbol.name}
+          </h1>
+          {lede?.type === 'p' ? (
+            <p className="doc-lede">
+              <RichInlines nodes={lede.children} />
+            </p>
+          ) : null}
+        </header>
+      )}
       <div className="prose api-prose">
         <ApiSignature symbol={symbol} />
         {symbol.deprecated !== undefined ? (
@@ -265,6 +294,6 @@ export function SymbolReference({
           </>
         ) : null}
       </div>
-    </>
+    </AnchorPrefix>
   );
 }

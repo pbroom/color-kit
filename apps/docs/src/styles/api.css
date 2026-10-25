@@ -687,3 +687,30 @@ a.tok-name:hover {
 .prose :where(.symbol-list, .entry-index, .reexports__list, .api-also) li + li {
   margin-top: 0;
 }
+
+/* ---------- Category pages: every symbol of a domain, one per section ---------- */
+
+.api-symbol-section {
+  padding-top: var(--space-10);
+  margin-top: var(--space-10);
+  border-top: var(--hairline) solid var(--line);
+  scroll-margin-top: var(--header-h);
+}
+
+.api-symbol-section:first-of-type {
+  margin-top: var(--space-6);
+}
+
+.api-symbol-section__title {
+  margin: 0;
+  scroll-margin-top: calc(var(--header-h) + var(--space-6));
+}
+
+.api-symbol-section__title code {
+  font-size: var(--text-4, 1.5rem);
+}
+
+.api-symbol-section__lede {
+  margin: var(--space-2) 0 var(--space-6);
+  color: var(--fg-3);
+}

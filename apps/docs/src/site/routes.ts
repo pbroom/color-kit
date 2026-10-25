@@ -26,6 +26,7 @@ export type RouteKind =
   | 'api-index'
   | 'api-map'
   | 'api-entry'
+  | 'api-domain'
   | 'api-symbol'
   | 'not-found';
 
@@ -64,6 +65,8 @@ export interface SiteRoute {
   entry?: string;
   /** API symbol routes: the exported name, case preserved. */
   symbol?: string;
+  /** API domain routes: the category slug. */
+  domain?: string;
   /** API symbol routes: the kind label (`function`, `interface`, …). */
   symbolKind?: string;
   /** API symbol routes: domain group for the sidebar tree. */
@@ -110,6 +113,15 @@ const PAGE_MODULES = {
   apiMap: () => import('../routes/api/map/index.js'),
   notFound: () => import('../routes/not-found.js'),
 } satisfies Record<string, RouteLoader>;
+
+const API_DOMAIN_TITLES: Record<string, string> = { hct: 'HCT' };
+
+function apiDomainTitle(slug: string): string {
+  return (
+    API_DOMAIN_TITLES[slug] ??
+    slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ')
+  );
+}
 
 const CONTENT_FRAME_SOURCE = 'src/components/shell/content-frame.tsx';
 const loadContentFrame = () => import('../components/shell/content-frame.js');
@@ -160,35 +172,54 @@ function contentRoutes(): SiteRoute[] {
  * or fixture) and returns entry + symbol routes in package order.
  */
 export function apiRoutes(index: ApiRouteIndex): SiteRoute[] {
-  return index.entries.flatMap((entry, entryOrder) => [
-    {
-      path: `/api/${entry.slug}`,
-      kind: 'api-entry' as const,
-      title: entry.title,
-      navTitle: entry.title,
-      description: entry.summary ?? `API reference for ${entry.importPath}.`,
-      section: 'api' as const,
-      order: entryOrder,
-      source: 'src/routes/api/entry.tsx',
-      load: PAGE_MODULES.apiEntry,
-      entry: entry.slug,
-    },
-    ...entry.symbols.map((symbol, symbolOrder) => ({
-      path: `/api/${entry.slug}/${encodeURIComponent(symbol.name)}`,
-      kind: 'api-symbol' as const,
-      title: symbol.name,
-      navTitle: symbol.name,
-      description: symbol.summary ?? `${symbol.name} from ${entry.importPath}.`,
-      section: 'api' as const,
-      order: symbolOrder,
-      source: 'src/routes/api/symbol.tsx',
-      load: PAGE_MODULES.apiSymbol,
-      entry: entry.slug,
-      symbol: symbol.name,
-      symbolKind: symbol.kind,
-      group: symbol.group,
-    })),
-  ]);
+  return index.entries.flatMap((entry, entryOrder) => {
+    const domains = [
+      ...new Set(entry.symbols.map((symbol) => symbol.group ?? 'other')),
+    ];
+    return [
+      {
+        path: `/api/${entry.slug}`,
+        kind: 'api-entry' as const,
+        title: entry.title,
+        navTitle: entry.title,
+        description: entry.summary ?? `API reference for ${entry.importPath}.`,
+        section: 'api' as const,
+        order: entryOrder,
+        source: 'src/routes/api/entry.tsx',
+        load: PAGE_MODULES.apiEntry,
+        entry: entry.slug,
+      },
+      ...domains.map((domain, domainOrder) => ({
+        path: `/api/${entry.slug}/${domain}`,
+        kind: 'api-domain' as const,
+        title: apiDomainTitle(domain),
+        navTitle: apiDomainTitle(domain),
+        description: `${apiDomainTitle(domain)} API reference for ${entry.importPath}.`,
+        section: 'api' as const,
+        order: domainOrder,
+        source: 'src/routes/api/entry.tsx',
+        load: PAGE_MODULES.apiEntry,
+        entry: entry.slug,
+        domain,
+      })),
+      ...entry.symbols.map((symbol, symbolOrder) => ({
+        path: `/api/${entry.slug}/${encodeURIComponent(symbol.name)}`,
+        kind: 'api-symbol' as const,
+        title: symbol.name,
+        navTitle: symbol.name,
+        description:
+          symbol.summary ?? `${symbol.name} from ${entry.importPath}.`,
+        section: 'api' as const,
+        order: symbolOrder,
+        source: 'src/routes/api/symbol.tsx',
+        load: PAGE_MODULES.apiSymbol,
+        entry: entry.slug,
+        symbol: symbol.name,
+        symbolKind: symbol.kind,
+        group: symbol.group,
+      })),
+    ];
+  });
 }
 
 const fixedRoutes: SiteRoute[] = [
@@ -282,7 +313,7 @@ export function documentTitle(route: SiteRoute): string {
   if (route.kind === 'home') {
     return 'color-kit: a queryable color engine';
   }
-  if (route.kind === 'api-entry') {
+  if (route.kind === 'api-entry' || route.kind === 'api-domain') {
     return `${route.title} API reference`;
   }
   return `${route.title} · color-kit`;
@@ -311,6 +342,13 @@ function inSection(section: NavSection): SiteRoute[] {
   return routes.filter((route) => route.section === section);
 }
 
+/** `/api/core/toRgb` → `/api/core/conversion#toRgb`. */
+export function symbolAnchorPath(route: SiteRoute): string {
+  return `/api/${route.entry}/${route.group ?? 'other'}#${encodeURIComponent(
+    route.symbol ?? route.title,
+  )}`;
+}
+
 /** Sidebar order: Start, Concepts, Guides, API (package order), Map. */
 export const navigation: readonly NavGroup[] = [
   { id: 'start', title: 'Start', items: inSection('start').map(toItem) },
@@ -324,7 +362,9 @@ export const navigation: readonly NavGroup[] = [
     id: 'api',
     title: 'API',
     items: inSection('api')
-      .filter((route) => route.kind !== 'api-symbol')
+      .filter(
+        (route) => route.kind !== 'api-symbol' && route.kind !== 'api-domain',
+      )
       .map((route) => ({
         ...toItem(route),
         children:
@@ -337,6 +377,8 @@ export const navigation: readonly NavGroup[] = [
                 )
                 .map((symbol) => ({
                   ...toItem(symbol),
+                  // Symbols live as anchors on their category's page.
+                  path: symbolAnchorPath(symbol),
                   meta: symbol.symbolKind,
                 }))
             : undefined,
