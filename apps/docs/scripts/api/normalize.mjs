@@ -1,17 +1,19 @@
 // Step 2 of the API reference: TypeDoc's JSON (`.typedoc/api.json`) → the
-// site's model (`src/generated/api.json` plus per-entry and per-symbol page
-// files), typed by `src/api/model.ts`.
+// site's model (`src/generated/api.json` plus per-entry files and per-category
+// symbol data), typed by `src/api/model.ts`.
 //
 // - Entry points come from `packages/color-kit/package.json#exports`.
-// - A declaration exported from several entries gets one page, in its
-//   canonical entry: a subpath beats the root; among subpaths, the one whose
+// - A declaration exported from several entries gets one row, on a category
+//   page of its canonical entry: a subpath beats the root; among subpaths, the one whose
 //   source folder holds the declaration, then the one exporting the most
 //   from the same file, then package order. Other entries list it as a
-//   re-export and the page lists them under "Also exported from".
+//   re-export and the row lists them under "Also exported from".
 // - Domains come from the source folder (or file, for flat packages).
-// - Links (`{@link}`, type references) resolve to page paths here, so the
-//   site never resolves anything at runtime.
+// - Links (`{@link}`, type references) resolve to row anchors here
+//   (`/api/<entry>/<domain>#<Symbol>`), so the site never resolves anything
+//   at runtime.
 
+import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
@@ -139,14 +141,22 @@ function readCommit() {
   }
 }
 
-/** `Color` → `-color`; mirrors `symbolFileName` in src/api/model.ts. */
-export function symbolFileName(name) {
-  return name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+/** A symbol's row on its category page; mirrors `symbolHref` in src/api/model.ts. */
+export function symbolHref(entry, domain, name) {
+  return `/api/${entry}/${domain}#${encodeURIComponent(name)}`;
 }
 
-export function symbolHref(entry, name) {
-  return `/api/${entry}/${encodeURIComponent(name)}`;
+/** A member's row inside a symbol's panel; mirrors `memberAnchor` in src/api/model.ts. */
+export function memberHref(entry, domain, name, member) {
+  return `/api/${entry}/${domain}#${encodeURIComponent(`${name}-prop-${member}`)}`;
 }
+
+/**
+ * Largest JSON part of a category's data file. Vite turns each part into a
+ * JS chunk a little larger than the JSON (string escaping), and the bundle
+ * check fails any chunk over 200 kB.
+ */
+const DOMAIN_PART_BYTES = 120_000;
 
 /**
  * @param {object} options
@@ -259,8 +269,10 @@ export function normalize({ project, entries, highlight }) {
     while (node) {
       const home = canonical.get(node.id);
       if (home) {
-        const href = symbolHref(home.entry.slug, home.name);
-        return member ? `${href}#prop-${member}` : href;
+        const domain = domainOf(fileOf(node), home.entry);
+        return member
+          ? memberHref(home.entry.slug, domain, home.name, member)
+          : symbolHref(home.entry.slug, domain, home.name);
       }
       if (
         node.kind === KIND.Property ||
@@ -693,7 +705,7 @@ export function normalize({ project, entries, highlight }) {
           kind: symbol.kind,
           ...(summary ? { summary } : {}),
           canonicalEntry: home.entry.slug,
-          href: symbolHref(home.entry.slug, home.name),
+          href: symbolHref(home.entry.slug, symbol.domain, home.name),
         };
       })
       .sort((a, b) => position(a.name) - position(b.name));
@@ -754,7 +766,29 @@ export function normalize({ project, entries, highlight }) {
 export const generatedDir = (docsRoot) =>
   path.join(docsRoot, 'src', 'generated');
 
-/** Write `api.json` and the page files. */
+/**
+ * Split a category's symbols into parts of at most `DOMAIN_PART_BYTES` of
+ * JSON each, keeping display order.
+ */
+export function domainParts(symbols, limit = DOMAIN_PART_BYTES) {
+  const parts = [];
+  let current = [];
+  let size = 2;
+  for (const symbol of symbols) {
+    const bytes = Buffer.byteLength(JSON.stringify(symbol)) + 1;
+    if (current.length > 0 && size + bytes > limit) {
+      parts.push(current);
+      current = [];
+      size = 2;
+    }
+    current.push(symbol);
+    size += bytes;
+  }
+  if (current.length > 0) parts.push(current);
+  return parts;
+}
+
+/** Write `api.json`, the entry files and each category's data parts. */
 export async function writeModel(docsRoot, { model, entries, symbols }) {
   const dir = generatedDir(docsRoot);
   await rm(path.join(dir, 'api'), { recursive: true, force: true });
@@ -765,24 +799,32 @@ export async function writeModel(docsRoot, { model, entries, symbols }) {
       path.join(dir, 'api', 'entries', `${entry.slug}.json`),
       JSON.stringify(entry),
     );
-    await mkdir(path.join(dir, 'api', 'symbols', entry.slug), {
-      recursive: true,
-    });
-  }
-  const seen = new Set();
-  for (const symbol of symbols) {
-    const file = path.join(
-      dir,
-      'api',
-      'symbols',
-      symbol.entry,
-      `${symbolFileName(symbol.name)}.json`,
+    const bySymbol = new Map(
+      symbols
+        .filter((symbol) => symbol.entry === entry.slug)
+        .map((symbol) => [symbol.name, symbol]),
     );
-    const key = file.toLowerCase();
-    if (seen.has(key)) {
-      throw new Error(`Two symbols map to ${path.relative(docsRoot, file)}.`);
+    const seen = new Set();
+    for (const domain of entry.domains) {
+      const folder = path.join(dir, 'api', 'domains', entry.slug, domain.slug);
+      await mkdir(folder, { recursive: true });
+      const list = domain.symbols.map((name) => {
+        // Two names that differ only by case would share one row id on a
+        // case-insensitive lookup and one legacy redirect folder on disk.
+        const key = name.toLowerCase();
+        if (seen.has(key)) {
+          throw new Error(`${entry.importPath}: two exports fold to ${key}.`);
+        }
+        seen.add(key);
+        return bySymbol.get(name);
+      });
+      const parts = domainParts(list);
+      for (const [index, part] of parts.entries()) {
+        await writeFile(
+          path.join(folder, `${index}.json`),
+          JSON.stringify(part),
+        );
+      }
     }
-    seen.add(key);
-    await writeFile(file, JSON.stringify(symbol));
   }
 }

@@ -9,13 +9,18 @@
  *   `title` and `description` (both required; the page header renders
  *   them, so bodies start at `##`), plus optional `order` and `navTitle`.
  *   Files starting with `_` are drafts and skipped.
- * - **API** (`/api/<entry>`, `/api/<entry>/<Symbol>`): from the API route
+ * - **API** (`/api/<entry>`, `/api/<entry>/<domain>`): from the API route
  *   index (`src/site/api-routes.ts`), i.e. S2's generated data once present.
+ *   Symbols are not pages: each is a row on its category page, listed in
+ *   `apiSymbols` and linked as `/api/<entry>/<domain>#<Symbol>`. Their old
+ *   page paths (`/api/<entry>/<Symbol>`) redirect to the row
+ *   (`legacySymbolRedirect`).
  * - **Fixed pages** (`/`, `/api`, `/api/map`, 404) map to modules owned by
  *   their slices: `src/routes/home/**` (S3), `src/routes/api/**` (S2) and
  *   `src/routes/api/map/**` (S5).
  */
 import type { ComponentType } from 'react';
+import { memberAnchor, panelAnchor, symbolHref } from '../api/model';
 import { loadApiRouteIndex, type ApiRouteIndex } from './api-routes';
 
 export type RouteKind =
@@ -27,7 +32,6 @@ export type RouteKind =
   | 'api-map'
   | 'api-entry'
   | 'api-domain'
-  | 'api-symbol'
   | 'not-found';
 
 export type NavSection = 'start' | 'concepts' | 'guides' | 'api' | 'map';
@@ -63,14 +67,26 @@ export interface SiteRoute {
   load: RouteLoader;
   /** API routes: the entry slug (`core`, `plane`, …). */
   entry?: string;
-  /** API symbol routes: the exported name, case preserved. */
-  symbol?: string;
   /** API domain routes: the category slug. */
   domain?: string;
-  /** API symbol routes: the kind label (`function`, `interface`, …). */
-  symbolKind?: string;
-  /** API symbol routes: domain group for the sidebar tree. */
-  group?: string;
+}
+
+/** A documented export: a row on its category page. */
+export interface ApiSymbolLink {
+  /** Exported name, case preserved: `Color` in core ≠ `Color` in react. */
+  name: string;
+  /** Kind label (`function`, `interface`, …). */
+  kind: string;
+  /** Entry slug of its canonical home. */
+  entry: string;
+  /** Category slug: the row lives on `/api/<entry>/<domain>`. */
+  domain: string;
+  /** First sentence of the summary (prerender only; empty in the client). */
+  summary?: string;
+  /** The row: `/api/core/conversion#toRgb`. */
+  href: string;
+  /** The retired per-symbol page, `/api/core/toRgb`, now a redirect. */
+  legacyPath: string;
 }
 
 export interface ContentFrontmatter {
@@ -109,7 +125,6 @@ const PAGE_MODULES = {
   home: () => import('../routes/home/index.js'),
   apiIndex: () => import('../routes/api/index.js'),
   apiEntry: () => import('../routes/api/entry.js'),
-  apiSymbol: () => import('../routes/api/symbol.js'),
   apiMap: () => import('../routes/api/map/index.js'),
   notFound: () => import('../routes/not-found.js'),
 } satisfies Record<string, RouteLoader>;
@@ -169,7 +184,7 @@ function contentRoutes(): SiteRoute[] {
 
 /**
  * Hook for generated API routes. Called with the API route index (generated
- * or fixture) and returns entry + symbol routes in package order.
+ * or fixture) and returns entry + category routes in package order.
  */
 export function apiRoutes(index: ApiRouteIndex): SiteRoute[] {
   return index.entries.flatMap((entry, entryOrder) => {
@@ -202,24 +217,26 @@ export function apiRoutes(index: ApiRouteIndex): SiteRoute[] {
         entry: entry.slug,
         domain,
       })),
-      ...entry.symbols.map((symbol, symbolOrder) => ({
-        path: `/api/${entry.slug}/${encodeURIComponent(symbol.name)}`,
-        kind: 'api-symbol' as const,
-        title: symbol.name,
-        navTitle: symbol.name,
-        description:
-          symbol.summary ?? `${symbol.name} from ${entry.importPath}.`,
-        section: 'api' as const,
-        order: symbolOrder,
-        source: 'src/routes/api/symbol.tsx',
-        load: PAGE_MODULES.apiSymbol,
-        entry: entry.slug,
-        symbol: symbol.name,
-        symbolKind: symbol.kind,
-        group: symbol.group,
-      })),
     ];
   });
+}
+
+/** Every documented export, in package then display order. */
+export function apiSymbolLinks(index: ApiRouteIndex): ApiSymbolLink[] {
+  return index.entries.flatMap((entry) =>
+    entry.symbols.map((symbol) => {
+      const domain = symbol.group ?? 'other';
+      return {
+        name: symbol.name,
+        kind: symbol.kind,
+        entry: entry.slug,
+        domain,
+        summary: symbol.summary,
+        href: symbolHref(entry.slug, domain, symbol.name),
+        legacyPath: `/api/${entry.slug}/${encodeURIComponent(symbol.name)}`,
+      };
+    }),
+  );
 }
 
 const fixedRoutes: SiteRoute[] = [
@@ -277,13 +294,25 @@ function byOrder(a: SiteRoute, b: SiteRoute): number {
   return a.order - b.order || a.title.localeCompare(b.title);
 }
 
+const apiRouteIndex = loadApiRouteIndex();
+
 export const routes: readonly SiteRoute[] = [
   ...fixedRoutes,
   ...contentRoutes().sort(byOrder),
-  ...apiRoutes(loadApiRouteIndex()),
+  ...apiRoutes(apiRouteIndex),
 ];
 
+/** Every documented export with its row link, in package order. */
+export const apiSymbols: readonly ApiSymbolLink[] =
+  apiSymbolLinks(apiRouteIndex);
+
 const routesByPath = new Map(routes.map((route) => [route.path, route]));
+const symbolsByHref = new Map(
+  apiSymbols.flatMap((symbol) => [
+    [symbol.href, symbol],
+    [symbol.legacyPath, symbol],
+  ]),
+);
 
 /** Normalize a URL pathname to a registry key. */
 export function normalizePath(pathname: string): string {
@@ -295,6 +324,49 @@ export function normalizePath(pathname: string): string {
   }
   path = path.replace(/\/index\.html$/, '/').replace(/\/+$/, '');
   return path === '' ? '/' : path;
+}
+
+/**
+ * The export a link points at: its row (`/api/core/conversion#toRgb`) or its
+ * retired page path (`/api/core/toRgb`).
+ */
+export function apiSymbolAt(href: string): ApiSymbolLink | undefined {
+  const [pathname = '', hash] = href.split('#');
+  if (hash !== undefined) {
+    return symbolsByHref.get(`${normalizePath(pathname)}#${hash}`);
+  }
+  const path = normalizePath(pathname);
+  return symbolsByHref.get(path) ?? symbolsByHref.get(encodeURI(path));
+}
+
+/**
+ * Where a retired symbol page (`/api/<entry>/<Symbol>`) lives now: its row,
+ * `/api/<entry>/<domain>#<Symbol>`. An old member or parameter anchor
+ * (`#prop-hex`, `#param-color`) maps to the same anchor inside the row's
+ * panel (`#Color-prop-hex`). `null` for any other path.
+ */
+export function legacySymbolRedirect(
+  pathname: string,
+  hash = '',
+): string | null {
+  if (routesByPath.has(normalizePath(pathname))) return null;
+  const symbol = apiSymbolAt(pathname);
+  if (!symbol) return null;
+  const fragment = hash.replace(/^#/, '');
+  if (/^(prop|param)-/.test(fragment)) {
+    const page = symbol.href.split('#')[0]!;
+    let id = fragment;
+    try {
+      id = decodeURIComponent(fragment);
+    } catch {
+      // Keep the raw fragment.
+    }
+    const anchor = id.startsWith('prop-')
+      ? memberAnchor(symbol.name, id.slice('prop-'.length))
+      : panelAnchor(symbol.name, id);
+    return `${page}#${encodeURIComponent(anchor)}`;
+  }
+  return symbol.href;
 }
 
 /** The route for a pathname, or the 404 route. */
@@ -342,13 +414,6 @@ function inSection(section: NavSection): SiteRoute[] {
   return routes.filter((route) => route.section === section);
 }
 
-/** `/api/core/toRgb` → `/api/core/conversion#toRgb`. */
-export function symbolAnchorPath(route: SiteRoute): string {
-  return `/api/${route.entry}/${route.group ?? 'other'}#${encodeURIComponent(
-    route.symbol ?? route.title,
-  )}`;
-}
-
 /** Sidebar order: Start, Concepts, Guides, API (package order), Map. */
 export const navigation: readonly NavGroup[] = [
   { id: 'start', title: 'Start', items: inSection('start').map(toItem) },
@@ -362,25 +427,22 @@ export const navigation: readonly NavGroup[] = [
     id: 'api',
     title: 'API',
     items: inSection('api')
-      .filter(
-        (route) => route.kind !== 'api-symbol' && route.kind !== 'api-domain',
-      )
+      .filter((route) => route.kind !== 'api-domain')
       .map((route) => ({
         ...toItem(route),
         children:
           route.kind === 'api-entry'
-            ? inSection('api')
-                .filter(
-                  (symbol) =>
-                    symbol.kind === 'api-symbol' &&
-                    symbol.entry === route.entry,
+            ? apiSymbols
+                .filter((symbol) => symbol.entry === route.entry)
+                .map(
+                  (symbol): NavItem => ({
+                    title: symbol.name,
+                    // Symbols are rows on their category's page.
+                    path: symbol.href,
+                    kind: 'api-domain',
+                    meta: symbol.kind,
+                  }),
                 )
-                .map((symbol) => ({
-                  ...toItem(symbol),
-                  // Symbols live as anchors on their category's page.
-                  path: symbolAnchorPath(symbol),
-                  meta: symbol.symbolKind,
-                }))
             : undefined,
       })),
   },

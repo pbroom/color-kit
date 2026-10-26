@@ -1,4 +1,4 @@
-import { routes, type SiteRoute } from './routes';
+import { apiSymbols, routes, type ApiSymbolLink } from './routes';
 
 export type SearchHitKind = 'symbol' | 'page' | 'prose';
 
@@ -34,28 +34,27 @@ function score(name: string, query: string): number {
   return Number.POSITIVE_INFINITY;
 }
 
-function entryLabel(route: SiteRoute): string | undefined {
-  if (!route.entry) return undefined;
-  return route.entry === 'core'
+function entryLabel(symbol: ApiSymbolLink): string {
+  return symbol.entry === 'core'
     ? '@pbroom/color-kit'
-    : `@pbroom/color-kit/${route.entry}`;
+    : `@pbroom/color-kit/${symbol.entry}`;
 }
 
+/** Symbol hits open the symbol's row on its category page. */
 const defaultSymbolProvider: SymbolSearchProvider = (query, limit) =>
-  routes
-    .filter((route) => route.kind === 'api-symbol')
-    .map((route) => ({ route, rank: score(route.title, query) }))
+  apiSymbols
+    .map((symbol) => ({ symbol, rank: score(symbol.name, query) }))
     .filter(({ rank }) => Number.isFinite(rank))
     .sort(
-      (a, b) => a.rank - b.rank || a.route.title.length - b.route.title.length,
+      (a, b) => a.rank - b.rank || a.symbol.name.length - b.symbol.name.length,
     )
     .slice(0, limit)
-    .map(({ route }) => ({
-      id: `symbol:${route.path}`,
+    .map(({ symbol }) => ({
+      id: `symbol:${symbol.href}`,
       kind: 'symbol' as const,
-      title: route.title,
-      href: route.path,
-      meta: [route.symbolKind, entryLabel(route)].filter(Boolean).join(' · '),
+      title: symbol.name,
+      href: symbol.href,
+      meta: [symbol.kind, entryLabel(symbol)].join(' · '),
     }));
 
 let symbolProvider: SymbolSearchProvider = defaultSymbolProvider;
@@ -72,9 +71,7 @@ export function searchInstant(rawQuery: string): SearchHit[] {
   }
   const symbols = symbolProvider(query, 8);
   const pages = routes
-    .filter(
-      (route) => route.kind !== 'api-symbol' && route.kind !== 'not-found',
-    )
+    .filter((route) => route.kind !== 'not-found')
     .map((route) => ({ route, rank: score(route.title, query) }))
     .filter(({ rank }) => Number.isFinite(rank))
     .sort((a, b) => a.rank - b.rank)

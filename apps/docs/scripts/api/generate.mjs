@@ -41,7 +41,7 @@ async function main() {
     0,
   );
   console.log(
-    `api: ${result.symbols.length} symbol pages, ${reexports} re-exports, ${entries.length} entries → ${path.relative(docsRoot, path.join(docsRoot, 'src/generated'))} in ${seconds}s`,
+    `api: ${result.symbols.length} symbols, ${reexports} re-exports, ${entries.length} entries → ${path.relative(docsRoot, path.join(docsRoot, 'src/generated'))} in ${seconds}s`,
   );
 }
 

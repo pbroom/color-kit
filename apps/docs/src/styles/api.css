@@ -331,13 +331,7 @@ a.tok-name:hover {
   font-size: 0.875em;
 }
 
-/* ---------- Symbol page ---------- */
-
-.prose.api-prose h2 {
-  margin-top: var(--space-10);
-  font-size: var(--text-3);
-  letter-spacing: 0;
-}
+/* ---------- Symbol panel text ---------- */
 
 .prose .api-returns__text code,
 .prose .api-caption code {
@@ -348,8 +342,8 @@ a.tok-name:hover {
   font-size: 0.875em;
 }
 
-/* Export names have no spaces to wrap at: a long one (39 characters at
-   most today) breaks inside the name rather than widening the page. */
+/* Import paths have few places to wrap: a long one breaks inside rather
+   than widening the page. */
 .doc-header .doc-title[data-mono] {
   overflow-wrap: anywhere;
   hyphens: none;
@@ -359,24 +353,6 @@ a.tok-name:hover {
   .doc-header .doc-title[data-mono] {
     font-size: var(--text-3);
   }
-}
-
-.api-eyebrow {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.api-eyebrow__link {
-  color: var(--fg-3);
-  transition: color var(--duration-1) var(--ease-out);
-}
-
-.api-eyebrow__link:hover {
-  color: var(--fg);
 }
 
 .api-returns {
@@ -688,154 +664,163 @@ a.tok-name:hover {
   margin-top: 0;
 }
 
-/* ---------- Category pages: a domain's exports as one table ---------- */
+/* ---------- Category pages: a domain's exports as disclosure rows ---------- */
 
-.symbol-table-wrap {
+.api-table {
   margin-top: var(--space-6);
-  overflow-x: auto;
-}
-
-.symbol-table {
-  width: 100%;
-  border-collapse: collapse;
+  overflow: clip;
+  border: var(--hairline) solid var(--line);
+  border-radius: 12px;
   font-size: var(--text-1);
 }
 
-.symbol-table thead th {
-  padding: 0 var(--space-3) var(--space-2) 0;
-  border-bottom: var(--hairline) solid var(--line-strong);
-  color: var(--fg-4);
-  font-weight: 500;
-  text-align: left;
+.api-table__head,
+.api-table__summary {
+  display: grid;
+  grid-template-columns: minmax(9rem, 15rem) minmax(0, 1fr) 16px;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
 }
 
-.symbol-table__row > :is(th, td) {
-  padding: var(--space-3) var(--space-3) var(--space-3) 0;
+.api-table__head {
   border-bottom: var(--hairline) solid var(--line);
-  text-align: left;
-  vertical-align: top;
+  background: var(--bg-subtle);
+  color: var(--fg-3);
+  font-weight: 500;
 }
 
-.symbol-table__row {
+.api-table__row {
   scroll-margin-top: calc(var(--header-h) + var(--space-6));
 }
 
-.symbol-table__row:target > :is(th, td) {
-  background: var(--bg-subtle);
+.api-table__row + .api-table__row {
+  border-top: var(--hairline) solid var(--line);
 }
 
-.symbol-table__name {
-  font-weight: 400;
-  white-space: nowrap;
+.api-table__summary {
+  align-items: baseline;
+  list-style: none;
+  cursor: pointer;
+  transition: background-color var(--duration-1) var(--ease-out);
 }
 
-.symbol-table__link {
-  display: inline-flex;
+.api-table__summary::-webkit-details-marker {
+  display: none;
+}
+
+.api-table__summary:hover,
+.api-table__row:target > .api-table__summary {
+  background: var(--bg-hover);
+}
+
+/* The ring sits inside the row: the container clips its rounded corners. */
+.api-table__summary:focus-visible {
+  border-radius: 0;
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.api-table__name {
+  display: flex;
+  min-width: 0;
   align-items: center;
   gap: var(--space-2);
-  color: var(--fg);
-  text-decoration: none;
 }
 
-.symbol-table__link:hover code {
-  text-decoration: underline;
-  text-decoration-color: var(--control);
-  text-underline-offset: 3px;
-}
-
-.prose .symbol-table__name code,
-.prose .symbol-table__signature code {
+.prose .api-table__name code,
+.prose .api-table__type {
   padding: 0;
   border: 0;
   background: none;
+  font-size: inherit;
 }
 
-.symbol-table__signature {
-  min-width: 15rem;
-  max-width: 24rem;
-  color: var(--shiki-foreground);
-  font-family: var(--font-mono);
+.prose .api-table__name code {
+  min-width: 0;
+  color: var(--fg);
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
-.symbol-table__summary {
-  color: var(--fg-2);
+.prose .api-table__type {
+  min-width: 0;
+  color: var(--shiki-foreground);
+  overflow-wrap: anywhere;
 }
 
-.symbol-table__more {
+.api-table__more {
   color: var(--fg-4);
 }
 
-.symbol-table__toggle {
-  white-space: nowrap;
+.api-table__chevron {
+  align-self: center;
+  color: var(--fg-4);
+  transition: transform var(--duration-2) var(--ease-out);
 }
 
-.symbol-table__expand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 2px var(--space-2);
-  border: var(--hairline) solid var(--line);
-  border-radius: var(--radius);
-  background: none;
-  color: var(--fg-3);
-  font: inherit;
-  cursor: pointer;
+.api-table__row[open] > .api-table__summary .api-table__chevron {
+  transform: rotate(180deg);
 }
 
-.symbol-table__expand:hover {
-  border-color: var(--line-strong);
-  color: var(--fg);
+.api-table__panel {
+  min-width: 0;
+  padding: var(--space-2) var(--space-4) var(--space-6);
 }
 
-.symbol-table__expand svg {
-  transition: transform var(--duration-1) var(--ease-out);
+.api-table__panel > * + * {
+  margin-top: var(--space-4);
 }
 
-.symbol-table__expand[aria-expanded='true'] svg {
-  transform: rotate(90deg);
+.prose .api-panel__heading {
+  margin-top: var(--space-8);
+  font-size: var(--text-2);
+  letter-spacing: 0;
+  line-height: 1.35;
 }
 
-.symbol-table__examples > td {
-  padding: 0 0 var(--space-4);
-  border-bottom: var(--hairline) solid var(--line);
+.prose :is(h4, h5).api-panel__heading {
+  margin-top: var(--space-6);
+  font-size: var(--text-1);
+}
+
+.prose .api-panel__heading + * {
+  margin-top: var(--space-3);
+}
+
+.api-panel__heading,
+.api-table__panel .params__row {
+  scroll-margin-top: calc(var(--header-h) + var(--space-6));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .api-table__chevron {
+    transition: none;
+  }
 }
 
 @media (max-width: 40rem) {
-  .symbol-table,
-  .symbol-table tbody,
-  .symbol-table__examples,
-  .symbol-table__examples > td {
-    display: block;
+  .api-table__head,
+  .api-table__summary {
+    grid-template-columns: minmax(0, 1fr) 16px;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-3);
   }
 
-  .symbol-table__examples[hidden] {
+  /* One label: the type sits under the name. */
+  .api-table__head > :nth-child(2) {
     display: none;
   }
 
-  .symbol-table thead {
-    display: none;
-  }
-
-  .symbol-table__row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    border-bottom: var(--hairline) solid var(--line);
-  }
-
-  .symbol-table__row > :is(th, td) {
-    border-bottom: 0;
-  }
-
-  .symbol-table__signature,
-  .symbol-table__summary {
+  .api-table__type {
     grid-column: 1 / -1;
-    max-width: none;
-    padding-top: 0;
+    grid-row: 2;
   }
 
-  .symbol-table__toggle {
-    grid-row: 1;
+  .api-table__chevron {
     grid-column: 2;
+    grid-row: 1;
+  }
+
+  .api-table__panel {
+    padding: var(--space-2) var(--space-3) var(--space-5);
   }
 }

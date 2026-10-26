@@ -11,10 +11,10 @@ import exampleSource, {
 
 ## Two metrics
 
-[`contrastRatio`](/api/core/contrastRatio) is WCAG 2.1: symmetric, from 1 to
-21, with [`meetsAA`](/api/core/meetsAA) at 4.5:1 (3:1 for large text) and
-[`meetsAAA`](/api/core/meetsAAA) at 7:1.
-[`contrastAPCA`](/api/core/contrastAPCA) is APCA-W3 0.0.98G-4g: text first,
+[`contrastRatio`](/api/core/contrast#contrastRatio) is WCAG 2.1: symmetric, from 1 to
+21, with [`meetsAA`](/api/core/contrast#meetsAA) at 4.5:1 (3:1 for large text) and
+[`meetsAAA`](/api/core/contrast#meetsAAA) at 7:1.
+[`contrastAPCA`](/api/core/contrast#contrastAPCA) is APCA-W3 0.0.98G-4g: text first,
 background second, positive for dark on light and negative for light on
 dark. It returns Lc normalized to about `-1.08` to `1.06`; multiply by 100
 for the conventional scale.
@@ -64,7 +64,7 @@ contrastRatio(toSrgbGamut(green), black); // → ≈ 10.21 (what you paint)
 
 ## Regions agree with checks
 
-[`contrastRegionPaths`](/api/core/contrastRegionPaths), and the plane's
+[`contrastRegionPaths`](/api/core/contrast#contrastRegionPaths), and the plane's
 `contrastRegion` query, return the edge of the area at one hue that meets a
 level against a reference. A point inside passes `contrastRatio` or
 `contrastAPCA` with the same gamut. This is exact, not approximate, because of

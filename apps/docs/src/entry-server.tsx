@@ -7,7 +7,12 @@ import { StrictMode } from 'react';
 import { StaticRouter } from 'react-router';
 import { App } from './app';
 
-export { documentTitle, routes, notFoundRoute } from './site/routes';
+export {
+  apiSymbols,
+  documentTitle,
+  routes,
+  notFoundRoute,
+} from './site/routes';
 
 export function renderApp(url: string) {
   return (

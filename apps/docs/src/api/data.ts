@@ -1,18 +1,23 @@
 import type { ComponentType } from 'react';
 import type { mdxComponents } from '@/components/ui/mdx-components';
-import { symbolFileName, type ApiEntry, type ApiSymbol } from './model';
+import { apiSymbolAt, matchRoute } from '@/site/routes';
+import type { ApiEntry, ApiSymbol } from './model';
 
 /**
- * Lazy loaders for the generated API pages. Each symbol and entry is its own
- * small chunk, so a page never downloads the whole model. Loaders return
+ * Lazy loaders for the generated API data. Each entry, and each category's
+ * symbols, is its own chunk (a large category is split into a few parts), so
+ * a page never downloads the whole model and a category page fetches its
+ * rows in one or two requests rather than one per symbol. Loaders return
  * cached promises that carry React's thenable `status`/`value` fields, so
  * `use()` reads a settled one synchronously (prerender, warm navigation).
  */
 
 export type MdxPage = ComponentType<{ components?: typeof mdxComponents }>;
 
-const symbolFiles = import.meta.glob<ApiSymbol>(
-  '../generated/api/symbols/*/*.json',
+const DOMAIN_DIR = '../generated/api/domains/';
+
+const domainFiles = import.meta.glob<ApiSymbol[]>(
+  '../generated/api/domains/*/*/*.json',
   { import: 'default' },
 );
 const entryFiles = import.meta.glob<ApiEntry>(
@@ -23,7 +28,7 @@ const entryFiles = import.meta.glob<ApiEntry>(
 const narrativeFiles = import.meta.glob<MdxPage>('../content/api/*/index.mdx', {
   import: 'default',
 });
-/** `content/api/<entry>/<Symbol>.mdx`: extra notes merged into a symbol page. */
+/** `content/api/<entry>/<Symbol>.mdx`: notes shown in a symbol's panel. */
 const symbolDocFiles = import.meta.glob<MdxPage>(
   ['../content/api/*/*.mdx', '!../content/api/*/index.mdx'],
   { import: 'default' },
@@ -65,19 +70,45 @@ function missing(what: string): Promise<never> {
   );
 }
 
-/** Whether a page for `entry`/`name` was generated. */
-export function hasSymbol(entry: string, name: string): boolean {
-  return (
-    `../generated/api/symbols/${entry}/${symbolFileName(name)}.json` in
-    symbolFiles
-  );
+/** `<entry>/<domain>/<n>.json` part loaders, in part order. */
+function domainPartLoaders(
+  entry: string,
+  domain: string,
+): Array<() => Promise<ApiSymbol[]>> {
+  const prefix = `${DOMAIN_DIR}${entry}/${domain}/`;
+  return Object.keys(domainFiles)
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => ({ key, part: Number(key.slice(prefix.length, -5)) }))
+    .sort((a, b) => a.part - b.part)
+    .map(({ key }) => domainFiles[key]!);
 }
 
-export function loadSymbol(entry: string, name: string): Promise<ApiSymbol> {
-  const key = `../generated/api/symbols/${entry}/${symbolFileName(name)}.json`;
-  return tracked(
-    key,
-    () => symbolFiles[key]?.() ?? missing(`${entry}/${name}`),
+/** Every symbol of one category, in display order. */
+export function loadDomain(
+  entry: string,
+  domain: string,
+): Promise<ApiSymbol[]> {
+  return tracked(`domain:${entry}/${domain}`, () => {
+    const parts = domainPartLoaders(entry, domain);
+    if (parts.length === 0) return missing(`${entry}/${domain}`);
+    return Promise.all(parts.map((load) => load())).then((lists) =>
+      lists.flat(),
+    );
+  });
+}
+
+/** One symbol, from its category's data. */
+export function loadSymbol(
+  entry: string,
+  domain: string,
+  name: string,
+): Promise<ApiSymbol> {
+  return tracked(`symbol:${entry}/${domain}/${name}`, () =>
+    loadDomain(entry, domain).then(
+      (symbols) =>
+        symbols.find((symbol) => symbol.name === name) ??
+        missing(`${entry}/${name}`),
+    ),
   );
 }
 
@@ -91,18 +122,29 @@ export function loadNarrative(entry: string): Promise<MdxPage | null> {
   return tracked(key, () => narrativeFiles[key]?.() ?? Promise.resolve(null));
 }
 
-export function loadSymbolDoc(
+/**
+ * The MDX notes of each named symbol that has some, keyed by name. Symbols
+ * without notes cost nothing: only existing files are fetched.
+ */
+export function loadSymbolDocs(
   entry: string,
-  name: string,
-): Promise<MdxPage | null> {
-  const key = `../content/api/${entry}/${name}.mdx`;
-  return tracked(key, () => symbolDocFiles[key]?.() ?? Promise.resolve(null));
+  names: readonly string[],
+): Promise<ReadonlyMap<string, MdxPage>> {
+  return tracked(`docs:${entry}/${names.join(',')}`, () =>
+    Promise.all(
+      names.flatMap((name) => {
+        const load = symbolDocFiles[`../content/api/${entry}/${name}.mdx`];
+        return load
+          ? [load().then((page) => [name, page] as const)]
+          : ([] as Array<Promise<readonly [string, MdxPage]>>);
+      }),
+    ).then((pairs) => new Map(pairs)),
+  );
 }
 
-/** Warm a symbol page's data on intent; never throws. */
-export function preloadSymbol(entry: string, name: string): void {
-  loadSymbol(entry, name).catch(() => undefined);
-  loadSymbolDoc(entry, name).catch(() => undefined);
+/** Warm a category page's rows on intent; never throws. */
+export function preloadDomain(entry: string, domain: string): void {
+  loadDomain(entry, domain).catch(() => undefined);
 }
 
 /** Warm an entry page's data on intent; never throws. */
@@ -111,25 +153,24 @@ export function preloadEntry(entry: string): void {
   loadNarrative(entry).catch(() => undefined);
 }
 
-/** `/api/core/Color` → `{ entry: 'core', name: 'Color' }`. */
-export function parseApiPath(
-  href: string,
-): { entry: string; name?: string } | null {
-  const match = /^\/api\/([^/#?]+)(?:\/([^/#?]+))?\/?(?:[#?].*)?$/.exec(href);
-  if (!match || match[1] === 'map') return null;
-  let name: string | undefined;
-  try {
-    name = match[2] ? decodeURIComponent(match[2]) : undefined;
-  } catch {
-    return null;
-  }
-  return { entry: match[1]!, name };
-}
-
-/** Warm whatever API data `href` renders. */
+/**
+ * Warm whatever API data `href` renders: an entry page, a category page
+ * (`/api/core/conversion`, with or without a `#<Symbol>` row), or a legacy
+ * symbol path that now redirects to its row.
+ */
 export function preloadApiHref(href: string): void {
-  const target = parseApiPath(href);
-  if (!target) return;
-  if (target.name) preloadSymbol(target.entry, target.name);
-  else preloadEntry(target.entry);
+  if (!href.startsWith('/api/')) return;
+  const route = matchRoute(href);
+  if (route.kind === 'api-entry' && route.entry) {
+    preloadEntry(route.entry);
+    return;
+  }
+  const symbol =
+    route.kind === 'api-domain' ? undefined : apiSymbolAt(href.split('#')[0]!);
+  const entry = symbol?.entry ?? route.entry;
+  const domain = symbol?.domain ?? route.domain;
+  if (entry && domain) {
+    preloadEntry(entry);
+    preloadDomain(entry, domain);
+  }
 }

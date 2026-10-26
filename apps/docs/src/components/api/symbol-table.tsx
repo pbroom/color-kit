@@ -1,166 +1,150 @@
-import { Fragment, use, useId, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
-import type { ApiExample, ApiSymbol } from '@/api/model';
-import { symbolHref } from '@/api/model';
-import { loadSymbol } from '@/api/data';
-import { CodeBlock } from '@/components/ui/code-block';
-import { ApiLink } from './api-link';
+import { Fragment, use, useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
+import type { ApiSymbol } from '@/api/model';
+import { loadDomain, loadSymbolDocs, type MdxPage } from '@/api/data';
+import { revealHashTarget } from '@/site/hash-target';
 import { ApiLabel, KindGlyph } from './kind-glyph';
-import { RichInlines } from './rich-text';
+import { SymbolReference } from './symbol-reference';
 import { TypeView } from './type-link';
 
-/** `(color: Color, format?: CssColorFormat): string`, from the first overload. */
-function CompactSignature({ symbol }: { symbol: ApiSymbol }) {
+function plural(count: number, one: string): string {
+  return `${count} ${one}${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * The Type column: `(color: Color, format?: CssColorFormat) => string` for
+ * callables (first overload), the declared type for type aliases and
+ * variables, a member count for interfaces and classes. Named types are not
+ * links here: the whole row is the disclosure button.
+ */
+function RowType({ symbol }: { symbol: ApiSymbol }) {
   const [first, ...rest] = symbol.signatures;
-  if (first) {
+  if (symbol.kind !== 'class' && first) {
     return (
       <>
-        (
+        <span className="tok tok-punct">(</span>
         {first.params.map((param, index) => (
           <Fragment key={param.name}>
-            {index > 0 ? ', ' : null}
-            {param.rest ? '...' : null}
-            {param.name}
-            {param.optional ? '?' : null}: <TypeView type={param.type} />
+            {index > 0 ? <span className="tok tok-punct">, </span> : null}
+            <span className="tok tok-param">
+              {param.rest ? '...' : null}
+              {param.name}
+            </span>
+            <span className="tok tok-punct">
+              {param.optional && !param.rest ? '?: ' : ': '}
+            </span>
+            <TypeView type={param.type} linked={false} />
           </Fragment>
         ))}
-        ): <TypeView type={first.returns} />
+        <span className="tok tok-punct">{') => '}</span>
+        <TypeView type={first.returns} linked={false} />
         {rest.length > 0 ? (
-          <span className="symbol-table__more">
+          <span className="api-table__more">
             {' '}
-            +{rest.length} overload{rest.length > 1 ? 's' : ''}
+            +{plural(rest.length, 'overload')}
           </span>
         ) : null}
       </>
     );
   }
   if (symbol.type) {
-    return <TypeView type={symbol.type} />;
+    return <TypeView type={symbol.type} linked={false} />;
   }
-  if (symbol.members.length > 0) {
-    return (
-      <span className="symbol-table__more">
-        {symbol.members.length} member{symbol.members.length > 1 ? 's' : ''}
-      </span>
-    );
-  }
-  return null;
-}
-
-function examplesOf(symbol: ApiSymbol): ApiExample[] {
-  return [
-    ...symbol.comment.examples,
-    ...symbol.signatures.flatMap((signature) => signature.comment.examples),
-  ];
-}
-
-function SymbolTableRow({ symbol }: { symbol: ApiSymbol }) {
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const examples = examplesOf(symbol);
-  const lede = symbol.comment.summary[0];
   return (
-    <>
-      <tr
-        id={symbol.name}
-        data-outline={symbol.name}
-        className="symbol-table__row"
-      >
-        <th scope="row" className="symbol-table__name">
-          <ApiLink
-            to={symbolHref(symbol.entry, symbol.name)}
-            className="symbol-table__link"
-          >
-            <KindGlyph kind={symbol.kind} />
-            <code>{symbol.name}</code>
-          </ApiLink>
-        </th>
-        <td className="symbol-table__signature">
-          <code>
-            <CompactSignature symbol={symbol} />
-          </code>
-        </td>
-        <td className="symbol-table__summary">
-          {symbol.deprecated !== undefined ? (
-            <ApiLabel deprecated>deprecated</ApiLabel>
-          ) : null}
-          {lede?.type === 'p' ? <RichInlines nodes={lede.children} /> : null}
-        </td>
-        <td className="symbol-table__toggle">
-          {examples.length > 0 ? (
-            <button
-              type="button"
-              className="symbol-table__expand"
-              aria-expanded={open}
-              aria-controls={panelId}
-              onClick={() => setOpen((value) => !value)}
-            >
-              <ChevronRight aria-hidden="true" size={14} strokeWidth={2} />
-              <span>
-                {examples.length > 1
-                  ? `${examples.length} examples`
-                  : 'Example'}
-              </span>
-            </button>
-          ) : null}
-        </td>
-      </tr>
-      {examples.length > 0 ? (
-        <tr id={panelId} className="symbol-table__examples" hidden={!open}>
-          <td colSpan={4}>
-            {examples.map((example, index) => (
-              <Fragment key={index}>
-                {example.caption ? (
-                  <p className="api-caption">{example.caption}</p>
-                ) : null}
-                <CodeBlock
-                  html={example.html}
-                  code={example.code}
-                  lang={example.lang}
-                />
-              </Fragment>
-            ))}
-          </td>
-        </tr>
-      ) : null}
-    </>
+    <span className="api-table__more">
+      {plural(symbol.members.length, 'member')}
+    </span>
   );
 }
 
 /**
- * A category page's exports as a table: name (linking to the full symbol
- * page), compact signature, summary, and the JSDoc examples in an expandable
- * row. Each row is anchored at `#<name>` for the sidebar's symbol links.
+ * One export: a native disclosure whose whole summary row (name, type,
+ * chevron) toggles the panel underneath. Closed by default, but the panel
+ * is in the markup, so prerendered pages are searchable and readable
+ * without JavaScript. The row's id is the bare name (`#toRgb`).
+ */
+function SymbolRow({
+  symbol,
+  Notes,
+}: {
+  symbol: ApiSymbol;
+  Notes: MdxPage | null;
+}) {
+  return (
+    <details
+      id={symbol.name}
+      data-outline={symbol.name}
+      className="api-table__row"
+    >
+      <summary className="api-table__summary">
+        <span className="api-table__name">
+          <KindGlyph kind={symbol.kind} />
+          <code>{symbol.name}</code>
+          {symbol.deprecated !== undefined ? (
+            <ApiLabel deprecated>deprecated</ApiLabel>
+          ) : null}
+        </span>
+        <code className="api-table__type">
+          <RowType symbol={symbol} />
+        </code>
+        <ChevronDown
+          className="api-table__chevron"
+          aria-hidden="true"
+          size={16}
+          strokeWidth={1.75}
+        />
+      </summary>
+      {/* Panel headings stay out of "On this page"; the rows are listed. */}
+      <div className="api-table__panel" data-outline-ignore="">
+        <SymbolReference symbol={symbol} Notes={Notes} />
+      </div>
+    </details>
+  );
+}
+
+/**
+ * A category page's exports as one bordered table of disclosure rows: Name
+ * and Type in the row, the full reference (summary, declaration,
+ * parameters, members, examples, notes, …) in its panel. A `#<Symbol>`
+ * fragment opens and scrolls to its row, on load and on later hash changes.
  */
 export function SymbolTable({
   entry,
+  domain,
   names,
 }: {
   entry: string;
+  domain: string;
   names: readonly string[];
 }) {
-  // Start every load before suspending on any, so they fetch in parallel.
-  const pending = names.map((name) => loadSymbol(entry, name));
-  const symbols = pending.map((promise) => use(promise));
+  // Start both loads before suspending on either.
+  const pendingSymbols = loadDomain(entry, domain);
+  const pendingNotes = loadSymbolDocs(entry, names);
+  const symbols = use(pendingSymbols);
+  const notes = use(pendingNotes);
+
+  useEffect(() => {
+    const reveal = () => {
+      revealHashTarget(window.location.hash);
+    };
+    reveal();
+    window.addEventListener('hashchange', reveal);
+    return () => window.removeEventListener('hashchange', reveal);
+  }, [entry, domain]);
+
   return (
-    <div className="symbol-table-wrap breakout">
-      <table className="symbol-table">
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Signature</th>
-            <th scope="col">Summary</th>
-            <th scope="col">
-              <span className="visually-hidden">Examples</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {symbols.map((symbol) => (
-            <SymbolTableRow key={symbol.name} symbol={symbol} />
-          ))}
-        </tbody>
-      </table>
+    <div className="api-table breakout">
+      <div className="api-table__head" aria-hidden="true">
+        <span>Name</span>
+        <span>Type</span>
+      </div>
+      {symbols.map((symbol) => (
+        <SymbolRow
+          key={symbol.name}
+          symbol={symbol}
+          Notes={notes.get(symbol.name) ?? null}
+        />
+      ))}
     </div>
   );
 }

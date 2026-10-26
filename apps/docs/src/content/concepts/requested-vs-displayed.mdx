@@ -19,7 +19,7 @@ color-kit keeps two values instead:
 - **displayed**: the requested color mapped into an output gamut, used only
   to paint.
 
-[`createColorState`](/api/driver/createColorState) in `@pbroom/color-kit/driver`
+[`createColorState`](/api/driver/color-state#createColorState) in `@pbroom/color-kit/driver`
 holds both, mapped into sRGB and Display P3 at once:
 
 ```ts title="state.ts"
@@ -32,14 +32,14 @@ state.meta.outOfGamut; // → { srgb: true, p3: false }
 ```
 
 Store, serialize and edit `requested`. Paint the displayed color for the
-active gamut ([`getActiveDisplayedColor`](/api/driver/getActiveDisplayedColor)).
+active gamut ([`getActiveDisplayedColor`](/api/driver/color-state#getActiveDisplayedColor)).
 Switching an sRGB preview to P3 restores the chroma, because nothing was
 thrown away.
 
 ## Two mapping methods
 
-[`toSrgbGamut`](/api/core/toSrgbGamut) and
-[`toP3Gamut`](/api/core/toP3Gamut) return colors already in gamut unchanged.
+[`toSrgbGamut`](/api/core/gamut#toSrgbGamut) and
+[`toP3Gamut`](/api/core/gamut#toP3Gamut) return colors already in gamut unchanged.
 Otherwise `method` picks the algorithm:
 
 - `'chroma-reduction'` (default) bisects chroma at fixed lightness and hue.
@@ -72,9 +72,9 @@ to the gray axis.
   `'css'` converts its clipped color back to OKLCH, so a near-gray result can
   report another hue.
 - **Incoming colors.** Hex, `rgb()` and `hsl()` grays convert to `h: 0`.
-  [`setColorRequested`](/api/driver/setColorRequested) with
+  [`setColorRequested`](/api/driver/color-state#setColorRequested) with
   `explicitHue: false` keeps the previous hue instead
-  ([`resolveIncomingRequested`](/api/driver/resolveIncomingRequested) is the
+  ([`resolveIncomingRequested`](/api/driver/color-state#resolveIncomingRequested) is the
   rule on its own). The React setters `setFromString`, `setFromRgb`,
   `setFromHsl` and `setFromHsv` apply it for you.
 

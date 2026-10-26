@@ -5,19 +5,19 @@ Svelte or web-component binding can be too.
 
 ## Domains
 
-- **State.** [`createColorState`](/api/driver/createColorState) keeps the
+- **State.** [`createColorState`](/api/driver/color-state#createColorState) keeps the
   requested color apart from its sRGB and Display P3 mappings. Reducers such
-  as [`setColorRequested`](/api/driver/setColorRequested) return the same
+  as [`setColorRequested`](/api/driver/color-state#setColorRequested) return the same
   object for a no-op. The multi-color reducers
-  ([`createMultiColorModel`](/api/driver/createMultiColorModel) and friends)
+  ([`createMultiColorModel`](/api/driver/multi-color#createMultiColorModel) and friends)
   manage named palettes.
 - **Area and slider geometry.** Pointer normalization, position-to-color and
   color-to-thumb mappings for 2D areas and 1D sliders, plus area overlays
-  ([`getColorAreaGamutBoundaryPoints`](/api/driver/getColorAreaGamutBoundaryPoints),
-  [`getColorAreaContrastRegionPaths`](/api/driver/getColorAreaContrastRegionPaths)).
+  ([`getColorAreaGamutBoundaryPoints`](/api/driver/color-area#getColorAreaGamutBoundaryPoints),
+  [`getColorAreaContrastRegionPaths`](/api/driver/color-area#getColorAreaContrastRegionPaths)).
 - **Keyboard and ARIA.** Arrow, Page and Home/End models, and
   `aria-valuetext` strings.
-- **Drag.** [`createPointerDragController`](/api/driver/createPointerDragController)
+- **Drag.** [`createPointerDragController`](/api/driver/drag-controller#createPointerDragController)
   coalesces pointer moves to one commit per frame.
 - **Painting and text.** Slider gradients, swatch styles with an sRGB
   fallback, and parsing and formatting for channel and string inputs.

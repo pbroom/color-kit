@@ -1,17 +1,28 @@
 import { use } from 'react';
 import type { ApiEntry, ApiReexport, ApiSymbolSummary } from '@/api/model';
 import { symbolHref } from '@/api/model';
-import { loadEntry, loadNarrative, preloadEntry } from '@/api/data';
+import {
+  loadEntry,
+  loadNarrative,
+  preloadDomain,
+  preloadEntry,
+} from '@/api/data';
 import { ApiLink } from '@/components/api/api-link';
 import { ApiLabel, KindGlyph } from '@/components/api/kind-glyph';
 import { MdxContent } from '@/components/api/mdx-content';
 import { SymbolTable } from '@/components/api/symbol-table';
 import { matchRoute, type RouteModuleProps } from '@/site/routes';
 
+// On a direct load, start fetching this page's data as soon as the route
+// chunk evaluates (before hydration) so hydration waits on one round trip.
 if (typeof window !== 'undefined') {
   const current = matchRoute(window.location.pathname);
   if (current.kind === 'api-entry' && current.entry) {
     preloadEntry(current.entry);
+  }
+  if (current.kind === 'api-domain' && current.entry && current.domain) {
+    preloadEntry(current.entry);
+    preloadDomain(current.entry, current.domain);
   }
 }
 
@@ -28,7 +39,10 @@ function SymbolRow({
 }) {
   return (
     <li>
-      <ApiLink to={symbolHref(entry, symbol.name)} className="symbol-row">
+      <ApiLink
+        to={symbolHref(entry, symbol.domain, symbol.name)}
+        className="symbol-row"
+      >
         <KindGlyph kind={symbol.kind} />
         <code className="symbol-row__name">{symbol.name}</code>
         <span className="symbol-row__summary">
@@ -100,7 +114,11 @@ function Reexports({ entry }: { entry: ApiEntry }) {
 /**
  * `/api/:entry`: the entry's narrative (`content/api/<entry>/index.mdx`,
  * when present), then every symbol whose canonical home is this entry,
- * grouped by domain, then what the entry re-exports from elsewhere.
+ * grouped by domain and linked to its row, then what the entry re-exports
+ * from elsewhere.
+ *
+ * `/api/:entry/:domain`: one category as a table of disclosure rows, each
+ * holding its symbol's full reference.
  */
 export default function ApiEntryPage({ route }: RouteModuleProps) {
   const entry = use(loadEntry(route.entry ?? ''));
@@ -112,7 +130,8 @@ export default function ApiEntryPage({ route }: RouteModuleProps) {
   const domains = route.domain
     ? entry.domains.filter((domain) => domain.slug === route.domain)
     : entry.domains;
-  const domainPage = domains[0];
+  // Only a category route renders one domain; the entry route lists them all.
+  const domainPage = route.domain ? domains[0] : undefined;
 
   return (
     <>
@@ -167,7 +186,11 @@ export default function ApiEntryPage({ route }: RouteModuleProps) {
           </nav>
         ) : null}
         {domainPage ? (
-          <SymbolTable entry={entry.slug} names={domainPage.symbols} />
+          <SymbolTable
+            entry={entry.slug}
+            domain={domainPage.slug}
+            names={domainPage.symbols}
+          />
         ) : (
           domains.map((domain) => (
             <section
