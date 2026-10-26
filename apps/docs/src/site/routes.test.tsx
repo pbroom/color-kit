@@ -24,6 +24,12 @@ describe('route registry', () => {
   it('has every fixed section and unique canonical paths', () => {
     const paths = routes.map((route) => route.path);
     expect(new Set(paths).size).toBe(paths.length);
+    // Paths that differ only by case prerender into the same folder on
+    // case-insensitive file systems, so one page silently replaces the other.
+    const folded = paths.map((path) => path.toLowerCase());
+    expect(
+      folded.filter((path, index) => folded.indexOf(path) !== index),
+    ).toEqual([]);
     for (const path of ['/', '/start', '/api', '/api/map']) {
       expect(paths).toContain(path);
     }

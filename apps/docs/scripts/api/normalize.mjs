@@ -81,11 +81,13 @@ const DOMAIN_ALIASES = {
     'multi-color-state': 'multi-color',
   },
   react: {
-    color: 'color',
-    context: 'color',
-    'color-store': 'color',
-    'use-color': 'color',
-    'use-multi-color': 'color',
+    // Not 'color': /api/react/color would differ from /api/react/Color only
+    // by case, and the two prerender into one folder on case-insensitive disks.
+    color: 'color-state',
+    context: 'color-state',
+    'color-store': 'color-state',
+    'use-color': 'color-state',
+    'use-multi-color': 'color-state',
     'use-color-plane-renderer': 'plane-renderer',
     'color-plane-raster': 'plane-renderer',
     'use-gamut-boundary': 'plane-geometry',
