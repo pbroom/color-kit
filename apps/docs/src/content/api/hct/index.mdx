@@ -4,16 +4,16 @@ in. The root `@pbroom/color-kit` entry re-exports the same functions.
 
 ## Domains
 
-- **Chroma limits.** [`maxHctChromaAtTone`](/api/hct/maxHctChromaAtTone)
+- **Chroma limits.** [`maxHctChromaAtTone`](/api/hct/hct#maxHctChromaAtTone)
   returns the largest chroma sRGB can realize at a hue and tone.
-- **Hue peaks.** [`maxHctChromaForHue`](/api/hct/maxHctChromaForHue)
+- **Hue peaks.** [`maxHctChromaForHue`](/api/hct/hct#maxHctChromaForHue)
   returns the peak chroma of a hue and the tone where it occurs;
-  [`maxHctPeakToneForHue`](/api/hct/maxHctPeakToneForHue) returns just the
+  [`maxHctPeakToneForHue`](/api/hct/hct#maxHctPeakToneForHue) returns just the
   tone. Both interpolate a cached per-hue lookup table by default
   (`method: 'lut'`) and search tone directly with `method: 'direct'`.
 
-Conversion lives in the root entry: [`toHct`](/api/core/toHct) and
-[`fromHct`](/api/core/fromHct) convert between `Color` and
+Conversion lives in the root entry: [`toHct`](/api/core/conversion#toHct) and
+[`fromHct`](/api/core/conversion#fromHct) convert between `Color` and
 `{ h, c, t, alpha }`. `fromHct` uses Material's solver, which reduces chroma
 to fit sRGB, so its results are always in sRGB and quantized to 8 bits.
 

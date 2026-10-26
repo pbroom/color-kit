@@ -1,7 +1,12 @@
-import type { ApiMember, ApiParam, TypeRef } from '@/api/model';
+import {
+  memberAnchor,
+  paramAnchor,
+  type ApiMember,
+  type ApiParam,
+  type TypeRef,
+} from '@/api/model';
 import { RichCompact } from './rich-text';
 import { TypeView } from './type-link';
-import { memberAnchor, paramAnchor } from './declaration';
 
 /**
  * `<Params>`: a definition list of parameters or members. Each row shows
@@ -27,7 +32,7 @@ function ParamRow({ row }: { row: Row }) {
   return (
     <div id={row.id} className="params__row">
       <dt>
-        <a className="params__name" href={`#${row.id}`}>
+        <a className="params__name" href={`#${encodeURIComponent(row.id)}`}>
           {row.path ? <span className="params__path">{row.path}</span> : null}
           {row.name}
           {row.optional ? <span className="params__optional">?</span> : null}
@@ -64,10 +69,10 @@ function ParamRow({ row }: { row: Row }) {
   );
 }
 
-function paramRows(params: ApiParam[], overload: number): Row[] {
+function paramRows(owner: string, params: ApiParam[], overload: number): Row[] {
   return params.flatMap((param) => [
     {
-      id: paramAnchor(param.name, overload),
+      id: paramAnchor(owner, param.name, overload),
       name: param.rest ? `...${param.name}` : param.name,
       type: param.type,
       optional: param.optional && !param.rest,
@@ -76,7 +81,7 @@ function paramRows(params: ApiParam[], overload: number): Row[] {
       description: param.description,
     },
     ...(param.children ?? []).map((child) => ({
-      id: paramAnchor(`${param.name}.${child.name}`, overload),
+      id: paramAnchor(owner, `${param.name}.${child.name}`, overload),
       path: `${param.name}.`,
       name: child.name,
       type: child.type,
@@ -89,9 +94,12 @@ function paramRows(params: ApiParam[], overload: number): Row[] {
 }
 
 export function Params({
+  owner,
   params,
   overload = 0,
 }: {
+  /** The symbol these belong to; prefixes the row ids. */
+  owner: string;
   params: ApiParam[];
   /** Overload index, keeps anchors unique across overloads. */
   overload?: number;
@@ -99,7 +107,7 @@ export function Params({
   if (params.length === 0) return null;
   return (
     <dl className="params">
-      {paramRows(params, overload).map((row) => (
+      {paramRows(owner, params, overload).map((row) => (
         <ParamRow key={row.id} row={row} />
       ))}
     </dl>
@@ -107,7 +115,14 @@ export function Params({
 }
 
 /** Members of an interface, class or props type, in declaration order. */
-export function Members({ members }: { members: ApiMember[] }) {
+export function Members({
+  owner,
+  members,
+}: {
+  /** The symbol these belong to; prefixes the row ids. */
+  owner: string;
+  members: ApiMember[];
+}) {
   if (members.length === 0) return null;
   return (
     <dl className="params">
@@ -115,7 +130,7 @@ export function Members({ members }: { members: ApiMember[] }) {
         <ParamRow
           key={member.name}
           row={{
-            id: memberAnchor(member.name),
+            id: memberAnchor(owner, member.name),
             name: member.indexParameter
               ? `[${member.indexParameter.name}: ${member.indexParameter.type.text}]`
               : member.name,

@@ -1,35 +1,35 @@
 `@pbroom/color-kit` is the everyday import. Every function takes and returns the same
-value, an OKLCH [`Color`](/api/core/Color) (`{ l, c, h, alpha }`), so results
+value, an OKLCH [`Color`](/api/core/types#Color) (`{ l, c, h, alpha }`), so results
 compose without conversions in between. It runs in any JavaScript runtime and
 has no React dependency. `@pbroom/color-kit/core` is an alias of this entry.
 
 ## Domains
 
-- **Conversion.** [`parse`](/api/core/parse) and
-  [`tryParse`](/api/core/tryParse) read any CSS Color 4 string;
-  [`toCss`](/api/core/toCss) writes hex, `rgb()`, `hsl()`, `oklch()`,
+- **Conversion.** [`parse`](/api/core/conversion#parse) and
+  [`tryParse`](/api/core/conversion#tryParse) read any CSS Color 4 string;
+  [`toCss`](/api/core/conversion#toCss) writes hex, `rgb()`, `hsl()`, `oklch()`,
   `oklab()` or `color(display-p3 …)`. `to*`/`from*` pairs cover RGB, HSL,
   HSV, HCT, OKLab and Display P3, with allocation-free `*Into` variants.
-- **Gamut.** Membership ([`inSrgbGamut`](/api/core/inSrgbGamut),
-  [`inP3Gamut`](/api/core/inP3Gamut)), mapping
-  ([`toSrgbGamut`](/api/core/toSrgbGamut), [`toP3Gamut`](/api/core/toP3Gamut))
-  and geometry ([`maxChromaAt`](/api/core/maxChromaAt),
-  [`gamutBoundaryPath`](/api/core/gamutBoundaryPath)).
-- **Contrast.** WCAG ([`contrastRatio`](/api/core/contrastRatio),
-  [`meetsAA`](/api/core/meetsAA)), APCA
-  ([`contrastAPCA`](/api/core/contrastAPCA)) and contrast regions
-  ([`contrastRegionPaths`](/api/core/contrastRegionPaths)).
-- **Mixing and scales.** [`mix`](/api/core/mix),
-  [`interpolate`](/api/core/interpolate) and
-  [`generateScale`](/api/core/generateScale) use OKLCH by default. Their
+- **Gamut.** Membership ([`inSrgbGamut`](/api/core/gamut#inSrgbGamut),
+  [`inP3Gamut`](/api/core/gamut#inP3Gamut)), mapping
+  ([`toSrgbGamut`](/api/core/gamut#toSrgbGamut), [`toP3Gamut`](/api/core/gamut#toP3Gamut))
+  and geometry ([`maxChromaAt`](/api/core/gamut#maxChromaAt),
+  [`gamutBoundaryPath`](/api/core/gamut#gamutBoundaryPath)).
+- **Contrast.** WCAG ([`contrastRatio`](/api/core/contrast#contrastRatio),
+  [`meetsAA`](/api/core/contrast#meetsAA)), APCA
+  ([`contrastAPCA`](/api/core/contrast#contrastAPCA)) and contrast regions
+  ([`contrastRegionPaths`](/api/core/contrast#contrastRegionPaths)).
+- **Mixing and scales.** [`mix`](/api/core/manipulation#mix),
+  [`interpolate`](/api/core/scale#interpolate) and
+  [`generateScale`](/api/core/scale#generateScale) use OKLCH by default. Their
   `space` option accepts `'oklch'`, `'oklab'`, `'srgb'`, `'linear-srgb'`,
   `'display-p3'` and `'linear-p3'`.
-  [`lightnessScale`](/api/core/lightnessScale) varies OKLCH lightness while
+  [`lightnessScale`](/api/core/scale#lightnessScale) varies OKLCH lightness while
   keeping chroma, hue and alpha fixed; it has no space option.
-- **Manipulation and harmony.** [`lighten`](/api/core/lighten),
-  [`adjustHue`](/api/core/adjustHue),
-  [`complementary`](/api/core/complementary) and friends, all immutable.
-  [`saturate`](/api/core/saturate) and [`desaturate`](/api/core/desaturate)
+- **Manipulation and harmony.** [`lighten`](/api/core/manipulation#lighten),
+  [`adjustHue`](/api/core/manipulation#adjustHue),
+  [`complementary`](/api/core/harmony#complementary) and friends, all immutable.
+  [`saturate`](/api/core/manipulation#saturate) and [`desaturate`](/api/core/manipulation#desaturate)
   clamp chroma only at 0, so wide-gamut colors keep chroma above `0.4`; map
   the result to a gamut when you need it on screen.
 

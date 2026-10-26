@@ -8,7 +8,7 @@
  * no symbols.
  */
 export interface ApiRouteSymbol {
-  /** Exported name, case preserved: `/api/core/Color` ≠ `/api/react/Color`. */
+  /** Exported name, case preserved: core's `Color` ≠ react's `Color`. */
   name: string;
   /** TypeDoc-style kind label, e.g. `function`, `interface`, `type`. */
   kind: string;

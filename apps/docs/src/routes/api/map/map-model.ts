@@ -47,7 +47,7 @@ export interface MapNode {
   id: string;
   type: MapNodeType;
   label: string;
-  /** Reference page this node opens. */
+  /** Reference this node opens: a page, or a symbol's row on one. */
   href: string;
   /** Entry slug the node belongs to (`''` for the root). */
   entry: string;
@@ -135,7 +135,7 @@ export function buildTree(
             id: `${entry.slug}/${domain.slug}`,
             type: 'domain',
             label: domain.title,
-            href: `/api/${entry.slug}#domain-${domain.slug}`,
+            href: `/api/${entry.slug}/${domain.slug}`,
             entry: entry.slug,
           },
           domain.symbols.flatMap((name): MapNode[] => {
@@ -146,7 +146,7 @@ export function buildTree(
                 id: `${entry.slug}/${domain.slug}/${symbol.name}`,
                 type: 'symbol',
                 label: symbol.name,
-                href: symbolHref(entry.slug, symbol.name),
+                href: symbolHref(entry.slug, domain.slug, symbol.name),
                 entry: entry.slug,
                 kind: symbol.kind,
                 summary: symbol.summary,

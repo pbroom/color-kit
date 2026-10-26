@@ -103,7 +103,8 @@
 }
 
 /* The "you are here" dot sits on the domain rule. */
-.sidebar-domain__list .nav-link[aria-current='page']::before {
+.sidebar-domain__list .nav-link[aria-current='page']::before,
+.sidebar-domain__list .nav-link[aria-current='location']::before {
   left: -7px;
 }
 

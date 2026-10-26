@@ -1,16 +1,28 @@
 import { use } from 'react';
 import type { ApiEntry, ApiReexport, ApiSymbolSummary } from '@/api/model';
 import { symbolHref } from '@/api/model';
-import { loadEntry, loadNarrative, preloadEntry } from '@/api/data';
+import {
+  loadEntry,
+  loadNarrative,
+  preloadDomain,
+  preloadEntry,
+} from '@/api/data';
 import { ApiLink } from '@/components/api/api-link';
 import { ApiLabel, KindGlyph } from '@/components/api/kind-glyph';
 import { MdxContent } from '@/components/api/mdx-content';
+import { SymbolTable } from '@/components/api/symbol-table';
 import { matchRoute, type RouteModuleProps } from '@/site/routes';
 
+// On a direct load, start fetching this page's data as soon as the route
+// chunk evaluates (before hydration) so hydration waits on one round trip.
 if (typeof window !== 'undefined') {
   const current = matchRoute(window.location.pathname);
   if (current.kind === 'api-entry' && current.entry) {
     preloadEntry(current.entry);
+  }
+  if (current.kind === 'api-domain' && current.entry && current.domain) {
+    preloadEntry(current.entry);
+    preloadDomain(current.entry, current.domain);
   }
 }
 
@@ -27,7 +39,10 @@ function SymbolRow({
 }) {
   return (
     <li>
-      <ApiLink to={symbolHref(entry, symbol.name)} className="symbol-row">
+      <ApiLink
+        to={symbolHref(entry, symbol.domain, symbol.name)}
+        className="symbol-row"
+      >
         <KindGlyph kind={symbol.kind} />
         <code className="symbol-row__name">{symbol.name}</code>
         <span className="symbol-row__summary">
@@ -99,7 +114,11 @@ function Reexports({ entry }: { entry: ApiEntry }) {
 /**
  * `/api/:entry`: the entry's narrative (`content/api/<entry>/index.mdx`,
  * when present), then every symbol whose canonical home is this entry,
- * grouped by domain, then what the entry re-exports from elsewhere.
+ * grouped by domain and linked to its row, then what the entry re-exports
+ * from elsewhere.
+ *
+ * `/api/:entry/:domain`: one category as a table of disclosure rows, each
+ * holding its symbol's full reference.
  */
 export default function ApiEntryPage({ route }: RouteModuleProps) {
   const entry = use(loadEntry(route.entry ?? ''));
@@ -108,73 +127,96 @@ export default function ApiEntryPage({ route }: RouteModuleProps) {
     entry.symbols.map((symbol) => [symbol.name, symbol]),
   );
   const { counts } = entry;
+  const domains = route.domain
+    ? entry.domains.filter((domain) => domain.slug === route.domain)
+    : entry.domains;
+  // Only a category route renders one domain; the entry route lists them all.
+  const domainPage = route.domain ? domains[0] : undefined;
 
   return (
     <>
       <header className="doc-header">
         <p className="doc-eyebrow">API</p>
-        <h1 className="doc-title" data-mono="">
-          {entry.importPath}
+        <h1 className="doc-title" data-mono={!domainPage ? '' : undefined}>
+          {domainPage?.title ?? entry.importPath}
         </h1>
-        <p className="doc-lede">{entry.summary}</p>
-        <p className="entry-facts">
-          <span>{plural(counts.symbols, 'export')}</span>
-          <span>{plural(counts.values, 'value')}</span>
-          <span>{plural(counts.types, 'type')}</span>
-          {counts.reexports > 0 ? (
-            <span>{plural(counts.reexports, 're-export')}</span>
-          ) : null}
-          {entry.aliases.map((alias) => (
-            <span key={alias}>
-              also <code>{alias}</code>
-            </span>
-          ))}
+        <p className="doc-lede">
+          {domainPage
+            ? `${domainPage.symbols.length} exports from ${entry.importPath}.`
+            : entry.summary}
         </p>
+        {!domainPage ? (
+          <p className="entry-facts">
+            <span>{plural(counts.symbols, 'export')}</span>
+            <span>{plural(counts.values, 'value')}</span>
+            <span>{plural(counts.types, 'type')}</span>
+            {counts.reexports > 0 ? (
+              <span>{plural(counts.reexports, 're-export')}</span>
+            ) : null}
+            {entry.aliases.map((alias) => (
+              <span key={alias}>
+                also <code>{alias}</code>
+              </span>
+            ))}
+          </p>
+        ) : null}
       </header>
       <div className="prose">
-        {Narrative ? <MdxContent Content={Narrative} /> : null}
-        <nav className="domain-index breakout" aria-label="Domains">
-          {entry.domains.map((domain) => (
-            <a
-              key={domain.slug}
-              className="domain-index__link"
-              href={`#domain-${domain.slug}`}
-            >
-              {domain.title}
-              <span className="domain-index__count">
-                {domain.symbols.length}
-              </span>
-            </a>
-          ))}
-          {counts.reexports > 0 ? (
-            <a className="domain-index__link" href="#reexports">
-              Re-exported
-              <span className="domain-index__count">{counts.reexports}</span>
-            </a>
-          ) : null}
-        </nav>
-        {entry.domains.map((domain) => (
-          <section
-            key={domain.slug}
-            className="domain breakout"
-            aria-labelledby={`domain-${domain.slug}`}
-          >
-            <h2 id={`domain-${domain.slug}`}>
-              <a className="heading-anchor" href={`#domain-${domain.slug}`}>
+        {!domainPage && Narrative ? <MdxContent Content={Narrative} /> : null}
+        {!domainPage ? (
+          <nav className="domain-index breakout" aria-label="Domains">
+            {entry.domains.map((domain) => (
+              <a
+                key={domain.slug}
+                className="domain-index__link"
+                href={`#domain-${domain.slug}`}
+              >
                 {domain.title}
+                <span className="domain-index__count">
+                  {domain.symbols.length}
+                </span>
               </a>
-            </h2>
-            <ul className="symbol-list">
-              {domain.symbols.map((name) => {
-                const symbol = bySymbol.get(name);
-                return symbol ? (
-                  <SymbolRow key={name} entry={entry.slug} symbol={symbol} />
-                ) : null;
-              })}
-            </ul>
-          </section>
-        ))}
-        {entry.reexports.length > 0 ? <Reexports entry={entry} /> : null}
+            ))}
+            {counts.reexports > 0 ? (
+              <a className="domain-index__link" href="#reexports">
+                Re-exported
+                <span className="domain-index__count">{counts.reexports}</span>
+              </a>
+            ) : null}
+          </nav>
+        ) : null}
+        {domainPage ? (
+          <SymbolTable
+            entry={entry.slug}
+            domain={domainPage.slug}
+            names={domainPage.symbols}
+          />
+        ) : (
+          domains.map((domain) => (
+            <section
+              key={domain.slug}
+              className="domain breakout"
+              aria-labelledby={`domain-${domain.slug}`}
+            >
+              <h2 id={`domain-${domain.slug}`}>
+                <a className="heading-anchor" href={`#domain-${domain.slug}`}>
+                  {domain.title}
+                </a>
+              </h2>
+              <ul className="symbol-list">
+                {domain.symbols.map((name) => {
+                  const symbol = bySymbol.get(name);
+                  return symbol ? (
+                    <SymbolRow key={name} entry={entry.slug} symbol={symbol} />
+                  ) : null;
+                })}
+              </ul>
+            </section>
+          ))
+        )}
+        {!domainPage && entry.reexports.length > 0 ? (
+          <Reexports entry={entry} />
+        ) : null}
       </div>
     </>
   );

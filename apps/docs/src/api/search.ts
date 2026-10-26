@@ -3,11 +3,12 @@ import {
   type SearchHit,
   type SymbolSearchProvider,
 } from '@/site/search';
-import { routes, type SiteRoute } from '@/site/routes';
+import { apiSymbols, type ApiSymbolLink } from '@/site/routes';
 
 /**
- * ⌘K symbol hits from the generated API routes: synchronous, no network,
- * ranked ahead of pages and prose. Ranking, best first:
+ * ⌘K symbol hits from the generated API index: synchronous, no network,
+ * ranked ahead of pages and prose; each opens the symbol's row on its
+ * category page. Ranking, best first:
  *
  * 0. exact name (`Color` matches both `@pbroom/color-kit` and `@pbroom/color-kit/react`)
  * 1. name prefix (`contrast` → `contrastRatio`)
@@ -18,7 +19,7 @@ import { routes, type SiteRoute } from '@/site/routes';
  */
 
 interface Indexed {
-  route: SiteRoute;
+  symbol: ApiSymbolLink;
   lower: string;
   /** Lowercased camelCase / snake_case words: `contrastRatio` → `contrast`, `ratio`. */
   words: string[];
@@ -49,19 +50,17 @@ function splitWords(name: string): string[] {
 let index: Indexed[] | null = null;
 
 function getIndex(): Indexed[] {
-  index ??= routes
-    .filter((route) => route.kind === 'api-symbol' && route.symbol)
-    .map((route, order) => {
-      const words = splitWords(route.symbol!);
-      return {
-        route,
-        lower: route.symbol!.toLowerCase(),
-        words,
-        initials: words.map((word) => word[0]).join(''),
-        value: VALUE_KINDS.has(route.symbolKind ?? ''),
-        order,
-      };
-    });
+  index ??= apiSymbols.map((symbol, order) => {
+    const words = splitWords(symbol.name);
+    return {
+      symbol,
+      lower: symbol.name.toLowerCase(),
+      words,
+      initials: words.map((word) => word[0]).join(''),
+      value: VALUE_KINDS.has(symbol.kind),
+      order,
+    };
+  });
   return index;
 }
 
@@ -99,11 +98,11 @@ export const apiSymbolSearch: SymbolSearchProvider = (rawQuery, limit) => {
     .slice(0, limit)
     .map(
       ({ item }): SearchHit => ({
-        id: `symbol:${item.route.path}`,
+        id: `symbol:${item.symbol.href}`,
         kind: 'symbol',
-        title: item.route.symbol!,
-        href: item.route.path,
-        meta: [item.route.symbolKind, entryLabel(item.route.entry)]
+        title: item.symbol.name,
+        href: item.symbol.href,
+        meta: [item.symbol.kind, entryLabel(item.symbol.entry)]
           .filter(Boolean)
           .join(' · '),
       }),

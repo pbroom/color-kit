@@ -11,7 +11,7 @@ import exampleSource, {
 
 ## Two gamuts
 
-Every gamut option takes a [`GamutTarget`](/api/core/GamutTarget):
+Every gamut option takes a [`GamutTarget`](/api/core/gamut#GamutTarget):
 `'srgb'` or `'display-p3'`. Display P3 contains sRGB and reaches further,
 most visibly in greens and reds: sRGB chroma peaks around `0.32`, P3 around
 `0.37`. A color can fit P3 and not sRGB.
@@ -26,22 +26,22 @@ inP3Gamut(green); // → true
 
 ## Membership reads unclamped channels
 
-[`inSrgbGamut`](/api/core/inSrgbGamut) converts OKLCH to linear sRGB without
+[`inSrgbGamut`](/api/core/gamut#inSrgbGamut) converts OKLCH to linear sRGB without
 clamping and checks each channel against `[0, 1]`.
-[`inP3Gamut`](/api/core/inP3Gamut) does the same in linear Display P3. A
-check that clamped first, the way [`toRgb`](/api/core/toRgb) must, would call
+[`inP3Gamut`](/api/core/gamut#inP3Gamut) does the same in linear Display P3. A
+check that clamped first, the way [`toRgb`](/api/core/conversion#toRgb) must, would call
 every color in gamut. For loops that already hold linear channels,
-[`isLinearRgbInGamut`](/api/core/isLinearRgbInGamut) is the same test without
+[`isLinearRgbInGamut`](/api/core/gamut#isLinearRgbInGamut) is the same test without
 the conversion.
 
 ## `GAMUT_EPSILON`
 
 Matrix math leaves near-zero negative channels on colors that are really in
 gamut, so the check allows a little slack:
-[`GAMUT_EPSILON`](/api/core/GAMUT_EPSILON) is `0.000075` on the
+[`GAMUT_EPSILON`](/api/core/gamut#GAMUT_EPSILON) is `0.000075` on the
 gamma-encoded channels, the CSS Color 4 and colorjs.io convention. In linear
-light that is [`GAMUT_LINEAR_MIN`](/api/core/GAMUT_LINEAR_MIN) to
-[`GAMUT_LINEAR_MAX`](/api/core/GAMUT_LINEAR_MAX), about `-5.805e-6` to
+light that is [`GAMUT_LINEAR_MIN`](/api/core/gamut#GAMUT_LINEAR_MIN) to
+[`GAMUT_LINEAR_MAX`](/api/core/gamut#GAMUT_LINEAR_MAX), about `-5.805e-6` to
 `1.0001706`.
 
 The slack is applied in encoded space on purpose. The same `0.000075` in
@@ -69,12 +69,12 @@ maxChromaAt(0.5, 30, { gamut: 'p3' });
 ```
 
 Validate your own options the same way with
-[`assertGamutTarget`](/api/plane/assertGamutTarget).
+[`assertGamutTarget`](/api/plane/gamut#assertGamutTarget).
 
 ## Try it
 
 Push chroma past each edge and watch a linear channel leave `[0, 1]`. The max
-chroma rows come from [`maxChromaAt`](/api/core/maxChromaAt) at the same
+chroma rows come from [`maxChromaAt`](/api/core/gamut#maxChromaAt) at the same
 lightness and hue.
 
 <Example

@@ -7,6 +7,17 @@
 // each with its own <title>, description, canonical link and modulepreload
 // for the route chunk. The theme pre-paint script is part of the template and
 // is preserved as-is.
+//
+// Category pages (`/api/<entry>/<domain>`) also modulepreload their symbol
+// data parts and MDX notes, so hydration does not wait on a request chain.
+//
+// Retired symbol pages (`/api/<entry>/<Symbol>`, before symbols became rows
+// on their category page) get a tiny redirect stub each: a script that
+// keeps any old member anchor (`#prop-hex` → `#Color-prop-hex`), a meta
+// refresh for no-JS readers, a canonical link to the row, and `noindex`.
+// Static files work on any host (and `vite preview`) with no redirect table
+// to keep in sync with the generated API; the stubs carry no
+// `data-pagefind-body`, so search never indexes them.
 
 import { Buffer } from 'node:buffer';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -88,6 +99,51 @@ function stylesheetsFor(manifest, sources) {
   );
 }
 
+/** Modules a category page renders from: its data parts and symbol notes. */
+function domainSources(manifest, route, apiSymbols) {
+  const prefix = `src/generated/api/domains/${route.entry}/${route.domain}/`;
+  const notes = new Set(
+    apiSymbols
+      .filter(
+        (symbol) =>
+          symbol.entry === route.entry && symbol.domain === route.domain,
+      )
+      .map((symbol) => `src/content/api/${route.entry}/${symbol.name}.mdx`),
+  );
+  return Object.keys(manifest).filter(
+    (key) => key.startsWith(prefix) || notes.has(key),
+  );
+}
+
+/** The redirect stub for a retired symbol page. */
+function legacyStub(symbol) {
+  const target = symbol.href;
+  const page = target.split('#')[0];
+  const title = `${symbol.name} · color-kit`;
+  // Old member and parameter anchors map into the row's panel.
+  const script = `(function(){var h=location.hash.slice(1),n=${JSON.stringify(
+    symbol.name,
+  )},t=${JSON.stringify(target)};if(/^(prop|param)-/.test(h)){try{h=decodeURIComponent(h)}catch(e){}t=${JSON.stringify(
+    `${page}#`,
+  )}+encodeURIComponent(n+'-'+h)}location.replace(t)})();`;
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>${escapeHtml(title)}</title>
+    <link rel="canonical" href="${escapeHtml(`${siteOrigin}${target}`)}" />
+    <meta http-equiv="refresh" content="0; url=${escapeHtml(target)}" />
+    <script>${script}</script>
+  </head>
+  <body>
+    <p><a href="${escapeHtml(target)}">${escapeHtml(symbol.name)}</a> moved to its category page.</p>
+  </body>
+</html>
+`;
+}
+
 function outputFile(route) {
   if (route.kind === 'not-found') return path.join(distDir, '404.html');
   if (route.path === '/') return path.join(distDir, 'index.html');
@@ -104,9 +160,8 @@ async function main() {
   const manifest = JSON.parse(
     await readFile(path.join(distDir, '.vite', 'manifest.json'), 'utf8'),
   );
-  const { documentTitle, routes, notFoundRoute, renderApp } = await import(
-    pathToFileURL(ssrEntry).href
-  );
+  const { apiSymbols, documentTitle, routes, notFoundRoute, renderApp } =
+    await import(pathToFileURL(ssrEntry).href);
   const all = [...routes, notFoundRoute];
 
   for (const route of all) {
@@ -115,15 +170,21 @@ async function main() {
       route.kind === 'not-found'
         ? '<meta name="robots" content="noindex" />'
         : `<link rel="canonical" href="${escapeHtml(`${siteOrigin}${route.path}`)}" />`;
+    const sources = [
+      route.source,
+      ...(route.alsoLoads ?? []),
+      ...(route.kind === 'api-domain'
+        ? domainSources(manifest, route, apiSymbols)
+        : []),
+    ];
     const head = [
       canonical,
       `<meta property="og:title" content="${escapeHtml(documentTitle(route))}" />`,
       `<meta property="og:description" content="${escapeHtml(route.description)}" />`,
-      ...stylesheetsFor(manifest, [
-        route.source,
-        ...(route.alsoLoads ?? []),
-      ]).map((file) => `<link rel="stylesheet" crossorigin href="/${file}" />`),
-      ...preloadsFor(manifest, [route.source, ...(route.alsoLoads ?? [])]).map(
+      ...stylesheetsFor(manifest, sources).map(
+        (file) => `<link rel="stylesheet" crossorigin href="/${file}" />`,
+      ),
+      ...preloadsFor(manifest, sources).map(
         (file) => `<link rel="modulepreload" crossorigin href="/${file}" />`,
       ),
     ].join('\n    ');
@@ -147,9 +208,27 @@ async function main() {
     await writeFile(file, page);
   }
 
+  const pages = new Set(all.map((route) => outputFile(route).toLowerCase()));
+  for (const symbol of apiSymbols) {
+    const file = path.join(
+      distDir,
+      ...decodeURIComponent(symbol.legacyPath).split('/').filter(Boolean),
+      'index.html',
+    );
+    // Never let a stub replace a page (case-insensitive file systems).
+    if (pages.has(file.toLowerCase())) {
+      throw new Error(`${symbol.legacyPath} would overwrite a page`);
+    }
+    pages.add(file.toLowerCase());
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, legacyStub(symbol));
+  }
+
   await rm(path.join(docsRoot, '.ssr'), { recursive: true, force: true });
   const seconds = ((performance.now() - started) / 1000).toFixed(2);
-  console.log(`prerendered ${all.length} routes in ${seconds}s`);
+  console.log(
+    `prerendered ${all.length} routes and ${apiSymbols.length} symbol redirects in ${seconds}s`,
+  );
 }
 
 main().catch((error) => {

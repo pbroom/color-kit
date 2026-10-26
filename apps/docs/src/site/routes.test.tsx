@@ -2,7 +2,14 @@ import { PassThrough } from 'node:stream';
 import { prerenderToNodeStream } from 'react-dom/static';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { renderApp } from '../entry-server';
-import { matchRoute, navigation, notFoundRoute, routes } from './routes';
+import {
+  apiSymbols,
+  legacySymbolRedirect,
+  matchRoute,
+  navigation,
+  notFoundRoute,
+  routes,
+} from './routes';
 
 async function render(url: string): Promise<string> {
   const { prelude } = await prerenderToNodeStream(renderApp(url), {
@@ -24,6 +31,16 @@ describe('route registry', () => {
   it('has every fixed section and unique canonical paths', () => {
     const paths = routes.map((route) => route.path);
     expect(new Set(paths).size).toBe(paths.length);
+    // Paths that differ only by case prerender into the same folder on
+    // case-insensitive file systems, so one page silently replaces the other.
+    // Retired symbol paths count: each gets a redirect stub folder.
+    const folded = [
+      ...paths,
+      ...apiSymbols.map((symbol) => decodeURIComponent(symbol.legacyPath)),
+    ].map((path) => path.toLowerCase());
+    expect(
+      folded.filter((path, index) => folded.indexOf(path) !== index),
+    ).toEqual([]);
     for (const path of ['/', '/start', '/api', '/api/map']) {
       expect(paths).toContain(path);
     }
@@ -73,6 +90,31 @@ describe('route registry', () => {
     expect(matchRoute('/start/index.html').path).toBe('/start');
     expect(matchRoute('/nope')).toBe(notFoundRoute);
   });
+
+  it('links sidebar symbols to their rows', () => {
+    const api = navigation.find((group) => group.id === 'api')!;
+    const symbols = api.items.flatMap((item) => item.children ?? []);
+    expect(symbols.length).toBe(apiSymbols.length);
+    for (const item of symbols) {
+      const [page = '', hash] = item.path.split('#');
+      expect(hash, item.path).toBeTruthy();
+      expect(matchRoute(page).kind, item.path).toBe('api-domain');
+    }
+  });
+
+  it('sends retired symbol pages to their rows', () => {
+    expect(legacySymbolRedirect('/api/core/toRgb')).toBe(
+      '/api/core/conversion#toRgb',
+    );
+    expect(legacySymbolRedirect('/api/core/toRgb/')).toBe(
+      '/api/core/conversion#toRgb',
+    );
+    expect(legacySymbolRedirect('/api/core/toRgb', '#param-color')).toBe(
+      '/api/core/conversion#toRgb-param-color',
+    );
+    expect(legacySymbolRedirect('/api/core/conversion')).toBeNull();
+    expect(legacySymbolRedirect('/start')).toBeNull();
+  });
 });
 
 /**
@@ -99,6 +141,42 @@ describe('prerender smoke', { timeout: COLD_START_TIMEOUT_MS }, () => {
       expect(html).toContain('class="skip-link"');
       expect(html).toContain('<header class="site-header"');
       expect(html).toContain('<footer class="site-footer"');
+    },
+  );
+
+  it.each(
+    routes
+      .filter((route) => route.kind === 'api-domain')
+      .map((route) => [route.path, route]),
+  )(
+    '%s renders a closed row per export with unique, resolvable ids',
+    async (path, route) => {
+      const html = await render(path);
+      const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map(
+        (match) => match[1]!,
+      );
+      const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+      expect(duplicates).toEqual([]);
+      const idSet = new Set(ids);
+      const rows = apiSymbols.filter(
+        (symbol) =>
+          symbol.entry === route.entry && symbol.domain === route.domain,
+      );
+      expect(rows.length).toBeGreaterThan(0);
+      for (const symbol of rows) {
+        // Closed by default, panel content in the markup.
+        expect(html).toContain(
+          `<details id="${symbol.name}" data-outline="${symbol.name}"`,
+        );
+      }
+      expect(html).not.toMatch(/<details[^>]*\sopen/);
+      const fragments = [...html.matchAll(/href="#([^"]+)"/g)].map((match) =>
+        decodeURIComponent(match[1]!),
+      );
+      expect(
+        fragments.filter((id) => !idSet.has(id)),
+        'in-page links without a target',
+      ).toEqual([]);
     },
   );
 });

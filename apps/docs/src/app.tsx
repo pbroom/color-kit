@@ -1,34 +1,46 @@
 import { Suspense, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { RouteErrorBoundary } from './components/error-pages';
 import { PageOutline } from './components/shell/page-outline';
 import { RouteSkeleton, RouteView } from './components/shell/route-view';
 import { SiteFooter } from './components/shell/site-footer';
 import { SiteHeader } from './components/shell/site-header';
 import { SiteNav } from './components/shell/site-nav';
-import { documentTitle, matchRoute, type SiteRoute } from './site/routes';
+import { revealHashTarget } from './site/hash-target';
+import {
+  documentTitle,
+  legacySymbolRedirect,
+  matchRoute,
+  type SiteRoute,
+} from './site/routes';
 import { useThemeSync } from './site/theme';
 
 /**
- * After client-side navigation: scroll to the top (or the hash target) and
- * move focus to `<main>` so keyboard and screen-reader users start at the new
- * content. Skipped on the initial load, where the browser owns both.
+ * After client-side navigation: scroll to the top (or the hash target,
+ * opening the API row it names) and move focus to `<main>` so keyboard and
+ * screen-reader users start at the new content. Skipped on the initial load,
+ * where the browser owns both (API tables open their `#<Symbol>` row
+ * themselves once they mount).
  */
 function useNavigationFocus(pathname: string, hash: string) {
   const previous = useRef<string | null>(null);
+  const previousHash = useRef(hash);
   useEffect(() => {
     if (previous.current === null) {
       previous.current = pathname;
       return;
     }
     if (previous.current === pathname) {
+      // Same page, new anchor (sidebar symbol links): open and scroll to it.
+      if (previousHash.current !== hash) {
+        previousHash.current = hash;
+        revealHashTarget(hash);
+      }
       return;
     }
     previous.current = pathname;
-    const target = hash ? document.getElementById(hash.slice(1)) : null;
-    if (target) {
-      target.scrollIntoView();
-    } else {
+    previousHash.current = hash;
+    if (!revealHashTarget(hash)) {
       window.scrollTo(0, 0);
     }
     document.getElementById('main')?.focus({ preventScroll: true });
@@ -70,6 +82,11 @@ export function App() {
   useEffect(() => {
     document.title = documentTitle(route);
   }, [route]);
+  // Retired symbol pages (`/api/core/toRgb`) now live as rows.
+  const redirect = legacySymbolRedirect(pathname, hash);
+  if (redirect) {
+    return <Navigate to={redirect} replace />;
+  }
 
   return (
     <>
