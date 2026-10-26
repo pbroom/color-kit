@@ -688,29 +688,154 @@ a.tok-name:hover {
   margin-top: 0;
 }
 
-/* ---------- Category pages: every symbol of a domain, one per section ---------- */
+/* ---------- Category pages: a domain's exports as one table ---------- */
 
-.api-symbol-section {
-  padding-top: var(--space-10);
-  margin-top: var(--space-10);
-  border-top: var(--hairline) solid var(--line);
-  scroll-margin-top: var(--header-h);
-}
-
-.api-symbol-section:first-of-type {
+.symbol-table-wrap {
   margin-top: var(--space-6);
+  overflow-x: auto;
 }
 
-.api-symbol-section__title {
-  margin: 0;
+.symbol-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-1);
+}
+
+.symbol-table thead th {
+  padding: 0 var(--space-3) var(--space-2) 0;
+  border-bottom: var(--hairline) solid var(--line-strong);
+  color: var(--fg-4);
+  font-weight: 500;
+  text-align: left;
+}
+
+.symbol-table__row > :is(th, td) {
+  padding: var(--space-3) var(--space-3) var(--space-3) 0;
+  border-bottom: var(--hairline) solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.symbol-table__row {
   scroll-margin-top: calc(var(--header-h) + var(--space-6));
 }
 
-.api-symbol-section__title code {
-  font-size: var(--text-4, 1.5rem);
+.symbol-table__row:target > :is(th, td) {
+  background: var(--bg-subtle);
 }
 
-.api-symbol-section__lede {
-  margin: var(--space-2) 0 var(--space-6);
+.symbol-table__name {
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.symbol-table__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.symbol-table__link:hover code {
+  text-decoration: underline;
+  text-decoration-color: var(--control);
+  text-underline-offset: 3px;
+}
+
+.prose .symbol-table__name code,
+.prose .symbol-table__signature code {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.symbol-table__signature {
+  min-width: 15rem;
+  max-width: 24rem;
+  color: var(--shiki-foreground);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.symbol-table__summary {
+  color: var(--fg-2);
+}
+
+.symbol-table__more {
+  color: var(--fg-4);
+}
+
+.symbol-table__toggle {
+  white-space: nowrap;
+}
+
+.symbol-table__expand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  background: none;
   color: var(--fg-3);
+  font: inherit;
+  cursor: pointer;
+}
+
+.symbol-table__expand:hover {
+  border-color: var(--line-strong);
+  color: var(--fg);
+}
+
+.symbol-table__expand svg {
+  transition: transform var(--duration-1) var(--ease-out);
+}
+
+.symbol-table__expand[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+
+.symbol-table__examples > td {
+  padding: 0 0 var(--space-4);
+  border-bottom: var(--hairline) solid var(--line);
+}
+
+@media (max-width: 40rem) {
+  .symbol-table,
+  .symbol-table tbody,
+  .symbol-table__examples,
+  .symbol-table__examples > td {
+    display: block;
+  }
+
+  .symbol-table__examples[hidden] {
+    display: none;
+  }
+
+  .symbol-table thead {
+    display: none;
+  }
+
+  .symbol-table__row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .symbol-table__row > :is(th, td) {
+    border-bottom: 0;
+  }
+
+  .symbol-table__signature,
+  .symbol-table__summary {
+    grid-column: 1 / -1;
+    max-width: none;
+    padding-top: 0;
+  }
+
+  .symbol-table__toggle {
+    grid-row: 1;
+    grid-column: 2;
+  }
 }

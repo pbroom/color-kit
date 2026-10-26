@@ -16,7 +16,8 @@ function sameOutline(a: OutlineItem[], b: OutlineItem[]): boolean {
 }
 
 /**
- * "On this page": the `h2[id]`/`h3[id]` headings of the article, read from
+ * "On this page": the `h2[id]`/`h3[id]` headings of the article, plus any
+ * `[id][data-outline]` target such as an API table row, read from
  * the DOM so MDX and TSX (API) pages share it. It renders empty on the server
  * and fills in after hydration; the column's width is reserved either way, so
  * nothing shifts. The heading nearest the top of the viewport is marked.
@@ -41,11 +42,14 @@ export function PageOutline({
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const next = Array.from(
-          article.querySelectorAll<HTMLHeadingElement>('h2[id], h3[id]'),
-        ).map((heading) => ({
-          id: heading.id,
-          text: heading.textContent?.trim() ?? '',
-          level: heading.tagName === 'H2' ? (2 as const) : (3 as const),
+          article.querySelectorAll<HTMLElement>(
+            'h2[id], h3[id], [id][data-outline]',
+          ),
+        ).map((target) => ({
+          id: target.id,
+          // Non-heading targets (API table rows) name themselves.
+          text: target.dataset.outline ?? target.textContent?.trim() ?? '',
+          level: target.tagName === 'H3' ? (3 as const) : (2 as const),
         }));
         setItems((previous) => (sameOutline(previous, next) ? previous : next));
       });

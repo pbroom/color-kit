@@ -1,17 +1,11 @@
 import { use } from 'react';
 import type { ApiEntry, ApiReexport, ApiSymbolSummary } from '@/api/model';
 import { symbolHref } from '@/api/model';
-import {
-  loadEntry,
-  loadNarrative,
-  loadSymbol,
-  loadSymbolDoc,
-  preloadEntry,
-} from '@/api/data';
+import { loadEntry, loadNarrative, preloadEntry } from '@/api/data';
 import { ApiLink } from '@/components/api/api-link';
 import { ApiLabel, KindGlyph } from '@/components/api/kind-glyph';
 import { MdxContent } from '@/components/api/mdx-content';
-import { SymbolReference } from '@/components/api/symbol-reference';
+import { SymbolTable } from '@/components/api/symbol-table';
 import { matchRoute, type RouteModuleProps } from '@/site/routes';
 
 if (typeof window !== 'undefined') {
@@ -23,17 +17,6 @@ if (typeof window !== 'undefined') {
 
 function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;
-}
-
-/** One symbol's full reference, as an anchored section of a category page. */
-function SymbolSection({ entry, name }: { entry: string; name: string }) {
-  const symbol = use(loadSymbol(entry, name));
-  const Notes = use(loadSymbolDoc(entry, name));
-  return (
-    <section className="api-symbol-section" aria-labelledby={name}>
-      <SymbolReference symbol={symbol} Notes={Notes} embedded />
-    </section>
-  );
 }
 
 function SymbolRow({
@@ -183,35 +166,31 @@ export default function ApiEntryPage({ route }: RouteModuleProps) {
             ) : null}
           </nav>
         ) : null}
-        {domainPage
-          ? domainPage.symbols.map((name) => (
-              <SymbolSection key={name} entry={entry.slug} name={name} />
-            ))
-          : domains.map((domain) => (
-              <section
-                key={domain.slug}
-                className="domain breakout"
-                aria-labelledby={`domain-${domain.slug}`}
-              >
-                <h2 id={`domain-${domain.slug}`}>
-                  <a className="heading-anchor" href={`#domain-${domain.slug}`}>
-                    {domain.title}
-                  </a>
-                </h2>
-                <ul className="symbol-list">
-                  {domain.symbols.map((name) => {
-                    const symbol = bySymbol.get(name);
-                    return symbol ? (
-                      <SymbolRow
-                        key={name}
-                        entry={entry.slug}
-                        symbol={symbol}
-                      />
-                    ) : null;
-                  })}
-                </ul>
-              </section>
-            ))}
+        {domainPage ? (
+          <SymbolTable entry={entry.slug} names={domainPage.symbols} />
+        ) : (
+          domains.map((domain) => (
+            <section
+              key={domain.slug}
+              className="domain breakout"
+              aria-labelledby={`domain-${domain.slug}`}
+            >
+              <h2 id={`domain-${domain.slug}`}>
+                <a className="heading-anchor" href={`#domain-${domain.slug}`}>
+                  {domain.title}
+                </a>
+              </h2>
+              <ul className="symbol-list">
+                {domain.symbols.map((name) => {
+                  const symbol = bySymbol.get(name);
+                  return symbol ? (
+                    <SymbolRow key={name} entry={entry.slug} symbol={symbol} />
+                  ) : null;
+                })}
+              </ul>
+            </section>
+          ))
+        )}
         {!domainPage && entry.reexports.length > 0 ? (
           <Reexports entry={entry} />
         ) : null}
