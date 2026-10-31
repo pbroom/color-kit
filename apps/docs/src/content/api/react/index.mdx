@@ -10,12 +10,11 @@ import contrastSource, {
 `@pbroom/color-kit/react` binds the engine to React state. This page builds
 pickers from its hooks, which render no elements themselves: state hooks
 that hold a color and share it, and plane hooks that paint a color plane
-into your canvas and compute overlay geometry for your SVG. With the hooks,
-elements, styles, pointer handling and ARIA are yours. Build them from plain
-elements with
-[`@pbroom/color-kit/driver`](/api/driver), which holds the picker math (pointer
-normalization, keyboard steps, value text), or with your own component
-library.
+into your canvas and compute overlay geometry for your SVG. The elements,
+styles, pointer handling and ARIA are yours. Build them from plain elements
+with [`@pbroom/color-kit/driver`](/api/driver), which holds the picker math
+(pointer normalization, keyboard steps, value text), or with your own
+component library.
 
 ## State: one provider, two hooks
 
@@ -75,8 +74,7 @@ canvas.
 memoized points plus SVG path data from
 [`toSvgPath`](/api/plane/compile#toSvgPath). `useFallbackPoints` returns the `srgb`
 and `p3` points, without paths, and `useColorPlaneRenderer` returns a canvas
-handle (`ref`, `canvasKey`, the active `renderer`). None of them render
-elements.
+handle (`ref`, `canvasKey`, the active `renderer`).
 
 ## A picker from the hooks
 
