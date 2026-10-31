@@ -347,8 +347,8 @@ export interface ColorAreaPlaneDefinition {
 
 /**
  * Builds the plain plane definition for a color area's axes and reference
- * color. This is the single source of truth for plane payloads sent to
- * plane-query workers and other transport boundaries. The result is plain
+ * color. Plane payloads sent to plane-query workers (and across other
+ * transport boundaries) are built with it. The result is plain
  * JSON and can be passed to `definePlane` from `@pbroom/color-kit/plane`.
  *
  * @example
@@ -676,7 +676,7 @@ export function getColorAreaChromaBandPoints(
 
 /**
  * Maps `query.color` into the requested gamut and returns its thumb position,
- * e.g. to show where an out-of-gamut selection will actually render.
+ * e.g. to show where an out-of-gamut selection will render.
  *
  * @throws {TypeError} When `query.gamut` is missing or is not `'srgb'` or
  * `'display-p3'` (for example the removed `'p3'` spelling), matching the core

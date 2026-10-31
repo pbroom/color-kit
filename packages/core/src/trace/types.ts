@@ -151,7 +151,7 @@ export interface PlaneQueryTraceSummary {
   scheduleReason?: PlaneComputeScheduleReason;
   /**
    * Contrast queries: contour pieces the solver dropped because no end point
-   * passed the public checks (0 unless something is badly wrong).
+   * passed the public checks (normally `0`).
    */
   droppedPieceCount?: number;
   /** Resolution settings the solver ran with; fields depend on the solver. */
