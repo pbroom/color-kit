@@ -67,8 +67,8 @@ function withStateSnapshot(
  * {@link UseColorReturn} snapshot (requested/displayed colors, conversions
  * and setters).
  *
- * This hook intentionally subscribes to the complete `ColorState` because it
- * returns a complete snapshot: any state update rerenders the consumer.
+ * It subscribes to the complete `ColorState` because it returns a complete
+ * snapshot, so any state update rerenders the consumer.
  * Components that only need a slice should use
  * {@link useColorStoreSelector} on the context's `store` instead.
  *

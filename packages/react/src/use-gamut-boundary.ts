@@ -78,8 +78,8 @@ export interface UseGamutBoundaryOptions extends ColorPlaneQueryOptions {
  * Traces the gamut boundary (the maximum in-gamut chroma at each lightness)
  * for one hue, as points and SVG path data in plane coordinates.
  *
- * Returns geometry only; draw `path` however you like, typically as a
- * stroked `<path>` in an SVG over a {@link useColorPlaneRenderer} canvas.
+ * Returns geometry only; draw `path` yourself, typically as a stroked
+ * `<path>` in an SVG over a {@link useColorPlaneRenderer} canvas.
  * Traces only when the axes are lightness and chroma (in either order);
  * other planes return empty geometry. The boundary follows the plane
  * color's hue unless `hue` is set. It is computed synchronously at rest and
