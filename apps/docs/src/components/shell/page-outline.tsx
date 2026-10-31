@@ -21,7 +21,7 @@ function sameOutline(a: OutlineItem[], b: OutlineItem[]): boolean {
  * the DOM so MDX and TSX (API) pages share it. Anything inside a
  * `[data-outline-ignore]` region (an API row's panel) is left out. It renders empty on the server
  * and fills in after hydration; the column's width is reserved either way, so
- * nothing shifts. The heading nearest the top of the viewport is marked.
+ * nothing shifts. The item scrolled up to its anchor line is marked.
  */
 export function PageOutline({
   articleRef,
@@ -71,23 +71,44 @@ export function PageOutline({
     if (items.length === 0) {
       return;
     }
-    const visible = new Set<string>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) visible.add(entry.target.id);
-          else visible.delete(entry.target.id);
+    // The current item is the last one whose top has reached the line it
+    // scrolls to (the page's scroll-padding-top plus its scroll-margin-top). Checking "first one in a band"
+    // instead marked the row above a sidebar jump's target, which still
+    // peeks into the band when rows are short.
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const padding =
+          parseFloat(
+            getComputedStyle(document.documentElement).scrollPaddingTop,
+          ) || 0;
+        let current: string | null = items[0]?.id ?? null;
+        for (const item of items) {
+          const target = document.getElementById(item.id);
+          if (!target) continue;
+          const line =
+            padding +
+            (parseFloat(getComputedStyle(target).scrollMarginTop) || 0);
+          if (target.getBoundingClientRect().top <= line + 4) {
+            current = item.id;
+          } else {
+            break;
+          }
         }
-        const first = items.find((item) => visible.has(item.id));
-        if (first) setActiveId(first.id);
-      },
-      { rootMargin: '-64px 0px -60% 0px' },
-    );
-    for (const item of items) {
-      const heading = document.getElementById(item.id);
-      if (heading) observer.observe(heading);
-    }
-    return () => observer.disconnect();
+        setActiveId(current);
+      });
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    window.addEventListener('hashchange', update);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('hashchange', update);
+    };
   }, [items]);
 
   return (
