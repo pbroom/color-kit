@@ -62,8 +62,8 @@ export const PLANE_MODEL_DEFAULT_AXES: Record<
 /**
  * Default axis ranges for each model's channels.
  *
- * Ranges may be descending (for example `[100, 0]`) to invert an
- * axis direction in normalized space.
+ * Ranges may be descending (for example `[100, 0]`) to invert an axis
+ * direction in normalized space.
  */
 export const PLANE_MODEL_DEFAULT_RANGES: {
   readonly [Model in PlaneModel]: Readonly<
