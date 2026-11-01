@@ -33,9 +33,9 @@ it to one is a separate, explicit step (see
 OKLCH is the polar form of OKLab, a perceptually uniform space: equal steps
 in `l`, `c` or `h` look like roughly equal changes. Lightness becomes a
 reliable axis for contrast, and hue holds still when chroma is reduced to fit
-a gamut. HSL's lightness does not mean much: `hsl(60 100% 50%)` and
-`hsl(240 100% 50%)` share `50%` but sit at OKLCH lightness `0.968` and
-`0.452`.
+a gamut. HSL's lightness does not track perceived lightness:
+`hsl(60 100% 50%)` and `hsl(240 100% 50%)` share `50%` but sit at OKLCH
+lightness `0.968` and `0.452`.
 
 ## Hue normalization
 

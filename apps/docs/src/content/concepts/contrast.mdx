@@ -67,8 +67,8 @@ contrastRatio(toSrgbGamut(green), black); // → ≈ 10.21 (what you paint)
 [`contrastRegionPaths`](/api/core/contrast#contrastRegionPaths), and the plane's
 `contrastRegion` query, return the edge of the area at one hue that meets a
 level against a reference. A point inside passes `contrastRatio` or
-`contrastAPCA` with the same gamut. This is exact, not approximate, because of
-how the solver works:
+`contrastAPCA` with the same gamut. The agreement is exact because of how the
+solver works:
 
 - Both metrics see a sample only through one displayed luminance, computed by
   the same code the checks use. Each side of the region is one level curve of
