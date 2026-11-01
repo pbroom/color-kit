@@ -3,8 +3,8 @@
  *
  * All conversions flow through the internal Color type (OKLCH).
  * The conversion pipeline is:
- *   Any format -> sRGB -> Linear sRGB -> OKLAB -> OKLCH (Color)
- *   Color (OKLCH) -> OKLAB -> Linear sRGB -> sRGB -> Any format
+ *   Any format -> sRGB -> Linear sRGB -> OKLab -> OKLCH (Color)
+ *   Color (OKLCH) -> OKLab -> Linear sRGB -> sRGB -> Any format
  */
 
 import { Hct as MaterialHct } from '@material/material-color-utilities';

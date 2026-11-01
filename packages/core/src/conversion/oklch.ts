@@ -7,7 +7,7 @@ import {
 } from '../utils/index.js';
 
 /**
- * Convert OKLAB to OKLCH, writing into `out` (allocation-free). Achromatic
+ * Convert OKLab to OKLCH, writing into `out` (allocation-free). Achromatic
  * results (chroma at or below {@link ACHROMATIC_CHROMA_THRESHOLD}) get hue
  * `0`.
  *
@@ -67,7 +67,7 @@ export function oklabToOklch(lab: Oklab): Oklch {
 }
 
 /**
- * Convert OKLCH to OKLAB, writing into `out` (allocation-free).
+ * Convert OKLCH to OKLab, writing into `out` (allocation-free).
  *
  * @param out - Object to write the result into
  * @param oklch - OKLCH color (hue in degrees, any finite value)

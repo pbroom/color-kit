@@ -127,7 +127,7 @@ export interface ResolveColorInputDraftValueOptions extends ParseColorInputExpre
  * compatible with control-kit's `PrimitiveExpressionParser` callback).
  */
 export interface ColorInputPrimitiveExpressionOptions {
-  /** Accept arithmetic and relative expressions, not just a single number. */
+  /** Accept arithmetic and relative expressions as well as a single number. */
   allowExpressions: boolean;
   /** Current channel value; the left operand of relative input like `+10`. */
   currentValue: number;

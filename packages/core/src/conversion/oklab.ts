@@ -12,7 +12,7 @@ import {
 // that needs only one direction.
 
 /**
- * Convert linear sRGB to OKLAB, writing into `out` (allocation-free).
+ * Convert linear sRGB to OKLab, writing into `out` (allocation-free).
  * Based on Björn Ottosson's OKLab model, using the CSS Color 4 matrices
  * recalculated in float64 for a consistent D65 reference white.
  * https://bottosson.github.io/posts/oklab/
@@ -83,7 +83,7 @@ export function linearRgbToOklab(rgb: LinearRgb): Oklab {
 }
 
 /**
- * Convert OKLAB to linear sRGB, writing into `out` (allocation-free). The
+ * Convert OKLab to linear sRGB, writing into `out` (allocation-free). The
  * result is unclamped, so out-of-gamut colors keep channels outside `[0, 1]`.
  *
  * @param out - Object to write the result into

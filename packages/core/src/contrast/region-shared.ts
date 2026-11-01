@@ -88,7 +88,7 @@ export interface ContrastRegionSampling {
 }
 
 /**
- * Returns the sampling {@link contrastRegionPaths} actually runs with:
+ * Returns the effective sampling {@link contrastRegionPaths} runs with:
  * defaults filled in (`32`, `0.0015`, `6`), `initialSamples` capped at 512,
  * `maxDepth` at 12, and `errorTolerance` raised to at least 1e-6.
  *
