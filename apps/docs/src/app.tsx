@@ -22,29 +22,26 @@ import { useThemeSync } from './site/theme';
  * where the browser owns both (API tables open their `#<Symbol>` row
  * themselves once they mount).
  */
-function useNavigationFocus(pathname: string, hash: string) {
+function useNavigationFocus(pathname: string, hash: string, key: string) {
   const previous = useRef<string | null>(null);
-  const previousHash = useRef(hash);
   useEffect(() => {
     if (previous.current === null) {
       previous.current = pathname;
       return;
     }
     if (previous.current === pathname) {
-      // Same page, new anchor (sidebar symbol links): open and scroll to it.
-      if (previousHash.current !== hash) {
-        previousHash.current = hash;
-        revealHashTarget(hash);
-      }
+      // Same page (sidebar symbol links): open and scroll to the anchor. This
+      // runs per navigation (`key`), so following the link of the row already
+      // in the URL reveals it again after it was closed or scrolled away.
+      revealHashTarget(hash);
       return;
     }
     previous.current = pathname;
-    previousHash.current = hash;
     if (!revealHashTarget(hash)) {
       window.scrollTo(0, 0);
     }
     document.getElementById('main')?.focus({ preventScroll: true });
-  }, [pathname, hash]);
+  }, [pathname, hash, key]);
 }
 
 function DocsLayout({ route }: { route: SiteRoute }) {
@@ -75,10 +72,10 @@ function DocsLayout({ route }: { route: SiteRoute }) {
 }
 
 export function App() {
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key } = useLocation();
   const route = matchRoute(pathname);
   useThemeSync();
-  useNavigationFocus(pathname, hash);
+  useNavigationFocus(pathname, hash, key);
   useEffect(() => {
     document.title = documentTitle(route);
   }, [route]);

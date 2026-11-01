@@ -66,3 +66,18 @@ test('a retired symbol page lands on its row', async ({ page }) => {
   await expect(page).toHaveURL(/\/api\/core\/conversion#toRgb$/);
   await expect(page.locator('details#toRgb')).toHaveAttribute('open', '');
 });
+
+test('the sidebar marks the hashed row and reveals it again on re-click', async ({
+  page,
+}) => {
+  await page.goto('/api/core/conversion#toRgb');
+  const nav = page.getByRole('navigation', { name: 'Documentation' });
+  const link = nav.locator('a[href="/api/core/conversion#toRgb"]');
+  await expect(link).toHaveAttribute('aria-current', 'location');
+  const row = page.locator('details#toRgb');
+  await expect(row).toHaveAttribute('open', '');
+  await row.locator(':scope > summary').click();
+  await expect(row).not.toHaveAttribute('open', '');
+  await link.click();
+  await expect(row).toHaveAttribute('open', '');
+});

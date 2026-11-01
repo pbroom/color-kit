@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useState, useSyncExternalStore } from 'react';
 import { useLocation } from 'react-router';
 import { KindGlyph } from '@/components/api/kind-glyph';
 import { PrefetchLink } from '@/components/prefetch-link';
@@ -9,6 +9,21 @@ import type { NavItem } from '@/site/routes';
  * Its own chunk (`site-nav.tsx` loads it lazily), so pages without an API
  * tree, the home page first, never download it.
  */
+
+const subscribeNever = () => () => {};
+
+/**
+ * `false` while hydrating prerendered markup, `true` after. The prerender
+ * never sees a URL hash, so hash-dependent attributes must wait for it:
+ * React does not patch attribute mismatches during hydration.
+ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
+}
 
 /** The category page a symbol anchor lives on (`/api/core/conversion`). */
 function pagePath(path: string): string {
@@ -99,7 +114,8 @@ export default function SidebarSymbols({
   onNavigate,
 }: SidebarSymbolsProps) {
   const ids = useId();
-  const { hash } = useLocation();
+  const { hash: locationHash } = useLocation();
+  const hash = useHydrated() ? locationHash : '';
   // Explicit open/closed choices; anything else follows the current page.
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const domains = groupByDomain(items);
