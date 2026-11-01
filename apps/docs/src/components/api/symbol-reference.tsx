@@ -1,22 +1,39 @@
 import { Fragment } from 'react';
-import type { ApiSignature as ApiSignatureModel, ApiSymbol } from '@/api/model';
+import {
+  panelAnchor,
+  type ApiSignature as ApiSignatureModel,
+  type ApiSymbol,
+} from '@/api/model';
 import type { MdxPage } from '@/api/data';
 import { Callout } from '@/components/ui/callout';
 import { CodeBlock } from '@/components/ui/code-block';
-import { MdxContent } from './mdx-content';
+import { PanelMdxContent } from './mdx-content';
 import { ApiLink } from './api-link';
 import { Members, Params } from './params';
-import { RichBlocks, RichCompact, RichInlines } from './rich-text';
+import { RichBlocks, RichCompact } from './rich-text';
 import { ApiSignature } from './signature';
 import { TypeView } from './type-link';
 
-function Heading({ id, children }: { id: string; children: string }) {
+/**
+ * A section heading inside a symbol's panel. Ids carry the symbol's name
+ * (`toRgb-parameters`), so the many panels of a category page never collide.
+ */
+function Heading({
+  owner,
+  id,
+  children,
+}: {
+  owner: string;
+  id: string;
+  children: string;
+}) {
+  const anchor = panelAnchor(owner, id);
   return (
-    <h2 id={id}>
-      <a className="heading-anchor" href={`#${id}`}>
+    <h3 id={anchor} className="api-panel__heading">
+      <a className="heading-anchor" href={`#${encodeURIComponent(anchor)}`}>
         {children}
       </a>
-    </h2>
+    </h3>
   );
 }
 
@@ -82,13 +99,21 @@ function SignatureDetails({
       ) : null}
       {showParams ? (
         <>
-          <Heading id={`parameters${suffix}`}>Parameters</Heading>
-          <Params params={signature.params} overload={overload} />
+          <Heading owner={symbol.name} id={`parameters${suffix}`}>
+            Parameters
+          </Heading>
+          <Params
+            owner={symbol.name}
+            params={signature.params}
+            overload={overload}
+          />
         </>
       ) : null}
       {showReturns ? (
         <>
-          <Heading id={`returns${suffix}`}>Returns</Heading>
+          <Heading owner={symbol.name} id={`returns${suffix}`}>
+            Returns
+          </Heading>
           <Returns
             signature={merged}
             showType={!QUIET_RETURNS.has(merged.returns.text)}
@@ -99,22 +124,14 @@ function SignatureDetails({
   );
 }
 
-/** Group heading for overloads: `Overload 2 of 3`. */
-function OverloadHeading({ index, total }: { index: number; total: number }) {
-  const id = `overload-${index + 1}`;
-  return (
-    <h2 id={id} className="api-overload">
-      <a className="heading-anchor" href={`#${id}`}>
-        Overload {index + 1} of {total}
-      </a>
-    </h2>
-  );
-}
-
 /**
- * The body of `/api/<entry>/<Symbol>`: lede, declaration, description,
- * parameters, returns, members, throws, examples, optional MDX notes, see
- * also, and the other entry points that export the same declaration.
+ * The full reference of one export, shown in its row's panel on the
+ * category page: summary and description, the declaration (import line,
+ * source link), deprecation, remarks, parameters and returns per overload,
+ * members or props, throws, examples, optional MDX notes
+ * (`content/api/<entry>/<Symbol>.mdx`), see also, and the other entry
+ * points that export the same declaration. Every id is prefixed with the
+ * symbol's name.
  */
 export function SymbolReference({
   symbol,
@@ -124,7 +141,6 @@ export function SymbolReference({
   Notes?: MdxPage | null;
 }) {
   const { comment } = symbol;
-  const [lede, ...description] = comment.summary;
   const signatures = symbol.signatures;
   const throws = [
     ...comment.throws,
@@ -140,131 +156,108 @@ export function SymbolReference({
       : symbol.kind === 'class'
         ? 'Members'
         : 'Properties';
+  const owner = symbol.name;
 
   return (
     <>
-      <header className="doc-header">
-        <p className="doc-eyebrow api-eyebrow">
-          <ApiLink to={`/api/${symbol.entry}`} className="api-eyebrow__link">
-            {symbol.importPath}
-          </ApiLink>
-          <span aria-hidden="true">/</span>
-          <ApiLink
-            to={`/api/${symbol.entry}#domain-${symbol.domain}`}
-            className="api-eyebrow__link"
-          >
-            {symbol.domainTitle}
-          </ApiLink>
-        </p>
-        <h1 className="doc-title" data-mono="">
-          {symbol.name}
-        </h1>
-        {lede?.type === 'p' ? (
-          <p className="doc-lede">
-            <RichInlines nodes={lede.children} />
-          </p>
-        ) : null}
-      </header>
-      <div className="prose api-prose">
-        <ApiSignature symbol={symbol} />
-        {symbol.deprecated !== undefined ? (
-          <Callout tone="warning" title="Deprecated">
-            <p>{symbol.deprecated || 'This export is deprecated.'}</p>
-          </Callout>
-        ) : null}
-        <RichBlocks
-          blocks={lede && lede.type !== 'p' ? comment.summary : description}
-        />
-        <RichBlocks blocks={comment.remarks} />
-        {signatures.length > 1
-          ? signatures.map((signature, index) => (
-              <Fragment key={index}>
-                <OverloadHeading index={index} total={signatures.length} />
-                <SignatureDetails
-                  symbol={symbol}
-                  signature={signature}
-                  overload={index}
-                  returnsComment={comment.returns}
-                />
-              </Fragment>
-            ))
-          : signatures.map((signature, index) => (
-              <SignatureDetails
-                key={index}
-                symbol={symbol}
-                signature={signature}
-                overload={0}
-                returnsComment={comment.returns}
-              />
-            ))}
-        {symbol.members.length > 0 ? (
-          <>
-            <Heading id="members">{membersTitle}</Heading>
-            {symbol.propsType ? (
-              <p className="api-note">
-                From <code>{symbol.propsType}</code>; other attributes pass
-                through to the element.
-              </p>
-            ) : null}
-            <Members members={symbol.members} />
-          </>
-        ) : null}
-        {throws.length > 0 ? (
-          <>
-            <Heading id="throws">Throws</Heading>
-            <ul className="api-throws">
-              {throws.map((item, index) => (
-                <li key={index}>
-                  <RichCompact blocks={item} />
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-        {examples.length > 0 ? (
-          <>
-            <Heading id="examples">
-              {examples.length > 1 ? 'Examples' : 'Example'}
+      <RichBlocks blocks={comment.summary} />
+      <ApiSignature symbol={symbol} />
+      {symbol.deprecated !== undefined ? (
+        <Callout tone="warning" title="Deprecated">
+          <p>{symbol.deprecated || 'This export is deprecated.'}</p>
+        </Callout>
+      ) : null}
+      <RichBlocks blocks={comment.remarks} />
+      {signatures.map((signature, index) => (
+        <Fragment key={index}>
+          {signatures.length > 1 ? (
+            <Heading owner={owner} id={`overload-${index + 1}`}>
+              {`Overload ${index + 1} of ${signatures.length}`}
             </Heading>
-            {examples.map((example, index) => (
-              <Fragment key={index}>
-                {example.caption ? (
-                  <p className="api-caption">{example.caption}</p>
-                ) : null}
-                <CodeBlock
-                  html={example.html}
-                  code={example.code}
-                  lang={example.lang}
-                />
-              </Fragment>
+          ) : null}
+          <SignatureDetails
+            symbol={symbol}
+            signature={signature}
+            overload={index}
+            returnsComment={comment.returns}
+          />
+        </Fragment>
+      ))}
+      {symbol.members.length > 0 ? (
+        <>
+          <Heading owner={owner} id="members">
+            {membersTitle}
+          </Heading>
+          {symbol.propsType ? (
+            <p className="api-note">
+              From <code>{symbol.propsType}</code>; other attributes pass
+              through to the element.
+            </p>
+          ) : null}
+          <Members owner={owner} members={symbol.members} />
+        </>
+      ) : null}
+      {throws.length > 0 ? (
+        <>
+          <Heading owner={owner} id="throws">
+            Throws
+          </Heading>
+          <ul className="api-throws">
+            {throws.map((item, index) => (
+              <li key={index}>
+                <RichCompact blocks={item} />
+              </li>
             ))}
-          </>
-        ) : null}
-        {Notes ? <MdxContent Content={Notes} /> : null}
-        {comment.see.length > 0 ? (
-          <>
-            <Heading id="see-also">See also</Heading>
-            <div className="api-see">
-              <RichBlocks blocks={comment.see} />
-            </div>
-          </>
-        ) : null}
-        {symbol.alsoFrom.length > 0 ? (
-          <>
-            <Heading id="also-exported-from">Also exported from</Heading>
-            <ul className="api-also">
-              {symbol.alsoFrom.map((item) => (
-                <li key={item.entry}>
-                  <ApiLink to={`/api/${item.entry}`} className="api-also__link">
-                    <code>{item.importPath}</code>
-                  </ApiLink>
-                  <span>the same declaration, re-exported</span>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-      </div>
+          </ul>
+        </>
+      ) : null}
+      {examples.length > 0 ? (
+        <>
+          <Heading owner={owner} id="examples">
+            {examples.length > 1 ? 'Examples' : 'Example'}
+          </Heading>
+          {examples.map((example, index) => (
+            <Fragment key={index}>
+              {example.caption ? (
+                <p className="api-caption">{example.caption}</p>
+              ) : null}
+              <CodeBlock
+                html={example.html}
+                code={example.code}
+                lang={example.lang}
+              />
+            </Fragment>
+          ))}
+        </>
+      ) : null}
+      {Notes ? <PanelMdxContent Content={Notes} owner={owner} /> : null}
+      {comment.see.length > 0 ? (
+        <>
+          <Heading owner={owner} id="see-also">
+            See also
+          </Heading>
+          <div className="api-see">
+            <RichBlocks blocks={comment.see} />
+          </div>
+        </>
+      ) : null}
+      {symbol.alsoFrom.length > 0 ? (
+        <>
+          <Heading owner={owner} id="also-exported-from">
+            Also exported from
+          </Heading>
+          <ul className="api-also">
+            {symbol.alsoFrom.map((item) => (
+              <li key={item.entry}>
+                <ApiLink to={`/api/${item.entry}`} className="api-also__link">
+                  <code>{item.importPath}</code>
+                </ApiLink>
+                <span>the same declaration, re-exported</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
     </>
   );
 }

@@ -5,8 +5,8 @@
   components re-render when the store slice they subscribe to changes.
   Reading the context with
   `useContext(ColorContext)` gives that stable store and the setters, not
-  live fields; use [`useColorContext`](/api/react/useColorContext) for a live
-  snapshot or [`useColorStoreSelector`](/api/react/useColorStoreSelector) for
+  live fields; use [`useColorContext`](/api/react/color-state#useColorContext) for a live
+  snapshot or [`useColorStoreSelector`](/api/react/color-state#useColorStoreSelector) for
   one field.
 - **Controlled updates compose.** With `state` and `onChange`, `onChange`
   fires synchronously inside each setter call, once per effective update and

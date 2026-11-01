@@ -2,9 +2,11 @@
  * Internal links in hand-written content must resolve against the route
  * registry: concept and guide pages (and their heading anchors) must exist,
  * and every `/api/...` link must name a page of the generated API reference.
- * Symbol pages live only at their canonical entry, so a link to a root
- * re-export (`/api/core/definePlane`) fails; link `/api/plane/definePlane`.
- * Member anchors on `/api` links are checked by the API drift test.
+ * A symbol is a row on its category page: link `/api/plane/compile#definePlane`,
+ * not the retired symbol page `/api/plane/definePlane` (which only redirects).
+ * Rows live only at their canonical entry, so a row link through a root
+ * re-export fails. Member anchors on `/api` links are checked by the API
+ * drift test.
  *
  * Needs the generated API data (`pnpm docs:api`, part of the docs build).
  */
@@ -12,7 +14,12 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { matchRoute, notFoundRoute } from '@/site/routes';
+import {
+  apiSymbolAt,
+  legacySymbolRedirect,
+  matchRoute,
+  notFoundRoute,
+} from '@/site/routes';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const generatedModel = path.resolve(here, '../generated/api.json');
@@ -42,7 +49,7 @@ function headingIds(file: string): Set<string> {
   return ids;
 }
 
-const API_KINDS = ['api-index', 'api-map', 'api-entry', 'api-symbol'];
+const API_KINDS = ['api-index', 'api-map', 'api-entry', 'api-domain'];
 
 const files = mdxFiles(here);
 const links = files.flatMap((file) =>
@@ -68,9 +75,19 @@ describe('content links', () => {
     (href) => {
       const [pathname = '', hash] = href.split('#');
       const route = matchRoute(pathname);
+      const row = legacySymbolRedirect(pathname);
+      expect(row, `${href} is a retired symbol page: link ${row}`).toBeNull();
       expect(route, `unknown internal link ${href}`).not.toBe(notFoundRoute);
       if (pathname.startsWith('/api')) {
         expect(API_KINDS).toContain(route.kind);
+        // `#<Symbol>` names a row on this page; ids inside a row's panel
+        // (`#Color-prop-hex`) are checked by the API drift test.
+        if (route.kind === 'api-domain' && hash && !hash.includes('-')) {
+          expect(
+            apiSymbolAt(href)?.domain,
+            `no #${hash} row on ${pathname}`,
+          ).toBe(route.domain);
+        }
         return;
       }
       const page = /^\/(concepts|guides)\/([\w-]+)$/.exec(pathname);

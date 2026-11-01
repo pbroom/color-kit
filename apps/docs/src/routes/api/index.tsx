@@ -1,5 +1,10 @@
 import { ApiLink } from '@/components/api/api-link';
-import { routes, type RouteModuleProps, type SiteRoute } from '@/site/routes';
+import {
+  apiSymbols,
+  routes,
+  type RouteModuleProps,
+  type SiteRoute,
+} from '@/site/routes';
 
 const VALUE_KINDS = new Set([
   'function',
@@ -22,21 +27,19 @@ function entryFacts(): EntryFacts[] {
   return routes
     .filter((route) => route.kind === 'api-entry')
     .map((route) => {
-      const symbols = routes.filter(
-        (item) => item.kind === 'api-symbol' && item.entry === route.entry,
+      const symbols = apiSymbols.filter(
+        (symbol) => symbol.entry === route.entry,
       );
       const domains: string[] = [];
       for (const symbol of symbols) {
-        if (symbol.group && !domains.includes(symbol.group)) {
-          domains.push(symbol.group);
+        if (!domains.includes(symbol.domain)) {
+          domains.push(symbol.domain);
         }
       }
       return {
         route,
         symbols: symbols.length,
-        values: symbols.filter((symbol) =>
-          VALUE_KINDS.has(symbol.symbolKind ?? ''),
-        ).length,
+        values: symbols.filter((symbol) => VALUE_KINDS.has(symbol.kind)).length,
         domains,
       };
     });

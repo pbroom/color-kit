@@ -43,9 +43,9 @@ compose a mapping instead, as on the second line.
 
 ## Many colors
 
-[`packColors`](/api/interop/packColors) writes a list into one
+[`packColors`](/api/interop/buffers#packColors) writes a list into one
 `Float32Array` (or your own array), with `alpha`, `stride` and `offset`
-options for interleaved layouts. [`unpackColors`](/api/interop/unpackColors)
+options for interleaved layouts. [`unpackColors`](/api/interop/buffers#unpackColors)
 reads it back. Float32 storage rounds each channel to single precision, which
 is well below anything visible; pass a `Float64Array` as `out` when you need
 doubles.
@@ -95,9 +95,9 @@ device.queue.writeBuffer(
 
 A WGSL `array<vec3f>` also has a 16-byte stride; pack it with `stride: 4`. For
 shaders that redo the conversion math, the root package exports the CSS
-Color 4 matrices: [`OKLAB_TO_LMS`](/api/core/OKLAB_TO_LMS),
-[`LMS_TO_LINEAR_SRGB`](/api/core/LMS_TO_LINEAR_SRGB) and
-[`LINEAR_SRGB_TO_LINEAR_P3`](/api/core/LINEAR_SRGB_TO_LINEAR_P3).
+Color 4 matrices: [`OKLAB_TO_LMS`](/api/core/conversion#OKLAB_TO_LMS),
+[`LMS_TO_LINEAR_SRGB`](/api/core/conversion#LMS_TO_LINEAR_SRGB) and
+[`LINEAR_SRGB_TO_LINEAR_P3`](/api/core/conversion#LINEAR_SRGB_TO_LINEAR_P3).
 
 ## Try it
 

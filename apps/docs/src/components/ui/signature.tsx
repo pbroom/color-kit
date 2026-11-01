@@ -1,6 +1,6 @@
 import { lazy, type ReactNode } from 'react';
 import { ApiLabel } from '@/components/api/kind-glyph';
-import { routes } from '@/site/routes';
+import { apiSymbols, type ApiSymbolLink } from '@/site/routes';
 import { CodeBlock } from './code-block';
 
 const GeneratedSignature = lazy(
@@ -24,10 +24,10 @@ export interface SignatureParam {
  * Contract:
  * - **Generated (preferred):** `<Signature name="sense" entry="plane" />`
  *   renders the symbol's declaration from `src/generated/api` exactly as its
- *   reference page does: one parameter per line when long, named types
+ *   row on the category page does: one parameter per line when long, named types
  *   linked across entries, kind and deprecated labels, import line and
  *   source link, followed by its parameters. `entry` defaults to the first
- *   entry (package order) with a page for `name`. `params={false}` shows the
+ *   entry (package order) that documents `name`. `params={false}` shows the
  *   declaration only.
  * - **Hand-written:** pass `declaration` (plain text) or `declarationHtml`
  *   (Shiki HTML, CSS-variables theme) plus optional `params`, `returns`,
@@ -48,11 +48,14 @@ export interface SignatureProps {
   sourceUrl?: string;
 }
 
-function resolveEntry(name: string, entry?: string): string | undefined {
-  if (entry) return entry;
-  return routes.find(
-    (route) => route.kind === 'api-symbol' && route.symbol === name,
-  )?.entry;
+function resolveSymbol(
+  name: string,
+  entry?: string,
+): ApiSymbolLink | undefined {
+  return apiSymbols.find(
+    (symbol) =>
+      symbol.name === name && (entry === undefined || symbol.entry === entry),
+  );
 }
 
 export function Signature({
@@ -68,12 +71,13 @@ export function Signature({
   sourceUrl,
 }: SignatureProps) {
   const manual = Boolean(declarationHtml || declaration || params);
-  const generatedEntry = manual ? undefined : resolveEntry(name, entry);
-  if (generatedEntry) {
+  const generated = manual ? undefined : resolveSymbol(name, entry);
+  if (generated) {
     return (
       <GeneratedSignature
         name={name}
-        entry={generatedEntry}
+        entry={generated.entry}
+        domain={generated.domain}
         showParams={params !== false}
       />
     );

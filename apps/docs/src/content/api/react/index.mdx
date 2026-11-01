@@ -19,19 +19,19 @@ library.
 
 ## State: one provider, two hooks
 
-[`Color`](/api/react/Color) holds one color and shares it with every
+[`Color`](/api/react/color-state#Color) holds one color and shares it with every
 component inside it. It takes the same options as
-[`useColor`](/api/react/useColor), which returns that state with conversions
+[`useColor`](/api/react/color-state#useColor), which returns that state with conversions
 and setters (`setRequested`, `setChannel`, `setFromString`,
 `setActiveGamut`, …) when a provider is more than you need. The provider
 itself never re-renders on a color change. In your components,
-[`useColorContext`](/api/react/useColorContext) returns the full snapshot and
+[`useColorContext`](/api/react/color-state#useColorContext) returns the full snapshot and
 re-renders on every update;
-[`useColorStoreSelector`](/api/react/useColorStoreSelector) subscribes to one
+[`useColorStoreSelector`](/api/react/color-state#useColorStoreSelector) subscribes to one
 field of the provider's store instead, so a drag re-renders only what depends
 on it.
 
-[`useMultiColor`](/api/react/useMultiColor) manages a named collection, such
+[`useMultiColor`](/api/react/color-state#useMultiColor) manages a named collection, such
 as a palette or gradient stops, with one selected entry and a display gamut
 and view shared by all entries. Its operations build on the latest state, so
 several calls in one event handler compose.
@@ -55,25 +55,25 @@ pointing down, so the geometry hooks' path data fits an
 `<svg viewBox="0 0 100 100" preserveAspectRatio="none">` laid over the
 canvas.
 
-- [`useColorPlaneRenderer`](/api/react/useColorPlaneRenderer) paints the
+- [`useColorPlaneRenderer`](/api/react/plane-renderer#useColorPlaneRenderer) paints the
   plane into a `<canvas>` you render. Attach its `ref` and use its
   `canvasKey` as the canvas `key`. It draws with WebGL, falls back to a CPU
   renderer when WebGL is missing or its context is lost, sizes the backing
   store from the canvas's CSS size and the device pixel ratio, and skips
   redraws that would paint the same pixels.
-- [`useGamutBoundary`](/api/react/useGamutBoundary) traces the sRGB or
+- [`useGamutBoundary`](/api/react/plane-geometry#useGamutBoundary) traces the sRGB or
   Display P3 edge for the plane's hue, and
-  [`useChromaBand`](/api/react/useChromaBand) the line the current chroma
+  [`useChromaBand`](/api/react/plane-geometry#useChromaBand) the line the current chroma
   follows across lightness.
-- [`useContrastRegion`](/api/react/useContrastRegion) solves the colors that
+- [`useContrastRegion`](/api/react/plane-geometry#useContrastRegion) solves the colors that
   reach a WCAG or APCA level against a reference, as contour lines to stroke
   and closed polygons to fill.
-- [`useFallbackPoints`](/api/react/useFallbackPoints) places the color after
+- [`useFallbackPoints`](/api/react/plane-geometry#useFallbackPoints) places the color after
   gamut mapping into sRGB and into Display P3.
 
 `useGamutBoundary`, `useChromaBand` and `useContrastRegion` return
 memoized points plus SVG path data from
-[`toSvgPath`](/api/plane/toSvgPath). `useFallbackPoints` returns the `srgb`
+[`toSvgPath`](/api/plane/compile#toSvgPath). `useFallbackPoints` returns the `srgb`
 and `p3` points, without paths, and `useColorPlaneRenderer` returns a canvas
 handle (`ref`, `canvasKey`, the active `renderer`). None of them render
 elements.
@@ -83,12 +83,12 @@ elements.
 The picker below is built from plain elements: a canvas the renderer
 paints, an SVG for the gamut edges, and a `role="slider"` thumb.
 Pointer input goes through the driver's
-[`createPointerDragController`](/api/driver/createPointerDragController),
+[`createPointerDragController`](/api/driver/drag-controller#createPointerDragController),
 which coalesces moves to one commit per frame, and
-[`colorFromColorAreaPosition`](/api/driver/colorFromColorAreaPosition) turns
+[`colorFromColorAreaPosition`](/api/driver/color-area#colorFromColorAreaPosition) turns
 each normalized point into a color. The arrow keys step through
-[`colorFromColorAreaKey`](/api/driver/colorFromColorAreaKey), and
-[`getColorAreaValueText`](/api/driver/getColorAreaValueText) writes the
+[`colorFromColorAreaKey`](/api/driver/color-area#colorFromColorAreaKey), and
+[`getColorAreaValueText`](/api/driver/color-area#getColorAreaValueText) writes the
 thumb's `aria-valuetext`. The other examples on this page reuse its
 `PlanePicker`.
 
@@ -114,11 +114,11 @@ thumb's `aria-valuetext`. The other examples on this page reuse its
 
 A single channel needs no plane: a native `<input type="range">` already
 handles keyboard and ARIA. Paint its rail with
-[`getSliderGradientStyles`](/api/driver/getSliderGradientStyles), sampled
+[`getSliderGradientStyles`](/api/driver/slider-gradient#getSliderGradientStyles), sampled
 from the current color so each rail previews what dragging it would do, and
 write with `setChannel`. For text,
-[`formatColorStringInputValue`](/api/driver/formatColorStringInputValue) and
-[`parseColorStringInputValue`](/api/driver/parseColorStringInputValue)
+[`formatColorStringInputValue`](/api/driver/color-string-input#formatColorStringInputValue) and
+[`parseColorStringInputValue`](/api/driver/color-string-input#parseColorStringInputValue)
 convert between the color and any CSS color string; commit with
 `setFromString`, which keeps the hue of grays. The
 [React guide](/guides/react#sliders-and-text) has a live example.
@@ -131,14 +131,14 @@ you pass `state` and `onChange`, and the provider only reports updates.
 and never for a no-op, and the event names the `interaction` (`pointer`,
 `keyboard`, `text-input`, `programmatic`) and the `changedChannel`; pass
 `interaction` to the setters so it is right. Build the initial state with
-[`createColorState`](/api/driver/createColorState).
+[`createColorState`](/api/driver/color-state#createColorState).
 
 The [React guide](/guides/react#controlled) has a live controlled
 example.
 
 ## Contrast regions
 
-[`useContrastRegion`](/api/react/useContrastRegion) outlines the colors of
+[`useContrastRegion`](/api/react/plane-geometry#useContrastRegion) outlines the colors of
 the current hue that reach a contrast level against a reference, with WCAG 2
 or APCA. Stroke `path` for the contour and fill `fillPath` for the passing
 area. Pass the fixed background (or text) color as `reference`: without it
@@ -162,11 +162,11 @@ supplies the parts a picker needs:
 - **Roles and value text.** Give a 2D thumb `role="slider"` with
   `aria-roledescription="2D slider"`, `aria-valuenow` for the x axis and
   `aria-valuetext` from
-  [`getColorAreaValueText`](/api/driver/getColorAreaValueText), such as
+  [`getColorAreaValueText`](/api/driver/color-area#getColorAreaValueText), such as
   "Lightness 60%, Chroma 0.2". For a custom 1D slider,
-  [`getColorSliderValueText`](/api/driver/getColorSliderValueText) names the
+  [`getColorSliderValueText`](/api/driver/color-slider#getColorSliderValueText) names the
   channel and unit ("Hue 213°"). Label each with `aria-label`.
-- **Keyboard.** [`colorFromColorAreaKey`](/api/driver/colorFromColorAreaKey)
+- **Keyboard.** [`colorFromColorAreaKey`](/api/driver/color-area#colorFromColorAreaKey)
   maps the arrow keys, PageUp/PageDown and Home/End to a new color by a step
   ratio of the range; hue wraps. Focus the thumb on pointer down so a click
   followed by the arrow keys fine-tunes.
@@ -175,7 +175,7 @@ supplies the parts a picker needs:
 
 ## Performance
 
-- [`useAdaptiveQuality`](/api/react/useAdaptiveQuality) lowers a quality
+- [`useAdaptiveQuality`](/api/react/performance#useAdaptiveQuality) lowers a quality
   level while measured frames are slow and raises it when they recover.
   Report each committed drag frame to it and pass its `quality` to the
   renderer (fewer pixels) and the geometry hooks (coarser sampling).

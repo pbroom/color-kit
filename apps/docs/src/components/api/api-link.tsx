@@ -4,7 +4,7 @@ import { PrefetchLink } from '@/components/prefetch-link';
 import { preloadApiHref } from '@/api/data';
 
 /**
- * `PrefetchLink` that also warms the target's API data (symbol or entry
+ * `PrefetchLink` that also warms the target's API data (entry or category
  * JSON), so moving between reference pages never shows a loading state.
  */
 export function ApiLink({

@@ -22,8 +22,8 @@ leave the rest on the readable object API.
 Every hot conversion has an `out`-first twin that writes into an object you
 own and returns it: `toOklabInto`, `toLinearSrgbInto`, `toRgbInto`,
 `toP3Into` and their `from*` pairs, the low-level steps, `mixInto`,
-`interpolateInto`, [`toSrgbGamutInto`](/api/core/toSrgbGamutInto) and
-[`toP3GamutInto`](/api/core/toP3GamutInto). `out` may be an input, so
+`interpolateInto`, [`toSrgbGamutInto`](/api/core/gamut#toSrgbGamutInto) and
+[`toP3GamutInto`](/api/core/gamut#toP3GamutInto). `out` may be an input, so
 `mixInto(a, a, b, t)` blends in place. Results are bit-identical to the
 allocating functions.
 
@@ -47,7 +47,7 @@ loops, where fewer collections mean fewer dropped frames, and measure.
 Typed-array elements are stored unboxed, so writing floats into one never
 allocates. The interop writers take an `out` array and an offset:
 `toSrgbArray(color, buffer, i * 3)` writes three floats in place, and
-[`packColors`](/api/interop/packColors) fills a whole buffer. Combine them
+[`packColors`](/api/interop/buffers#packColors) fills a whole buffer. Combine them
 with `toSrgbGamutInto` and a per-pixel loop allocates nothing. See
 [GPU and three.js](/guides/gpu-interop) for layouts.
 
@@ -62,29 +62,29 @@ OKLCH 29 ns, OKLab 70 ns, linear sRGB 139 ns, sRGB 243 ns, Display P3 258 ns.
 
 ## Plane queries
 
-- **Cache.** [`PlaneQueryCache`](/api/plane/PlaneQueryCache) is an LRU (128
+- **Cache.** [`PlaneQueryCache`](/api/plane/compile#PlaneQueryCache) is an LRU (128
   entries by default) keyed by plane and query;
-  [`runCachedPlaneQuery`](/api/plane/runCachedPlaneQuery) runs a query only
+  [`runCachedPlaneQuery`](/api/plane/compile#runCachedPlaneQuery) runs a query only
   on a miss.
 - **Move it off the main thread.**
-  [`runPlaneCompute`](/api/compute/runPlaneCompute) returns results packed
+  [`runPlaneCompute`](/api/compute/scheduling#runPlaneCompute) returns results packed
   into typed arrays, and
-  [`getPackedPlaneQueryTransferables`](/api/compute/getPackedPlaneQueryTransferables)
+  [`getPackedPlaneQueryTransferables`](/api/compute/packing#getPackedPlaneQueryTransferables)
   lists the buffers to transfer from a worker without copying.
 - **Sample coarsely while dragging.** Contrast regions take `initialSamples`
   (default 32), `errorTolerance` (0.0015) and `maxDepth` (6).
-  [`useContrastRegion`](/api/react/useContrastRegion) uses 8, 0.004 and at
+  [`useContrastRegion`](/api/react/plane-geometry#useContrastRegion) uses 8, 0.004 and at
   most 3 for interaction. Contour
   ends are solved exactly either way; coarse settings only draw the curve
   between them with fewer points.
-- **Use the lookup tables.** [`maxChromaForHue`](/api/core/maxChromaForHue)
+- **Use the lookup tables.** [`maxChromaForHue`](/api/core/gamut#maxChromaForHue)
   interpolates a cached per-hue table by default; `method: 'direct'` solves
   exactly per call.
-- **Let the picker adapt.** [`useAdaptiveQuality`](/api/react/useAdaptiveQuality)
+- **Let the picker adapt.** [`useAdaptiveQuality`](/api/react/performance#useAdaptiveQuality)
   lowers a quality level while measured drag frames are slow and restores it
   after; pass it to the plane renderer and geometry hooks to lower raster
   resolution and overlay sampling. The driver's
-  [`createPointerDragController`](/api/driver/createPointerDragController)
+  [`createPointerDragController`](/api/driver/drag-controller#createPointerDragController)
   takes `maxUpdateHz` and `dragEpsilon` to cap the commit rate.
 
 ## Try it

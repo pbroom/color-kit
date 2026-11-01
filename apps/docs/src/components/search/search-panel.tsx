@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router';
 import { CornerDownLeft, Search, X } from 'lucide-react';
 import '@/api/search';
 import { prefetchHref } from '@/lib/prefetch';
-import { matchRoute } from '@/site/routes';
+import { apiSymbolAt } from '@/site/routes';
 import {
   loadPagefind,
   searchInstant,
@@ -54,13 +54,14 @@ function importPath(entry: string | undefined): string | undefined {
 /** Symbol hits: name, then kind and the entry point it imports from. */
 function HitBody({ hit }: { hit: SearchHit }) {
   if (hit.kind === 'symbol') {
-    const route = matchRoute(hit.href);
+    // Recent hits saved before symbols became rows still resolve.
+    const symbol = apiSymbolAt(hit.href);
     return (
       <>
         <span className="search-hit__title">{hit.title}</span>
         <span className="search-hit__meta">
-          <span className="search-hit__kind">{route.symbolKind}</span>
-          {importPath(route.entry) ?? hit.meta}
+          <span className="search-hit__kind">{symbol?.kind}</span>
+          {importPath(symbol?.entry) ?? hit.meta}
         </span>
       </>
     );
