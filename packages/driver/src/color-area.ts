@@ -1,9 +1,8 @@
 import type { Color } from '@color-kit/core';
+import { clamp } from './clamp.js';
 import {
   assertGamutTarget,
-  clamp,
   definePlane,
-  PLANE_MODEL_DEFAULT_RANGES,
   sense,
   toP3Gamut,
   toSrgbGamut,
@@ -11,6 +10,7 @@ import {
   type ContrastRegionPathOptions,
   type GamutTarget,
 } from '@color-kit/core';
+import { PLANE_MODEL_DEFAULT_RANGES } from '@color-kit/core/plane';
 import {
   DEFAULT_LARGE_STEP_RATIO,
   getChannelValueText,

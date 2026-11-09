@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  nearestPointOnPath,
-  pointDistance,
-  type PlanePoint,
-} from '../src/index.js';
+import { type PlanePoint } from '../src/index.js';
+import { nearestPointOnPath, pointDistance } from '../src/plane/index.js';
 
 function expectPointClose(
   actual: PlanePoint | null,

@@ -12,8 +12,6 @@
  *
  * @example
  * ```ts
- * import { clamp } from '@pbroom/color-kit';
- *
  * clamp(1.2, 0, 1); // → 1
  * clamp(-5, 0, 255); // → 0
  * ```
@@ -33,8 +31,6 @@ export function clamp(value: number, min: number, max: number): number {
  *
  * @example
  * ```ts
- * import { round } from '@pbroom/color-kit';
- *
  * round(0.62308, 3); // → 0.623
  * round(59.6); // → 60
  * ```
@@ -86,8 +82,6 @@ export { simplifyPolyline, type LcPoint } from './polyline-simplify.js';
  *
  * @example
  * ```ts
- * import { lerp } from '@pbroom/color-kit';
- *
  * lerp(0, 10, 0.25); // → 2.5
  * lerp(0, 10, 1.5); // → 15
  * ```

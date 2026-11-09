@@ -59,6 +59,18 @@ const NOT_ON_ROOT = [
   'contourEdgeKey',
   'interpolateZero',
   'PLANE_DEFAULT_RANGES',
+  // Array interop, advanced plane APIs and generic math helpers are
+  // subpath-only (or internal): the root keeps the everyday toolkit plus the
+  // plane essentials.
+  'toLinearSrgbArray',
+  'packColors',
+  'runPlaneQuery',
+  'PlaneQueryCache',
+  'unionRegions',
+  'inspectPlaneQuery',
+  'clamp',
+  'round',
+  'lerp',
 ];
 
 function assertNotOnRoot(rootEntry) {
@@ -139,8 +151,9 @@ assert.equal(typeof compute.resetDefaultPlaneComputeTelemetry, 'function');
 assert.equal(typeof hct.maxHctChromaForHue, 'function');
 assert.equal(typeof interop.toLinearSrgbArray, 'function');
 assert.equal(typeof interop.packColors, 'function');
-assert.equal(root.toLinearSrgbArray, interop.toLinearSrgbArray);
-assert.equal(root.packColors, interop.packColors);
+assert.equal(typeof plane.runPlaneQuery, 'function');
+assert.equal(typeof plane.PlaneQueryCache, 'function');
+assert.equal(root.toSvgPath, plane.toSvgPath);
 assert.equal(typeof react.Color, 'function');
 assertReactHooks(react);
 // The control-kit-backed `color-input` subpath was removed with ColorInput.
@@ -182,7 +195,7 @@ assert.equal(
 assert.equal(typeof cjsCompute.resetDefaultPlaneComputeTelemetry, 'function');
 assert.equal(typeof cjsHct.maxHctChromaForHue, 'function');
 assert.equal(typeof cjsInterop.toLinearSrgbArray, 'function');
-assert.equal(cjsRoot.packColors, cjsInterop.packColors);
+assert.equal(typeof cjsInterop.packColors, 'function');
 assert.equal(typeof cjsReact.Color, 'function');
 assertReactHooks(cjsReact);
 assert.throws(() => require('@pbroom/color-kit/react/color-input'), {

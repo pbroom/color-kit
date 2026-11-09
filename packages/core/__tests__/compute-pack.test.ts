@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  definePlane,
-  parse,
-  runPlaneQueries,
-  type PlaneQueryResult,
-} from '../src/index.js';
+import { definePlane, parse, type PlaneQueryResult } from '../src/index.js';
+import { runPlaneQueries } from '../src/plane/index.js';
 import {
   getPackedPlaneQueryTransferables,
   packPlaneQueryResults,

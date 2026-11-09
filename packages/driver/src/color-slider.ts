@@ -1,5 +1,5 @@
 import type { Color } from '@color-kit/core';
-import { clamp } from '@color-kit/core';
+import { clamp } from './clamp.js';
 import {
   DEFAULT_LARGE_STEP_RATIO,
   getChannelLabel,

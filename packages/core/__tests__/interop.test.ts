@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  fromP3,
+  inP3Gamut,
+  inSrgbGamut,
+  oklabToLinearRgb,
+  parse,
+  toOklab,
+  toP3,
+  toP3Gamut,
+  toRgb,
+  toSrgbGamut,
+} from '../src/index.js';
+import {
   fromLinearP3Array,
   fromLinearP3Array4,
   fromLinearSrgbArray,
@@ -8,43 +20,33 @@ import {
   fromOklabArray4,
   fromOklchArray,
   fromOklchArray4,
-  fromP3,
   fromP3Array,
   fromP3Array4,
   fromSrgbArray,
   fromSrgbArray4,
-  inP3Gamut,
-  inSrgbGamut,
-  oklabToLinearRgb,
   packColors,
-  parse,
   toLinearP3Array,
   toLinearP3Array4,
   toLinearSrgbArray,
   toLinearSrgbArray4,
-  toOklab,
   toOklabArray,
   toOklabArray4,
   toOklchArray,
   toOklchArray4,
-  toP3,
   toP3Array,
   toP3Array4,
-  toP3Gamut,
-  toRgb,
   toSrgbArray,
   toSrgbArray4,
-  toSrgbGamut,
   unpackColors,
-} from '../src/index.js';
+} from '../src/interop/index.js';
+import type { Color } from '../src/index.js';
 import type {
   ArraySpace,
   ArrayWriteOptions,
-  Color,
   ColorTuple,
   ColorTuple4,
   WritableArrayLike,
-} from '../src/index.js';
+} from '../src/interop/index.js';
 
 type Writer = (
   color: Color,

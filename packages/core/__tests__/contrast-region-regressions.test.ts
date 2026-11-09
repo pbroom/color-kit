@@ -4,13 +4,13 @@ import {
   contrastRatio,
   definePlane,
   inSrgbGamut,
-  inspectPlaneQuery,
   maxChromaAt,
   parse,
   toSrgbGamut,
   type Color,
   type ContrastMetric,
 } from '../src/index.js';
+import { inspectPlaneQuery } from '../src/plane/index.js';
 
 /**
  * Regression cases from a brute-force review of the contrast-region solver

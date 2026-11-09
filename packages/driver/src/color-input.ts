@@ -1,6 +1,6 @@
 import type { Color, Hsl, Rgb } from '@color-kit/core';
+import { clamp } from './clamp.js';
 import {
-  clamp,
   fromHsl,
   fromRgb,
   isAchromatic,

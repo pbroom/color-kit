@@ -3,11 +3,11 @@ import {
   definePlane,
   fromHex,
   parse,
-  runPlaneQueries,
   type PlaneDefinition,
   type PlaneQuery,
   type PlaneQueryResult,
 } from '../src/index.js';
+import { runPlaneQueries } from '../src/plane/index.js';
 import {
   createPlaneComputeScheduler,
   packPlaneQueryResults,

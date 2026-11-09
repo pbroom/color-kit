@@ -13,14 +13,13 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import { toCss, toHex } from '../src/index.js';
 import {
   fromLinearSrgbArray,
   packColors,
-  toCss,
-  toHex,
   toLinearSrgbArray,
   toSrgbArray,
-} from '../src/index.js';
+} from '../src/interop/index.js';
 import type { Color } from '../src/index.js';
 
 const SAMPLES: Color[] = [
