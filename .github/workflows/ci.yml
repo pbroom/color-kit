@@ -63,9 +63,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check agent learnings integrity
-        run: pnpm agents:check:strict
-
       - name: Check formatting
         run: pnpm format:check
 

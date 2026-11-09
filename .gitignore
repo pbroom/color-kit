@@ -56,8 +56,7 @@ apps/docs/playwright-report/
 # Claude Code agent worktrees
 .claude/worktrees/
 
-# Cursor continual-learning hook machine state (checkpoint + transcript index).
-# Not AGENTS learnings — those stay in AGENTS.md / AGENTS.learnings.archive.md.
+# Cursor hook machine state.
 .cursor/hooks/state/continual-learning.json
 .cursor/hooks/state/continual-learning-index.json
 .cursor/hooks/state/pr-babysit.json

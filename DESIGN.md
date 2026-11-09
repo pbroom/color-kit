@@ -24,7 +24,7 @@ The system tracks two color values: **requested** (exact user-selected OKLCH) an
 
 > **Why:** Users may select colors outside the current output gamut. Silently clamping requested values would move thumbs, lose intent, and make undo/redo confusing. By keeping requested untouched and deriving displayed via a deterministic mapping, the UI can show the user’s intent (thumb position, requested readouts) alongside what is actually shown (swatch, CSS), and use fallback indicators to show where the mapped color lands.
 
-**Type definition** (from [packages/react/src/color-state.ts](packages/react/src/color-state.ts)):
+**Type definition** (from [packages/driver/src/color-state.ts](packages/driver/src/color-state.ts)):
 
 ```ts
 export type GamutTarget = 'srgb' | 'display-p3';
@@ -81,7 +81,7 @@ Out-of-gamut colors are brought into gamut by **reducing chroma** (binary search
 
 Gamut checks (`inSrgbGamut`, `inP3Gamut`) use a small **epsilon** (~0.000075) when comparing linear channel values to the [0, 1] range. Values in `[-epsilon, 1+epsilon]` are treated as in-gamut.
 
-> **Why:** Matrix math in color space conversion produces tiny floating-point errors. An in-gamut color can yield linear values like -0.00003. Without tolerance, those would be incorrectly flagged as out-of-gamut. Gamut checks must use **unclamped** linear values; using the clamped conversion pipeline would hide out-of-gamut colors. See [AGENTS.md](AGENTS.md) learnings on gamut check implementation.
+> **Why:** Matrix math in color space conversion produces tiny floating-point errors. An in-gamut color can yield linear values like -0.00003. Without tolerance, those would be incorrectly flagged as out-of-gamut. Gamut checks must use **unclamped** linear values; using the clamped conversion pipeline would hide out-of-gamut colors. See the gamut rule in [AGENTS.md](AGENTS.md#engineering-rules).
 
 **Passing test (in-gamut with rounding):**
 
@@ -109,7 +109,7 @@ All conversions use a **single canonical path**: any input format → sRGB → l
 
 Maximum chroma at a given (L, H) or (H) and gamut boundary paths are computed with **binary search** (or equivalent iterative search) with configurable `tolerance` and `maxIterations`. The sRGB/P3 gamut boundary in OKLCH space is not analytically expressible, so we sample and search.
 
-> **Why:** This gives deterministic, tunable precision. Shared options (`tolerance`, `maxIterations`) keep behavior consistent across `maxChromaAt`, `maxChromaForHue`, `gamutBoundaryPath`, and related APIs. See [packages/core/src/gamut/index.ts](packages/core/src/gamut/index.ts) for defaults (e.g. `DEFAULT_TOLERANCE = 0.0001`, `DEFAULT_MAX_ITERATIONS = 30`).
+> **Why:** This gives deterministic, tunable precision. Shared options (`tolerance`, `maxIterations`) keep behavior consistent across `maxChromaAt`, `maxChromaForHue`, `gamutBoundaryPath`, and related APIs. See [packages/core/src/gamut/types.ts](packages/core/src/gamut/types.ts) for defaults (e.g. `DEFAULT_TOLERANCE = 0.0001`, `DEFAULT_MAX_ITERATIONS = 30`).
 
 ### HCT considerations
 
@@ -198,7 +198,7 @@ The 2D area is a **UI plane**: normalized (0–1) X and Y map to two color chann
 
 The plane surface (`useColorPlaneRenderer`) is rendered with **WebGL** (GPU fragment shader), not Canvas 2D pixel loops, with a CPU rasterizer only as a fallback.
 
-> **Why:** At pointer-move frequency, canvas 2D with per-pixel sampling cannot keep up on typical 2D sizes. WebGL generates pixels from uniforms and UV in the shader, avoiding CPU-side color conversion per pixel. See agent learnings on keeping WebGL paths shader-native.
+> **Why:** At pointer-move frequency, canvas 2D with per-pixel sampling cannot keep up on typical 2D sizes. WebGL generates pixels from uniforms and UV in the shader, avoiding CPU-side color conversion per pixel.
 
 ### Overlay invalidation boundaries
 
@@ -242,7 +242,7 @@ React state for high-frequency updates (e.g. during drag) uses **Legend State** 
 
 `useMultiColor` (and any batch-update path) uses **functional updates** when computing the next state from the previous (e.g. `setState(prev => ({ ...prev, ... }))`).
 
-> **Why:** Batched React updates can apply multiple setState calls in one tick; closure-based updates can see stale `prev`, so sequential edits in one event can be dropped. Functional updates always see the latest committed state. See [AGENTS.md](AGENTS.md) learnings.
+> **Why:** Batched React updates can apply multiple setState calls in one tick; closure-based updates can see stale `prev`, so sequential edits in one event can be dropped. Functional updates always see the latest committed state. See [AGENTS.md](AGENTS.md#engineering-rules).
 
 ---
 
@@ -266,7 +266,7 @@ Hardware baselines: Apple Silicon (e.g. M1/M2 MacBook Air), mid-tier Intel i5-cl
 
 Updates at **pointer-move frequency** (e.g. thumb position, requested color) must not trigger heavy recomputation (gamut boundary, contrast regions, full plane redraw). Invalidation is explicit: only inputs that affect a result trigger recompute.
 
-> **Why:** Keeps the main thread responsive. Caching and invalidation boundaries (see §5) ensure that expensive work runs only when its inputs change. Agent learnings: cache geometry outside the pointer hot path; use RAF and coalesced events to tame pointer pressure.
+> **Why:** Keeps the main thread responsive. Caching and invalidation boundaries (see §5) ensure that expensive work runs only when its inputs change. Cache geometry outside the pointer hot path; use RAF and coalesced events to tame pointer pressure.
 
 ### Future performance paths
 
@@ -330,7 +330,7 @@ it('preserves hue and chroma when setting L to 0', () => {
 });
 ```
 
-**Roundtrip fidelity:** Conversion roundtrips (e.g. OKLCH → RGB → OKLCH) must stay within tolerance; see [packages/core/**tests**/roundtrip.test.ts](packages/core/__tests__/roundtrip.test.ts).
+**Roundtrip fidelity:** Conversion roundtrips (e.g. OKLCH → RGB → OKLCH) must stay within tolerance; see [`packages/core/__tests__/roundtrip.test.ts`](packages/core/__tests__/roundtrip.test.ts).
 
 ### Test gates per milestone
 
@@ -353,4 +353,4 @@ Each feature area has associated test files that must pass before it is consider
 
 ---
 
-_This document is the canonical reference for design rationale. For open work, see [implementation-backlog.md](implementation-backlog.md)._
+_This document is the canonical reference for design rationale._
