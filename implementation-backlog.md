@@ -18,7 +18,7 @@ Replaces `CODE_QUALITY_BACKLOG.md` (CQ-001 through CQ-010 — all completed; see
 
 Do not green-light large features on these surfaces without a decomposition plan:
 
-- No god-file growth past 1k lines without a split plan (eight production files already exceed it)
+- No god-file growth past 1k lines without a split plan (as of 2026-11-01 no production file exceeds it; the largest is `packages/core/src/contrast/region-solver.ts` at 986 lines)
 - No feature logic in shared paths without a dedicated abstraction
 - No inverted package layering (e.g. contrast ↔ plane type cycles)
 - No compute backend should report a backend it did not truly execute
@@ -55,8 +55,8 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-002 — Extract `usePlaneQueryLayer` and shared worker
 
 - **Priority:** P0
-- **Status:** Open
-- **Evidence:**
+- **Status:** Completed (verified 2026-11-01) — `packages/react/src/use-plane-query-layer.ts` owns the sync/worker/drag state machine; `use-plane-line-query.ts` wraps it for `use-gamut-boundary.ts` and `use-chroma-band.ts`, and `use-contrast-region.ts` uses it directly. `packages/react/src/workers/plane-query-client.ts` keeps one module-level `Worker` and multiplexes requests by id. Plane payloads come from the driver's `toColorAreaPlaneDefinition` (`packages/driver/src/color-area.ts`); shared quality helpers live in `plane-quality.ts` and `plane-spec.ts`. The three `*-layer.tsx` components were replaced by these hooks in PR #247 and removed in PR #249. Covered by `packages/react/__tests__/use-plane-query-layer.test.ts` and `plane-query-client.test.ts`.
+- **Evidence (as filed):**
   - `packages/react/src/gamut-boundary-layer.tsx`, `chroma-band-layer.tsx`, and `contrast-region-layer.tsx` each duplicate `resolveQuality`, `canUseWorkerOffload`, `rangeSpan`, adaptive tolerance/depth, ResizeObserver area measurement (~60 lines), and worker lifecycle (~65 lines).
   - Each layer calls `new Worker(plane-query.worker.js)` independently — three mounted layers = three schedulers.
   - `chroma-band-layer.tsx` imports `ColorAreaLayerQuality` from `gamut-boundary-layer.tsx` (sibling type coupling).
@@ -80,8 +80,8 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-003 — Decompose `contrast-region-layer.tsx` god module
 
 - **Priority:** P0
-- **Status:** Open
-- **Evidence:**
+- **Status:** Completed (verified 2026-11-01) — `contrast-region-layer.tsx` is gone (PR #249). Its pure LC geometry, boundary snap and scoring live in `packages/react/src/contrast-region-geometry.ts` (636 lines, no React import), and state/effects live in the `useContrastRegion` hook (`packages/react/src/use-contrast-region.ts`, 643 lines). There is no component shell left, because the package ships hooks only. The geometry module has no dedicated unit test file; it is covered through `packages/react/__tests__/plane-geometry-hooks.test.tsx`.
+- **Evidence (as filed):**
   - `packages/react/src/contrast-region-layer.tsx` — 1,735 lines.
   - Four subsystems in one file: fill/dot-pattern UI (~270), quality helpers (~85), LC geometry + contrast scoring (~480), worker orchestration + metrics + SVG shell (~900).
   - Geometry block (lines ~355–835) has zero React dependency but lives in a React module, untested in isolation.
@@ -215,8 +215,8 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-008 — Split `usePrimitiveValueInput` scrub engine
 
 - **Priority:** P2
-- **Status:** Open
-- **Evidence:**
+- **Status:** Moved (2026-11-01) — `packages/control-kit` left this repo (removed in PR #236) and now lives in `github.com/pbroom/control-kit`; `scripts/check-preproduction.mjs` rejects a local copy. Track this split there. color-kit keeps only pure numeric helpers in `packages/driver/src/primitive-number.ts`.
+- **Evidence (as filed):**
   - `packages/control-kit/src/primitive-value-input.tsx` — 1,123 lines total.
   - `usePrimitiveValueInput` hook (~667 lines, lines ~247–913) combines draft/edit, caret preservation, keyboard stepping, and full scrub engine (pointer capture, pointer lock, document listeners, rAF rate limit, modifier rebasing).
   - Tests in `__tests__/primitive-value-input.test.tsx` (~944 lines) are solid and split-friendly.
@@ -281,8 +281,8 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-011 — Continue decomposing docs right-rail panels
 
 - **Priority:** P2
-- **Status:** Open (surface retained). Note 2026-09-25: the `components/panels/*-properties-panel.tsx` modules and `docs-properties-panel-controls.tsx` were never wired in (`component-docs-data.tsx` still lazy-loads all panels from `docs-right-rail-panels.tsx`); those unreferenced duplicates were deleted, so slice 4 must be redone if pursued.
-- **Evidence:**
+- **Status:** Obsolete (2026-11-01) — the legacy docs shell, right rail and component pages were removed (PR #236, with the React components themselves removed in PR #249). `apps/docs/src` has no `docs-right-rail*`, `component-docs-data.tsx`, `inspectorDriven` or `supportsPropertiesPanel` left. Earlier note 2026-09-25: the `components/panels/*-properties-panel.tsx` modules and `docs-properties-panel-controls.tsx` were never wired in; those unreferenced duplicates were deleted.
+- **Evidence (as filed):**
   - CQ-009 moved panels from `docs-right-rail.tsx` (now 106-line shell) to `docs-right-rail-panels.tsx` (1,404 lines).
   - CQ-010 added `color-area-contrast-tiers.ts` descriptor table shared by demos and panels.
   - `component-docs-data.tsx` has `supportsPropertiesPanel`, `component-doc-page.tsx` injects `inspectorDriven`, demos read optional global inspector state, and `docs-right-rail-panels.tsx` keeps a separate pathname switch.
@@ -304,8 +304,8 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-012 — Extract `useColorAreaPointerInteraction` and explicit thumb slot
 
 - **Priority:** P2
-- **Status:** Closed (superseded): `ColorArea` and `Thumb` were removed from `@pbroom/color-kit/react`. Adaptive quality moved to `useAdaptiveQuality`, and pointer handling belongs to callers through the driver's `createPointerDragController`.
-- **Evidence:**
+- **Status:** Obsolete (verified 2026-11-01) — `ColorArea` and `Thumb` were removed from `@pbroom/color-kit/react` (PR #249), so `packages/react/src/color-area.tsx` no longer exists. Adaptive quality moved to `packages/react/src/use-adaptive-quality.ts`; pointer handling belongs to callers through the driver's `createPointerDragController` (`packages/driver/src/drag-controller.ts`), and area mapping is in `packages/driver/src/color-area.ts` (853 lines, no component or thumb slot).
+- **Evidence (as filed):**
   - `packages/react/src/color-area.tsx` — 813 lines; ~300 lines of pointer/RAF/coalesced-events logic in one narrative.
   - Adaptive quality from measured frame times; window-level drag continuation — cohesive but dense.
   - `ColorArea` recursively counts, finds, and prunes `<Thumb />` children by `child.type === Thumb`, then reinjects the first thumb; wrappers, memoized thumbs, or duplicate module instances can break this implicit slot contract.
@@ -382,8 +382,8 @@ Do not green-light large features on these surfaces without a decomposition plan
 ### IB-016 — Split Sandpack file generation from playground UI
 
 - **Priority:** P2
-- **Status:** Closed (2026-10-07) — the docs overhaul deleted Sandpack and `plane-api-playground.sandpack.tsx`; examples now render real files with build-time highlighted source.
-- **Evidence:**
+- **Status:** Obsolete (2026-10-07; verified 2026-11-01) — the docs overhaul deleted Sandpack and `plane-api-playground.sandpack.tsx` (PR #236); examples now render real files with build-time highlighted source (`apps/docs/src/components/example/`). No Sandpack dependency or reference remains in `apps/docs`.
+- **Evidence (as filed):**
   - `apps/docs/src/components/plane-api-playground.sandpack.tsx` raw-globs selected `packages/core/src` files, rewrites imports with regexes, builds hidden support files, and renders the Sandpack UI.
   - `apps/docs/scripts/check-plane-quick-start-sync.mjs` validates broad text patterns rather than structured sandbox file resolution.
 - **Problem:** A React UI component is also acting as a hand-rolled package bundler. Import rewrite mistakes are hard to test, and playground layout work risks touching sandbox generation.
@@ -426,12 +426,14 @@ Do not green-light large features on these surfaces without a decomposition plan
 
 1. ~~**IB-001** — Stop registry drift~~ (obsolete: registry removed).
 2. ~~**IB-013 + IB-014** — Make compute backend telemetry honest and harden the packed query ABI~~ (IB-013 resolved; IB-014 completed 2026-09-25).
-3. **IB-002 + IB-007** — Shared plane query layer + delete legacy worker (biggest react LOC + perf win).
-4. **IB-003** — Decompose contrast-region god module.
+3. ~~**IB-002 + IB-007** — Shared plane query layer + delete legacy worker~~ (both completed).
+4. ~~**IB-003** — Decompose contrast-region god module~~ (completed).
 5. ~~**IB-004 + IB-009** — Split lab shared + lab numeric field wrappers~~ (obsolete: Lab removed).
-6. **IB-015 + IB-011** — Collapse component-doc and properties-panel ownership to descriptors.
+6. ~~**IB-015 + IB-011** — Collapse component-doc and properties-panel ownership to descriptors~~ (IB-015 completed; IB-011 obsolete).
 7. ~~**IB-005 + IB-006** — Core type cycle + solver decomposition~~ (completed 2026-09-25).
-8. **IB-008, IB-010, IB-012, IB-016, IB-017** — Control-kit scrub split, parser split, color-area slot/interaction, Sandpack generation, multi-color state.
+8. ~~**IB-008, IB-010, IB-012, IB-016, IB-017**~~ (IB-008 moved to `pbroom/control-kit`; IB-010 and IB-017 completed; IB-012 and IB-016 obsolete).
+
+As of 2026-11-01 the only open work is the two **IB-006 follow-ups** (the missed tiny P3 APCA pieces in `packages/core/src/contrast/region-solver.ts`, and `useContrastRegion` gamut-mapping its reference in `packages/react/src/use-contrast-region.ts`).
 
 ---
 
@@ -456,7 +458,6 @@ All items from `CODE_QUALITY_BACKLOG.md` (reviewed 2026-05-24) are complete:
 
 ## Healthy patterns to preserve
 
-- **`packages/react/src/api/color-area.ts`** — thin, testable facade over `@color-kit/core`; extend this pattern to worker payloads (IB-002).
-- **`packages/react/src/color-input.tsx`** — domain API + primitive hook.
-- **`packages/control-kit` tests** — broad scrub/keyboard/commit coverage; use as guard during IB-008.
+- **`packages/driver/src/color-area.ts`** — thin, testable facade over `@color-kit/core`; worker plane payloads are built here (`toColorAreaPlaneDefinition`) (IB-002).
+- **`packages/driver/src/color-input.ts`** — framework-free color input parsing and expression handling.
 - **`packages/core/src/contour/index.ts`** — shared marching-squares; keep growing shared libs here, not in feature modules (CQ-003).
