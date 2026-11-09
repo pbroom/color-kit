@@ -75,7 +75,9 @@
     "bench:max-chroma-for-hue": "node bench/max-chroma-for-hue-bench.mjs",
     "bench:mix-space": "node bench/mix-space-bench.mjs",
     "bench:overlay": "node bench/overlay-interpolation-bench.mjs",
-    "bench:plane": "node bench/plane-bench.mjs"
+    "bench:plane": "node bench/plane-bench.mjs",
+    "bench:plane:check": "node bench/plane-bench-check.mjs",
+    "bench:plane:update": "node bench/plane-bench-check.mjs --update"
   },
   "keywords": [
     "color",
