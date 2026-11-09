@@ -271,14 +271,23 @@
   }
 
   .docs-layout {
-    grid-template-columns: var(--nav-w) minmax(0, 1fr);
+    /* The nav is fixed (out of the grid), so it never scrolls with the
+       footer; reserve its width instead of giving it a track. */
+    grid-template-columns: minmax(0, 1fr);
+    padding-left: var(--nav-w);
+  }
+
+  .docs-layout ~ .site-footer {
+    margin-left: var(--nav-w);
   }
 
   .docs-layout__nav {
-    position: sticky;
+    position: fixed;
     top: var(--header-h);
+    bottom: 0;
+    left: 0;
     display: block;
-    height: calc(100dvh - var(--header-h));
+    width: var(--nav-w);
     overflow-y: auto;
     overscroll-behavior: contain;
     border-right: var(--hairline) solid var(--line);
@@ -293,7 +302,7 @@
 
 @media (min-width: 80rem) {
   .docs-layout {
-    grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--outline-w);
+    grid-template-columns: minmax(0, 1fr) var(--outline-w);
   }
 
   .page-outline {
@@ -399,14 +408,16 @@
   color: var(--fg);
 }
 
-.nav-link[aria-current='page'] {
+.nav-link[aria-current='page'],
+.nav-link[aria-current='location'] {
   background: var(--bg-active);
   color: var(--fg);
   font-weight: 500;
 }
 
 /* "You are here": the accent, as a point, not a stripe. */
-.nav-link[aria-current='page']::before {
+.nav-link[aria-current='page']::before,
+.nav-link[aria-current='location']::before {
   content: '';
   position: absolute;
   top: 50%;

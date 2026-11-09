@@ -13,23 +13,23 @@ import pickerSource, {
 ## What the driver owns
 
 `@pbroom/color-kit/driver` is a picker without a view: pure functions over a
-[`ColorState`](/api/driver/ColorState), plus the geometry, keyboard and
+[`ColorState`](/api/driver/color-state#ColorState), plus the geometry, keyboard and
 pointer models a picker needs. `@pbroom/color-kit/react` is one binding built on it.
 The example on this page is another, in plain DOM code, so it works under any
 framework.
 
 ## State
 
-[`createColorState`](/api/driver/createColorState) builds the state from a
+[`createColorState`](/api/driver/color-state#createColorState) builds the state from a
 requested color: the request, its sRGB and Display P3 mappings, the active
 gamut and view, and out-of-gamut flags. Four reducers update it:
-[`setColorRequested`](/api/driver/setColorRequested),
-[`setColorChannel`](/api/driver/setColorChannel),
-[`setColorActiveGamut`](/api/driver/setColorActiveGamut) and
-[`setColorActiveView`](/api/driver/setColorActiveView). Each returns the same
+[`setColorRequested`](/api/driver/color-state#setColorRequested),
+[`setColorChannel`](/api/driver/color-state#setColorChannel),
+[`setColorActiveGamut`](/api/driver/color-state#setColorActiveGamut) and
+[`setColorActiveView`](/api/driver/color-state#setColorActiveView). Each returns the same
 object for a no-op, so `next === state` is enough to skip a render.
 `createColorState` and `setColorActiveGamut` check the gamut with
-[`assertGamutTarget`](/api/plane/assertGamutTarget), so `'p3'` throws the same
+[`assertGamutTarget`](/api/plane/gamut#assertGamutTarget), so `'p3'` throws the same
 `TypeError` as the plane queries.
 
 ```ts title="state.ts"
@@ -45,25 +45,25 @@ setColorChannel(next, 'l', 0.4, 'user') === next; // → true
 ## Geometry
 
 A 2D area maps two OKLCH channels to a rectangle.
-[`resolveColorAreaAxes`](/api/driver/resolveColorAreaAxes) defaults to
+[`resolveColorAreaAxes`](/api/driver/color-area#resolveColorAreaAxes) defaults to
 lightness on `x` and chroma on `y`. Pointer input goes through
-[`normalizeColorAreaPointer`](/api/driver/normalizeColorAreaPointer) (client
+[`normalizeColorAreaPointer`](/api/driver/color-area#normalizeColorAreaPointer) (client
 pixels to clamped `[0, 1]`, `y` down) and
-[`colorFromColorAreaPosition`](/api/driver/colorFromColorAreaPosition);
-[`getColorAreaThumbPosition`](/api/driver/getColorAreaThumbPosition) goes
+[`colorFromColorAreaPosition`](/api/driver/color-area#colorFromColorAreaPosition);
+[`getColorAreaThumbPosition`](/api/driver/color-area#getColorAreaThumbPosition) goes
 back. Sliders have the same trio:
-[`normalizeColorSliderPointer`](/api/driver/normalizeColorSliderPointer),
-[`colorFromColorSliderPosition`](/api/driver/colorFromColorSliderPosition) and
-[`getColorSliderThumbPosition`](/api/driver/getColorSliderThumbPosition).
+[`normalizeColorSliderPointer`](/api/driver/color-slider#normalizeColorSliderPointer),
+[`colorFromColorSliderPosition`](/api/driver/color-slider#colorFromColorSliderPosition) and
+[`getColorSliderThumbPosition`](/api/driver/color-slider#getColorSliderThumbPosition).
 
 ## Keyboard and ARIA
 
-[`colorFromColorAreaKey`](/api/driver/colorFromColorAreaKey) and
-[`colorFromColorSliderKey`](/api/driver/colorFromColorSliderKey) implement
+[`colorFromColorAreaKey`](/api/driver/color-area#colorFromColorAreaKey) and
+[`colorFromColorSliderKey`](/api/driver/color-slider#colorFromColorSliderKey) implement
 arrows, Page Up/Down and Home/End, wrapping hue and clamping the rest. They
 return `null` for keys they do not handle, so call `preventDefault` only when
-they return a color. [`getColorAreaValueText`](/api/driver/getColorAreaValueText)
-and [`getColorSliderValueText`](/api/driver/getColorSliderValueText) produce
+they return a color. [`getColorAreaValueText`](/api/driver/color-area#getColorAreaValueText)
+and [`getColorSliderValueText`](/api/driver/color-slider#getColorSliderValueText) produce
 `aria-valuetext` such as `Lightness 60%, Chroma 0.1` and `Hue 213°`. A
 slider exposes one number, so the area thumb sets `aria-valuenow`,
 `aria-valuemin` and `aria-valuemax` from the x axis and
@@ -71,7 +71,7 @@ slider exposes one number, so the area thumb sets `aria-valuenow`,
 
 ## Drag throttling
 
-[`createPointerDragController`](/api/driver/createPointerDragController)
+[`createPointerDragController`](/api/driver/drag-controller#createPointerDragController)
 commits `start` and `end` immediately and coalesces moves to at most one
 commit per animation frame. Moves within `dragEpsilon` (default `0.0005`) are
 skipped and commits are capped at `maxUpdateHz` (default 60); a rate-limited
@@ -85,9 +85,9 @@ the drag.
 
 ## Typed input
 
-[`parseColorInputExpression`](/api/driver/parseColorInputExpression) turns
+[`parseColorInputExpression`](/api/driver/color-input#parseColorInputExpression) turns
 text typed into a channel field into a number;
-[`resolveColorInputDraftValue`](/api/driver/resolveColorInputDraftValue) then
+[`resolveColorInputDraftValue`](/api/driver/color-input#resolveColorInputDraftValue) then
 clamps or wraps it. A `%` is a position in the channel's range, also inside
 an expression, while input that starts with an operator is relative to the
 current value and its `%` is a share of the span.
@@ -107,14 +107,14 @@ parseColorInputExpression('+10%', options); // → 130
 
 ## Painting
 
-[`getSliderGradientStyles`](/api/driver/getSliderGradientStyles) returns
+[`getSliderGradientStyles`](/api/driver/slider-gradient#getSliderGradientStyles) returns
 `linear-gradient()` strings for a rail, in Display P3 by default with an sRGB
-fallback. [`getColorDisplayStyles`](/api/driver/getColorDisplayStyles) returns
+fallback. [`getColorDisplayStyles`](/api/driver/color-state#getColorDisplayStyles) returns
 a `background` and `backgroundColor` pair: P3 where the browser supports it,
 sRGB underneath. For overlays,
-[`getColorAreaGamutBoundaryPoints`](/api/driver/getColorAreaGamutBoundaryPoints)
+[`getColorAreaGamutBoundaryPoints`](/api/driver/color-area#getColorAreaGamutBoundaryPoints)
 and
-[`getColorAreaContrastRegionPaths`](/api/driver/getColorAreaContrastRegionPaths)
+[`getColorAreaContrastRegionPaths`](/api/driver/color-area#getColorAreaContrastRegionPaths)
 return plane geometry in area coordinates.
 
 ## The picker

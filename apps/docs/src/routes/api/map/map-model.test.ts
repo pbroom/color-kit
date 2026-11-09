@@ -56,7 +56,7 @@ const ENTRIES: ApiEntry[] = [
         name: 'definePlane',
         kind: 'function',
         canonicalEntry: 'plane',
-        href: '/api/plane/definePlane',
+        href: '/api/plane/compile#definePlane',
       },
     ],
   ),
@@ -84,9 +84,9 @@ describe('API map model', () => {
       'reexports',
     ]);
     const parse = leaves(core).find((node) => node.label === 'parse')!;
-    expect(parse.href).toBe('/api/core/parse');
+    expect(parse.href).toBe('/api/core/conversion#parse');
     const alias = leaves(core).find((node) => node.canonicalEntry)!;
-    expect(alias.href).toBe('/api/plane/definePlane');
+    expect(alias.href).toBe('/api/plane/compile#definePlane');
   });
 
   it('filters by entry, kind and name', () => {

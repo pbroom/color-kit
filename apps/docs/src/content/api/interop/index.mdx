@@ -10,9 +10,9 @@ and unclamped instead of being rounded to 8 bits and clipped to sRGB.
   nothing is allocated.
 - **Readers.** `from<Space>Array(array, offset?)` and `from<Space>Array4`
   read colors back.
-- **Batches.** [`packColors`](/api/interop/packColors) writes a list of
+- **Batches.** [`packColors`](/api/interop/buffers#packColors) writes a list of
   colors into one `Float32Array` (or your own array) with optional alpha,
-  stride and offset; [`unpackColors`](/api/interop/unpackColors) reverses it.
+  stride and offset; [`unpackColors`](/api/interop/buffers#unpackColors) reverses it.
 
 Spaces are `linearSrgb` (three.js's working space), `srgb`, `linearP3`,
 `display-p3`, `oklab` and `oklch`. Output is unclamped by default; `clamp`

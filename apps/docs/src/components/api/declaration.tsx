@@ -1,10 +1,12 @@
-import type {
-  ApiMember,
-  ApiSignature,
-  ApiSymbol,
-  ApiTypeParameter,
-  TypePart,
-  TypeRef,
+import {
+  memberAnchor,
+  paramAnchor,
+  type ApiMember,
+  type ApiSignature,
+  type ApiSymbol,
+  type ApiTypeParameter,
+  type TypePart,
+  type TypeRef,
 } from '@/api/model';
 import { TypePartView } from './type-link';
 
@@ -12,7 +14,8 @@ import { TypePartView } from './type-link';
  * The TypeScript declaration of a symbol, laid out like a `.d.ts`: one
  * parameter per line once a signature runs long, members one per line, long
  * unions one member per line. Parameter and member names link to their rows
- * (`#param-<name>`, `#prop-<name>`); named types link across entries.
+ * in the symbol's panel (`#<Symbol>-param-<name>`, `#<Symbol>-prop-<name>`);
+ * named types link to their rows across entries.
  *
  * Layout is a pure function of the data, so prerendered and hydrated markup
  * always agree.
@@ -75,16 +78,8 @@ function typeParamTokens(params: ApiTypeParameter[]): Token[] {
   return out;
 }
 
-/** Anchor id of a parameter row; overloads after the first are prefixed. */
-export function paramAnchor(name: string, overload = 0): string {
-  return overload === 0 ? `param-${name}` : `param-${overload + 1}-${name}`;
-}
-
-export function memberAnchor(name: string): string {
-  return `prop-${name}`;
-}
-
 function paramTokens(
+  owner: string,
   signature: ApiSignature,
   overload: number,
   linked: boolean,
@@ -94,7 +89,7 @@ function paramTokens(
     {
       kind: 'name' as const,
       text: param.name,
-      ...(linked ? { anchor: paramAnchor(param.name, overload) } : {}),
+      ...(linked ? { anchor: paramAnchor(owner, param.name, overload) } : {}),
     },
     punct(param.optional && !param.rest ? '?: ' : ': '),
     ...typeTokens(param.type),
@@ -103,6 +98,7 @@ function paramTokens(
 
 /** `name<T>(a: A, b?: B): R`, broken one parameter per line when long. */
 function signatureLines(
+  owner: string,
   head: Token[],
   signature: ApiSignature,
   options: {
@@ -127,7 +123,7 @@ function signatureLines(
     ...typeParamTokens(signature.typeParameters),
     punct('('),
   ];
-  const params = paramTokens(signature, overload, linked);
+  const params = paramTokens(owner, signature, overload, linked);
   const returns = [
     punct(arrow ? ') => ' : '): '),
     ...typeTokens(signature.returns),
@@ -199,7 +195,7 @@ function splitUnion(parts: TypePart[]): Token[][] {
   return members.filter((member) => member.length > 0);
 }
 
-function memberLines(member: ApiMember): Line[] {
+function memberLines(owner: string, member: ApiMember): Line[] {
   const prefix: Token[] = [
     INDENT,
     ...(member.static ? [kw('static ')] : []),
@@ -210,11 +206,12 @@ function memberLines(member: ApiMember): Line[] {
     text: member.indexParameter
       ? `[${member.indexParameter.name}: ${member.indexParameter.type.text}]`
       : member.name,
-    anchor: memberAnchor(member.name),
+    anchor: memberAnchor(owner, member.name),
   };
   if (member.kind === 'method' && member.signatures?.length) {
     return member.signatures.flatMap((signature) =>
       signatureLines(
+        owner,
         [...prefix.slice(1), name, ...(member.optional ? [punct('?')] : [])],
         signature,
         { linked: false, indent: 1, terminator: ';' },
@@ -259,7 +256,7 @@ export function declarationLines(symbol: ApiSymbol): Line[][] {
     case 'function':
     case 'component':
       return symbol.signatures.map((signature, overload) =>
-        signatureLines([kw('function '), name], signature, {
+        signatureLines(symbol.name, [kw('function '), name], signature, {
           overload,
           linked: !(symbol.propsType && signature.params.length === 1),
           terminator: ';',
@@ -277,7 +274,7 @@ export function declarationLines(symbol: ApiSymbol): Line[][] {
       ];
       symbol.signatures.forEach((signature, overload) => {
         lines.push(
-          ...signatureLines([kw('constructor')], signature, {
+          ...signatureLines(symbol.name, [kw('constructor')], signature, {
             overload,
             indent: 1,
             terminator: ';',
@@ -287,7 +284,9 @@ export function declarationLines(symbol: ApiSymbol): Line[][] {
           ),
         );
       });
-      for (const member of symbol.members) lines.push(...memberLines(member));
+      for (const member of symbol.members) {
+        lines.push(...memberLines(symbol.name, member));
+      }
       lines.push([punct('}')]);
       return [lines];
     }
@@ -302,7 +301,9 @@ export function declarationLines(symbol: ApiSymbol): Line[][] {
       return [
         [
           [...head, punct(' {')],
-          ...symbol.members.flatMap(memberLines),
+          ...symbol.members.flatMap((member) =>
+            memberLines(symbol.name, member),
+          ),
           [punct('}')],
         ],
       ];
@@ -384,7 +385,7 @@ function TokenView({ token }: { token: Token }) {
   }
   if (token.anchor) {
     return (
-      <a className="tok tok-name" href={`#${token.anchor}`}>
+      <a className="tok tok-name" href={`#${encodeURIComponent(token.anchor)}`}>
         {token.text}
       </a>
     );

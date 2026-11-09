@@ -13,7 +13,7 @@ import exampleSource, {
 
 A color picker's 2D area, a gamut diagram and a contrast map are all the same
 object: two channels of one model on `x` and `y`, every other channel held
-still. [`definePlane`](/api/plane/definePlane) describes one.
+still. [`definePlane`](/api/plane/compile#definePlane) describes one.
 
 ```ts title="plane.ts"
 import { definePlane, planeToColor } from '@pbroom/color-kit/plane';
@@ -29,12 +29,12 @@ The default is OKLCH lightness by chroma. Coordinates are normalized:
 chroma range runs `[0.4, 0]`, so high chroma sits at `y = 0`, the top of an
 SVG. Other models are `rgb`, `hsl`, `hsv`, `oklab`, `hct` and `display-p3`;
 channel names are type-checked per model.
-[`definePlaneFromColor`](/api/plane/definePlaneFromColor) fills the fixed
+[`definePlaneFromColor`](/api/plane/compile#definePlaneFromColor) fills the fixed
 channels from an anchor color.
 
 ## Ask with `sense`
 
-[`sense(plane)`](/api/plane/sense) binds the query helpers to a plane. Each
+[`sense(plane)`](/api/plane/queries#sense) binds the query helpers to a plane. Each
 returns a typed result whose `kind` matches the query:
 
 | Query              | Answers                                                  |
@@ -51,16 +51,16 @@ returns a typed result whose `kind` matches the query:
 on OKLCH lightness-by-chroma planes and return empty geometry on others.
 `gamutRegion`, `fallbackPoint` and `gradient` work on every model.
 
-The same queries exist as data: [`runPlaneQuery`](/api/plane/runPlaneQuery)
+The same queries exist as data: [`runPlaneQuery`](/api/plane/queries#runPlaneQuery)
 takes `{ kind: 'gamutRegion', gamut: 'srgb' }`, which can be cached with
-[`PlaneQueryCache`](/api/plane/PlaneQueryCache), sent to a worker, or batched
+[`PlaneQueryCache`](/api/plane/compile#PlaneQueryCache), sent to a worker, or batched
 through `@pbroom/color-kit/compute`.
 
 ## SVG output
 
 Query points are normalized plane coordinates.
-[`toSvgPath`](/api/plane/toSvgPath) and
-[`toSvgCompoundPath`](/api/plane/toSvgCompoundPath) scale them by 100 by
+[`toSvgPath`](/api/plane/compile#toSvgPath) and
+[`toSvgCompoundPath`](/api/plane/compile#toSvgCompoundPath) scale them by 100 by
 default, so the result drops into `viewBox="0 0 100 100"`.
 
 ```tsx title="region.tsx"
@@ -78,7 +78,7 @@ const d = toSvgCompoundPath(region.visibleRegion.paths, { closeLoop: true });
 
 ## Tracing
 
-[`inspectPlaneQuery`](/api/plane/inspectPlaneQuery) runs a query and returns
+[`inspectPlaneQuery`](/api/plane/queries#inspectPlaneQuery) runs a query and returns
 `{ result, trace }`. The summary names the solver (`'analytic-lc'` for an
 OKLCH gamut region, `'contrast-rays'` for contrast), counts samples and
 points, records the sampling it ran with under `fidelity`, and times the run

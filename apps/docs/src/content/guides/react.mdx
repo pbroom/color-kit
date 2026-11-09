@@ -26,24 +26,24 @@ handling are yours. Build
 them from plain HTML with [`@pbroom/color-kit/driver`](/guides/headless-picker),
 which holds the picker math, or host them in your own components.
 
-- [`Color`](/api/react/Color) provides shared state to everything inside it;
-  [`useColorContext`](/api/react/useColorContext) reads it.
-- [`useColorPlaneRenderer`](/api/react/useColorPlaneRenderer) paints a
+- [`Color`](/api/react/color-state#Color) provides shared state to everything inside it;
+  [`useColorContext`](/api/react/color-state#useColorContext) reads it.
+- [`useColorPlaneRenderer`](/api/react/plane-renderer#useColorPlaneRenderer) paints a
   two-channel OKLCH plane (lightness by chroma by default) into your
   `<canvas>`, with WebGL and a CPU fallback.
-- [`useGamutBoundary`](/api/react/useGamutBoundary),
-  [`useChromaBand`](/api/react/useChromaBand),
-  [`useContrastRegion`](/api/react/useContrastRegion) and
-  [`useFallbackPoints`](/api/react/useFallbackPoints) return overlay geometry
+- [`useGamutBoundary`](/api/react/plane-geometry#useGamutBoundary),
+  [`useChromaBand`](/api/react/plane-geometry#useChromaBand),
+  [`useContrastRegion`](/api/react/plane-geometry#useContrastRegion) and
+  [`useFallbackPoints`](/api/react/plane-geometry#useFallbackPoints) return overlay geometry
   as points and SVG path data for the same plane.
-- [`useAdaptiveQuality`](/api/react/useAdaptiveQuality) trades resolution
+- [`useAdaptiveQuality`](/api/react/performance#useAdaptiveQuality) trades resolution
   for frame rate while a drag is slow.
 - The driver turns input into colors:
-  [`createPointerDragController`](/api/driver/createPointerDragController)
-  and [`colorFromColorAreaPosition`](/api/driver/colorFromColorAreaPosition)
-  for pointers, [`colorFromColorAreaKey`](/api/driver/colorFromColorAreaKey)
+  [`createPointerDragController`](/api/driver/drag-controller#createPointerDragController)
+  and [`colorFromColorAreaPosition`](/api/driver/color-area#colorFromColorAreaPosition)
+  for pointers, [`colorFromColorAreaKey`](/api/driver/color-area#colorFromColorAreaKey)
   for the keyboard, and
-  [`getColorAreaValueText`](/api/driver/getColorAreaValueText) for screen
+  [`getColorAreaValueText`](/api/driver/color-area#getColorAreaValueText) for screen
   readers.
 
 The [API page](/api/react) builds the `PlanePicker` this guide uses, a canvas,
@@ -52,10 +52,10 @@ an SVG and a thumb wired to those functions, in one file.
 ## Uncontrolled
 
 `<Color defaultColor="…">` keeps the state itself. The provider does not
-re-render on color changes; [`useColorContext`](/api/react/useColorContext)
+re-render on color changes; [`useColorContext`](/api/react/color-state#useColorContext)
 returns the full snapshot and setters and re-renders on every update. For one
 field, select it from the store with
-[`useColorStoreSelector`](/api/react/useColorStoreSelector).
+[`useColorStoreSelector`](/api/react/color-state#useColorStoreSelector).
 
 ## Controlled
 
@@ -91,11 +91,11 @@ export function ControlledPicker() {
 }
 ```
 
-[`useColor`](/api/react/useColor) takes the same options and returns the
+[`useColor`](/api/react/color-state#useColor) takes the same options and returns the
 state with its setters (`setRequested`, `setChannel`, `setFromString`,
 `setActiveGamut`, …) for when a provider is more than you need; the plane
 hooks only need a color, so they work with either. For palettes and gradient
-stops, [`useMultiColor`](/api/react/useMultiColor) manages named entries with
+stops, [`useMultiColor`](/api/react/color-state#useMultiColor) manages named entries with
 a shared active gamut.
 
 The live example below is controlled: it records each update's
@@ -117,7 +117,7 @@ The default color is outside sRGB. The dashed line is the sRGB edge; check
 **Preview in sRGB** and the plane and the displayed readout switch to the
 sRGB mapping while the requested color stays put. The hue slider is a native
 range input painted with
-[`getSliderGradientStyles`](/api/driver/getSliderGradientStyles).
+[`getSliderGradientStyles`](/api/driver/slider-gradient#getSliderGradientStyles).
 
 <Example
   of={ReactPicker}
@@ -131,11 +131,11 @@ range input painted with
 
 A single channel needs no plane. A native `<input type="range">` already
 handles the keyboard and ARIA; paint its rail with
-[`getSliderGradientStyles`](/api/driver/getSliderGradientStyles), sampled
+[`getSliderGradientStyles`](/api/driver/slider-gradient#getSliderGradientStyles), sampled
 from the current color so each rail previews what dragging it would do, and
 write with `setChannel`. For text,
-[`formatColorStringInputValue`](/api/driver/formatColorStringInputValue) and
-[`parseColorStringInputValue`](/api/driver/parseColorStringInputValue)
+[`formatColorStringInputValue`](/api/driver/color-string-input#formatColorStringInputValue) and
+[`parseColorStringInputValue`](/api/driver/color-string-input#parseColorStringInputValue)
 convert between the color and a CSS color string. Commit with
 `setFromString` on Enter or blur, and drop text that does not parse.
 

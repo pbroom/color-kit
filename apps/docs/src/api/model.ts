@@ -7,13 +7,16 @@
  *
  * - `api.json`: {@link ApiModel}. Entries with their symbol summaries; the
  *   route registry projects it down (see `plugins/route-data.ts`).
- * - `api/entries/<entry>.json`: one {@link ApiEntry}, loaded by `/api/<entry>`.
- * - `api/symbols/<entry>/<file>.json`: one {@link ApiSymbol}, loaded by
- *   `/api/<entry>/<Symbol>`. `<file>` is {@link symbolFileName}, which keeps
- *   `Color` and `color` apart on case-insensitive file systems.
+ * - `api/entries/<entry>.json`: one {@link ApiEntry}, loaded by `/api/<entry>`
+ *   and its category pages.
+ * - `api/domains/<entry>/<domain>/<part>.json`: the full {@link ApiSymbol}s
+ *   of one category, in display order, split into parts of bounded size
+ *   (`0.json`, `1.json`, …) so no data chunk outgrows the bundle budget.
+ *   Loaded by `/api/<entry>/<domain>`, which renders one row per symbol.
  *
- * Links are resolved at generation time: every {@link LinkTarget} and
- * `href` in the model points at a page that exists.
+ * Links are resolved at generation time: every `href` in the model points
+ * at a page that exists, and a symbol's `href` is its row on the category
+ * page, `/api/<entry>/<domain>#<Symbol>` (see {@link symbolHref}).
  */
 
 /** Model version; bump when the shape changes incompatibly. */
@@ -102,8 +105,9 @@ export interface ApiReexport {
   name: string;
   kind: SymbolKind;
   summary?: string;
-  /** Entry slug of the canonical page. */
+  /** Entry slug of the canonical row. */
   canonicalEntry: string;
+  /** The canonical row, `/api/<entry>/<domain>#<Symbol>`. */
   href: string;
 }
 
@@ -115,11 +119,11 @@ export interface ApiSource {
   url: string;
 }
 
-/** `api/symbols/<entry>/<file>.json`: one symbol page. */
+/** One symbol, as a row (and its expanded panel) on its category page. */
 export interface ApiSymbol {
   name: string;
   kind: SymbolKind;
-  /** Entry slug where this page lives (the canonical entry). */
+  /** Entry slug where this row lives (the canonical entry). */
   entry: string;
   /** Same as `entry`: the most specific entry exporting the declaration. */
   canonicalEntry: string;
@@ -223,7 +227,7 @@ export type RichInline =
 
 /**
  * A type as declared, as a run of tokens. `ref` parts that name a
- * documented symbol carry its page in `href`, across entries.
+ * documented symbol carry its row in `href`, across entries.
  */
 export interface TypeRef {
   /** Plain-text form, for width decisions and copy. */
@@ -234,16 +238,44 @@ export interface TypeRef {
 export interface TypePart {
   kind: 'keyword' | 'literal' | 'punct' | 'ref' | 'name' | 'param' | 'text';
   text: string;
-  /** `ref` parts: page of the named symbol, `/api/<entry>/<Symbol>`. */
+  /** `ref` parts: row of the named symbol, `/api/<entry>/<domain>#<Symbol>`. */
   href?: string;
 }
 
-/** `Color` → `-color`: unique per name on case-insensitive file systems. */
-export function symbolFileName(name: string): string {
-  return name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+/**
+ * The row of a symbol on its category page, case preserved:
+ * `/api/core/conversion#toRgb`. The row's element id is the bare name.
+ */
+export function symbolHref(
+  entry: string,
+  domain: string,
+  name: string,
+): string {
+  return `/api/${entry}/${domain}#${encodeURIComponent(name)}`;
 }
 
-/** The page path of a symbol, case preserved. */
-export function symbolHref(entry: string, name: string): string {
-  return `/api/${entry}/${encodeURIComponent(name)}`;
+/**
+ * Ids inside a symbol's panel are prefixed with its name, so the many panels
+ * of one category page never share an id: `toRgb-param-color`,
+ * `Color-prop-hex`, `toRgb-examples`.
+ */
+export function panelAnchor(symbol: string, id: string): string {
+  return `${symbol}-${id}`;
+}
+
+/** Anchor id of a parameter row; overloads after the first are numbered. */
+export function paramAnchor(
+  symbol: string,
+  name: string,
+  overload = 0,
+): string {
+  return panelAnchor(
+    symbol,
+    overload === 0 ? `param-${name}` : `param-${overload + 1}-${name}`,
+  );
+}
+
+/** Anchor id of a member (property, method, prop) row. */
+export function memberAnchor(symbol: string, name: string): string {
+  return panelAnchor(symbol, `prop-${name}`);
 }

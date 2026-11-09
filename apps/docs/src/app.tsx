@@ -1,20 +1,28 @@
 import { Suspense, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { RouteErrorBoundary } from './components/error-pages';
 import { PageOutline } from './components/shell/page-outline';
 import { RouteSkeleton, RouteView } from './components/shell/route-view';
 import { SiteFooter } from './components/shell/site-footer';
 import { SiteHeader } from './components/shell/site-header';
 import { SiteNav } from './components/shell/site-nav';
-import { documentTitle, matchRoute, type SiteRoute } from './site/routes';
+import { revealHashTarget } from './site/hash-target';
+import {
+  documentTitle,
+  legacySymbolRedirect,
+  matchRoute,
+  type SiteRoute,
+} from './site/routes';
 import { useThemeSync } from './site/theme';
 
 /**
- * After client-side navigation: scroll to the top (or the hash target) and
- * move focus to `<main>` so keyboard and screen-reader users start at the new
- * content. Skipped on the initial load, where the browser owns both.
+ * After client-side navigation: scroll to the top (or the hash target,
+ * opening the API row it names) and move focus to `<main>` so keyboard and
+ * screen-reader users start at the new content. Skipped on the initial load,
+ * where the browser owns both (API tables open their `#<Symbol>` row
+ * themselves once they mount).
  */
-function useNavigationFocus(pathname: string, hash: string) {
+function useNavigationFocus(pathname: string, hash: string, key: string) {
   const previous = useRef<string | null>(null);
   useEffect(() => {
     if (previous.current === null) {
@@ -22,17 +30,18 @@ function useNavigationFocus(pathname: string, hash: string) {
       return;
     }
     if (previous.current === pathname) {
+      // Same page (sidebar symbol links): open and scroll to the anchor. This
+      // runs per navigation (`key`), so following the link of the row already
+      // in the URL reveals it again after it was closed or scrolled away.
+      revealHashTarget(hash);
       return;
     }
     previous.current = pathname;
-    const target = hash ? document.getElementById(hash.slice(1)) : null;
-    if (target) {
-      target.scrollIntoView();
-    } else {
+    if (!revealHashTarget(hash)) {
       window.scrollTo(0, 0);
     }
     document.getElementById('main')?.focus({ preventScroll: true });
-  }, [pathname, hash]);
+  }, [pathname, hash, key]);
 }
 
 function DocsLayout({ route }: { route: SiteRoute }) {
@@ -63,13 +72,18 @@ function DocsLayout({ route }: { route: SiteRoute }) {
 }
 
 export function App() {
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key } = useLocation();
   const route = matchRoute(pathname);
   useThemeSync();
-  useNavigationFocus(pathname, hash);
+  useNavigationFocus(pathname, hash, key);
   useEffect(() => {
     document.title = documentTitle(route);
   }, [route]);
+  // Retired symbol pages (`/api/core/toRgb`) now live as rows.
+  const redirect = legacySymbolRedirect(pathname, hash);
+  if (redirect) {
+    return <Navigate to={redirect} replace />;
+  }
 
   return (
     <>

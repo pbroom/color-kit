@@ -12,7 +12,7 @@ import inspectorSource, {
 
 ## One value type
 
-A [`Color`](/api/core/Color) is a plain object, `{ l, c, h, alpha }`:
+A [`Color`](/api/core/types#Color) is a plain object, `{ l, c, h, alpha }`:
 
 - `l`: lightness, from `0` (black) to `1` (white).
 - `c`: chroma, from `0` (gray) upward. sRGB peaks around `0.32` and Display
@@ -22,8 +22,8 @@ A [`Color`](/api/core/Color) is a plain object, `{ l, c, h, alpha }`:
 
 Every function takes and returns this shape. Hex, `rgb()`, `hsl()`,
 `color(display-p3 …)` and the rest are formats at the edges:
-[`parse`](/api/core/parse) and the `from*` functions bring them in, and
-[`toCss`](/api/core/toCss) and the `to*` functions take them out. A `Color` is
+[`parse`](/api/core/conversion#parse) and the `from*` functions bring them in, and
+[`toCss`](/api/core/conversion#toCss) and the `to*` functions take them out. A `Color` is
 not tied to a gamut, so it can describe a color no display can show. Mapping
 it to one is a separate, explicit step (see
 [Requested vs displayed](/concepts/requested-vs-displayed)).
@@ -42,7 +42,7 @@ a gamut. HSL's lightness does not mean much: `hsl(60 100% 50%)` and
 Hues that color-kit produces are in `[0, 360)`: from `parse`, the
 conversions, `adjustHue`, harmony helpers and plane definitions. A hue you
 write in an object literal is kept as written, so normalize it with
-[`normalizeHue`](/api/core/normalizeHue) before comparing.
+[`normalizeHue`](/api/core/utilities#normalizeHue) before comparing.
 
 ```ts title="hue.ts"
 import { normalizeHue, parse, toCss } from '@pbroom/color-kit';
@@ -55,9 +55,9 @@ normalizeHue(-30); // → 330
 ## Achromatic hue
 
 A gray has no hue. At chroma at or below
-[`ACHROMATIC_CHROMA_THRESHOLD`](/api/core/ACHROMATIC_CHROMA_THRESHOLD)
+[`ACHROMATIC_CHROMA_THRESHOLD`](/api/core/utilities#ACHROMATIC_CHROMA_THRESHOLD)
 (`0.000004`, the CSS Color 4 epsilon) the hue is _powerless_:
-[`isAchromatic`](/api/core/isAchromatic) returns `true` and conversions report
+[`isAchromatic`](/api/core/utilities#isAchromatic) returns `true` and conversions report
 `h: 0`. Interpolation treats a powerless hue as missing, so a mix from gray
 takes the other endpoint's hue instead of sweeping through red.
 

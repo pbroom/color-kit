@@ -5,24 +5,24 @@ when you want timing telemetry about them.
 
 ## Domains
 
-- **Running.** [`runPlaneCompute`](/api/compute/runPlaneCompute) takes a
+- **Running.** [`runPlaneCompute`](/api/compute/scheduling#runPlaneCompute) takes a
   plane, a list of queries and an optional trace request, and returns packed
   results with compute and marshal times.
-  [`runPackedPlaneQueries`](/api/compute/runPackedPlaneQueries) returns only
+  [`runPackedPlaneQueries`](/api/compute/scheduling#runPackedPlaneQueries) returns only
   the packed results. Both run synchronously on the calling thread.
-- **Packing.** [`packPlaneQueryResults`](/api/compute/packPlaneQueryResults)
-  and [`unpackPlaneQueryResults`](/api/compute/unpackPlaneQueryResults)
+- **Packing.** [`packPlaneQueryResults`](/api/compute/packing#packPlaneQueryResults)
+  and [`unpackPlaneQueryResults`](/api/compute/packing#unpackPlaneQueryResults)
   convert between query results and the packed layout;
-  [`getPackedPlaneQueryTransferables`](/api/compute/getPackedPlaneQueryTransferables)
+  [`getPackedPlaneQueryTransferables`](/api/compute/packing#getPackedPlaneQueryTransferables)
   lists the buffers to transfer.
 - **Scheduling and telemetry.**
-  [`createPlaneComputeScheduler`](/api/compute/createPlaneComputeScheduler)
+  [`createPlaneComputeScheduler`](/api/compute/scheduling#createPlaneComputeScheduler)
   routes requests to a backend and records timings;
-  [`runScheduledPlaneCompute`](/api/compute/runScheduledPlaneCompute) uses a
+  [`runScheduledPlaneCompute`](/api/compute/scheduling#runScheduledPlaneCompute) uses a
   shared scheduler whose snapshot
-  [`getDefaultPlaneComputeTelemetrySnapshot`](/api/compute/getDefaultPlaneComputeTelemetrySnapshot)
+  [`getDefaultPlaneComputeTelemetrySnapshot`](/api/compute/scheduling#getDefaultPlaneComputeTelemetrySnapshot)
   reads. The built-in backend is JavaScript
-  ([`createJsPlaneComputeBackend`](/api/compute/createJsPlaneComputeBackend)).
+  ([`createJsPlaneComputeBackend`](/api/compute/scheduling#createJsPlaneComputeBackend)).
 
 ```ts title="plane-worker.ts"
 import { parse } from '@pbroom/color-kit';

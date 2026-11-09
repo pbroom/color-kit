@@ -189,7 +189,7 @@ function Inspector({ point }: { point: LaidOutNode }) {
       <div className="map-inspector" data-type="root">
         <p className="map-inspector__lede">
           Open an entry point, then a domain, to reach its exports. Every node
-          opens its reference page.
+          opens its reference: an entry, a category, or a symbol's row.
         </p>
       </div>
     );

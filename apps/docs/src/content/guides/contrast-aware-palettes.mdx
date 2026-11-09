@@ -14,11 +14,11 @@ import paletteSource, {
 
 Contrast is set by luminance, and in OKLCH luminance closely tracks
 lightness. A ramp that varies only `l` at a fixed hue and chroma therefore
-orders its steps by contrast. [`lightnessScale`](/api/core/lightnessScale) builds one,
+orders its steps by contrast. [`lightnessScale`](/api/core/scale#lightnessScale) builds one,
 copying chroma, hue and alpha from the base color.
 
 The extremes of such a ramp leave the gamut: a near-white blue cannot keep
-chroma `0.16`. Map every step with [`toSrgbGamut`](/api/core/toSrgbGamut).
+chroma `0.16`. Map every step with [`toSrgbGamut`](/api/core/gamut#toSrgbGamut).
 Its default method lowers chroma only, so each step keeps the lightness, and
 roughly the contrast, the ramp gave it. The `'css'` method would move
 lightness and break that ordering (see
@@ -43,7 +43,7 @@ ramp.map((step) => contrastRatio(step, white).toFixed(2));
 
 ## Read pass/fail off the plane
 
-Checking each step with [`contrastRatio`](/api/core/contrastRatio) tells you
+Checking each step with [`contrastRatio`](/api/core/contrast#contrastRatio) tells you
 which steps pass. A contrast region tells you why, and where the edge is
 for every chroma at once: the plane's `contrastRegion` query returns the
 contour of the area that meets a level against a reference.
@@ -64,7 +64,7 @@ Some consequences you can see in the example below:
   `'large-text'` or `'ui'`) to draw APCA regions instead; `apcaPolarity` and
   `apcaRole` choose the direction.
 
-In React, [`useContrastRegion`](/api/react/useContrastRegion) returns the
+In React, [`useContrastRegion`](/api/react/plane-geometry#useContrastRegion) returns the
 same region as SVG path data for a picker's plane, so it can show the
 passing area live while you drag.
 
