@@ -56,6 +56,11 @@ export interface ContrastRegionPathOptions {
    * Target gamut. The reference and samples are measured as displayed in it,
    * with channels clipped as `contrastRatio` / `contrastAPCA` clip them (an
    * out-of-gamut reference is not gamut-mapped), and paths stay inside it.
+   *
+   * `'rec2020'` uses the same display model (channels clipped to Rec. 2020),
+   * but the scalar metrics take display gamuts only, so there is no
+   * `contrastRatio(..., { gamut: 'rec2020' })` to compare against. Points on
+   * a Rec. 2020 path are in that gamut, so no clipping applies to them.
    * @defaultValue `'srgb'`
    */
   gamut?: GamutTarget;
@@ -101,7 +106,7 @@ export interface ContrastRegionPathOptions {
   apcaRole?: ContrastApcaRole;
   /**
    * Upper chroma bound of the region: paths end at this chroma.
-   * @defaultValue `0.4`
+   * @defaultValue `0.4` (`0.5` for `'rec2020'`)
    */
   maxChroma?: number;
   /**

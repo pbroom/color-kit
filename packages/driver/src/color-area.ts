@@ -1,14 +1,14 @@
 import type { Color } from '@color-kit/core';
 import { clamp } from './clamp.js';
 import {
-  assertGamutTarget,
+  assertDisplayGamut,
   definePlane,
   sense,
   toP3Gamut,
   toSrgbGamut,
   type ChromaBandMode,
   type ContrastRegionPathOptions,
-  type GamutTarget,
+  type DisplayGamut,
 } from '@color-kit/core';
 import { PLANE_MODEL_DEFAULT_RANGES } from '@color-kit/core/plane';
 import {
@@ -134,7 +134,7 @@ export interface ColorAreaGamutBoundaryOptions {
    * Gamut whose boundary is traced.
    * @defaultValue 'srgb'
    */
-  gamut?: GamutTarget;
+  gamut?: DisplayGamut;
   /**
    * Equal lightness segments in uniform mode; the path has `steps + 1`
    * points. Must be an integer of at least 2. Ignored in adaptive mode.
@@ -185,7 +185,7 @@ export interface ColorAreaFallbackPoint {
   /** The color after gamut mapping into `gamut`. */
   color: Color;
   /** Gamut the color was mapped into. */
-  gamut: GamutTarget;
+  gamut: DisplayGamut;
 }
 
 /**
@@ -200,7 +200,7 @@ export interface ColorAreaChromaBandOptions {
    * Gamut the band must stay inside.
    * @defaultValue 'srgb'
    */
-  gamut?: GamutTarget;
+  gamut?: DisplayGamut;
   /**
    * `'clamped'` keeps the reference chroma where the gamut allows it and
    * clamps to the boundary elsewhere; `'proportional'` scales every step by
@@ -541,6 +541,8 @@ export function getColorAreaGamutBoundaryPoints(
     h: hue,
     alpha: 1,
   };
+  // Core accepts every GamutTarget; picker geometry is display gamuts only.
+  assertDisplayGamut(options.gamut, 'gamutBoundary()');
   const boundary = sense(toPlaneDefinition(axes, reference)).gamutBoundary({
     gamut: options.gamut ?? 'srgb',
     hue,
@@ -593,6 +595,7 @@ export function getColorAreaContrastRegionPaths(
     return [];
   }
 
+  assertDisplayGamut(options.gamut, 'contrastRegion()');
   const region = sense(toPlaneDefinition(axes, reference)).contrastRegion({
     ...options,
     reference,
@@ -647,6 +650,7 @@ export function getColorAreaChromaBandPoints(
     return [];
   }
 
+  assertDisplayGamut(options.gamut, 'chromaBand()');
   const band = sense(toPlaneDefinition(axes, reference)).chromaBand({
     requestedChroma: reference.c,
     gamut: options.gamut ?? 'srgb',
@@ -700,17 +704,17 @@ export function getColorAreaFallbackPoint(
   axes: ResolvedColorAreaAxes,
   query: {
     color: Color;
-    gamut: GamutTarget;
+    gamut: DisplayGamut;
   },
 ): ColorAreaFallbackPoint {
-  // assertGamutTarget accepts `undefined` (an omitted optional gamut), but
+  // assertDisplayGamut accepts `undefined` (an omitted optional gamut), but
   // this query's gamut is required.
   if (query.gamut === undefined) {
     throw new TypeError(
       'getColorAreaFallbackPoint(): gamut is required ("srgb" or "display-p3")',
     );
   }
-  assertGamutTarget(query.gamut, 'getColorAreaFallbackPoint()');
+  assertDisplayGamut(query.gamut, 'getColorAreaFallbackPoint()');
   const mapped =
     query.gamut === 'display-p3'
       ? toP3Gamut(query.color)

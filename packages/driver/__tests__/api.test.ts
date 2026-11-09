@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parse, type GamutTarget } from '@color-kit/core';
+import { parse, type DisplayGamut } from '@color-kit/core';
 import {
   areColorAreaAxesDistinct,
   colorFromColorInputChannelValue,
@@ -151,6 +151,33 @@ describe('Color API helpers', () => {
     expect(fallback.y).toBeLessThanOrEqual(1);
   });
 
+  it('keeps color area geometry to display gamuts', () => {
+    // Core accepts 'rec2020' as a query target; the driver's dual-state
+    // model is sRGB / Display P3 only.
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'l', range: [0, 1] },
+      y: { channel: 'c', range: [0, 0.4] },
+    });
+    const color = parse('#3b82f6');
+    const options = { gamut: 'rec2020' as DisplayGamut };
+    const hint =
+      "unknown gamut \"rec2020\". 'rec2020' is a query target, not a display gamut; use 'srgb' or 'display-p3'";
+
+    expect(() => getColorAreaGamutBoundaryPoints(250, axes, options)).toThrow(
+      new TypeError(`gamutBoundary(): ${hint}`),
+    );
+    expect(() =>
+      getColorAreaContrastRegionPaths(color, 250, axes, options),
+    ).toThrow(new TypeError(`contrastRegion(): ${hint}`));
+    expect(() =>
+      getColorAreaChromaBandPoints(color, 250, axes, options),
+    ).toThrow(new TypeError(`chromaBand(): ${hint}`));
+    expect(
+      getColorAreaGamutBoundaryPoints(250, axes, { gamut: 'display-p3' })
+        .length,
+    ).toBeGreaterThan(10);
+  });
+
   it('rejects unknown gamuts in the color area fallback point', () => {
     const axes = resolveColorAreaAxes({
       x: { channel: 'c', range: [0, 0.4] },
@@ -160,7 +187,7 @@ describe('Color API helpers', () => {
     const fallback = (gamut: unknown) =>
       getColorAreaFallbackPoint(axes, {
         color,
-        gamut: gamut as GamutTarget,
+        gamut: gamut as DisplayGamut,
       });
 
     expect(() => fallback('p3')).toThrow(TypeError);

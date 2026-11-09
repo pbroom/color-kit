@@ -9,6 +9,14 @@
  * `inSrgbGamut` / `inP3Gamut` apply it to gamma-encoded channels (matching
  * CSS Color 4 and colorjs.io `inGamut`), i.e. linear bounds of
  * [-GAMUT_EPSILON / 12.92, linearize(1 + GAMUT_EPSILON)].
+ *
+ * `inRec2020Gamut` applies it to Rec. 2020's own encoded channels, a 2.4
+ * power curve, i.e. linear bounds of
+ * [-(GAMUT_EPSILON ** 2.4), (1 + GAMUT_EPSILON) ** 2.4]. That curve has no
+ * linear toe, so the same encoded tolerance is far smaller in linear light
+ * near black (1.3e-10 against 5.8e-6): very dark colors within the sRGB
+ * tolerance can be outside the Rec. 2020 one. The bounds for every gamut
+ * are defined once, in `linear-bounds.ts`.
  */
 export const GAMUT_EPSILON = 0.000075;
 

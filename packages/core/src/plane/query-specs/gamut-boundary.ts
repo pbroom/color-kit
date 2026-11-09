@@ -35,7 +35,7 @@ import {
  * {@link PlaneDefinition}.
  * @param query - Boundary options; see {@link PlaneGamutBoundaryQuery}.
  * @returns A new result with the gamut, resolved hue and boundary points.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`
+ * @throws {TypeError} When `gamut` is not a `GamutTarget`
  * (including the removed `'p3'`).
  * @throws {Error} On an OKLCH lightness × chroma plane with uniform sampling,
  * when `steps` is not an integer of at least 2.

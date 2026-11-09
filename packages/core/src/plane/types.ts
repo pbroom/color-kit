@@ -395,7 +395,7 @@ export interface PlaneChromaBandQuery {
   selectedLightness?: number;
   /**
    * Upper bound of the maximum-chroma search.
-   * @defaultValue 0.4
+   * @defaultValue 0.4 (0.5 for `'rec2020'`)
    */
   maxChroma?: number;
   /**

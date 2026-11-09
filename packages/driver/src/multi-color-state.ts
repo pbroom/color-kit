@@ -8,7 +8,7 @@ import {
   type ColorInteraction,
   type ColorSource,
   type ColorState,
-  type GamutTarget,
+  type DisplayGamut,
   type ViewModel,
 } from './color-state.js';
 
@@ -40,7 +40,7 @@ export interface MultiColorState {
   /** Id of the selected entry, or `null` when there are no entries. */
   selectedId: string | null;
   /** Gamut every entry renders in. */
-  activeGamut: GamutTarget;
+  activeGamut: DisplayGamut;
   /** Model every entry is shown in. */
   activeView: ViewModel;
 }
@@ -84,7 +84,7 @@ export interface MultiColorModel {
   /** Id of the selected entry, or `null` when there are no entries. */
   selectedId: string | null;
   /** Gamut every entry renders in. */
-  activeGamut: GamutTarget;
+  activeGamut: DisplayGamut;
   /** Model every entry is shown in. */
   activeView: ViewModel;
 }
@@ -106,7 +106,7 @@ export interface CreateMultiColorModelOptions {
    * `'display-p3'` throws a `TypeError`.
    * @defaultValue 'display-p3'
    */
-  activeGamut?: GamutTarget;
+  activeGamut?: DisplayGamut;
   /**
    * Model every entry is shown in.
    * @defaultValue 'oklch'
@@ -459,7 +459,7 @@ export function setMultiColorChannel(
  */
 export function setMultiColorActiveGamut(
   model: MultiColorModel,
-  gamut: GamutTarget,
+  gamut: DisplayGamut,
   source: ColorSource,
 ): MultiColorModel {
   assertActiveGamut(gamut, 'setMultiColorActiveGamut()');

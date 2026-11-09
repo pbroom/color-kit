@@ -27,7 +27,7 @@ The system tracks two color values: **requested** (exact user-selected OKLCH) an
 **Type definition** (from [packages/react/src/color-state.ts](packages/react/src/color-state.ts)):
 
 ```ts
-export type GamutTarget = 'srgb' | 'display-p3';
+export type DisplayGamut = 'srgb' | 'display-p3';
 export type ViewModel = 'oklch' | 'oklab' | 'rgb' | 'hex' | 'hsl' | 'hsv';
 
 export interface ColorState {
@@ -36,7 +36,7 @@ export interface ColorState {
     srgb: Color; // Requested mapped to sRGB gamut
     p3: Color; // Requested mapped to P3 gamut
   };
-  activeGamut: GamutTarget;
+  activeGamut: DisplayGamut;
   activeView: ViewModel;
   meta: {
     source: 'user' | 'programmatic' | 'derived';
@@ -83,6 +83,10 @@ Gamut checks (`inSrgbGamut`, `inP3Gamut`) use a small **epsilon** (~0.000075) wh
 
 > **Why:** Matrix math in color space conversion produces tiny floating-point errors. An in-gamut color can yield linear values like -0.00003. Without tolerance, those would be incorrectly flagged as out-of-gamut. Gamut checks must use **unclamped** linear values; using the clamped conversion pipeline would hide out-of-gamut colors. See [AGENTS.md](AGENTS.md) learnings on gamut check implementation.
 
+**Rec. 2020 is a query target with its own bounds.** Core's `GamutTarget` is `'srgb' | 'display-p3' | 'rec2020'`; the dual-state contract above and the contrast metrics take the narrower `DisplayGamut`. The epsilon is defined on gamma-encoded channels, and Rec. 2020's transfer function (a 2.4 power in CSS Color 4 and colorjs.io) is not the sRGB one, so its linear bounds are `[-(epsilon ** 2.4), (1 + epsilon) ** 2.4]` rather than `[-epsilon / 12.92, linearize(1 + epsilon)]`. Every per-gamut constant a query needs (matrices, linear bounds, default chroma bound) lives in one descriptor in [packages/core/src/gamut/spec.ts](packages/core/src/gamut/spec.ts); the bounds are derived from each transfer function once, in `linear-bounds.ts`.
+
+> **Why:** Reusing the sRGB linear bounds would accept Rec. 2020 colors up to 0.0065 outside the encoded cube near black, 87 times the reference tolerance. The cost is that tolerance bands no longer nest: a very dark color inside the sRGB tolerance can be outside the Rec. 2020 one. The gamuts themselves do not nest strictly either: Display P3 sticks out of Rec. 2020 by up to about 0.002 chroma around its red primary and around its cyan near white.
+
 **Passing test (in-gamut with rounding):**
 
 ```ts
@@ -107,7 +111,7 @@ All conversions use a **single canonical path**: any input format → sRGB → l
 
 ### Max chroma and gamut boundary geometry
 
-Maximum chroma at a given (L, H) or (H) and gamut boundary paths are computed with **binary search** (or equivalent iterative search) with configurable `tolerance` and `maxIterations`. The sRGB/P3 gamut boundary in OKLCH space is not analytically expressible, so we sample and search.
+Maximum chroma at a given (L, H) or (H) and gamut boundary paths are computed with **binary search** (or equivalent iterative search) with configurable `tolerance` and `maxIterations`. The sRGB/P3/Rec. 2020 gamut boundary in OKLCH space is not analytically expressible, so we sample and search. The default upper chroma bound of a search clears its gamut: 0.4 for sRGB and Display P3, 0.5 for Rec. 2020.
 
 > **Why:** This gives deterministic, tunable precision. Shared options (`tolerance`, `maxIterations`) keep behavior consistent across `maxChromaAt`, `maxChromaForHue`, `gamutBoundaryPath`, and related APIs. See [packages/core/src/gamut/index.ts](packages/core/src/gamut/index.ts) for defaults (e.g. `DEFAULT_TOLERANCE = 0.0001`, `DEFAULT_MAX_ITERATIONS = 30`).
 

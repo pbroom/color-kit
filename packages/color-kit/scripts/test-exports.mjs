@@ -204,6 +204,35 @@ assert.equal(root.definePlane, plane.definePlane);
 assert.equal(root.definePlane, core.definePlane);
 assert.equal(typeof root.assertGamutTarget, 'function');
 assert.equal(root.assertGamutTarget, plane.assertGamutTarget);
+assert.equal(typeof root.assertDisplayGamut, 'function');
+assert.equal(root.assertDisplayGamut, plane.assertDisplayGamut);
+// Rec. 2020 is a gamut target of the root toolkit and of plane queries, but
+// not a display gamut of the driver.
+for (const name of ['inRec2020Gamut', 'toRec2020Gamut', 'toRec2020GamutInto']) {
+  assert.equal(typeof root[name], 'function', `root.${name}`);
+  assert.equal(root[name], core[name], `core.${name}`);
+}
+assert.equal(root.LINEAR_SRGB_TO_LINEAR_REC2020.length, 3);
+assert.equal(
+  root.inRec2020Gamut(root.parse('color(rec2020 0 1 0)')),
+  true,
+  'inRec2020Gamut',
+);
+assert.equal(
+  root.toCss(root.parse('color(rec2020 0 1 0)'), 'rec2020'),
+  'color(rec2020 0 1 0)',
+);
+assert.equal(
+  plane.sense(plane.definePlane({ model: 'oklch' })).gamutBoundary({
+    gamut: 'rec2020',
+  }).gamut,
+  'rec2020',
+);
+assert.throws(
+  () =>
+    driver.createColorState(root.parse('#3b82f6'), { activeGamut: 'rec2020' }),
+  /unknown gamut "rec2020"/,
+);
 assertNotOnRoot(root);
 assertNotOnRoot(core);
 assertNotOnReact(react);
@@ -245,6 +274,10 @@ assert.throws(() => require('@pbroom/color-kit/react/color-input'), {
 assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);
 assert.equal(cjsRoot.definePlane, cjsCore.definePlane);
 assert.equal(cjsRoot.assertGamutTarget, cjsPlane.assertGamutTarget);
+assert.equal(cjsRoot.assertDisplayGamut, cjsPlane.assertDisplayGamut);
+assert.equal(typeof cjsRoot.inRec2020Gamut, 'function');
+assert.equal(typeof cjsRoot.toRec2020Gamut, 'function');
+assert.equal(typeof cjsRoot.toRec2020GamutInto, 'function');
 assertNotOnRoot(cjsRoot);
 assertNotOnRoot(cjsCore);
 assertNotOnReact(cjsReact);

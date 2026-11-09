@@ -1,17 +1,37 @@
 import { MAX_CHROMA_SEARCH_TOLERANCE } from './constants.js';
 
-export const DEFAULT_MAX_CHROMA = 0.4;
 export const DEFAULT_TOLERANCE = MAX_CHROMA_SEARCH_TOLERANCE;
 export const DEFAULT_MAX_ITERATIONS = 30;
 
 /**
- * RGB gamut a query targets: `'srgb'` or `'display-p3'`. The former `'p3'`
- * spelling was removed and throws a `TypeError` wherever a gamut is read.
+ * RGB gamut a query targets: `'srgb'`, `'display-p3'` or `'rec2020'` (the
+ * CSS `color()` names). The former `'p3'` spelling was removed and throws a
+ * `TypeError` wherever a gamut is read.
+ *
+ * The gamuts are not strictly nested. sRGB lies inside both others, but two
+ * thin slivers of Display P3 lie outside Rec. 2020: around the P3 red
+ * primary (`color(display-p3 1 0 0)` is `color(rec2020 0.889 0.277 -0.061)`)
+ * and, opposite it, around P3 cyan near white. The largest difference is
+ * about 0.002 OKLCH chroma.
+ *
+ * Membership tolerance also differs per gamut (see `GAMUT_EPSILON`): for
+ * very dark colors (OKLCH lightness below about 0.05 for sRGB, 0.15 for
+ * Display P3) their tolerance covers more chroma than the Rec. 2020 one, so
+ * a boundary reported for them can sit outside the Rec. 2020 boundary there.
  */
-export type GamutTarget = 'srgb' | 'display-p3';
+export type GamutTarget = 'srgb' | 'display-p3' | 'rec2020';
 
 /**
- * Gamut mapping algorithm for `toSrgbGamut` / `toP3Gamut`:
+ * Gamut a color is shown in: `'srgb'` or `'display-p3'`. The subset of
+ * {@link GamutTarget} that the contrast metrics (which model the display)
+ * and the driver / React picker state support. Rec. 2020 is a query target
+ * only.
+ */
+export type DisplayGamut = 'srgb' | 'display-p3';
+
+/**
+ * Gamut mapping algorithm for `toSrgbGamut` / `toP3Gamut` /
+ * `toRec2020Gamut`:
  *
  * - `'chroma-reduction'`: reduce OKLCH chroma at fixed lightness and hue.
  * - `'css'`: CSS Color 4 gamut mapping (chroma bisection with a 0.02
@@ -54,8 +74,10 @@ export interface MaxChromaAtOptions {
   maxIterations?: number;
   /**
    * Upper chroma search bound. If a color at this chroma is already in
-   * gamut, it is returned as is, so this also acts as a chroma cap.
-   * @defaultValue `0.4`
+   * gamut, it is returned as is, so this also acts as a chroma cap. The
+   * default clears the gamut's largest chroma: `0.4` for sRGB and Display
+   * P3, `0.5` for Rec. 2020 (whose green primary reaches about 0.468).
+   * @defaultValue `0.4` (`0.5` for `'rec2020'`)
    */
   maxChroma?: number;
   /**

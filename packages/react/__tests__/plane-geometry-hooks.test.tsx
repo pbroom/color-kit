@@ -11,7 +11,7 @@ import {
   toSrgbGamut,
   type Color,
   type ContrastApcaPolarity,
-  type GamutTarget,
+  type DisplayGamut,
 } from '@color-kit/core';
 import { packPlaneQueryResults } from '@color-kit/core/compute';
 import * as driver from '@color-kit/driver';
@@ -132,6 +132,35 @@ function stubWorker(respond: (message: { id: number }) => object) {
   vi.stubGlobal('Worker', MockWorker as unknown as typeof Worker);
   return posted;
 }
+
+describe('plane geometry hooks and Rec. 2020', () => {
+  // Core accepts 'rec2020' as a query target; the hooks draw for a display
+  // gamut and keep rejecting it.
+  const color: Color = { l: 0.6, c: 0.1, h: 250, alpha: 1 };
+  const options = { gamut: 'rec2020' as DisplayGamut };
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  it('useGamutBoundary() throws for gamut "rec2020"', () => {
+    quiet();
+    expect(() =>
+      renderHook(() => useGamutBoundary({ color }, options)),
+    ).toThrow(/gamutBoundary\(\): unknown gamut "rec2020"\. 'rec2020' is a/);
+  });
+
+  it('useChromaBand() throws for gamut "rec2020"', () => {
+    quiet();
+    expect(() => renderHook(() => useChromaBand({ color }, options))).toThrow(
+      /chromaBand\(\): unknown gamut "rec2020"/,
+    );
+  });
+
+  it('useContrastRegion() throws for gamut "rec2020"', () => {
+    quiet();
+    expect(() =>
+      renderHook(() => useContrastRegion({ color }, options)),
+    ).toThrow(/contrastRegion\(\): unknown gamut "rec2020"/);
+  });
+});
 
 describe('useGamutBoundary()', () => {
   it('traces the boundary as points and a viewBox path', () => {
@@ -370,7 +399,7 @@ describe('useContrastRegion()', () => {
     ).toBe(false);
   });
 
-  it.each<{ gamut: GamutTarget; threshold: number }>([
+  it.each<{ gamut: DisplayGamut; threshold: number }>([
     { gamut: 'display-p3', threshold: 3 },
     { gamut: 'srgb', threshold: 4.5 },
   ])(

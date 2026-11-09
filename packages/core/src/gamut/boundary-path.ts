@@ -7,9 +7,9 @@ import {
 } from '../sampling/adaptive1d.js';
 import { maxChromaForHue } from './hue-cusp.js';
 import { maxChromaAt } from './max-chroma.js';
+import { gamutSpec } from './spec.js';
 import { assertGamutTarget } from './target.js';
 import {
-  DEFAULT_MAX_CHROMA,
   type GamutBoundaryPathOptions,
   type GamutBoundaryPoint,
 } from './types.js';
@@ -30,7 +30,7 @@ export const DEFAULT_GAMUT_BOUNDARY_STEPS = 100;
  * @param hue - OKLCH hue in degrees.
  * @param options - Gamut, sampling and search options.
  * @returns Boundary points ordered by increasing lightness.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `GamutTarget`.
  * @throws {Error} When `steps` is not an integer >= 2 (uniform mode).
  * @see {@link chromaBand}
  *
@@ -145,7 +145,10 @@ function gamutBoundaryPathAdaptive(
 
   const maxChromaAtBound = (l: number): number =>
     maxChromaAt(l, normalizedHue, options);
-  const maxChromaBound = Math.max(0, options.maxChroma ?? DEFAULT_MAX_CHROMA);
+  const maxChromaBound = Math.max(
+    0,
+    options.maxChroma ?? gamutSpec(gamut).maxChroma,
+  );
   const cusp = maxChromaForHue(normalizedHue, {
     gamut,
     method: 'direct',

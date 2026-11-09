@@ -1,7 +1,7 @@
 import {
   linearToSrgbChannel,
   type Color,
-  type GamutTarget,
+  type DisplayGamut,
 } from '@color-kit/core';
 import {
   colorFromColorAreaPosition,
@@ -93,7 +93,7 @@ export function renderPlanePixels(
   height: number,
   base: Color,
   source: ColorPlaneSource,
-  gamut: GamutTarget,
+  gamut: DisplayGamut,
   axes: ResolvedColorAreaAxes,
   edgeBehavior: ColorPlaneEdgeBehavior,
 ): Uint8ClampedArray {
@@ -283,7 +283,7 @@ export function drawWithWebgl(
   state: WebglState,
   params: {
     source: ColorPlaneSource;
-    gamut: GamutTarget;
+    gamut: DisplayGamut;
     axes: ResolvedColorAreaAxes;
     seed: Color;
     edgeBehavior: ColorPlaneEdgeBehavior;

@@ -150,7 +150,6 @@ export type {
   ColorState,
   ColorUpdateEvent,
   CreateColorStateOptions,
-  GamutTarget,
   MapDisplayedColorsOptions,
   ResolveIncomingRequestedOptions,
   SetColorRequestedOptions,

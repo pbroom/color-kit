@@ -1,15 +1,11 @@
 import type { Color } from '../types.js';
-import { OKLAB_TO_LMS } from '../conversion/matrices.js';
+import { OKLAB_TO_LMS, type Matrix3 } from '../conversion/matrices.js';
 import { clamp, normalizeHue } from '../utils/index.js';
 import { findPositiveCubicRoot, type CubicCoefficients } from './cubic.js';
 import { maxChromaAt } from './max-chroma.js';
 import { assertGamutTarget } from './target.js';
-import {
-  getTargetRows,
-  isInTargetGamut,
-  type TargetRow,
-  type TargetRows,
-} from './membership.js';
+import { inGamutSpec } from './membership.js';
+import { gamutSpec } from './spec.js';
 import type { GamutTarget, HueCusp, MaxChromaForHueOptions } from './types.js';
 
 const DEFAULT_HUE_CUSP_LUT_SIZE = 4096;
@@ -40,7 +36,7 @@ function resolveHueLmsPrimeSlopes(
 }
 
 function channelPolynomialForSaturation(
-  row: TargetRow,
+  row: Matrix3[number],
   slopes: readonly [number, number, number],
 ): CubicCoefficients {
   const [mL, mM, mS] = row;
@@ -55,7 +51,7 @@ function channelPolynomialForSaturation(
 }
 
 function evaluateTargetChannelsAtSaturation(
-  rows: TargetRows,
+  rows: Matrix3,
   slopes: readonly [number, number, number],
   saturation: number,
 ): readonly [number, number, number] {
@@ -85,7 +81,7 @@ function resolveHueCuspDirect(hue: number, gamut: GamutTarget): HueCusp {
   const hueUnitA = Math.cos(hueRad);
   const hueUnitB = Math.sin(hueRad);
 
-  const rows = getTargetRows(gamut);
+  const rows = gamutSpec(gamut).lmsToLinear;
   const slopes = resolveHueLmsPrimeSlopes(hueUnitA, hueUnitB);
 
   let bestSaturation = Number.POSITIVE_INFINITY;
@@ -177,7 +173,7 @@ function sampleHueCuspLut(
 
   // The cusp curve changes branch near sRGB blue; linear interpolation across
   // those samples can overshoot out of gamut. Fall back only for that rare case.
-  if (!isInTargetGamut(candidate, gamut)) {
+  if (!inGamutSpec(candidate, gamutSpec(gamut))) {
     return resolveHueCuspDirect(h, gamut);
   }
 
@@ -197,7 +193,7 @@ function sampleHueCuspLut(
  * @param hue - OKLCH hue in degrees.
  * @param options - Gamut, method and LUT size.
  * @returns The cusp `{ l, c }`.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `GamutTarget`.
  * @throws {Error} When `options.method` is not `'direct'` or `'lut'`.
  * @see {@link maxChromaAt}
  *
@@ -207,6 +203,7 @@ function sampleHueCuspLut(
  *
  * maxChromaForHue(250); // → { l: ≈ 0.6614, c: ≈ 0.1872 }
  * maxChromaForHue(250, { gamut: 'display-p3' }); // → { l: ≈ 0.6227, c: ≈ 0.2276 }
+ * maxChromaForHue(250, { gamut: 'rec2020' }); // → { l: ≈ 0.4316, c: ≈ 0.3658 }
  * ```
  */
 export function maxChromaForHue(

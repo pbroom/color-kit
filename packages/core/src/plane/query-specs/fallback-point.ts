@@ -1,4 +1,5 @@
-import { toP3Gamut, toSrgbGamut } from '../../gamut/index.js';
+import { mapToGamutSpecInto } from '../../gamut/membership.js';
+import { gamutSpec } from '../../gamut/spec.js';
 import { assertGamutTarget } from '../../gamut/target.js';
 import { colorToPlane } from '../mapping.js';
 import { requireGamutField } from '../packed-abi.js';
@@ -25,7 +26,7 @@ import { withFiniteHue } from './shared.js';
  * @param query - The `color` to map and the target `gamut`.
  * @returns A new result with the gamut and the plane point, including the
  * mapped color.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `gamut` is not a `GamutTarget`.
  * @see {@link sense} for the fluent form.
  *
  * @example
@@ -50,8 +51,11 @@ export function getPlaneFallbackPoint(
   assertGamutTarget(query.gamut, 'fallbackPoint()');
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const color = withFiniteHue(query.color);
-  const mapped =
-    query.gamut === 'display-p3' ? toP3Gamut(color) : toSrgbGamut(color);
+  const mapped = mapToGamutSpecInto(
+    { ...color },
+    color,
+    gamutSpec(query.gamut ?? 'srgb'),
+  );
   const point = colorToPlane(resolvedPlane, mapped);
 
   return {

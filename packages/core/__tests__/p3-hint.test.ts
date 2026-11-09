@@ -165,9 +165,9 @@ describe("the removed 'p3' spelling", () => {
   });
 
   it('rejects other unknown gamuts without the p3 hint', () => {
-    const run = () => maxChromaAt(0.5, 200, { gamut: 'rec2020' as never });
+    const run = () => maxChromaAt(0.5, 200, { gamut: 'prophoto-rgb' as never });
     expect(run).toThrow(TypeError);
-    expect(run).toThrow(/unknown gamut "rec2020"/);
+    expect(run).toThrow(/unknown gamut "prophoto-rgb"/);
     expect(run).not.toThrow(HINT);
   });
 

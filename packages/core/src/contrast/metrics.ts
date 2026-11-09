@@ -1,6 +1,6 @@
 import type { Color, LinearRgb } from '../types.js';
-import type { GamutTarget } from '../gamut/types.js';
-import { assertGamutTarget } from '../gamut/target.js';
+import type { DisplayGamut } from '../gamut/types.js';
+import { assertDisplayGamutBare } from '../gamut/display.js';
 import { toLinearSrgbInto } from '../conversion/into.js';
 import {
   linearP3ToLinearSrgbInto,
@@ -33,10 +33,11 @@ export interface ContrastOptions {
    * Display gamut the colors are shown in. Channels are clipped to this
    * gamut before luminance is measured, so out-of-gamut colors are measured
    * as the display would render them by clipping. Contrast regions with
-   * `gamut: 'display-p3'` use the same setting.
+   * `gamut: 'display-p3'` use the same setting. Only display gamuts are
+   * modelled: `'rec2020'`, which gamut and plane queries accept, throws.
    * @defaultValue `'srgb'`
    */
-  gamut?: GamutTarget;
+  gamut?: DisplayGamut;
   /**
    * Channel precision; see {@link ContrastPrecision}.
    * @defaultValue `'exact'`
@@ -84,7 +85,7 @@ function displayedSrgb(
   encoded: boolean,
 ): LinearRgb {
   const quantize = options?.precision === '8bit';
-  assertGamutTarget(options?.gamut, 'contrast');
+  assertDisplayGamutBare(options?.gamut, 'contrast');
   const out = toLinearSrgbInto(DISPLAYED, color);
   if (options?.gamut === 'display-p3') {
     linearSrgbToLinearP3Into(out, out);

@@ -243,13 +243,32 @@ From `@pbroom/color-kit/plane`: `runPlaneQuery()` `runPlaneQueries()` `PlaneQuer
 
 ### Gamut
 
-`inSrgbGamut()` `inP3Gamut()` `toSrgbGamut()` `toP3Gamut()`
+`inSrgbGamut()` `inP3Gamut()` `inRec2020Gamut()` `toSrgbGamut()` `toP3Gamut()` `toRec2020Gamut()` `maxChromaAt()` `maxChromaForHue()` `gamutBoundaryPath()` `chromaBand()`
+
+Every `gamut` option, including the plane queries', takes `'srgb'`, `'display-p3'` or `'rec2020'`. `toCss(color, 'rec2020')` writes `color(rec2020 r g b)`.
+
+```ts
+import {
+  inP3Gamut,
+  inRec2020Gamut,
+  maxChromaAt,
+  toRec2020Gamut,
+} from '@pbroom/color-kit';
+
+const vivid = { l: 0.8, c: 0.4, h: 150, alpha: 1 };
+inP3Gamut(vivid); // false
+inRec2020Gamut(vivid); // true
+maxChromaAt(0.6, 250, { gamut: 'rec2020' }); // 0.24578857421875
+toRec2020Gamut({ l: 0.7, c: 0.5, h: 150, alpha: 1 }).c; // ≈ 0.3612
+```
+
+The contrast metrics, `ensureContrast` and the driver / React picker state model the gamut a color is displayed in and take `'srgb'` or `'display-p3'` only. Rec. 2020 holds all of sRGB but not quite all of Display P3: two thin slivers of P3, around its red primary and around its cyan near white, lie outside it.
 
 ### Allocation-free variants
 
 For per-pixel and per-frame loops, the hot-path functions have `*Into` twins that write into a caller-supplied `out` object (passed first) and return it. They create no result or intermediate objects and return bit-identical results to the allocating functions, which are thin wrappers over them. That is not a guarantee of zero heap allocation: JavaScript engines may still box the numbers written into object fields (V8 does in loops it does not fully inline and optimize), and V8 often optimizes away the allocating functions' short-lived objects anyway. The object-returning API stays the default; reach for `*Into` only where a profiler shows allocation or GC pressure, and benchmark the change at your call site.
 
-`toOklabInto()` `fromOklabInto()` `toLinearSrgbInto()` `fromLinearSrgbInto()` `toRgbInto()` `fromRgbInto()` `toP3Into()` `fromP3Into()` `mixInto()` `interpolateInto()` `toSrgbGamutInto()` `toP3GamutInto()`
+`toOklabInto()` `fromOklabInto()` `toLinearSrgbInto()` `fromLinearSrgbInto()` `toRgbInto()` `fromRgbInto()` `toP3Into()` `fromP3Into()` `mixInto()` `interpolateInto()` `toSrgbGamutInto()` `toP3GamutInto()` `toRec2020GamutInto()`
 
 Low-level converters: `srgbToLinearInto()` `linearToSrgbInto()` `linearRgbToOklabInto()` `oklabToLinearRgbInto()` `oklabToOklchInto()` `oklchToOklabInto()` `linearSrgbToLinearP3Into()` `linearP3ToLinearSrgbInto()` `linearP3ToP3Into()` `p3ToLinearP3Into()`
 

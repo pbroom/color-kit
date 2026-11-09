@@ -34,7 +34,7 @@ const CHROMA_BAND_CROSSING_ITERATIONS = 18;
  * @param requestedChroma - Desired OKLCH chroma (negative values act as 0).
  * @param options - Mode, sampling, gamut and search options.
  * @returns Colors ordered by increasing lightness.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `GamutTarget`.
  * @throws {Error} When `requestedChroma` is not finite, `mode` or
  *   `samplingMode` is unknown, or `steps` is not an integer >= 2 (uniform
  *   mode).

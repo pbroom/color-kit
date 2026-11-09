@@ -1,6 +1,6 @@
 ---
 title: Gamut and tolerance
-description: How color-kit decides whether a display can show a color, how much floating-point slack it allows, and why the identifier is 'display-p3'.
+description: How color-kit decides whether a color is inside sRGB, Display P3 or Rec. 2020, how much floating-point slack it allows, and why the identifier is 'display-p3'.
 order: 40
 ---
 
@@ -9,30 +9,78 @@ import exampleSource, {
   code as exampleCode,
 } from '@/examples/guides/gamut-probe.tsx?highlighted';
 
-## Two gamuts
+## Three gamuts
 
 Every gamut option takes a [`GamutTarget`](/api/core/gamut#GamutTarget):
-`'srgb'` or `'display-p3'`. Display P3 contains sRGB and reaches further,
-most visibly in greens and reds: sRGB chroma peaks around `0.32`, P3 around
-`0.37`. A color can fit P3 and not sRGB.
+`'srgb'`, `'display-p3'` or `'rec2020'`. Display P3 contains sRGB and reaches
+further, most visibly in greens and reds, and Rec. 2020 reaches further
+again: sRGB chroma peaks around `0.32`, P3 around `0.37` and Rec. 2020 around
+`0.47`. A color can fit one gamut and not the next one in.
 
 ```ts title="gamuts.ts"
-import { inP3Gamut, inSrgbGamut, parse } from '@pbroom/color-kit';
+import {
+  inP3Gamut,
+  inRec2020Gamut,
+  inSrgbGamut,
+  parse,
+} from '@pbroom/color-kit';
 
 const green = parse('oklch(0.75 0.22 150)');
 inSrgbGamut(green); // → false
 inP3Gamut(green); // → true
+
+const vivid = parse('oklch(0.8 0.4 150)');
+inP3Gamut(vivid); // → false
+inRec2020Gamut(vivid); // → true
 ```
+
+Searches that take a chroma bound (`maxChroma` on
+[`maxChromaAt`](/api/core/gamut#maxChromaAt), boundary paths and contrast
+regions) default to `0.4` for sRGB and Display P3 and to `0.5` for Rec. 2020,
+so each default clears its gamut.
+
+### The gamuts are not strictly nested
+
+sRGB is inside both wider gamuts. Display P3 is not quite inside Rec. 2020:
+two thin slivers of it stick out, by at most about `0.002` chroma. One is
+around the P3 red primary (OKLCH hues 29 to 39), where the Rec. 2020 blue
+channel goes negative, and the other is around P3 cyan near white (hues 193 to
+200, lightness above `0.88`), where it goes above 1.
+
+```ts title="p3-red.ts"
+import { inRec2020Gamut, parse, toCss } from '@pbroom/color-kit';
+
+const p3Red = parse('color(display-p3 1 0 0)');
+inRec2020Gamut(p3Red); // → false
+toCss(p3Red, 'rec2020'); // → 'color(rec2020 0.8889 0.2766 0)' (blue clipped from -0.061)
+```
+
+A plane on the Display P3 model therefore reports `'domain-edge'` for a
+`'display-p3'` target and solves a contour for a `'rec2020'` one.
+
+### Display gamuts
+
+Rec. 2020 is a target for gamut and plane queries. The contrast metrics
+([`contrastRatio`](/api/core/contrast#contrastRatio),
+[`contrastAPCA`](/api/core/contrast#contrastAPCA) and the `meets*` checks),
+[`ensureContrast`](/api/core/contrast#ensureContrast) and the driver's and
+React's picker state model the gamut a color is shown in, a
+[`DisplayGamut`](/api/core/gamut#DisplayGamut): `'srgb'` or `'display-p3'`.
+They throw a `TypeError` for `'rec2020'`. The plane contrast queries
+(`contrastRegion`, `contrastBoundary`, `contrastPoint`) do take
+`gamut: 'rec2020'`: they keep results inside Rec. 2020 and measure colors as
+clipped to it.
 
 ## Membership reads unclamped channels
 
 [`inSrgbGamut`](/api/core/gamut#inSrgbGamut) converts OKLCH to linear sRGB without
 clamping and checks each channel against `[0, 1]`.
-[`inP3Gamut`](/api/core/gamut#inP3Gamut) does the same in linear Display P3. A
-check that clamped first, the way [`toRgb`](/api/core/conversion#toRgb) must, would call
+[`inP3Gamut`](/api/core/gamut#inP3Gamut) and
+[`inRec2020Gamut`](/api/core/gamut#inRec2020Gamut) do the same in linear
+Display P3 and linear Rec. 2020. A check that clamped first, the way [`toRgb`](/api/core/conversion#toRgb) must, would call
 every color in gamut. For loops that already hold linear channels,
 [`isLinearRgbInGamut`](/api/core/gamut#isLinearRgbInGamut) is the same test without
-the conversion.
+the conversion, for linear sRGB or linear Display P3 channels.
 
 ## `GAMUT_EPSILON`
 
@@ -48,9 +96,18 @@ The slack is applied in encoded space on purpose. The same `0.000075` in
 linear light is about `0.00097` encoded near black, wide enough to accept
 `oklch(0.028 0.066 131)`, whose true boundary chroma is near `0.008`.
 
-These bounds are shared: `inSrgbGamut`, `inP3Gamut`, the plane
-`gamutRegion` field and the contrast-region solver all classify a boundary
-color the same way. Gamut mapping uses the slack only to return colors that
+Rec. 2020 gets the same `0.000075` on its own encoded channels. CSS Color 4
+and colorjs.io encode `rec2020` with a 2.4 power curve, which has no linear
+segment near black, so its linear bounds are `-(0.000075 ** 2.4)` to
+`1.000075 ** 2.4`: about `-1.26e-10` to `1.00018`. That is far tighter near
+black than the sRGB bounds. A very dark color that passes `inSrgbGamut` on
+tolerance alone can fail `inRec2020Gamut`, and below OKLCH lightness of about
+`0.05` (`0.15` for Display P3) a reported sRGB or P3 boundary can sit outside
+the Rec. 2020 one.
+
+Each gamut's bounds are defined once: `inSrgbGamut`, `inP3Gamut`,
+`inRec2020Gamut`, the plane `gamutRegion` field and the contrast-region
+solver all classify a boundary color the same way. Gamut mapping uses the slack only to return colors that
 are already in gamut unchanged; while reducing chroma it accepts only colors
 strictly inside.
 
@@ -58,7 +115,7 @@ strictly inside.
 
 Display P3 is spelled `'display-p3'` everywhere: gamut options, the plane
 model, `mix` spaces, `toCss` formats, the interop array spaces, and the
-driver's and React's active gamut. The old `'p3'` spelling was removed
+driver's and React's active gamut. Rec. 2020 is `'rec2020'`, as in CSS. The old `'p3'` spelling was removed
 without an alias, and passing it throws a `TypeError` that says so.
 
 ```ts title="p3.ts"
@@ -69,7 +126,9 @@ maxChromaAt(0.5, 30, { gamut: 'p3' });
 ```
 
 Validate your own options the same way with
-[`assertGamutTarget`](/api/plane/gamut#assertGamutTarget).
+[`assertGamutTarget`](/api/plane/gamut#assertGamutTarget), or with
+[`assertDisplayGamut`](/api/plane/gamut#assertDisplayGamut) where only a
+display gamut makes sense.
 
 ## Try it
 

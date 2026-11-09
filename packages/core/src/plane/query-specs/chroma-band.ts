@@ -37,7 +37,7 @@ import {
  * {@link PlaneDefinition}.
  * @param query - Band options; see {@link PlaneChromaBandQuery}.
  * @returns A new result with the resolved hue and band points.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `gamut` is not a `GamutTarget`.
  * @throws {Error} On an OKLCH lightness × chroma plane with uniform sampling,
  * when `steps` is not an integer of at least 2.
  * @see {@link sense} for the fluent form.

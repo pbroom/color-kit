@@ -43,8 +43,8 @@ import {
  *
  * Works on every plane model and axis pair. The solver is chosen from the
  * plane and gamut and reported as `solver`: `'domain-edge'` when the whole
- * model domain is in gamut (RGB, HSL and HSV planes, Display P3 planes with a
- * `'display-p3'` target), analytic solvers for OKLCH lightness × chroma
+ * model domain is in gamut (RGB, HSL and HSV planes for every target, Display
+ * P3 planes with a `'display-p3'` target), analytic solvers for OKLCH lightness × chroma
  * (`'analytic-lc'`), OKLCH hue × chroma (`'analytic-hc'`) and HCT hue/tone ×
  * chroma (`'analytic-hct'`, sRGB only), and an adaptive marching-squares
  * contour of the gamut field (`'implicit-contour'`) for everything else.
@@ -65,7 +65,7 @@ import {
  * {@link inspectPlaneQuery} to capture a trace.
  * @returns A new result with the gamut, scope, solver, viewport relation,
  * boundary paths and visible region.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`
+ * @throws {TypeError} When `gamut` is not a `GamutTarget`
  * (including the removed `'p3'`).
  * @see {@link toSvgCompoundPath} to draw the region.
  * @see {@link sense} for the fluent form.
@@ -294,6 +294,7 @@ export function getPlaneGamutRegion(
           sampler,
           'full',
           resolvedPlane,
+          gamut,
           query.simplifyTolerance,
           trace,
         )

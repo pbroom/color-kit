@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import type { Color } from '@color-kit/core';
+import type { Color, DisplayGamut } from '@color-kit/core';
 import {
   addMultiColorEntry,
   createMultiColorModel,
@@ -17,7 +17,6 @@ import {
   type ColorInteraction,
   type ColorSource,
   type ColorState,
-  type GamutTarget,
   type MultiColorInput,
   type MultiColorModel,
   type MultiColorState,
@@ -52,7 +51,7 @@ export interface UseMultiColorOptions {
    * Initial active display gamut shared by all entries.
    * @defaultValue 'display-p3'
    */
-  defaultGamut?: GamutTarget;
+  defaultGamut?: DisplayGamut;
   /**
    * Initial active view model shared by all entries.
    * @defaultValue 'oklch'
@@ -97,7 +96,7 @@ export interface UseMultiColorReturn {
     options?: Omit<SetRequestedOptions, 'changedChannel'>,
   ) => void;
   /** Sets the display gamut shared by all entries; `source` defaults to `'user'`. */
-  setActiveGamut: (gamut: GamutTarget, source?: ColorSource) => void;
+  setActiveGamut: (gamut: DisplayGamut, source?: ColorSource) => void;
   /** Sets the view model shared by all entries; `source` defaults to `'user'`. */
   setActiveView: (view: ViewModel, source?: ColorSource) => void;
   /** Selects entry `id`; a no-op for unknown or already selected ids. */
@@ -270,7 +269,7 @@ export function useMultiColor(
   );
 
   const setActiveGamut = useCallback(
-    (gamut: GamutTarget, source: ColorSource = 'user') => {
+    (gamut: DisplayGamut, source: ColorSource = 'user') => {
       applyUpdate(
         (current) => setMultiColorActiveGamut(current, gamut, source),
         'programmatic',

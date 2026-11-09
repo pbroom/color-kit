@@ -3,6 +3,9 @@ import {
   nearestPassingPoint,
   NEAREST_POINT_GRID,
 } from '../../contrast/point-solver.js';
+import { resolveContrastCriterion } from '../../contrast/region-shared.js';
+import { inGamutSpec } from '../../gamut/membership.js';
+import { gamutSpec } from '../../gamut/spec.js';
 import { assertGamutTarget } from '../../gamut/target.js';
 import {
   incrementTraceSummary,
@@ -66,7 +69,10 @@ function resolveStart(
  * A point "passes" exactly when the public checks say so:
  * `contrastRatio(color, reference, { gamut })` (or `contrastAPCA` with the
  * roles of `apcaRole`) meets the threshold, measured unrounded, and
- * `inSrgbGamut(color)` / `inP3Gamut(color)` holds when `gamut` is set. On an
+ * `inSrgbGamut(color)` / `inP3Gamut(color)` / `inRec2020Gamut(color)` holds
+ * when `gamut` is set. (`gamut: 'rec2020'`, which the scalar metrics do not
+ * take, measures contrast with channels clipped to Rec. 2020, as the
+ * `contrastRegion` query does.) On an
  * OKLCH lightness × chroma plane this is the area the `contrastRegion` query
  * outlines with the same options.
  *
@@ -85,7 +91,7 @@ function resolveStart(
  * @param trace - Internal trace hook; leave it out and use
  * {@link inspectPlaneQuery} to capture a trace.
  * @returns A new result with the status, point, contrast and distance.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`, or
+ * @throws {TypeError} When `gamut` is not a `GamutTarget`, or
  * not exactly one of `color` and `point` is given.
  * @throws {RangeError} When the start point is not finite.
  * @throws {Error} When the threshold is out of range for the metric.
@@ -124,11 +130,13 @@ export function getPlaneContrastPoint(
 ): PlaneContrastPointResult {
   assertGamutTarget(query.gamut, 'contrastPoint()');
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
+  const { gamut } = query;
   const test = createContrastTest(
     query.reference,
-    query,
-    query.gamut,
-    'contrastPoint()',
+    resolveContrastCriterion(query, 'contrastPoint()'),
+    gamut === undefined
+      ? undefined
+      : (color) => inGamutSpec(color, gamutSpec(gamut)),
   );
   const start = resolveStart(query, (color) =>
     colorToPlane(resolvedPlane, color),

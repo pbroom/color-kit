@@ -1,3 +1,4 @@
+export { assertDisplayGamut } from '../gamut/display.js';
 export { assertGamutTarget } from '../gamut/target.js';
 
 export {

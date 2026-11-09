@@ -1,8 +1,5 @@
-import { isInTargetGamut } from '../gamut/membership.js';
-import type { GamutTarget } from '../gamut/types.js';
 import type { Color } from '../types.js';
-import { contrastAPCA, contrastRatio } from './metrics.js';
-import { resolveContrastCriterion } from './region-shared.js';
+import type { ResolvedContrastCriterion } from './region-shared.js';
 import type { ContrastRegionPathOptions } from './types.js';
 
 /**
@@ -40,36 +37,29 @@ export interface ContrastTest {
 }
 
 /**
- * Resolves a contrast target into a {@link ContrastTest}.
+ * Binds a resolved contrast criterion to a reference as a
+ * {@link ContrastTest}.
+ *
+ * The caller resolves the criterion, so each solver brings only the gamuts
+ * it supports: `ensureContrast` the display-gamut criterion, the plane
+ * `contrastPoint` query the criterion of any gamut target.
  *
  * @param reference - Color every sample is measured against.
- * @param options - Metric, threshold and measurement gamut.
- * @param constrainTo - Gamut samples must also be inside, or `undefined` for
- * no gamut constraint. Membership reads unclamped linear channels through
+ * @param criterion - The resolved metric, threshold and measurement gamut.
+ * @param inGamut - Membership test samples must also pass, or `undefined`
+ * for no gamut constraint. It must read unclamped linear channels through
  * the shared gamut helpers.
- * @param caller - Public function name used as the error-message prefix.
  */
 export function createContrastTest(
   reference: Color,
-  options: ContrastTargetOptions,
-  constrainTo: GamutTarget | undefined,
-  caller: string,
+  criterion: ResolvedContrastCriterion,
+  inGamut: ((color: Color) => boolean) | undefined,
 ): ContrastTest {
-  const criterion = resolveContrastCriterion(options, caller);
-  const metricOptions = { gamut: options.gamut ?? 'srgb' };
-  const sampleIsBackground = options.apcaRole === 'sample-background';
   return {
     passes: (color) =>
       criterion.evaluate(color, reference) >= 0 &&
-      (constrainTo === undefined || isInTargetGamut(color, constrainTo)),
-    measure: (color) => {
-      if (criterion.metric !== 'apca') {
-        return contrastRatio(color, reference, metricOptions);
-      }
-      return sampleIsBackground
-        ? contrastAPCA(reference, color, metricOptions)
-        : contrastAPCA(color, reference, metricOptions);
-    },
+      (inGamut === undefined || inGamut(color)),
+    measure: (color) => criterion.measure(color, reference),
   };
 }
 

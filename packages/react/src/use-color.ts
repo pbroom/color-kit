@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   Color,
   CssColorFormat,
+  DisplayGamut,
   Hsl,
   Hsv,
   Oklch,
@@ -33,7 +34,6 @@ import {
   type ColorSource,
   type ColorState,
   type ColorUpdateEvent,
-  type GamutTarget,
   type ViewModel,
 } from '@color-kit/driver';
 import {
@@ -71,7 +71,7 @@ export interface UseColorOptions {
    * Initial active display gamut in uncontrolled mode.
    * @defaultValue 'display-p3'
    */
-  defaultGamut?: GamutTarget;
+  defaultGamut?: DisplayGamut;
   /**
    * Initial active view model in uncontrolled mode.
    * @defaultValue 'oklch'
@@ -121,7 +121,7 @@ export interface UseColorReturn {
   /** The requested color gamut-mapped into Display P3. */
   displayedP3: Color;
   /** Gamut that `displayed` and `displayedCss()` target. */
-  activeGamut: GamutTarget;
+  activeGamut: DisplayGamut;
   /** View model the UI is presenting (`oklch`, `rgb`, `hex`, ...). */
   activeView: ViewModel;
   /** Sets the requested OKLCH color. */
@@ -149,7 +149,7 @@ export interface UseColorReturn {
   /** Sets the requested color from HSV. */
   setFromHsv: (hsv: Hsv, options?: SetRequestedOptions) => void;
   /** Sets the active display gamut; `source` defaults to `'user'`. */
-  setActiveGamut: (gamut: GamutTarget, source?: ColorSource) => void;
+  setActiveGamut: (gamut: DisplayGamut, source?: ColorSource) => void;
   /** Sets the active view model; `source` defaults to `'user'`. */
   setActiveView: (view: ViewModel, source?: ColorSource) => void;
   /**
@@ -420,7 +420,7 @@ export function useColor(options: UseColorOptions = {}): UseColorReturn {
   );
 
   const setActiveGamut = useCallback(
-    (gamut: GamutTarget, source: ColorSource = 'user') => {
+    (gamut: DisplayGamut, source: ColorSource = 'user') => {
       applyUpdate(
         (current) => setColorActiveGamut(current, gamut, source),
         undefined,

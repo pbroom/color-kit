@@ -1,4 +1,5 @@
 export { GAMUT_EPSILON } from './constants.js';
+export { assertDisplayGamut } from './display.js';
 export { gamutBoundaryPath } from './boundary-path.js';
 export { chromaBand } from './chroma-band.js';
 export { maxChromaForHue } from './hue-cusp.js';
@@ -7,16 +8,20 @@ export {
   GAMUT_LINEAR_MAX,
   GAMUT_LINEAR_MIN,
   inP3Gamut,
+  inRec2020Gamut,
   inSrgbGamut,
   isLinearRgbInGamut,
   toP3Gamut,
   toP3GamutInto,
+  toRec2020Gamut,
+  toRec2020GamutInto,
   toSrgbGamut,
   toSrgbGamutInto,
 } from './membership.js';
 export type {
   ChromaBandMode,
   ChromaBandOptions,
+  DisplayGamut,
   GamutBoundaryPathOptions,
   GamutBoundaryPoint,
   GamutMapMethod,

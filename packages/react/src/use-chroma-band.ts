@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import {
+  assertDisplayGamut,
   toSvgPath,
   type ChromaBandMode,
-  type GamutTarget,
+  type DisplayGamut,
 } from '@color-kit/core';
 import {
   getColorAreaChromaBandPoints,
@@ -36,7 +37,7 @@ export interface UseChromaBandOptions extends ColorPlaneQueryOptions {
    * Gamut the band is kept inside.
    * @defaultValue 'srgb'
    */
-  gamut?: GamutTarget;
+  gamut?: DisplayGamut;
   /** Hue of the band in degrees. Defaults to the plane color's hue. */
   hue?: number;
   /**
@@ -113,6 +114,7 @@ export function useChromaBand(
     isDragging = false,
     performanceProfile = 'auto',
   } = options;
+  assertDisplayGamut(gamut, 'chromaBand()');
   const { color, axes } = useStablePlane(plane);
   const hue = hueOption ?? color.h;
   const effectiveSteps = Math.max(

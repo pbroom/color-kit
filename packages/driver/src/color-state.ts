@@ -1,6 +1,6 @@
-import type { Color, GamutMapMethod } from '@color-kit/core';
+import type { Color, DisplayGamut, GamutMapMethod } from '@color-kit/core';
 import {
-  assertGamutTarget,
+  assertDisplayGamut,
   inP3Gamut,
   inSrgbGamut,
   isAchromatic,
@@ -8,12 +8,12 @@ import {
   toSrgbGamut,
 } from '@color-kit/core';
 
-/**
- * Display gamut a color state renders in. The color-state, multi-color and
- * display helpers validate it like the core plane queries: any other value,
- * including the removed `'p3'` spelling, throws a `TypeError`.
- */
-export type GamutTarget = 'srgb' | 'display-p3';
+// The display gamut a color state renders in is core's `DisplayGamut`
+// (`'srgb'` or `'display-p3'`). The color-state, multi-color and display
+// helpers validate it with core's `assertDisplayGamut`: any other value,
+// including `'rec2020'` (a core query target only) and the removed `'p3'`
+// spelling, throws a `TypeError`.
+export type { DisplayGamut };
 /** Color model a picker shows its channels or text in. */
 export type ViewModel = 'oklch' | 'oklab' | 'rgb' | 'hex' | 'hsl' | 'hsv';
 /** OKLCH channel of a requested color. */
@@ -52,7 +52,7 @@ export interface ColorState {
     p3: Color;
   };
   /** Gamut whose displayed color the UI renders. */
-  activeGamut: GamutTarget;
+  activeGamut: DisplayGamut;
   /** Model the picker shows channels or text in. */
   activeView: ViewModel;
   /** Provenance and gamut status of the current state. */
@@ -88,15 +88,15 @@ export interface ColorUpdateEvent {
 }
 
 /**
- * Asserts a required active gamut with core's `assertGamutTarget`, also
- * rejecting `undefined` (which `assertGamutTarget` treats as the sRGB
+ * Asserts a required active gamut with core's `assertDisplayGamut`, also
+ * rejecting `undefined` (which `assertDisplayGamut` treats as the sRGB
  * default). Internal to the driver; not exported from the package.
  */
 export function assertActiveGamut(
   gamut: unknown,
   fn: string,
-): asserts gamut is GamutTarget {
-  assertGamutTarget(gamut === undefined ? 'undefined' : gamut, fn);
+): asserts gamut is DisplayGamut {
+  assertDisplayGamut(gamut === undefined ? 'undefined' : gamut, fn);
 }
 
 /** Options for {@link createColorState}. */
@@ -106,7 +106,7 @@ export interface CreateColorStateOptions {
    * `'srgb'` or `'display-p3'` throws a `TypeError`.
    * @defaultValue 'display-p3'
    */
-  activeGamut?: GamutTarget;
+  activeGamut?: DisplayGamut;
   /**
    * Model the picker shows channels or text in.
    * @defaultValue 'oklch'
@@ -474,7 +474,7 @@ export function setColorChannel(
  */
 export function setColorActiveGamut(
   state: ColorState,
-  gamut: GamutTarget,
+  gamut: DisplayGamut,
   source: ColorSource,
 ): ColorState {
   assertActiveGamut(gamut, 'setColorActiveGamut()');

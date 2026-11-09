@@ -6,7 +6,7 @@ import {
   useState,
   type RefCallback,
 } from 'react';
-import type { GamutTarget } from '@color-kit/core';
+import type { DisplayGamut } from '@color-kit/core';
 import { useColorStoreSelector } from './color-store.js';
 import { useOptionalColorContext } from './context.js';
 import {
@@ -54,7 +54,7 @@ export interface UseColorPlaneRendererOptions {
    * Gamut the displayed pixels are mapped into. Defaults to the active gamut
    * of the nearest `<Color>` provider, or `'display-p3'` without one.
    */
-  displayGamut?: GamutTarget;
+  displayGamut?: DisplayGamut;
   /**
    * Rasterizer. `'auto'` uses WebGL and falls back to the CPU renderer when
    * WebGL is unavailable, fails to set up, or loses its context.

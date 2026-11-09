@@ -151,6 +151,7 @@ export function invalidPackedResult(reason: string): never {
 const GAMUT_TARGETS: Record<GamutTarget, true> = {
   srgb: true,
   'display-p3': true,
+  rec2020: true,
 };
 const GAMUT_REGION_SCOPES: Record<PlaneGamutRegionScope, true> = {
   viewport: true,

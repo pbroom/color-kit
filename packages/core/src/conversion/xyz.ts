@@ -43,12 +43,9 @@ export const XYZ_D50_TO_XYZ_D65: Matrix3 = [
   [0.012314014864481998, -0.020507649298898964, 1.330365926242124],
 ];
 
-/** Linear Rec. 2020 -> CIE XYZ (D65). */
-export const LINEAR_REC2020_TO_XYZ_D65: Matrix3 = [
-  [0.6369580483012914, 0.14461690358620832, 0.1688809751641721],
-  [0.2627002120112671, 0.6779980715188708, 0.05930171646986196],
-  [0, 0.028072693049087428, 1.060985057710791],
-];
+// Rec. 2020 is also a gamut target, so its matrices live with the sRGB and
+// Display P3 ones.
+export { LINEAR_REC2020_TO_XYZ_D65 } from './matrices.js';
 
 /** Linear A98 RGB -> CIE XYZ (D65). */
 export const LINEAR_A98_RGB_TO_XYZ_D65: Matrix3 = [

@@ -39,7 +39,7 @@ import { countSinglePath, toPlaneBoundaryPoint } from './shared.js';
  * @param trace - Internal trace hook; leave it out and use
  * {@link inspectPlaneQuery} to capture a trace.
  * @returns A new result with the resolved hue and contour points.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`, or an
+ * @throws {TypeError} When `gamut` is not a `GamutTarget`, or an
  * option removed with an earlier solver (such as `lightnessSteps`) is set.
  * @throws {Error} When the threshold or a sampling option is out of range.
  * @see {@link sense} for the fluent form.

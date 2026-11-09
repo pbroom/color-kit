@@ -72,7 +72,7 @@ function runPlaneQueryInternal(
  * {@link PlaneDefinition}.
  * @param query - Query payload; `kind` selects the query type.
  * @returns A new result whose `kind` matches the query's.
- * @throws {TypeError} When `query.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `query.gamut` is not a `GamutTarget`.
  * @throws {Error} When `query.kind` is unknown or the plane or query options
  * are invalid.
  * @see {@link inspectPlaneQuery} to also capture a solver trace.
@@ -105,8 +105,8 @@ export function runPlaneQuery(
  * {@link PlaneDefinition}.
  * @param queries - Query payloads to run.
  * @returns A new array with one result per query, in input order.
- * @throws {TypeError} When a query's `gamut` is not `'srgb'` or
- * `'display-p3'`.
+ * @throws {TypeError} When a query's `gamut` is not a
+ * `GamutTarget`.
  * @throws {Error} When a query kind is unknown or the plane or query options
  * are invalid.
  *
@@ -164,7 +164,7 @@ export function runPlaneQueries(
  * `false`) the sampled scalar grid. `maxStageEntries` (default 128, clamped to
  * `[8, 512]`) caps how many cells, paths and points per path each stage keeps.
  * @returns A new `{ result, trace }` pair.
- * @throws {TypeError} When `query.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `query.gamut` is not a `GamutTarget`.
  * @throws {Error} When `query.kind` is unknown or the plane or query options
  * are invalid.
  * @see {@link inspectPlaneQueries}
@@ -208,8 +208,8 @@ export function inspectPlaneQuery<Result extends PlaneQuery = PlaneQuery>(
  * @param options - Trace detail applied to every query; see
  * {@link inspectPlaneQuery}.
  * @returns A new array of `{ result, trace }` pairs, in input order.
- * @throws {TypeError} When a query's `gamut` is not `'srgb'` or
- * `'display-p3'`.
+ * @throws {TypeError} When a query's `gamut` is not a
+ * `GamutTarget`.
  * @throws {Error} When a query kind is unknown or the plane or query options
  * are invalid.
  *

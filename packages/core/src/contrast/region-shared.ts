@@ -1,12 +1,19 @@
-import type { Color } from '../types.js';
+import type { Color, LinearRgb } from '../types.js';
+import { toLinearSrgbInto } from '../conversion/into.js';
+import { applyMatrix3Into } from '../conversion/rec2020.js';
+import { gamutSpec, type GamutSpec } from '../gamut/spec.js';
 import { assertGamutTarget } from '../gamut/target.js';
+import type { DisplayGamut } from '../gamut/types.js';
 import type { PlanePoint } from '../geometry/types.js';
+import { linearToSrgbChannel } from '../utils/index.js';
 import {
   apcaContrastOfLuminances,
+  apcaLuminanceOfEncoded,
   apcaScreenLuminance,
   contrastAPCA,
   contrastRatio,
   relativeLuminance,
+  wcagLuminanceOfLinear,
   type ContrastOptions,
 } from './metrics.js';
 import type {
@@ -189,6 +196,14 @@ export interface ResolvedContrastCriterion {
    * arithmetic the public metric uses.
    */
   evaluateLuminance: (sampleY: number, referenceY: number) => number;
+  /**
+   * The contrast of `sample` against `reference` as the public metric
+   * reports it: `contrastRatio` for WCAG, signed `contrastAPCA` (with
+   * `apcaRole` applied) for APCA. `evaluate` is its margin.
+   */
+  measure: (sample: Color, reference: Color) => number;
+  /** `measure` from the two displayed luminances. */
+  measureLuminance: (sampleY: number, referenceY: number) => number;
 }
 
 function resolveContrastThreshold(options: ContrastRegionPathOptions): number {
@@ -207,13 +222,77 @@ function resolveContrastThreshold(options: ContrastRegionPathOptions): number {
   }
 }
 
-export function resolveContrastCriterion(
+function clip(value: number): number {
+  return value < 0 ? 0 : value > 1 ? 1 : value;
+}
+
+/**
+ * Displayed luminance of target-gamut linear channels, measured as the
+ * public metric measures it: channels clipped to [0, 1] in the target gamut,
+ * converted back to (extended-range) linear sRGB, then WCAG relative
+ * luminance or APCA screen luminance of the result. The one display model
+ * of the contrast-region solver, for every gamut descriptor.
+ */
+export function createDisplayLuminance(
+  spec: GamutSpec,
+  metric: ContrastMetric,
+): (r: number, g: number, b: number) => number {
+  const toSrgb = spec.toLinearSrgb;
+  return (r, g, b) => {
+    let lr = clip(r);
+    let lg = clip(g);
+    let lb = clip(b);
+    if (toSrgb) {
+      const pr = lr;
+      const pg = lg;
+      const pb = lb;
+      lr = toSrgb[0][0] * pr + toSrgb[0][1] * pg + toSrgb[0][2] * pb;
+      lg = toSrgb[1][0] * pr + toSrgb[1][1] * pg + toSrgb[1][2] * pb;
+      lb = toSrgb[2][0] * pr + toSrgb[2][1] * pg + toSrgb[2][2] * pb;
+    }
+    return metric === 'apca'
+      ? apcaLuminanceOfEncoded(
+          linearToSrgbChannel(lr),
+          linearToSrgbChannel(lg),
+          linearToSrgbChannel(lb),
+        )
+      : wcagLuminanceOfLinear(lr, lg, lb);
+  };
+}
+
+const QUERY_DISPLAYED: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
+
+/**
+ * Displayed luminance of a color in a gamut the scalar metrics do not model
+ * (they take display gamuts only, to stay small): the display model of
+ * `relativeLuminance` / `apcaScreenLuminance` with `gamut: 'display-p3'`,
+ * for any gamut descriptor.
+ */
+function queryGamutLuminance(
+  spec: GamutSpec,
+  metric: ContrastMetric,
+): (color: Color) => number {
+  const displayLuminance = createDisplayLuminance(spec, metric);
+  return (color) => {
+    const out = toLinearSrgbInto(QUERY_DISPLAYED, color);
+    if (spec.fromLinearSrgb) applyMatrix3Into(out, spec.fromLinearSrgb, out);
+    return displayLuminance(out.r, out.g, out.b);
+  };
+}
+
+/**
+ * The criterion of a display gamut, measured with the public metrics. Does
+ * not validate `gamut` and does not reference the gamut descriptors, so
+ * display-only callers (`ensureContrast`) stay free of the other gamuts'
+ * matrices.
+ */
+export function resolveDisplayContrastCriterion(
   options: ContrastRegionPathOptions,
-  caller = 'contrastRegionPaths()',
+  gamut: DisplayGamut,
+  caller: string,
 ): ResolvedContrastCriterion {
   const metric = options.metric ?? 'wcag';
-  assertGamutTarget(options.gamut, caller);
-  const metricOptions: ContrastOptions = { gamut: options.gamut ?? 'srgb' };
+  const metricOptions: ContrastOptions = { gamut };
   if (metric === 'apca') {
     const preset = options.apcaPreset ?? 'body';
     const threshold =
@@ -224,7 +303,7 @@ export function resolveContrastCriterion(
       throw new Error(`${caller} APCA threshold must be > 0`);
     }
     const polarity = options.apcaPolarity ?? 'absolute';
-    const role = options.apcaRole ?? 'sample-text';
+    const sampleIsBackground = options.apcaRole === 'sample-background';
     const margin = (lc: number): number => {
       if (polarity === 'positive') {
         return lc - threshold;
@@ -234,22 +313,23 @@ export function resolveContrastCriterion(
       }
       return Math.abs(lc) - threshold;
     };
+    const measure = (sample: Color, reference: Color): number =>
+      sampleIsBackground
+        ? contrastAPCA(reference, sample, metricOptions)
+        : contrastAPCA(sample, reference, metricOptions);
+    const measureLuminance = (sampleY: number, referenceY: number): number =>
+      sampleIsBackground
+        ? apcaContrastOfLuminances(referenceY, sampleY)
+        : apcaContrastOfLuminances(sampleY, referenceY);
     return {
       metric,
       threshold,
-      evaluate: (sample, reference) =>
-        margin(
-          role === 'sample-background'
-            ? contrastAPCA(reference, sample, metricOptions)
-            : contrastAPCA(sample, reference, metricOptions),
-        ),
+      measure,
+      measureLuminance,
+      evaluate: (sample, reference) => margin(measure(sample, reference)),
       luminance: (color) => apcaScreenLuminance(color, metricOptions),
       evaluateLuminance: (sampleY, referenceY) =>
-        margin(
-          role === 'sample-background'
-            ? apcaContrastOfLuminances(referenceY, sampleY)
-            : apcaContrastOfLuminances(sampleY, referenceY),
-        ),
+        margin(measureLuminance(sampleY, referenceY)),
     };
   }
 
@@ -257,18 +337,50 @@ export function resolveContrastCriterion(
   if (!Number.isFinite(threshold) || threshold <= 1) {
     throw new Error(`${caller} requires threshold > 1`);
   }
+  // `contrastRatio`'s arithmetic, kept inline so it adds nothing to that
+  // function's bundle.
+  const measureLuminance = (sampleY: number, referenceY: number): number =>
+    (Math.max(sampleY, referenceY) + 0.05) /
+    (Math.min(sampleY, referenceY) + 0.05);
   return {
     metric,
     threshold,
+    measure: (sample, reference) =>
+      contrastRatio(sample, reference, metricOptions),
+    measureLuminance,
     evaluate: (sample, reference) =>
       contrastRatio(sample, reference, metricOptions) - threshold,
     luminance: (color) => relativeLuminance(color, metricOptions),
-    // `contrastRatio`'s arithmetic, kept inline so it adds nothing to that
-    // function's bundle.
     evaluateLuminance: (sampleY, referenceY) =>
-      (Math.max(sampleY, referenceY) + 0.05) /
-        (Math.min(sampleY, referenceY) + 0.05) -
-      threshold,
+      measureLuminance(sampleY, referenceY) - threshold,
+  };
+}
+
+/**
+ * The criterion of any gamut target. Display gamuts are measured with the
+ * public metrics; other targets (`'rec2020'`) with the same arithmetic on a
+ * luminance clipped to that gamut, which the scalar metrics do not model.
+ */
+export function resolveContrastCriterion(
+  options: ContrastRegionPathOptions,
+  caller = 'contrastRegionPaths()',
+): ResolvedContrastCriterion {
+  assertGamutTarget(options.gamut, caller);
+  const gamut = options.gamut ?? 'srgb';
+  if (gamut === 'srgb' || gamut === 'display-p3') {
+    return resolveDisplayContrastCriterion(options, gamut, caller);
+  }
+  // Thresholds and contrast arithmetic do not depend on the gamut; only the
+  // displayed luminance does.
+  const base = resolveDisplayContrastCriterion(options, 'srgb', caller);
+  const luminance = queryGamutLuminance(gamutSpec(gamut), base.metric);
+  return {
+    ...base,
+    luminance,
+    measure: (sample, reference) =>
+      base.measureLuminance(luminance(sample), luminance(reference)),
+    evaluate: (sample, reference) =>
+      base.evaluateLuminance(luminance(sample), luminance(reference)),
   };
 }
 

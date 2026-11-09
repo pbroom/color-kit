@@ -532,9 +532,9 @@ describe('strict packed plane query ABI', () => {
   );
 
   it.each([
-    ['gamutBoundary', 'gamut', 'rec2020'],
-    ['fallbackPoint', 'gamut', 'rec2020'],
-    ['gamutRegion', 'gamut', 'rec2020'],
+    ['gamutBoundary', 'gamut', 'prophoto-rgb'],
+    ['fallbackPoint', 'gamut', 'prophoto-rgb'],
+    ['gamutRegion', 'gamut', 'prophoto-rgb'],
     ['gamutRegion', 'scope', 'everything'],
     ['gamutRegion', 'solver', 'guess'],
     ['gamutRegion', 'viewportRelation', 'nearby'],

@@ -9,7 +9,7 @@
 
 import { Hct as MaterialHct } from '@material/material-color-utilities';
 import type { Color, Rgb, Hsl, Hsv, Hct, Oklab, Oklch, P3 } from '../types.js';
-import { round } from '../utils/index.js';
+import { clamp, round } from '../utils/index.js';
 import { withP3Hint } from '../utils/space-hint.js';
 
 import { assertFinite } from './finite.js';
@@ -17,7 +17,15 @@ import { rgbToHex, hexToRgb } from './srgb.js';
 import { rgbToHsl, hslToRgbUnrounded } from './hsl.js';
 import { rgbToHsv, hsvToRgbUnrounded } from './hsv.js';
 import { oklabToOklchInto, oklchToOklabInto } from './oklch.js';
-import { fromP3Into, fromRgbInto, toP3Into, toRgbInto } from './into.js';
+import {
+  fromP3Into,
+  fromRgbInto,
+  toLinearSrgbInto,
+  toP3Into,
+  toRgbInto,
+} from './into.js';
+import { LINEAR_SRGB_TO_LINEAR_REC2020 } from './matrices.js';
+import { applyMatrix3Into, linearToRec2020Channel } from './rec2020.js';
 import { toHctUnrounded, toRgbUnrounded } from './unrounded.js';
 
 // Re-export individual converters for advanced use
@@ -426,8 +434,8 @@ export function fromP3(p3: P3): Color {
 }
 
 /**
- * Output formats accepted by {@link toCss}. `'display-p3'` serializes as
- * `color(display-p3 r g b)`.
+ * Output formats accepted by {@link toCss}. `'display-p3'` and `'rec2020'`
+ * serialize as `color(display-p3 r g b)` / `color(rec2020 r g b)`.
  */
 export type CssColorFormat =
   | 'hex'
@@ -435,15 +443,17 @@ export type CssColorFormat =
   | 'hsl'
   | 'oklch'
   | 'oklab'
-  | 'display-p3';
+  | 'display-p3'
+  | 'rec2020';
 
 /**
  * Serialize a Color as a CSS color string in the given format.
  *
  * `'hex'` and `'rgb'` clip to sRGB and round to 8-bit like {@link toRgb};
- * `'hsl'` clips to sRGB (1 decimal); `'display-p3'` clips to P3 (4
- * decimals); `'oklch'` and `'oklab'` are exact (4 decimals, hue 2). An alpha
- * below 1 is appended as `/ alpha` (3 decimals), or as the `aa` byte for hex.
+ * `'hsl'` clips to sRGB (1 decimal); `'display-p3'` and `'rec2020'` clip to
+ * their own gamut (4 decimals); `'oklch'` and `'oklab'` are exact (4
+ * decimals, hue 2). An alpha below 1 is appended as `/ alpha` (3 decimals),
+ * or as the `aa` byte for hex.
  *
  * @param color - Color to serialize
  * @param format - Output format
@@ -462,6 +472,7 @@ export type CssColorFormat =
  * toCss(blue); // → '#3b82f6'
  * toCss(blue, 'oklch'); // → 'oklch(0.6231 0.188 259.81)'
  * toCss(blue, 'display-p3'); // → 'color(display-p3 0.3047 0.5035 0.9338)'
+ * toCss(blue, 'rec2020'); // → 'color(rec2020 0.4419 0.5309 0.9326)'
  * ```
  */
 export function toCss(color: Color, format: CssColorFormat = 'hex'): string {
@@ -516,10 +527,20 @@ export function toCss(color: Color, format: CssColorFormat = 'hex'): string {
             4,
           )})`;
     }
+    case 'rec2020': {
+      const linear = toLinearSrgbInto({ r: 0, g: 0, b: 0, alpha: 1 }, color);
+      applyMatrix3Into(linear, LINEAR_SRGB_TO_LINEAR_REC2020, linear);
+      const channel = (value: number): number =>
+        round(clamp(linearToRec2020Channel(value), 0, 1), 4);
+      const rgb = `${channel(linear.r)} ${channel(linear.g)} ${channel(linear.b)}`;
+      return linear.alpha < 1
+        ? `color(rec2020 ${rgb} / ${round(linear.alpha, 3)})`
+        : `color(rec2020 ${rgb})`;
+    }
     default:
       throw new TypeError(
         withP3Hint(
-          `toCss: unknown format "${String(format)}" (expected hex, rgb, hsl, oklch, oklab or display-p3)`,
+          `toCss: unknown format "${String(format)}" (expected hex, rgb, hsl, oklch, oklab, display-p3 or rec2020)`,
           format,
         ),
       );
