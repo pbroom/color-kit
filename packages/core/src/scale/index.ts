@@ -13,8 +13,8 @@ import {
 } from './legacy.js';
 
 /**
- * Interpolate between two Colors.
- * t = 0 returns color1, t = 1 returns color2.
+ * Return the color at position `t` between `color1` (`t = 0`) and `color2`
+ * (`t = 1`).
  *
  * Without `options` this interpolates OKLCH channels with the hue taking the
  * shortest path around the wheel; achromatic endpoints (chroma at or below
@@ -101,8 +101,8 @@ export function interpolateInto(
 }
 
 /**
- * Generate a color scale (array of colors) between two endpoints.
- * The scale includes both endpoints.
+ * Generate `steps` colors evenly spaced from `from` to `to`, both endpoints
+ * included.
  *
  * @param from - Starting color
  * @param to - Ending color

@@ -98,9 +98,9 @@ export interface MaxChromaForHueOptions {
    */
   gamut?: GamutTarget;
   /**
-   * `lut` uses a cached hue lookup table with interpolation for maximum
-   * throughput across repeated calls. `direct` computes the cusp exactly
-   * for the requested hue without a lightness sweep.
+   * `lut` interpolates a cached hue lookup table, which is faster across
+   * repeated calls. `direct` computes the cusp exactly for the requested hue
+   * without a lightness sweep.
    * @defaultValue `'lut'`
    */
   method?: MaxChromaForHueMethod;

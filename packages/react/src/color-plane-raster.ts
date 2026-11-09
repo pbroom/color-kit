@@ -33,7 +33,7 @@ export type ColorPlaneSource = 'requested' | 'displayed';
 /** How a `displayed` plane paints colors outside the display gamut. */
 export type ColorPlaneEdgeBehavior = 'transparent' | 'clamp';
 
-/** Rasterizer actually in use: WebGL (`'gpu'`) or a 2D canvas (`'cpu'`). */
+/** Rasterizer in use: WebGL (`'gpu'`) or a 2D canvas (`'cpu'`). */
 export type ActiveColorPlaneRenderer = 'gpu' | 'cpu';
 
 /** Renderer `'auto'` resolves to, chosen from the renderer benchmarks. */

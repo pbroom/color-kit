@@ -64,7 +64,7 @@ const SATURATE_CHROMA_SPAN = 0.4;
 
 /**
  * Increase chroma by an absolute fraction of the OKLCH chroma range:
- * adds `amount * 0.4`, clamped below at `0`. Note this is not the relative
+ * adds `amount * 0.4`, clamped below at `0`. This is not the relative
  * scaling that {@link desaturate} applies. Like {@link lighten}, only the
  * channel's own domain is enforced: chroma has no upper bound, so wide-gamut
  * colors (Display P3, Rec. 2020) keep or gain chroma beyond `0.4`. The
@@ -164,14 +164,13 @@ export function setAlpha(color: Color, alpha: number): Color {
 }
 
 /**
- * Mix two colors together.
- * t = 0 returns color1, t = 1 returns color2.
- * Default t = 0.5 (equal mix).
+ * Mix two colors: `t = 0` returns `color1`, `t = 1` returns `color2`, and the
+ * default `t = 0.5` is an equal mix.
  *
  * Without `options` this interpolates L, C, hue (shortest path) and alpha
  * as plain OKLCH channels, exactly like option-less `interpolate()`. In
- * every mode a powerless (achromatic) hue — chroma at or below
- * `ACHROMATIC_CHROMA_THRESHOLD` — takes the other color's hue, so mixing
+ * every mode a powerless hue (an achromatic color, with chroma at or below
+ * `ACHROMATIC_CHROMA_THRESHOLD`) takes the other color's hue, so mixing
  * white into blue stays blue. Without `options` that includes `t = 0` and
  * `t = 1`: an achromatic endpoint comes back with its own L, C and alpha but
  * the other color's hue (CSS Color 4 missing-hue semantics), keeping the hue

@@ -93,7 +93,7 @@ export interface PlaneComputeResponse {
   debugTrace?: PlaneComputeDebugTrace;
 }
 
-/** Something that can execute plane compute requests synchronously. */
+/** A backend that runs plane compute requests synchronously. */
 export interface PlaneComputeBackend {
   /** Backend identifier. */
   kind: PlaneComputeBackendKind;

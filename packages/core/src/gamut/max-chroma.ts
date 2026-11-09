@@ -16,12 +16,12 @@ const PROBE: Color = { l: 0, c: 0, h: 0, alpha: 1 };
 /**
  * Returns the maximum in-gamut OKLCH chroma at a given lightness and hue.
  *
- * This is the geometry primitive used by gamut boundary overlays and
- * model-accurate hue/chroma gradient generation. It bisects chroma between 0
- * and `options.maxChroma` and returns the in-gamut end of the final interval,
- * so the true boundary can sit up to `options.tolerance` higher. Lightness is
- * clamped to `[0, 1]` (0 and 1 return `0`), hue is wrapped, and when
- * `maxChroma` itself is in gamut it is returned as a cap. Allocation-free.
+ * Gamut boundary overlays and model-accurate hue/chroma gradients are built
+ * on it. It bisects chroma between 0 and `options.maxChroma` and returns the
+ * in-gamut end of the final interval, so the true boundary can sit up to
+ * `options.tolerance` higher. Lightness is clamped to `[0, 1]` (0 and 1
+ * return `0`), hue is wrapped, and when `maxChroma` itself is in gamut it is
+ * returned as a cap. Allocation-free.
  *
  * @param lightness - OKLCH lightness, 0-1.
  * @param hue - OKLCH hue in degrees.

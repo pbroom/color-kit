@@ -15,7 +15,7 @@ export interface ColorPlaneFallbackPoints {
 
 /**
  * Positions of the plane color after gamut mapping into sRGB and into
- * Display P3, e.g. to mark where an out-of-gamut pick will actually render.
+ * Display P3, e.g. to mark where an out-of-gamut pick will render.
  *
  * Each point carries the mapped `color` and its normalized `x`/`y` (y down)
  * on the plane; for an in-gamut color both coincide with the color's own

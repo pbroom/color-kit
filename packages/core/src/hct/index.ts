@@ -25,8 +25,8 @@ export type MaxHctChromaForHueMethod = 'lut' | 'direct';
 /** Options for {@link maxHctChromaForHue} and {@link maxHctPeakToneForHue}. */
 export interface MaxHctChromaForHueOptions {
   /**
-   * `lut` uses a cached hue lookup table for maximum throughput across repeated
-   * calls. `direct` performs a per-call tone search + local refinement.
+   * `lut` interpolates a cached hue lookup table, which is faster across
+   * repeated calls. `direct` runs a tone search and local refinement per call.
    * @defaultValue `'lut'`
    */
   method?: MaxHctChromaForHueMethod;
@@ -68,8 +68,8 @@ function resolveHctMaxChromaAtTone(hue: number, tone: number): number {
  * Returns the maximum HCT chroma realizable at a given hue and tone.
  *
  * Asks Material HCT (default viewing conditions, sRGB rendering) for chroma
- * 200 at that hue and tone and reports the chroma the solver actually
- * realizes. Hue is wrapped to `[0, 360)`, tone is clamped to `[0, 100]`, and
+ * 200 at that hue and tone and reports the chroma the solver realizes.
+ * Hue is wrapped to `[0, 360)`, tone is clamped to `[0, 100]`, and
  * the result is never negative.
  *
  * @param hue - HCT hue in degrees.
@@ -218,7 +218,7 @@ function resolveHctHuePeak(
 }
 
 /**
- * Resolve the HCT hue peak: the maximum realized HCT chroma for a hue and the
+ * Returns the HCT hue peak: the maximum realized HCT chroma for a hue and the
  * fractional tone where that peak occurs.
  *
  * Uses Material HCT (default viewing conditions), which is based on an sRGB
@@ -248,10 +248,8 @@ export function maxHctChromaForHue(
 }
 
 /**
- * Convenience helper for the tone component of `maxHctChromaForHue(...)`.
- *
  * Returns the fractional HCT tone (0-100) at which the maximum realized HCT
- * chroma occurs for the provided hue.
+ * chroma occurs for a hue: the `t` of `maxHctChromaForHue(hue, options)`.
  *
  * @param hue - HCT hue in degrees (wrapped).
  * @param options - Method and LUT size, as for {@link maxHctChromaForHue}.

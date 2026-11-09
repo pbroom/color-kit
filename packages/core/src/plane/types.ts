@@ -170,8 +170,8 @@ type PlaneDefinitionWithRequiredModel<Model extends PlaneModel> = Omit<
 /**
  * Model-aware `definePlane()` input.
  *
- * This is useful for TypeScript callers that want model-specific channel
- * narrowing even when they store the definition in a variable first.
+ * Keeps model-specific channel narrowing for TypeScript callers that store
+ * the definition in a variable first.
  */
 export type PlaneDefinitionFor<Model extends PlaneModel> = Model extends 'oklch'
   ? PlaneDefinition<'oklch'>

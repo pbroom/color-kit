@@ -303,7 +303,7 @@ function resolveMethod(options: GamutMapOptions | undefined): GamutMapMethod {
 }
 
 /**
- * Map a Color to the sRGB gamut, writing the result into `out`
+ * Maps a Color into the sRGB gamut, writing the result into `out`
  * (allocation-free). Same algorithm and bit-identical result as
  * `toSrgbGamut`; `out` may be the same object as `color`.
  *
@@ -328,7 +328,7 @@ export function toSrgbGamutInto(
 }
 
 /**
- * Map a Color to the Display P3 gamut, writing the result into `out`
+ * Maps a Color into the Display P3 gamut, writing the result into `out`
  * (allocation-free). Same algorithm and bit-identical result as
  * `toP3Gamut`; `out` may be the same object as `color`.
  *
@@ -353,7 +353,7 @@ export function toP3GamutInto(
 }
 
 /**
- * Map a Color to the sRGB gamut.
+ * Maps a Color into the sRGB gamut.
  *
  * Colors already in gamut (per `inSrgbGamut`, with its GAMUT_EPSILON slack)
  * are returned unchanged. Otherwise `options.method` picks the algorithm:
@@ -390,7 +390,7 @@ export function toSrgbGamut(color: Color, options?: GamutMapOptions): Color {
 }
 
 /**
- * Map a Color to the Display P3 gamut. Same methods and options as
+ * Maps a Color into the Display P3 gamut. Same methods and options as
  * {@link toSrgbGamut}; the default reduces OKLCH chroma at fixed L and h.
  *
  * Colors already in gamut (per {@link inP3Gamut}) are returned unchanged.
