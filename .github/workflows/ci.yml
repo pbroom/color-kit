@@ -74,7 +74,6 @@ jobs:
 
   plane-bench:
     runs-on: ubuntu-latest
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
@@ -92,10 +91,12 @@ jobs:
       - name: Build core package
         run: pnpm --filter @color-kit/core build
 
-      - name: Run plane benchmark
-        run: pnpm --filter @color-kit/core bench:plane > plane-bench-results.json
+      # Ratcheting gate; see packages/core/bench/README.md.
+      - name: Check plane benchmark against baseline
+        run: pnpm --filter @color-kit/core bench:plane:check --out "$GITHUB_WORKSPACE/plane-bench-results.json"
 
       - name: Upload plane benchmark artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: plane-bench-results
