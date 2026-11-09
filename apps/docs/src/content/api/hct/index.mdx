@@ -8,7 +8,7 @@ in. The root `@pbroom/color-kit` entry re-exports the same functions.
   returns the largest chroma sRGB can realize at a hue and tone.
 - **Hue peaks.** [`maxHctChromaForHue`](/api/hct/hct#maxHctChromaForHue)
   returns the peak chroma of a hue and the tone where it occurs;
-  [`maxHctPeakToneForHue`](/api/hct/hct#maxHctPeakToneForHue) returns just the
+  [`maxHctPeakToneForHue`](/api/hct/hct#maxHctPeakToneForHue) returns only the
   tone. Both interpolate a cached per-hue lookup table by default
   (`method: 'lut'`) and search tone directly with `method: 'direct'`.
 

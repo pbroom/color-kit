@@ -68,7 +68,7 @@ class AppRouteErrorBoundary extends Component<BoundaryProps, BoundaryState> {
         <ErrorPageContent
           status="Error"
           title="This page failed to render"
-          description="Something in this page threw while rendering. Other pages still work; try another route or reload."
+          description="It threw an error while rendering. Other pages still work: open another page or reload this one."
           secondaryAction="API reference"
           secondaryLink="/api"
         />
