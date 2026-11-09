@@ -84,6 +84,33 @@ solver works:
 Every returned point passes the public check and is in gamut per
 `inSrgbGamut` or `inP3Gamut`. Traces report the solver as `'contrast-rays'`.
 
+## Fix a failing color
+
+[`ensureContrast`](/api/core/contrast#ensureContrast) answers the question a
+check leaves open: which color is closest to this one and passes? It moves
+OKLCH lightness only, keeps the hue, and reduces chroma only where the gamut
+requires it. The result is in gamut and passes the same unrounded check.
+[`tryEnsureContrast`](/api/core/contrast#tryEnsureContrast) returns `null`
+instead of throwing when no lightness reaches the threshold.
+
+```ts title="ensure.ts"
+import { contrastRatio, ensureContrast, parse, toHex } from '@pbroom/color-kit';
+
+const blue = parse('#3b82f6');
+const white = parse('#fff');
+contrastRatio(blue, white); // → ≈ 3.68, fails AA
+const text = ensureContrast(blue, white); // AA, sRGB, nearest lightness
+toHex(text); // → '#2c72e5'
+contrastRatio(text, white); // → ≈ 4.5
+ensureContrast(blue, white, { direction: 'lighter' }); // throws RangeError
+```
+
+The plane query [`contrastPoint`](/api/plane/queries#getPlaneContrastPoint)
+is the general form: the nearest passing point of any plane, measured in
+normalized plane coordinates, with `'unreachable'` reported when nothing in
+the plane window passes. On an OKLCH lightness-by-chroma plane it lands on
+the edge of the area `contrastRegion` outlines.
+
 ## Try it
 
 The contour is re-checked here with the public functions. Each sample is a

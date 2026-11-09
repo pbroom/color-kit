@@ -93,7 +93,10 @@ export function contrastQueryBudget(query: PlaneContrastQueryOptions): number {
  * Scheduler telemetry signature shared by contrast boundary and region queries.
  */
 export function contrastTelemetrySignature(
-  query: PlaneContrastQueryOptions,
+  query: Pick<
+    PlaneContrastQueryOptions,
+    'metric' | 'apcaPolarity' | 'apcaRole'
+  >,
 ): string {
   const metric = query.metric ?? 'wcag';
   if (metric !== 'apca') {

@@ -12,6 +12,7 @@ export type PlaneQueryKind =
   | 'contrastRegion'
   | 'chromaBand'
   | 'fallbackPoint'
+  | 'contrastPoint'
   | 'gradient';
 
 /** Compute backends that exist today. Only the JS backend is implemented. */
@@ -109,7 +110,8 @@ export interface PlaneTraceBounds {
  *
  * Counters are work done by the solver; queries with closed-form results
  * (`gamutBoundary`, `chromaBand`, `fallbackPoint`, `gradient`) leave them at
- * `0` and only fill the `result*` counts.
+ * `0` and only fill the `result*` counts. `contrastPoint` fills only
+ * `sampleCount` / `scalarEvaluationCount` (its contrast evaluations).
  */
 export interface PlaneQueryTraceSummary {
   /** Kind of the traced query. */

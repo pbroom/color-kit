@@ -1,3 +1,4 @@
+import type { ContrastTargetOptions } from '../contrast/point-solver.js';
 import type { ContrastRegionPathOptions } from '../contrast/types.js';
 import type { ChromaBandMode, GamutTarget } from '../gamut/index.js';
 import type { PlanePoint } from '../geometry/types.js';
@@ -420,6 +421,47 @@ export interface PlaneFallbackPointQuery {
   gamut: GamutTarget;
 }
 
+/**
+ * Options of the `contrastPoint` query: where to start (`color` or `point`,
+ * exactly one), the `reference` color, and the contrast target.
+ *
+ * The target options are the metric, threshold and APCA options of the
+ * contrast region queries (`metric`, `threshold`, `level`, `apcaPreset`,
+ * `apcaPolarity`, `apcaRole`), with the same defaults: WCAG `'AA'` (4.5:1),
+ * or APCA `'body'` (Lc 60) with `'absolute'` polarity and the sampled color
+ * as text. `gamut` is optional: when set, the answer must be inside that
+ * gamut and contrast is measured as displayed in it; when omitted, any
+ * point of the plane may be returned and contrast is measured as displayed
+ * in sRGB (channels clipped, as `contrastRatio` measures by default).
+ */
+export type PlaneContrastPointOptions = ContrastTargetOptions & {
+  /** Color the answer must contrast with. */
+  reference: Color;
+} & (
+    | {
+        /**
+         * Color to start from. It is projected onto the plane first (as
+         * {@link colorToPlane} does, clamped to the plane window), so
+         * channels the plane fixes are replaced by the plane's values.
+         */
+        color: Color;
+        point?: never;
+      }
+    | {
+        /**
+         * Normalized plane point to start from; `x` and `y` are clamped to
+         * `[0, 1]`.
+         */
+        point: PlanePoint;
+        color?: never;
+      }
+  );
+
+/** Query for {@link getPlaneContrastPoint}. */
+export type PlaneContrastPointQuery = PlaneContrastPointOptions & {
+  kind: 'contrastPoint';
+};
+
 /** Query for {@link samplePlaneGradient}. */
 export interface PlaneGradientQuery {
   kind: 'gradient';
@@ -443,6 +485,7 @@ export type PlaneQuery =
   | PlaneContrastRegionQuery
   | PlaneChromaBandQuery
   | PlaneFallbackPointQuery
+  | PlaneContrastPointQuery
   | PlaneGradientQuery;
 
 /** Result of {@link getPlaneGamutBoundary}. */
@@ -525,6 +568,41 @@ export interface PlaneFallbackPointResult {
   point: PlaneColorPoint;
 }
 
+/**
+ * Outcome of a `contrastPoint` query:
+ *
+ * - `'satisfied'`: the start point already meets the target; it is returned
+ *   unchanged.
+ * - `'adjusted'`: the start point fails; the nearest passing point is
+ *   returned.
+ * - `'unreachable'`: no point of the plane window meets the target.
+ */
+export type PlaneContrastPointStatus = 'satisfied' | 'adjusted' | 'unreachable';
+
+/** Result of {@link getPlaneContrastPoint}. */
+export interface PlaneContrastPointResult {
+  kind: 'contrastPoint';
+  /** Whether the start passed, was moved, or nothing on the plane passes. */
+  status: PlaneContrastPointStatus;
+  /**
+   * The passing point nearest to the start, with the plane's color there;
+   * `null` when `status` is `'unreachable'`.
+   */
+  point: PlaneColorPoint | null;
+  /**
+   * Contrast of `point.color` against the reference: the `contrastRatio`
+   * for WCAG, or the signed `contrastAPCA` value (roles per `apcaRole`) for
+   * APCA, measured with the query's gamut. `null` when unreachable.
+   */
+  contrast: number | null;
+  /**
+   * Euclidean distance from the start to `point` in normalized plane
+   * coordinates (each axis spans `[0, 1]`): `0` when satisfied, `null` when
+   * unreachable.
+   */
+  distance: number | null;
+}
+
 /** Result of {@link samplePlaneGradient}. */
 export interface PlaneGradientResult {
   kind: 'gradient';
@@ -540,6 +618,7 @@ export type PlaneQueryResult =
   | PlaneContrastRegionResult
   | PlaneChromaBandResult
   | PlaneFallbackPointResult
+  | PlaneContrastPointResult
   | PlaneGradientResult;
 
 type IsExactly<A, B> = [A] extends [B]

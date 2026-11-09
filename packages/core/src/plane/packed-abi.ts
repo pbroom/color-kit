@@ -8,6 +8,7 @@ import type {
 import type {
   PlaneBoundaryPoint,
   PlaneColorPoint,
+  PlaneContrastPointStatus,
   PlanePoint,
 } from './types.js';
 
@@ -79,6 +80,19 @@ export interface PackedFallbackPointDescriptor extends PackedPlaneQueryDescripto
   gamut: GamutTarget;
 }
 
+/**
+ * Packed metadata of a `contrastPoint` result: one single-point path, or no
+ * path (`pathCount` 0) when `status` is `'unreachable'`.
+ */
+export interface PackedContrastPointDescriptor extends PackedPlaneQueryDescriptorBase<'contrastPoint'> {
+  /** Outcome of the query. */
+  status: PlaneContrastPointStatus;
+  /** Contrast at the point (float64); `null` when unreachable. */
+  contrast: number | null;
+  /** Distance from the start point (float64); `null` when unreachable. */
+  distance: number | null;
+}
+
 /** Packed metadata of a `gradient` result (one path); no extra fields. */
 export type PackedGradientDescriptor =
   PackedPlaneQueryDescriptorBase<'gradient'>;
@@ -94,6 +108,7 @@ export type PackedPlaneQueryDescriptor =
   | PackedContrastRegionDescriptor
   | PackedChromaBandDescriptor
   | PackedFallbackPointDescriptor
+  | PackedContrastPointDescriptor
   | PackedGradientDescriptor;
 
 /** The packed descriptor variant whose `kind` is `K`. */
@@ -203,6 +218,41 @@ export function requireHueField(descriptor: object, label: string): void {
   const value = requireField(descriptor, 'hue', label);
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     invalidPackedResult(`${label} hue must be a finite number.`);
+  }
+}
+
+const CONTRAST_POINT_STATUSES: Record<PlaneContrastPointStatus, true> = {
+  satisfied: true,
+  adjusted: true,
+  unreachable: true,
+};
+
+export function requireContrastPointFields(
+  descriptor: object,
+  label: string,
+): void {
+  requireEnum(descriptor, 'status', CONTRAST_POINT_STATUSES, label);
+  const { status, pathCount } = descriptor as {
+    status: PlaneContrastPointStatus;
+    pathCount: number;
+  };
+  const expectedPathCount = status === 'unreachable' ? 0 : 1;
+  if (pathCount !== expectedPathCount) {
+    invalidPackedResult(
+      `${label} pathCount must be ${expectedPathCount} when status is "${status}".`,
+    );
+  }
+  for (const field of ['contrast', 'distance']) {
+    const value = requireField(descriptor, field, label);
+    const valid =
+      status === 'unreachable'
+        ? value === null
+        : typeof value === 'number' && Number.isFinite(value);
+    if (!valid) {
+      invalidPackedResult(
+        `${label} ${field} must be ${status === 'unreachable' ? 'null' : 'a finite number'} when status is "${status}".`,
+      );
+    }
   }
 }
 

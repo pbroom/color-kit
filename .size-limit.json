@@ -28,6 +28,13 @@
     "limit": "1.5 kB"
   },
   {
+    "name": "color-kit: ensureContrast",
+    "path": "packages/color-kit/dist/index.js",
+    "import": "{ ensureContrast }",
+    "gzip": true,
+    "limit": "2.95 kB"
+  },
+  {
     "name": "@pbroom/color-kit/interop: toLinearSrgbArray",
     "path": "packages/color-kit/dist/interop/index.js",
     "import": "{ toLinearSrgbArray }",

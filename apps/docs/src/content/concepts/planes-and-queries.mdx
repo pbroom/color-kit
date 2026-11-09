@@ -45,11 +45,13 @@ returns a typed result whose `kind` matches the query:
 | `contrastBoundary` | the threshold contour on its own                         |
 | `chromaBand`       | a tonal strip at one requested chroma                    |
 | `fallbackPoint`    | where an out-of-gamut color lands once mapped            |
+| `contrastPoint`    | the nearest point that meets a contrast level, in gamut  |
 | `gradient`         | evenly spaced points between two colors, projected       |
 
 `gamutBoundary`, `contrastBoundary`, `contrastRegion` and `chromaBand` answer
 on OKLCH lightness-by-chroma planes and return empty geometry on others.
-`gamutRegion`, `fallbackPoint` and `gradient` work on every model.
+`gamutRegion`, `fallbackPoint`, `contrastPoint` and `gradient` work on every
+model.
 
 The same queries exist as data: [`runPlaneQuery`](/api/plane/queries#runPlaneQuery)
 takes `{ kind: 'gamutRegion', gamut: 'srgb' }`, which can be cached with

@@ -88,6 +88,8 @@ export {
   contrastAPCA,
   meetsAA,
   meetsAAA,
+  ensureContrast,
+  tryEnsureContrast,
   contrastRegionPath,
   contrastRegionPaths,
   clampContrastRegionSampling,
@@ -103,6 +105,9 @@ export type {
   ContrastRegionPoint,
   ContrastRegionPathOptions,
   ContrastRegionSampling,
+  ContrastTargetOptions,
+  EnsureContrastDirection,
+  EnsureContrastOptions,
 } from './contrast/index.js';
 
 // Color difference
@@ -226,6 +231,10 @@ export type {
   PlaneColorPoint,
   PlaneContrastBoundaryQuery,
   PlaneContrastBoundaryResult,
+  PlaneContrastPointOptions,
+  PlaneContrastPointQuery,
+  PlaneContrastPointResult,
+  PlaneContrastPointStatus,
   PlaneContrastRegionQuery,
   PlaneContrastRegionResult,
   PlaneDefinition,
