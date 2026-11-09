@@ -17,12 +17,14 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import ColorJs from 'colorjs.io';
-import { deltaE2000, deltaEOK, parse } from '../src/index.js';
+import { deltaE2000, deltaEOK, isAchromatic, parse } from '../src/index.js';
 import type { Color } from '../src/index.js';
 import { ciede2000, toLabD50 } from '../src/difference/ciede2000.js';
 
 /** Same bound as `reference-accuracy.test.ts`; observed error is ~1e-13. */
 const FLOAT_TOL = 1e-9;
+// Against colorjs.io when one color is a gray (see the pairwise test).
+const GRAY_REFERENCE_TOL = 1e-5;
 
 type SharmaRow = [
   L1: number,
@@ -185,7 +187,20 @@ describe('toLabD50 (internal)', () => {
 });
 
 describe('deltaE2000', () => {
-  it.each(SHARMA_PAIRS)(
+  // The two antipodal pairs (a2 = -a1, b2 = -b1) have a hue difference of exactly
+  // 180°, the branch point of the formula's hue-difference rule. Through a
+  // Lab → Color → Lab round trip, float noise (which differs between
+  // JavaScript engine versions) decides the branch, and the two branches are
+  // 0.04 apart. The kernel test above covers those pairs exactly.
+  const ROUND_TRIP_PAIRS = SHARMA_PAIRS.filter(
+    ([, a1, b1, , a2, b2]) => !(a1 === -a2 && b1 === -b2),
+  );
+
+  it('keeps all but the two antipodal Sharma pairs for the round trip', () => {
+    expect(ROUND_TRIP_PAIRS).toHaveLength(SHARMA_PAIRS.length - 2);
+  });
+
+  it.each(ROUND_TRIP_PAIRS)(
     'reproduces the Sharma value from parsed lab(%f %f %f) / lab(%f %f %f)',
     (L1, a1, b1, L2, a2, b2, expected) => {
       // Lab → Color (OKLCH) → Lab round trip, including the pairs outside
@@ -199,15 +214,22 @@ describe('deltaE2000', () => {
   );
 
   it('matches colorjs.io for every sample pair', () => {
-    // Includes gray-versus-saturated pairs. Those only meet FLOAT_TOL because
-    // grays convert to an exactly neutral Lab color: with a, b ≈ 1e-13 of
-    // float noise left in, white vs cyan is off by 5e-6 (CIEDE2000 takes the
-    // square root of the chroma product and reads a hue from the noise).
+    // Pairs with a gray get a looser tolerance, because the reference is the
+    // noisy side there: colorjs.io leaves float noise in a gray's Lab a and b
+    // (how much depends on the JavaScript engine version), and CIEDE2000
+    // takes the square root of the chroma product and reads a hue from it,
+    // moving the result by up to ~5e-6. color-kit converts grays to an
+    // exactly neutral Lab color instead.
     for (const a of SAMPLES) {
       for (const b of SAMPLES) {
-        const actual = deltaE2000(parse(a), parse(b));
+        const colorA = parse(a);
+        const colorB = parse(b);
+        const hasGray = isAchromatic(colorA.c) || isAchromatic(colorB.c);
+        const actual = deltaE2000(colorA, colorB);
         const error = Math.abs(actual - colorJsDeltaE(a, b, '2000'));
-        expect(error, `${a} vs ${b}`).toBeLessThan(FLOAT_TOL);
+        expect(error, `${a} vs ${b}`).toBeLessThan(
+          hasGray ? GRAY_REFERENCE_TOL : FLOAT_TOL,
+        );
       }
     }
   });
@@ -218,9 +240,9 @@ describe('deltaE2000', () => {
       expect(a).toBe(0);
       expect(b).toBe(0);
     }
-    // A real but tiny chroma is kept.
-    const [, a, b] = toLabD50({ l: 0.6, c: 1e-9, h: 40, alpha: 1 });
-    expect(Math.hypot(a, b)).toBeGreaterThan(1e-8);
+    // Chroma above the library's achromatic threshold is kept.
+    const [, a, b] = toLabD50({ l: 0.6, c: 1e-5, h: 40, alpha: 1 });
+    expect(Math.hypot(a, b)).toBeGreaterThan(1e-4);
   });
 
   it('is 100 from black to white', () => {

@@ -12,6 +12,7 @@ import {
   xyzD50ToLab,
 } from '../conversion/xyz.js';
 import type { Vec3 } from '../conversion/xyz.js';
+import { isAchromatic } from '../utils/index.js';
 
 const LINEAR: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
 
@@ -19,18 +20,15 @@ const POW_25_7 = 25 ** 7;
 const DEG = Math.PI / 180;
 
 /**
- * Lab chroma below which a converted color is taken to be exactly neutral.
- * Grays convert with a, b ≈ 1e-13 of float noise. CIEDE2000 takes the square
- * root of the chroma product and reads a hue from the noise, which would
- * move a gray-versus-saturated difference by up to ~5e-6 and bypass the
- * formula's rule for neutrals.
- */
-const NEUTRAL_LAB_CHROMA = 1e-10;
-
-/**
  * CIE Lab (D50; L 0-100) of `color`, as CSS Color 4 `lab()` defines it:
  * unclamped linear sRGB -> XYZ (D65) -> Bradford -> XYZ (D50) -> Lab.
- * Float noise around a neutral is removed (see NEUTRAL_LAB_CHROMA).
+ *
+ * An achromatic color (`isAchromatic`, the library-wide rule) gets an exactly
+ * neutral Lab. Its a and b would otherwise hold float noise that differs by
+ * JavaScript engine version, and CIEDE2000 takes the square root of the
+ * chroma product and reads a hue from that noise, which moves a
+ * gray-versus-saturated difference by up to ~5e-6 and bypasses the formula's
+ * rule for neutrals.
  */
 export function toLabD50(color: Color): Vec3 {
   const { r, g, b } = toLinearSrgbInto(LINEAR, color);
@@ -40,10 +38,7 @@ export function toLabD50(color: Color): Vec3 {
       multiplyMatrix3(LINEAR_SRGB_TO_XYZ_D65, [r, g, b]),
     ),
   );
-  if (
-    Math.abs(lab[1]) < NEUTRAL_LAB_CHROMA &&
-    Math.abs(lab[2]) < NEUTRAL_LAB_CHROMA
-  ) {
+  if (isAchromatic(color.c)) {
     lab[1] = 0;
     lab[2] = 0;
   }
