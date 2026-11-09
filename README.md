@@ -219,6 +219,12 @@ From `@pbroom/color-kit/plane`: `runPlaneQuery()` `runPlaneQueries()` `PlaneQuer
 
 `contrastRatio()` `contrastAPCA()` `meetsAA()` `meetsAAA()` `relativeLuminance()`
 
+### Color difference
+
+`deltaEOK()` `deltaE2000()`
+
+`deltaEOK()` is the Euclidean distance in OKLab (black to white is 1). `deltaE2000()` is CIEDE2000 in CIE Lab D50 (black to white is 100). Both ignore alpha and accept colors outside sRGB.
+
 ### Harmony
 
 `complementary()` `analogous()` `triadic()` `tetradic()` `splitComplementary()`

@@ -19,6 +19,10 @@ has no React dependency. `@pbroom/color-kit/core` is an alias of this entry.
   [`meetsAA`](/api/core/contrast#meetsAA)), APCA
   ([`contrastAPCA`](/api/core/contrast#contrastAPCA)) and contrast regions
   ([`contrastRegionPaths`](/api/core/contrast#contrastRegionPaths)).
+- **Color difference.** [`deltaEOK`](/api/core/difference#deltaEOK) is the
+  Euclidean distance in OKLab (black to white is 1);
+  [`deltaE2000`](/api/core/difference#deltaE2000) is CIEDE2000 in CIE Lab D50
+  (black to white is 100). Both ignore alpha and take colors outside sRGB.
 - **Mixing and scales.** [`mix`](/api/core/manipulation#mix),
   [`interpolate`](/api/core/scale#interpolate) and
   [`generateScale`](/api/core/scale#generateScale) use OKLCH by default. Their

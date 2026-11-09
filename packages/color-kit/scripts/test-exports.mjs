@@ -134,6 +134,9 @@ assert.equal(typeof root.definePlane, 'function');
 assert.equal(typeof root.sense, 'function');
 assert.equal(typeof core.definePlane, 'function');
 assert.equal(typeof core.toSvgPath, 'function');
+assert.equal(typeof root.deltaEOK, 'function');
+assert.equal(typeof root.deltaE2000, 'function');
+assert.equal(root.deltaE2000, core.deltaE2000);
 assert.equal(typeof driver.createColorState, 'function');
 assert.equal(typeof driver.colorFromColorAreaPosition, 'function');
 assert.equal(typeof driver.parseColorInputExpression, 'function');
@@ -184,6 +187,8 @@ const cjsReact = require('@pbroom/color-kit/react');
 
 assert.equal(typeof cjsRoot.definePlane, 'function');
 assert.equal(typeof cjsCore.definePlane, 'function');
+assert.equal(typeof cjsRoot.deltaEOK, 'function');
+assert.equal(typeof cjsRoot.deltaE2000, 'function');
 assert.equal(typeof cjsDriver.createColorState, 'function');
 assert.equal(typeof cjsPlane.definePlane, 'function');
 assert.equal(typeof cjsCompute.createPlaneComputeScheduler, 'function');
