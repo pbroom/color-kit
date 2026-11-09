@@ -2,6 +2,7 @@ import type { PlaneQueryKind } from '../../trace/types.js';
 import type { PlaneQuerySpec, PlaneQuerySpecRegistry } from '../query-spec.js';
 import { chromaBandSpec } from './chroma-band.js';
 import { contrastBoundarySpec } from './contrast-boundary.js';
+import { contrastPointSpec } from './contrast-point.js';
 import { contrastRegionSpec } from './contrast-region.js';
 import { fallbackPointSpec } from './fallback-point.js';
 import { gamutBoundarySpec } from './gamut-boundary.js';
@@ -10,6 +11,7 @@ import { gradientSpec } from './gradient.js';
 
 export { getPlaneChromaBand } from './chroma-band.js';
 export { getPlaneContrastBoundary } from './contrast-boundary.js';
+export { getPlaneContrastPoint } from './contrast-point.js';
 export { getPlaneContrastRegion } from './contrast-region.js';
 export { getPlaneFallbackPoint } from './fallback-point.js';
 export { getPlaneGamutBoundary } from './gamut-boundary.js';
@@ -23,6 +25,7 @@ export const PLANE_QUERY_SPECS: PlaneQuerySpecRegistry = {
   contrastRegion: contrastRegionSpec,
   chromaBand: chromaBandSpec,
   fallbackPoint: fallbackPointSpec,
+  contrastPoint: contrastPointSpec,
   gradient: gradientSpec,
 };
 

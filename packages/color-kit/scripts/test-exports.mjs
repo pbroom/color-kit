@@ -68,6 +68,7 @@ const NOT_ON_ROOT = [
   'PlaneQueryCache',
   'unionRegions',
   'inspectPlaneQuery',
+  'getPlaneContrastPoint',
   'clamp',
   'round',
   'lerp',
@@ -157,6 +158,38 @@ assert.equal(typeof interop.packColors, 'function');
 assert.equal(typeof plane.runPlaneQuery, 'function');
 assert.equal(typeof plane.PlaneQueryCache, 'function');
 assert.equal(root.toSvgPath, plane.toSvgPath);
+// Contrast point solvers: the lightness-only helpers are on the root, the
+// plane query on `sense()` and the plane entry.
+assert.equal(typeof root.ensureContrast, 'function');
+assert.equal(typeof root.tryEnsureContrast, 'function');
+assert.equal(root.ensureContrast, core.ensureContrast);
+assert.equal(typeof plane.getPlaneContrastPoint, 'function');
+{
+  const white = root.parse('#ffffff');
+  const fixed = root.ensureContrast(root.parse('#3b82f6'), white);
+  assert.equal(root.toHex(fixed), '#2c72e5');
+  assert.ok(root.contrastRatio(fixed, white) >= 4.5);
+  assert.equal(
+    root.tryEnsureContrast(white, root.parse('#808080'), { threshold: 21 }),
+    null,
+  );
+  const solved = root
+    .sense(root.definePlane({ fixed: { h: 264 } }))
+    .contrastPoint({
+      point: { x: 0.8, y: 0 },
+      reference: white,
+      gamut: 'srgb',
+    });
+  assert.equal(solved.kind, 'contrastPoint');
+  assert.equal(solved.status, 'adjusted');
+  assert.ok(root.inSrgbGamut(solved.point.color));
+  assert.ok(solved.contrast >= 4.5);
+  const [roundTripped] = compute.unpackPlaneQueryResults(
+    compute.packPlaneQueryResults([solved]),
+  );
+  assert.equal(roundTripped.status, 'adjusted');
+  assert.equal(roundTripped.contrast, solved.contrast);
+}
 assert.equal(typeof react.Color, 'function');
 assertReactHooks(react);
 // The control-kit-backed `color-input` subpath was removed with ColorInput.
@@ -201,6 +234,9 @@ assert.equal(typeof cjsCompute.resetDefaultPlaneComputeTelemetry, 'function');
 assert.equal(typeof cjsHct.maxHctChromaForHue, 'function');
 assert.equal(typeof cjsInterop.toLinearSrgbArray, 'function');
 assert.equal(typeof cjsInterop.packColors, 'function');
+assert.equal(typeof cjsRoot.ensureContrast, 'function');
+assert.equal(typeof cjsRoot.tryEnsureContrast, 'function');
+assert.equal(typeof cjsPlane.getPlaneContrastPoint, 'function');
 assert.equal(typeof cjsReact.Color, 'function');
 assertReactHooks(cjsReact);
 assert.throws(() => require('@pbroom/color-kit/react/color-input'), {

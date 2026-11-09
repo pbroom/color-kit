@@ -17,8 +17,10 @@ has no React dependency. `@pbroom/color-kit/core` is an alias of this entry.
   [`gamutBoundaryPath`](/api/core/gamut#gamutBoundaryPath)).
 - **Contrast.** WCAG ([`contrastRatio`](/api/core/contrast#contrastRatio),
   [`meetsAA`](/api/core/contrast#meetsAA)), APCA
-  ([`contrastAPCA`](/api/core/contrast#contrastAPCA)) and contrast regions
-  ([`contrastRegionPaths`](/api/core/contrast#contrastRegionPaths)).
+  ([`contrastAPCA`](/api/core/contrast#contrastAPCA)), contrast regions
+  ([`contrastRegionPaths`](/api/core/contrast#contrastRegionPaths)) and the
+  nearest color that meets a threshold
+  ([`ensureContrast`](/api/core/contrast#ensureContrast)).
 - **Color difference.** [`deltaEOK`](/api/core/difference#deltaEOK) is the
   Euclidean distance in OKLab (black to white is 1);
   [`deltaE2000`](/api/core/difference#deltaE2000) is CIEDE2000 in CIE Lab D50

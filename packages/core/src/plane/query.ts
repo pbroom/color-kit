@@ -5,6 +5,7 @@ import { planeToColor } from './mapping.js';
 import {
   getPlaneChromaBand,
   getPlaneContrastBoundary,
+  getPlaneContrastPoint,
   getPlaneContrastRegion,
   getPlaneFallbackPoint,
   getPlaneGamutBoundary,
@@ -17,6 +18,8 @@ import type {
   PlaneChromaBandQuery,
   PlaneChromaBandResult,
   PlaneContrastBoundaryResult,
+  PlaneContrastPointOptions,
+  PlaneContrastPointResult,
   PlaneContrastRegionResult,
   PlaneContrastQueryOptions,
   PlaneDefinition,
@@ -37,6 +40,7 @@ import type {
 export {
   getPlaneChromaBand,
   getPlaneContrastBoundary,
+  getPlaneContrastPoint,
   getPlaneContrastRegion,
   getPlaneFallbackPoint,
   getPlaneGamutBoundary,
@@ -59,7 +63,8 @@ function runPlaneQueryInternal(
  * ({@link getPlaneGamutBoundary}, {@link getPlaneGamutRegion},
  * {@link getPlaneContrastBoundary}, {@link getPlaneContrastRegion},
  * {@link getPlaneChromaBand}, {@link getPlaneFallbackPoint},
- * {@link samplePlaneGradient}); useful when queries are built as data. The
+ * {@link getPlaneContrastPoint}, {@link samplePlaneGradient}); useful when
+ * queries are built as data. The
  * call is stateless: the plane is resolved on every call and nothing is
  * cached (see {@link PlaneQueryCache}).
  *
@@ -144,9 +149,10 @@ export function runPlaneQueries(
  *   is `'summary'`.
  *
  * Which counters and stages appear depends on the query kind: gamut-region
- * and contrast queries record solver detail; gamut-boundary, chroma-band,
- * fallback-point and gradient queries record only result counts, total time
- * and the `'metrics'` stage. Times vary between runs; never compare them for
+ * and contrast region and boundary queries record solver detail;
+ * contrast-point queries count their contrast evaluations as samples;
+ * gamut-boundary, chroma-band, fallback-point and gradient queries record
+ * only result counts, total time and the `'metrics'` stage. Times vary between runs; never compare them for
  * equality.
  *
  * @param planeDefinition - Plane to query; a {@link Plane} or any
@@ -266,6 +272,11 @@ export interface PlaneSense {
   fallbackPoint: (
     query: Omit<PlaneFallbackPointQuery, 'kind'>,
   ) => PlaneFallbackPointResult;
+  /**
+   * Finds the nearest plane point that meets a contrast threshold (and,
+   * optionally, is in gamut).
+   */
+  contrastPoint: (query: PlaneContrastPointOptions) => PlaneContrastPointResult;
   /** Samples a gradient and projects each sample to plane coordinates. */
   gradient: (query: Omit<PlaneGradientQuery, 'kind'>) => PlaneGradientResult;
 }
@@ -277,8 +288,8 @@ export interface PlaneSense {
  * Each helper forwards to the matching function ({@link getPlaneGamutBoundary},
  * {@link getPlaneGamutRegion}, {@link getPlaneContrastBoundary},
  * {@link getPlaneContrastRegion}, {@link getPlaneChromaBand},
- * {@link getPlaneFallbackPoint}, {@link samplePlaneGradient}). Nothing is
- * cached: the definition is captured as given and resolved on every call.
+ * {@link getPlaneFallbackPoint}, {@link getPlaneContrastPoint},
+ * {@link samplePlaneGradient}). Nothing is cached: the definition is captured as given and resolved on every call.
  *
  * @param planeDefinition - Plane captured by every helper; a {@link Plane} or
  * any {@link PlaneDefinition}.
@@ -293,6 +304,8 @@ export interface PlaneSense {
  * const white = parse('#ffffff');
  * plane.gamutBoundary({ gamut: 'display-p3' }).points.length; // → 101
  * plane.contrastRegion({ reference: white, level: 'AA' }).paths.length; // → 1
+ * plane.contrastPoint({ point: { x: 0.8, y: 0 }, reference: white }).status;
+ * // → 'adjusted'
  * ```
  */
 export function sense(planeDefinition: PlaneDefinition): PlaneSense {
@@ -305,6 +318,7 @@ export function sense(planeDefinition: PlaneDefinition): PlaneSense {
     contrastRegion: (query) => getPlaneContrastRegion(planeDefinition, query),
     chromaBand: (query = {}) => getPlaneChromaBand(planeDefinition, query),
     fallbackPoint: (query) => getPlaneFallbackPoint(planeDefinition, query),
+    contrastPoint: (query) => getPlaneContrastPoint(planeDefinition, query),
     gradient: (query) => samplePlaneGradient(planeDefinition, query),
   };
 }

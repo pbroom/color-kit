@@ -217,7 +217,9 @@ From `@pbroom/color-kit/plane`: `runPlaneQuery()` `runPlaneQueries()` `PlaneQuer
 
 ### Contrast
 
-`contrastRatio()` `contrastAPCA()` `meetsAA()` `meetsAAA()` `relativeLuminance()`
+`contrastRatio()` `contrastAPCA()` `meetsAA()` `meetsAAA()` `relativeLuminance()` `ensureContrast()` `tryEnsureContrast()`
+
+`ensureContrast(color, reference, options)` returns the closest color that meets a WCAG or APCA threshold by changing OKLCH lightness only: hue is kept, and chroma is reduced only where the target gamut requires it. `tryEnsureContrast()` returns `null` instead of throwing when no lightness reaches the threshold. For the nearest passing point in any plane (not just along lightness), use the `contrastPoint` plane query: `sense(plane).contrastPoint({ color, reference, gamut })`.
 
 ### Color difference
 

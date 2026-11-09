@@ -27,13 +27,18 @@ const ALL_KINDS = [
   'contrastRegion',
   'chromaBand',
   'fallbackPoint',
+  'contrastPoint',
   'gradient',
 ] as const;
+
+const DESCRIPTOR_NUMBER_KEYS = new Set(['hue', 'contrast', 'distance']);
 
 /** Rounds every float32-packed geometry value, leaving descriptor fields. */
 function float32Geometry<T>(value: T, key?: string): T {
   if (typeof value === 'number') {
-    return (key === 'hue' ? value : Math.fround(value)) as T;
+    return (
+      key && DESCRIPTOR_NUMBER_KEYS.has(key) ? value : Math.fround(value)
+    ) as T;
   }
   if (Array.isArray(value)) {
     return value.map((entry) => float32Geometry(entry)) as T;
@@ -70,6 +75,13 @@ function queriesForEveryKind(hue: number): PlaneQuery[] {
       kind: 'fallbackPoint',
       color: { l: 0.72, c: 0.38, h: hue, alpha: 1 },
       gamut: 'display-p3',
+    },
+    {
+      kind: 'contrastPoint',
+      point: { x: 0.5, y: 0.5 },
+      reference: parse('#ffffff'),
+      threshold: 7,
+      gamut: 'srgb',
     },
     {
       kind: 'gradient',

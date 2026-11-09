@@ -209,9 +209,10 @@ function resolveContrastThreshold(options: ContrastRegionPathOptions): number {
 
 export function resolveContrastCriterion(
   options: ContrastRegionPathOptions,
+  caller = 'contrastRegionPaths()',
 ): ResolvedContrastCriterion {
   const metric = options.metric ?? 'wcag';
-  assertGamutTarget(options.gamut, 'contrastRegionPaths()');
+  assertGamutTarget(options.gamut, caller);
   const metricOptions: ContrastOptions = { gamut: options.gamut ?? 'srgb' };
   if (metric === 'apca') {
     const preset = options.apcaPreset ?? 'body';
@@ -220,7 +221,7 @@ export function resolveContrastCriterion(
         ? options.threshold
         : APCA_PRESET_THRESHOLDS[preset];
     if (!Number.isFinite(threshold) || threshold <= 0) {
-      throw new Error('contrastRegionPaths() APCA threshold must be > 0');
+      throw new Error(`${caller} APCA threshold must be > 0`);
     }
     const polarity = options.apcaPolarity ?? 'absolute';
     const role = options.apcaRole ?? 'sample-text';
@@ -254,7 +255,7 @@ export function resolveContrastCriterion(
 
   const threshold = resolveContrastThreshold(options);
   if (!Number.isFinite(threshold) || threshold <= 1) {
-    throw new Error('contrastRegionPaths() requires threshold > 1');
+    throw new Error(`${caller} requires threshold > 1`);
   }
   return {
     metric,
