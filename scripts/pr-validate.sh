@@ -247,7 +247,6 @@ core_changed=0
 react_changed=0
 umbrella_changed=0
 automation_changed=0
-agents_changed=0
 format_changed=0
 workspace_changed=0
 needs_browser_smoke_hint=0
@@ -279,10 +278,6 @@ else
         automation_changed=1
         format_changed=1
         ;;
-      AGENTS.md|AGENTS.learnings.archive.md)
-        agents_changed=1
-        format_changed=1
-        ;;
       package.json|pnpm-lock.yaml|pnpm-workspace.yaml)
         workspace_changed=1
         format_changed=1
@@ -305,9 +300,6 @@ fi
 if [[ "$automation_changed" == "1" ]]; then
   add_profile "automation"
 fi
-if [[ "$agents_changed" == "1" ]]; then
-  add_profile "agent-memory"
-fi
 if [[ "$docs_changed" == "1" ]]; then
   add_profile "docs"
 fi
@@ -328,10 +320,6 @@ add_command "lint" "pnpm lint"
 
 if [[ -n "$format_command" ]]; then
   add_command "format" "$format_command"
-fi
-
-if [[ "$agents_changed" == "1" ]]; then
-  add_command "agent-learnings" "pnpm agents:check"
 fi
 
 if [[ "$workspace_changed" == "1" ]]; then

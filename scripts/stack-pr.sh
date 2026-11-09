@@ -137,23 +137,6 @@ if ! merge_tree_output="$(git merge-tree --write-tree HEAD "$parent_ref" 2>&1)";
   exit 1
 fi
 
-if command -v pnpm >/dev/null 2>&1; then
-  agent_learning_check_output=""
-  if agent_learning_check_output="$(pnpm agents:check 2>&1)"; then
-    if [[ -n "$agent_learning_check_output" ]]; then
-      echo "$agent_learning_check_output"
-    fi
-    if echo "$agent_learning_check_output" | rg -q "WARNING:"; then
-      echo "Agent learning warnings detected. Update learnings or mark N/A in the PR checklist."
-    fi
-  else
-    echo "$agent_learning_check_output"
-    echo "Agent learning check errored; continuing without blocking stacked PR submission."
-  fi
-else
-  echo "pnpm not found; skipping optional agent learning check."
-fi
-
 # Track the branch if Graphite is not aware of it yet.
 if ! gt ls --no-interactive | awk -v branch="$branch" '
   {
@@ -245,7 +228,6 @@ trap 'rm -f "$tmp_body"' EXIT
   echo "- pnpm build"
   echo "- pnpm test"
   echo "- pnpm format:check"
-  echo "- [ ] Agent learnings updated (or N/A with reason)"
 } > "$tmp_body"
 
 title="${summary_items[0]}"

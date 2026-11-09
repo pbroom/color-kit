@@ -12,7 +12,7 @@ color-kit is an API-first, UI-agnostic color engine: conversion, contrast, harmo
 | -------------------- | --------------------------------------------------------------------------------------------- |
 | `packages/core`      | The engine: OKLCH-canonical conversion, contrast, harmony, manipulation, gamut, plane queries |
 | `packages/driver`    | Framework-agnostic interaction driver (`ColorApi`, dual requested/displayed state)            |
-| `packages/react`     | React bindings and components                                                                 |
+| `packages/react`     | React bindings: state and plane hooks (no UI components)                                      |
 | `packages/color-kit` | The published umbrella package (`@pbroom/color-kit` on npm)                                   |
 | `apps/docs`          | Docs site (Vite + MDX)                                                                        |
 
