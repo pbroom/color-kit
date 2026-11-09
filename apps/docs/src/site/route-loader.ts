@@ -28,8 +28,6 @@ export function loadRoute(route: SiteRoute): Promise<RouteModule> {
       (reason: unknown) => {
         tracked.status = 'rejected';
         tracked.reason = reason;
-        // Allow a later navigation to retry a failed chunk.
-        cache.delete(route.source);
       },
     );
     cache.set(route.source, tracked);
@@ -38,8 +36,14 @@ export function loadRoute(route: SiteRoute): Promise<RouteModule> {
   return promise;
 }
 
-/** Best-effort warm-up on hover/focus; never throws. */
+/**
+ * Best-effort warm-up on hover/focus; never throws. This user intent, not
+ * render, is what retries a chunk that failed earlier.
+ */
 export function preloadRoute(route: SiteRoute): void {
+  if (cache.get(route.source)?.status === 'rejected') {
+    cache.delete(route.source);
+  }
   loadRoute(route).catch(() => {
     // Swallowed: the real navigation surfaces the error.
   });
