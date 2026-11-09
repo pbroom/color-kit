@@ -3,11 +3,11 @@ import {
   inSrgbGamut,
   mix,
   toHex,
-  toLinearSrgbArray,
   toOklab,
   type Color,
   type InterpolationOptions,
 } from '@pbroom/color-kit';
+import { toLinearSrgbArray } from '@pbroom/color-kit/interop';
 
 export interface DemoRow {
   id: string;

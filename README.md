@@ -16,9 +16,9 @@ Everything ships in one npm package, [`@pbroom/color-kit`](./packages/color-kit)
 
 | Import path                 | What it contains                                                                                                     |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `@pbroom/color-kit`         | The core engine: parsing, conversion, contrast (WCAG, APCA), harmony, manipulation, gamut mapping, and plane queries |
+| `@pbroom/color-kit`         | The everyday toolkit (parsing, conversion, contrast, harmony, manipulation, gamut mapping) plus the plane essentials |
 | `@pbroom/color-kit/core`    | Alias of the root entry                                                                                              |
-| `@pbroom/color-kit/plane`   | Plane definitions and geometry queries only (`definePlane`, `sense`, `toSvgPath`)                                    |
+| `@pbroom/color-kit/plane`   | The full plane API: standalone queries, query cache, region operations, inspection and trace types                   |
 | `@pbroom/color-kit/compute` | Plane compute scheduling on the JS backend, with telemetry                                                           |
 | `@pbroom/color-kit/hct`     | HCT helpers, isolating the bundled Material color utilities solver                                                   |
 | `@pbroom/color-kit/interop` | Tuples and typed arrays for GPU pipelines, three.js, and WebGL/WebGPU                                                |
@@ -207,7 +207,9 @@ palette.setActiveGamut('srgb');
 
 ### Plane Geometry
 
-`definePlane()` `sense()` `runPlaneQuery()` `toSvgPath()` `toSvgCompoundPath()` `PlaneQueryCache()`
+`definePlane()` `definePlaneFromColor()` `sense()` `toSvgPath()` `toSvgCompoundPath()` `colorToPlane()` `planeToColor()`
+
+From `@pbroom/color-kit/plane`: `runPlaneQuery()` `runPlaneQueries()` `PlaneQueryCache()` `inspectPlaneQuery()`, region operations (`unionRegions()` `intersectRegions()` `differenceRegions()` `containsPoint()`) and transforms.
 
 ### Conversion
 
@@ -259,7 +261,7 @@ for (let x = 0; x < width; x++) {
 
 ### Array Interop (GPU, three.js, WebGL/WebGPU)
 
-Also available as `@pbroom/color-kit/interop`.
+Import from `@pbroom/color-kit/interop`; these are not on the root entry.
 
 `to<Space>Array()` `to<Space>Array4()` `from<Space>Array()` `from<Space>Array4()` `packColors()` `unpackColors()`, where `<Space>` is `LinearSrgb`, `Srgb`, `LinearP3`, `P3`, `Oklab`, or `Oklch`.
 

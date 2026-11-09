@@ -33,8 +33,9 @@ has no React dependency. `@pbroom/color-kit/core` is an alias of this entry.
   clamp chroma only at 0, so wide-gamut colors keep chroma above `0.4`; map
   the result to a gamut when you need it on screen.
 
-The root also re-exports the plane, interop and HCT helpers; their pages live
-under those entry points.
+The root also re-exports the plane essentials (`definePlane`, `sense`,
+`toSvgPath`) and the HCT helpers. The rest of the plane API and all array
+interop are on their own entry points only.
 
 ```ts title="brand.ts"
 import {

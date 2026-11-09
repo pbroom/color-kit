@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   GAMUT_EPSILON,
-  containsPoint,
   definePlane,
   inP3Gamut,
   inSrgbGamut,
@@ -10,6 +9,7 @@ import {
   maxChromaAt,
   sense,
 } from '../src/index.js';
+import { containsPoint } from '../src/plane/index.js';
 import type { Color } from '../src/index.js';
 
 /**

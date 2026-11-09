@@ -14,14 +14,13 @@ import {
   maxChromaForHue,
   mix,
   mixInto,
-  packColors,
   parse,
-  runPlaneQueries,
   toCss,
-  unpackColors,
   type Color,
   type PlaneQuery,
 } from '../src/index.js';
+import { packColors, unpackColors } from '../src/interop/index.js';
+import { runPlaneQueries } from '../src/plane/index.js';
 
 const HINT = "use 'display-p3'";
 const EXACT_HINT = "'p3' is not supported; use 'display-p3'";

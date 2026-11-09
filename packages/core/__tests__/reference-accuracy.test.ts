@@ -73,6 +73,8 @@ import {
   toRgbInto,
   toSrgbGamut,
   toSrgbGamutInto,
+} from '../src/index.js';
+import {
   fromLinearP3Array,
   fromLinearSrgbArray,
   fromOklabArray,
@@ -84,7 +86,7 @@ import {
   toOklchArray,
   toP3Array,
   toSrgbArray,
-} from '../src/index.js';
+} from '../src/interop/index.js';
 import type {
   Color,
   HueInterpolationMethod,

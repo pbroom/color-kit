@@ -7,9 +7,9 @@ import {
   fromHex,
   inP3Gamut,
   inSrgbGamut,
-  inspectPlaneQuery,
   sense,
 } from '../src/index.js';
+import { inspectPlaneQuery } from '../src/plane/index.js';
 
 function flattenLightness(paths: Array<Array<{ l: number }>>): number[] {
   return paths.flatMap((path) => path.map((point) => point.l));

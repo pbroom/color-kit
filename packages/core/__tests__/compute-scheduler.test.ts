@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PlaneQueryTrace } from '../src/index.js';
+import type { PlaneQueryTrace } from '../src/plane/index.js';
 import {
   createJsPlaneComputeBackend,
   createPlaneComputeScheduler,

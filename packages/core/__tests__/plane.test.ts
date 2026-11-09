@@ -1,24 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { parse } from '../src/conversion/index.js';
 import {
-  PlaneQueryCache,
   colorToPlane,
-  containsPoint,
-  createPlaneQueryKey,
   definePlane,
   definePlaneFromColor,
-  differenceRegions,
-  inspectPlaneQuery,
-  intersectRegions,
-  getPlaneGamutBoundary,
-  planeHue,
   planeToColor,
-  pointDistance,
-  projectRegionBetweenPlanes,
-  rotateRegion,
-  runCachedPlaneQuery,
-  samplePlaneGradient,
-  scaleRegion,
   toHct,
   toHsl,
   toHsv,
@@ -28,10 +14,26 @@ import {
   toRgb,
   toSvgCompoundPath,
   toSvgPath,
-  translateRegion,
-  unionRegions,
   sense,
 } from '../src/index.js';
+import {
+  PlaneQueryCache,
+  containsPoint,
+  createPlaneQueryKey,
+  differenceRegions,
+  inspectPlaneQuery,
+  intersectRegions,
+  getPlaneGamutBoundary,
+  planeHue,
+  pointDistance,
+  projectRegionBetweenPlanes,
+  rotateRegion,
+  runCachedPlaneQuery,
+  samplePlaneGradient,
+  scaleRegion,
+  translateRegion,
+  unionRegions,
+} from '../src/plane/index.js';
 
 const basePlane = definePlane({
   model: 'oklch',

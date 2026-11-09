@@ -3,10 +3,9 @@ import {
   inP3Gamut,
   inSrgbGamut,
   maxChromaAt,
-  toLinearP3Array,
-  toLinearSrgbArray,
   type Color,
 } from '@pbroom/color-kit';
+import { toLinearP3Array, toLinearSrgbArray } from '@pbroom/color-kit/interop';
 import { Range, Readout } from './controls';
 
 /** Unclamped linear channels: negative or above 1 means out of gamut. */
