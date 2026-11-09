@@ -1,6 +1,7 @@
 /**
  * CIE XYZ, CIE Lab (D50) and the CSS Color 4 predefined RGB spaces that are
- * only needed for parsing (`lab()`, `lch()` and `color()`).
+ * only needed for parsing (`lab()`, `lch()` and `color()`) and for the
+ * CIELAB-based color difference (`deltaE2000`).
  *
  * Matrices are the full float64 values from CSS Color 4 (sample code in
  * https://www.w3.org/TR/css-color-4/#color-conversion-code), which colorjs.io
@@ -19,6 +20,20 @@ export const XYZ_D65_TO_LINEAR_SRGB: Matrix3 = [
   [3.2409699419045226, -1.537383177570094, -0.4986107602930034],
   [-0.9692436362808796, 1.8759675015077202, 0.04155505740717559],
   [0.05563007969699366, -0.20397695888897652, 1.0569715142428786],
+];
+
+/** Linear sRGB -> CIE XYZ (D65); the inverse of the matrix above. */
+export const LINEAR_SRGB_TO_XYZ_D65: Matrix3 = [
+  [0.41239079926595934, 0.357584339383878, 0.1804807884018343],
+  [0.21263900587151027, 0.715168678767756, 0.07219231536073371],
+  [0.01933081871559182, 0.11919477979462598, 0.9505321522496607],
+];
+
+/** CIE XYZ (D65) -> CIE XYZ (D50), linear Bradford chromatic adaptation. */
+export const XYZ_D65_TO_XYZ_D50: Matrix3 = [
+  [1.0479297925449969, 0.022946870601609652, -0.05019226628920524],
+  [0.02962780877005599, 0.9904344267538799, -0.017073799063418826],
+  [-0.009243040646204504, 0.015055191490298152, 0.7518742814281371],
 ];
 
 /** CIE XYZ (D50) -> CIE XYZ (D65), linear Bradford chromatic adaptation. */
@@ -78,6 +93,19 @@ export function labToXyzD50(L: number, a: number, b: number): Vec3 {
     L > KAPPA * EPSILON ? fy ** 3 : L / KAPPA,
     f(fz) * D50_Z,
   ];
+}
+
+/**
+ * Convert CIE XYZ (D50) to CIE Lab (D50; L 0-100). Inputs are not clamped,
+ * so out-of-gamut (including negative) XYZ goes through the linear segment.
+ */
+export function xyzD50ToLab([x, y, z]: Vec3): Vec3 {
+  const f = (t: number) =>
+    t > EPSILON ? Math.cbrt(t) : (KAPPA * t + 16) / 116;
+  const fx = f(x / D50_X);
+  const fy = f(y);
+  const fz = f(z / D50_Z);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
 }
 
 /**

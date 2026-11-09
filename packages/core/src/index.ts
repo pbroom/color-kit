@@ -105,6 +105,9 @@ export type {
   ContrastRegionSampling,
 } from './contrast/index.js';
 
+// Color difference
+export { deltaEOK, deltaE2000 } from './difference/index.js';
+
 // Harmony
 export {
   complementary,
