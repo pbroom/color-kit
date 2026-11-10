@@ -86,27 +86,56 @@ The controller tracks one drag, not one pointer. The binding records the
 until that one lifts or is cancelled, so a second finger cannot steer or end
 the drag.
 
-## Typed input
+## Channel fields
 
-[`parseColorInputExpression`](/api/driver/color-input#parseColorInputExpression) turns
-text typed into a channel field into a number;
-[`resolveColorInputDraftValue`](/api/driver/color-input#resolveColorInputDraftValue) then
-clamps or wraps it. A `%` is a position in the channel's range, also inside
-an expression, while input that starts with an operator is relative to the
-current value and its `%` is a share of the span.
+A number field for one channel needs four things from the driver.
+[`getColorChannelValue`](/api/driver/color-channel#getColorChannelValue) reads a
+channel of the color in OKLCH, RGB or HSL, and
+[`formatColorChannelValue`](/api/driver/color-channel#formatColorChannelValue) turns it
+into the field's text. On commit,
+[`normalizeColorChannelValue`](/api/driver/color-channel#normalizeColorChannelValue)
+clamps the typed number into the channel's range, or wraps it for a hue, and
+[`colorFromColorChannelValue`](/api/driver/color-channel#colorFromColorChannelValue)
+writes it back.
+[`resolveColorChannelRange`](/api/driver/color-channel#resolveColorChannelRange),
+[`resolveColorChannelWrap`](/api/driver/color-channel#resolveColorChannelWrap),
+[`resolveColorChannelSteps`](/api/driver/color-channel#resolveColorChannelSteps) and
+[`getColorChannelLabel`](/api/driver/color-channel#getColorChannelLabel) supply each
+channel's defaults: its range, whether it wraps, its step sizes and its
+accessible label.
 
-```ts title="input.ts"
-import { parseColorInputExpression } from '@pbroom/color-kit/driver';
+```ts title="channel-field.ts"
+import { parse, toHex } from '@pbroom/color-kit';
+import {
+  colorFromColorChannelValue,
+  formatColorChannelValue,
+  getColorChannelValue,
+  normalizeColorChannelValue,
+  resolveColorChannelRange,
+  resolveColorChannelWrap,
+} from '@pbroom/color-kit/driver';
 
-const options = {
-  currentValue: 120,
-  range: [100, 200] as [number, number],
-  allowExpressions: true,
-};
-parseColorInputExpression('50%', options); // → 150
-parseColorInputExpression('50% * 2', options); // → 300
-parseColorInputExpression('+10%', options); // → 130
+const blue = parse('#3b82f6');
+
+// The field's text: the color's red channel, 0-255.
+formatColorChannelValue(getColorChannelValue(blue, 'rgb', 'r'), 0); // → '59'
+
+// Commit what was typed: clamp it into the range, then write it back.
+const range = resolveColorChannelRange('rgb', 'r'); // → [0, 255]
+const wrap = resolveColorChannelWrap('rgb', 'r'); // → false
+const red = normalizeColorChannelValue(Number('300'), range, wrap); // → 255
+toHex(colorFromColorChannelValue(blue, 'rgb', 'r', red)); // → '#ff82f6'
+
+// A hue wraps instead of clamping.
+const hueWraps = resolveColorChannelWrap('hsl', 'h'); // → true
+normalizeColorChannelValue(400, [0, 360], hueWraps); // → 40
 ```
+
+An RGB or HSL edit that lands on a gray keeps the color's OKLCH hue, and the
+HSL hue of a gray reads back as that stored hue, not `0`. Parsing math
+expressions and scrubbing a value by dragging are generic number-field
+behavior and belong to a component library such as
+[control-kit](https://github.com/pbroom/control-kit), not to the driver.
 
 ## Painting
 

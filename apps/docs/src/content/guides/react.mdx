@@ -137,7 +137,11 @@ write with `setChannel`. For text,
 [`formatColorStringInputValue`](/api/driver/color-string-input#formatColorStringInputValue) and
 [`parseColorStringInputValue`](/api/driver/color-string-input#parseColorStringInputValue)
 convert between the color and a CSS color string. Commit with
-`setFromString` on Enter or blur, and drop text that does not parse.
+`setFromString` on Enter or blur, and drop text that does not parse. For a
+number field on one RGB or HSL channel, read with
+[`getColorChannelValue`](/api/driver/color-channel#getColorChannelValue) and commit
+[`colorFromColorChannelValue`](/api/driver/color-channel#colorFromColorChannelValue)
+with `setRequested`; see [Channel fields](/guides/headless-picker#channel-fields).
 
 <Example
   of={ChannelInputs}

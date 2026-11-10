@@ -78,7 +78,6 @@ const DOMAIN_ALIASES = {
   hct: { index: 'hct' },
   interop: { pack: 'buffers', readers: 'readers', writers: 'writers' },
   driver: {
-    'color-input-parser': 'color-input',
     'color-display': 'color-state',
     'multi-color-state': 'multi-color',
   },

@@ -19,8 +19,13 @@ Svelte or web-component binding can be too.
   `aria-valuetext` strings.
 - **Drag.** [`createPointerDragController`](/api/driver/drag-controller#createPointerDragController)
   coalesces pointer moves to one commit per frame.
+- **Channels.** [`getColorChannelValue`](/api/driver/color-channel#getColorChannelValue)
+  and [`colorFromColorChannelValue`](/api/driver/color-channel#colorFromColorChannelValue)
+  read and write one channel of a color in OKLCH, RGB or HSL, with each
+  channel's range, wrap, steps, label and number formatting: what a number
+  field needs to edit a color.
 - **Painting and text.** Slider gradients, swatch styles with an sRGB
-  fallback, and parsing and formatting for channel and string inputs.
+  fallback, and parsing and formatting for CSS color strings.
 
 ```ts title="state.ts"
 import { parse, toCss } from '@pbroom/color-kit';

@@ -80,7 +80,7 @@ export interface ColorUpdateEvent {
   next: ColorState;
   /**
    * OKLCH channel the update edited, when it edited exactly one (see
-   * {@link getColorInputChangedChannel}).
+   * {@link getChangedColorChannel}).
    */
   changedChannel?: ColorChannel;
   /** Input mechanism that caused the update. */
