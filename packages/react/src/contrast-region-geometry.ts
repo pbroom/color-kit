@@ -9,9 +9,9 @@ import {
   type ContrastApcaRole,
   type ContrastMetric,
   type ContrastRegionLevel,
-  type GamutTarget,
   type PlaneContrastRegionResult,
 } from '@color-kit/core';
+import { displayGamutDescriptor, type DisplayGamut } from '@color-kit/driver';
 import type { ColorAreaContrastRegionPoint } from '@color-kit/driver';
 
 // Non-rendering geometry for contrast regions: snaps solver contours onto
@@ -147,7 +147,7 @@ export function resolveContrastThresholdValue(
   return 4.5;
 }
 
-export function mapColorToGamut(color: Color, gamut: GamutTarget): Color {
+export function mapColorToGamut(color: Color, gamut: DisplayGamut): Color {
   return gamut === 'display-p3' ? toP3Gamut(color) : toSrgbGamut(color);
 }
 
@@ -159,13 +159,14 @@ export function mapColorToGamut(color: Color, gamut: GamutTarget): Color {
 export function evaluateContrastCriterionScore(
   sample: Color,
   mappedReference: Color,
-  gamut: GamutTarget,
+  gamut: DisplayGamut,
   metric: ContrastMetric | undefined,
   threshold: number,
   apcaPolarity: ContrastApcaPolarity | undefined,
   apcaRole: ContrastApcaRole | undefined,
 ): number {
-  const options = { gamut };
+  // Core's metrics take a gamut descriptor.
+  const options = { gamut: displayGamutDescriptor(gamut) };
   if (metric === 'apca') {
     const lc =
       (apcaRole ?? 'sample-text') === 'sample-background'
@@ -186,7 +187,7 @@ export function estimateRegionValidityScore(
   regionPath: ColorAreaContrastRegionPoint[],
   mappedReference: Color,
   hue: number,
-  gamut: GamutTarget,
+  gamut: DisplayGamut,
   metric: ContrastMetric | undefined,
   threshold: number,
   apcaPolarity: ContrastApcaPolarity | undefined,
@@ -529,7 +530,7 @@ export interface ContrastRegionFillInput {
   /** Reference color mapped into `gamut`. */
   mappedReference: Color;
   hue: number;
-  gamut: GamutTarget;
+  gamut: DisplayGamut;
   metric: ContrastMetric | undefined;
   threshold: number;
   apcaPolarity: ContrastApcaPolarity | undefined;

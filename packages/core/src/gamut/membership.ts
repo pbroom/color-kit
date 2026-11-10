@@ -1,31 +1,19 @@
-import type { Color, LinearRgb, Oklab, P3 } from '../types.js';
+import type { Color, LinearRgb, Oklab } from '../types.js';
 import { oklabToOklchInto, oklchToOklabInto } from '../conversion/oklch.js';
 import {
   linearRgbToOklabInto,
   oklabToLinearRgbInto,
 } from '../conversion/oklab.js';
-import {
-  linearP3ToLinearSrgbInto,
-  linearSrgbToLinearP3Into,
-} from '../conversion/p3.js';
-import {
-  LMS_TO_LINEAR_P3,
-  LMS_TO_LINEAR_SRGB,
-} from '../conversion/matrices.js';
+import { linearSrgbToLinearP3Into } from '../conversion/p3.js';
+import { applyMatrix3Into } from '../conversion/rec2020.js';
 import { linearChannelsInGamut } from './linear-bounds.js';
-import type { GamutMapMethod, GamutMapOptions, GamutTarget } from './types.js';
+import { displayP3, rec2020, srgb, type Gamut } from './spec.js';
+import { assertGamut } from './target.js';
+import type { GamutMapMethod, GamutMapOptions } from './types.js';
 
 export { GAMUT_LINEAR_MAX, GAMUT_LINEAR_MIN } from './linear-bounds.js';
 
 const LIGHTNESS_ENDPOINT_EPSILON = 1e-9;
-
-export const OKLAB_TO_LINEAR_SRGB_ROWS = LMS_TO_LINEAR_SRGB;
-
-// Composed matrix: linear-sRGB -> linear-P3 multiplied by OKLab(l,m,s) -> linear-sRGB.
-export const OKLAB_TO_LINEAR_P3_ROWS = LMS_TO_LINEAR_P3;
-
-export type TargetRow = readonly [number, number, number];
-export type TargetRows = readonly [TargetRow, TargetRow, TargetRow];
 
 // Scratch objects so membership checks and gamut mapping allocate nothing.
 // Caller input is read (into locals, or by a kernel that reads all fields
@@ -33,7 +21,7 @@ export type TargetRows = readonly [TargetRow, TargetRow, TargetRow];
 // that re-enters these functions cannot corrupt an in-flight result.
 const LAB: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
 const LINEAR: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
-const LINEAR_P3: P3 = { r: 0, g: 0, b: 0, alpha: 1 };
+const LINEAR_TARGET: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
 const TRIAL: Color = { l: 0, c: 0, h: 0, alpha: 1 };
 const CLIPPED: Oklab = { L: 0, a: 0, b: 0, alpha: 1 };
 
@@ -47,22 +35,32 @@ function scratchLinearSrgb(color: Color): LinearRgb {
   return oklabToLinearRgbInto(LINEAR, oklchToOklabInto(LAB, color));
 }
 
-/** Unclamped linear sRGB (or linear P3) of `color`, in shared scratch. */
-function scratchLinearTarget(color: Color, gamut: GamutTarget): LinearRgb {
+/**
+ * Unclamped linear channels of `color` in `spec`'s gamut. Returns a shared
+ * scratch object: read it before the next gamut call.
+ */
+export function scratchLinearTarget(color: Color, spec: Gamut): LinearRgb {
   const linear = scratchLinearSrgb(color);
-  return gamut === 'display-p3'
-    ? linearSrgbToLinearP3Into(LINEAR_P3, linear)
+  return spec.fromLinearSrgb
+    ? applyMatrix3Into(LINEAR_TARGET, spec.fromLinearSrgb, linear)
     : linear;
 }
 
-export function isInTargetGamut(color: Color, gamut: GamutTarget): boolean {
-  return gamut === 'display-p3' ? inP3Gamut(color) : inSrgbGamut(color);
-}
-
-export function getTargetRows(gamut: GamutTarget): TargetRows {
-  return gamut === 'display-p3'
-    ? OKLAB_TO_LINEAR_P3_ROWS
-    : OKLAB_TO_LINEAR_SRGB_ROWS;
+/**
+ * Whether `color` is inside `spec`'s gamut: its unclamped linear channels
+ * are within the gamut's linear bounds. The membership rule behind every
+ * `inXGamut` function and every `gamut` option. Allocation-free. Internal:
+ * does not validate `spec` (see the public {@link inGamut}).
+ */
+export function inGamutSpec(color: Color, spec: Gamut): boolean {
+  const target = scratchLinearTarget(color, spec);
+  return linearChannelsInGamut(
+    target.r,
+    target.g,
+    target.b,
+    spec.linearMin,
+    spec.linearMax,
+  );
 }
 
 /**
@@ -76,6 +74,10 @@ export function getTargetRows(gamut: GamutTarget): TargetRows {
  * {@link inP3Gamut}, exposed for hot loops (e.g. per-pixel canvas rendering)
  * that already hold linear channels and want to avoid re-converting from
  * OKLCH. Allocation-free.
+ *
+ * Not for linear Rec. 2020 channels: Rec. 2020 has a different transfer
+ * function, so the same encoded slack gives different linear bounds. Use
+ * {@link inRec2020Gamut} for that gamut.
  *
  * @param r - Linear red channel.
  * @param g - Linear green channel.
@@ -138,12 +140,47 @@ export function inSrgbGamut(color: Color): boolean {
  * ```
  */
 export function inP3Gamut(color: Color): boolean {
-  const linearP3 = scratchLinearTarget(color, 'display-p3');
+  // Same arithmetic as `inGamutSpec(color, displayP3)`, written out so the
+  // function carries no descriptor.
+  const linearP3 = linearSrgbToLinearP3Into(
+    LINEAR_TARGET,
+    scratchLinearSrgb(color),
+  );
   return isLinearRgbInGamut(linearP3.r, linearP3.g, linearP3.b);
 }
 
-function strictlyInTargetGamut(color: Color, gamut: GamutTarget): boolean {
-  const target = scratchLinearTarget(color, gamut);
+/**
+ * Returns whether an OKLCH color is inside the Rec. 2020 gamut.
+ *
+ * Tests the unclamped linear Rec. 2020 channels, allowing
+ * {@link GAMUT_EPSILON} of slack on the gamma-encoded channels as CSS
+ * Color 4 and colorjs.io define them for `rec2020` (a 2.4 power curve), so
+ * the linear bounds are `[-(GAMUT_EPSILON ** 2.4), (1 + GAMUT_EPSILON) **
+ * 2.4]` rather than the sRGB / Display P3 ones. Allocation-free.
+ *
+ * Rec. 2020 contains all of sRGB and nearly all of Display P3: two thin
+ * slivers of P3 (around its red primary, and around its cyan near white)
+ * are outside.
+ *
+ * @see {@link inP3Gamut}
+ * @see {@link toRec2020Gamut}
+ *
+ * @example
+ * ```ts
+ * import { inP3Gamut, inRec2020Gamut, parse } from '@pbroom/color-kit';
+ *
+ * const green = { l: 0.8, c: 0.4, h: 150, alpha: 1 };
+ * inRec2020Gamut(green); // → true
+ * inP3Gamut(green); // → false
+ * inRec2020Gamut(parse('color(display-p3 1 0 0)')); // → false
+ * ```
+ */
+export function inRec2020Gamut(color: Color): boolean {
+  return inGamutSpec(color, rec2020);
+}
+
+function strictlyInTargetGamut(color: Color, spec: Gamut): boolean {
+  const target = scratchLinearTarget(color, spec);
   return (
     target.r >= 0 &&
     target.r <= 1 &&
@@ -159,17 +196,18 @@ function strictlyInTargetGamut(color: Color, gamut: GamutTarget): boolean {
  * the clipped color's OKLab into `out`, and return the deltaE OK between
  * `color` and the clipped color.
  */
-function clipToGamutLab(out: Oklab, color: Color, gamut: GamutTarget): number {
+function clipToGamutLab(out: Oklab, color: Color, spec: Gamut): number {
   const lab = oklchToOklabInto(LAB, color);
   const L = lab.L;
   const a = lab.a;
   const b = lab.b;
-  const target = scratchLinearTarget(color, gamut);
+  const target = scratchLinearTarget(color, spec);
   target.r = Math.min(Math.max(target.r, 0), 1);
   target.g = Math.min(Math.max(target.g, 0), 1);
   target.b = Math.min(Math.max(target.b, 0), 1);
-  const linear =
-    gamut === 'display-p3' ? linearP3ToLinearSrgbInto(LINEAR, target) : target;
+  const linear = spec.toLinearSrgb
+    ? applyMatrix3Into(LINEAR, spec.toLinearSrgb, target)
+    : target;
   linearRgbToOklabInto(out, linear);
   const dL = out.L - L;
   const da = out.a - a;
@@ -188,13 +226,9 @@ function clipToGamutLab(out: Oklab, color: Color, gamut: GamutTarget): number {
  *
  * @see https://www.w3.org/TR/css-color-4/#binsearch
  */
-function cssMapToGamutInto(
-  out: Color,
-  trial: Color,
-  gamut: GamutTarget,
-): Color {
+function cssMapToGamutInto(out: Color, trial: Color, spec: Gamut): Color {
   const alpha = trial.alpha;
-  let deltaE = clipToGamutLab(CLIPPED, trial, gamut);
+  let deltaE = clipToGamutLab(CLIPPED, trial, spec);
   if (deltaE >= CSS_JND) {
     let min = 0;
     let max = trial.c;
@@ -202,11 +236,11 @@ function cssMapToGamutInto(
     while (max - min > CSS_EPSILON) {
       const chroma = (min + max) / 2;
       trial.c = chroma;
-      if (minInGamut && strictlyInTargetGamut(trial, gamut)) {
+      if (minInGamut && strictlyInTargetGamut(trial, spec)) {
         min = chroma;
         continue;
       }
-      deltaE = clipToGamutLab(CLIPPED, trial, gamut);
+      deltaE = clipToGamutLab(CLIPPED, trial, spec);
       if (deltaE < CSS_JND) {
         if (CSS_JND - deltaE < CSS_EPSILON) break;
         minInGamut = false;
@@ -241,7 +275,7 @@ function cssMapToGamutInto(
 function mapToGamutInto(
   out: Color,
   color: Color,
-  gamut: GamutTarget,
+  spec: Gamut,
   method: GamutMapMethod,
 ): Color {
   const l = color.l;
@@ -265,22 +299,22 @@ function mapToGamutInto(
   trial.alpha = alpha;
 
   let mappedC = c;
-  if (!isInTargetGamut(trial, gamut)) {
+  if (!inGamutSpec(trial, spec)) {
     if (method === 'css') {
-      return cssMapToGamutInto(out, trial, gamut);
+      return cssMapToGamutInto(out, trial, spec);
     }
 
     trial.c = 0;
 
     let lo = 0;
     let hi = c;
-    mappedC = strictlyInTargetGamut(trial, gamut) ? 0 : c;
+    mappedC = strictlyInTargetGamut(trial, spec) ? 0 : c;
 
     const epsilon = 0.0001;
     while (hi - lo > epsilon) {
       const mid = (lo + hi) / 2;
       trial.c = mid;
-      if (strictlyInTargetGamut(trial, gamut)) {
+      if (strictlyInTargetGamut(trial, spec)) {
         lo = mid;
         mappedC = mid;
       } else {
@@ -300,6 +334,111 @@ function resolveMethod(options: GamutMapOptions | undefined): GamutMapMethod {
   // `options` may be a non-object when the function is passed straight to
   // `Array.prototype.map` (which supplies the index); treat that as unset.
   return options?.method === 'css' ? 'css' : 'chroma-reduction';
+}
+
+/**
+ * Maps `color` into `spec`'s gamut, writing into `out`: the implementation
+ * behind every `toXGamutInto` function and the plane `fallbackPoint` query.
+ * Internal: does not validate `spec` (see the public {@link toGamutInto}).
+ */
+export function mapToGamutSpecInto(
+  out: Color,
+  color: Color,
+  spec: Gamut,
+  options?: GamutMapOptions,
+): Color {
+  return mapToGamutInto(out, color, spec, resolveMethod(options));
+}
+
+/**
+ * Returns whether an OKLCH color is inside `gamut`: the generic form of
+ * {@link inSrgbGamut}, {@link inP3Gamut} and {@link inRec2020Gamut}, for any
+ * {@link Gamut} descriptor (built-in or your own).
+ *
+ * Tests the unclamped linear channels of the gamut against its
+ * `linearMin` / `linearMax` bounds. Allocation-free.
+ *
+ * @param color - Color to test.
+ * @param gamut - Gamut descriptor, such as `displayP3`.
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor (a gamut
+ *   name such as `'display-p3'` throws).
+ * @see {@link toGamut}
+ *
+ * @example
+ * ```ts
+ * import { displayP3, inGamut, srgb } from '@pbroom/color-kit';
+ *
+ * const green = { l: 0.7, c: 0.2, h: 150, alpha: 1 };
+ * inGamut(green, displayP3); // → true
+ * inGamut(green, srgb); // → false
+ * ```
+ */
+export function inGamut(color: Color, gamut: Gamut): boolean {
+  assertGamut(gamut, 'inGamut()');
+  return inGamutSpec(color, gamut ?? srgb);
+}
+
+/**
+ * Maps a Color into `gamut`, writing the result into `out`
+ * (allocation-free): the generic form of {@link toSrgbGamutInto},
+ * {@link toP3GamutInto} and {@link toRec2020GamutInto}. `out` may be the
+ * same object as `color`.
+ *
+ * @param out - Object the mapped color is written into.
+ * @param color - Color to map.
+ * @param gamut - Gamut descriptor, such as `displayP3`.
+ * @param options.method - `'chroma-reduction'` (default) or `'css'`; see
+ *   `toSrgbGamut()`
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor.
+ *
+ * @example
+ * ```ts
+ * import { rec2020, toGamutInto } from '@pbroom/color-kit';
+ *
+ * const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
+ * toGamutInto(mapped, { l: 0.7, c: 0.5, h: 150, alpha: 1 }, rec2020);
+ * mapped; // → { l: 0.7, c: ≈ 0.3612, h: 150, alpha: 1 }
+ * ```
+ */
+export function toGamutInto(
+  out: Color,
+  color: Color,
+  gamut: Gamut,
+  options?: GamutMapOptions,
+): Color {
+  assertGamut(gamut, 'toGamut()');
+  return mapToGamutInto(out, color, gamut ?? srgb, resolveMethod(options));
+}
+
+/**
+ * Maps a Color into `gamut`: the generic form of {@link toSrgbGamut},
+ * {@link toP3Gamut} and {@link toRec2020Gamut}, with the same methods and
+ * options, for any {@link Gamut} descriptor (built-in or your own).
+ *
+ * Colors already in gamut (per {@link inGamut}) are returned unchanged.
+ * Returns a new object.
+ *
+ * @param color - Color to map.
+ * @param gamut - Gamut descriptor, such as `displayP3`.
+ * @param options - Mapping method; see {@link toSrgbGamut}.
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor (a gamut
+ *   name such as `'display-p3'` throws).
+ * @see {@link toGamutInto}
+ *
+ * @example
+ * ```ts
+ * import { displayP3, toGamut } from '@pbroom/color-kit';
+ *
+ * toGamut({ l: 0.7, c: 0.35, h: 150, alpha: 1 }, displayP3);
+ * // → { l: 0.7, c: ≈ 0.2689, h: 150, alpha: 1 }
+ * ```
+ */
+export function toGamut(
+  color: Color,
+  gamut: Gamut,
+  options?: GamutMapOptions,
+): Color {
+  return toGamutInto({ ...color }, color, gamut, options);
 }
 
 /**
@@ -324,7 +463,7 @@ export function toSrgbGamutInto(
   color: Color,
   options?: GamutMapOptions,
 ): Color {
-  return mapToGamutInto(out, color, 'srgb', resolveMethod(options));
+  return mapToGamutInto(out, color, srgb, resolveMethod(options));
 }
 
 /**
@@ -349,7 +488,32 @@ export function toP3GamutInto(
   color: Color,
   options?: GamutMapOptions,
 ): Color {
-  return mapToGamutInto(out, color, 'display-p3', resolveMethod(options));
+  return mapToGamutInto(out, color, displayP3, resolveMethod(options));
+}
+
+/**
+ * Maps a Color into the Rec. 2020 gamut, writing the result into `out`
+ * (allocation-free). Same algorithm and bit-identical result as
+ * `toRec2020Gamut`; `out` may be the same object as `color`.
+ *
+ * @param options.method - `'chroma-reduction'` (default) or `'css'`; see
+ *   `toSrgbGamut()`
+ *
+ * @example
+ * ```ts
+ * import { toRec2020GamutInto } from '@pbroom/color-kit';
+ *
+ * const mapped = { l: 0, c: 0, h: 0, alpha: 1 };
+ * toRec2020GamutInto(mapped, { l: 0.7, c: 0.5, h: 150, alpha: 1 });
+ * mapped; // → { l: 0.7, c: ≈ 0.3612, h: 150, alpha: 1 }
+ * ```
+ */
+export function toRec2020GamutInto(
+  out: Color,
+  color: Color,
+  options?: GamutMapOptions,
+): Color {
+  return mapToGamutInto(out, color, rec2020, resolveMethod(options));
 }
 
 /**
@@ -413,4 +577,30 @@ export function toP3Gamut(
 ): Color;
 export function toP3Gamut(color: Color, options?: GamutMapOptions): Color {
   return toP3GamutInto({ ...color }, color, options);
+}
+
+/**
+ * Maps a Color into the Rec. 2020 gamut. Same methods and options as
+ * {@link toSrgbGamut}; the default reduces OKLCH chroma at fixed L and h.
+ *
+ * Colors already in gamut (per {@link inRec2020Gamut}) are returned
+ * unchanged. Returns a new object.
+ *
+ * @see {@link toRec2020GamutInto}
+ *
+ * @example
+ * ```ts
+ * import { toRec2020Gamut } from '@pbroom/color-kit';
+ *
+ * toRec2020Gamut({ l: 0.7, c: 0.5, h: 150, alpha: 1 });
+ * // → { l: 0.7, c: ≈ 0.3612, h: 150, alpha: 1 }
+ * ```
+ */
+export function toRec2020Gamut(color: Color): Color;
+export function toRec2020Gamut(
+  color: Color,
+  options: GamutMapOptions | undefined,
+): Color;
+export function toRec2020Gamut(color: Color, options?: GamutMapOptions): Color {
+  return toRec2020GamutInto({ ...color }, color, options);
 }

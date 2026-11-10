@@ -72,17 +72,17 @@ function runPlaneQueryInternal(
  * {@link PlaneDefinition}.
  * @param query - Query payload; `kind` selects the query type.
  * @returns A new result whose `kind` matches the query's.
- * @throws {TypeError} When `query.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `query.gamut` is not a `Gamut` descriptor.
  * @throws {Error} When `query.kind` is unknown or the plane or query options
  * are invalid.
  * @see {@link inspectPlaneQuery} to also capture a solver trace.
  *
  * @example
  * ```ts
- * import { definePlane, runPlaneQuery } from '@pbroom/color-kit/plane';
+ * import { definePlane, runPlaneQuery, srgb } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } }); // OKLCH, x: l, y: c
- * const result = runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: 'srgb' });
+ * const result = runPlaneQuery(plane, { kind: 'gamutBoundary', gamut: srgb });
  * if (result.kind === 'gamutBoundary') {
  *   result.points.length; // → 101
  *   result.points[0]; // → { l: 0, c: 0, x: 0, y: 1 }
@@ -105,18 +105,21 @@ export function runPlaneQuery(
  * {@link PlaneDefinition}.
  * @param queries - Query payloads to run.
  * @returns A new array with one result per query, in input order.
- * @throws {TypeError} When a query's `gamut` is not `'srgb'` or
- * `'display-p3'`.
+ * @throws {TypeError} When a query's `gamut` is not a `Gamut` descriptor.
  * @throws {Error} When a query kind is unknown or the plane or query options
  * are invalid.
  *
  * @example
  * ```ts
- * import { definePlane, runPlaneQueries } from '@pbroom/color-kit/plane';
+ * import {
+ *   definePlane,
+ *   displayP3,
+ *   runPlaneQueries,
+ * } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } });
  * const results = runPlaneQueries(plane, [
- *   { kind: 'gamutBoundary', gamut: 'display-p3' },
+ *   { kind: 'gamutBoundary', gamut: displayP3 },
  *   { kind: 'chromaBand', requestedChroma: 0.1 },
  * ]);
  * results.map((result) => result.kind); // → ['gamutBoundary', 'chromaBand']
@@ -164,7 +167,7 @@ export function runPlaneQueries(
  * `false`) the sampled scalar grid. `maxStageEntries` (default 128, clamped to
  * `[8, 512]`) caps how many cells, paths and points per path each stage keeps.
  * @returns A new `{ result, trace }` pair.
- * @throws {TypeError} When `query.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `query.gamut` is not a `Gamut` descriptor.
  * @throws {Error} When `query.kind` is unknown or the plane or query options
  * are invalid.
  * @see {@link inspectPlaneQueries}
@@ -208,8 +211,7 @@ export function inspectPlaneQuery<Result extends PlaneQuery = PlaneQuery>(
  * @param options - Trace detail applied to every query; see
  * {@link inspectPlaneQuery}.
  * @returns A new array of `{ result, trace }` pairs, in input order.
- * @throws {TypeError} When a query's `gamut` is not `'srgb'` or
- * `'display-p3'`.
+ * @throws {TypeError} When a query's `gamut` is not a `Gamut` descriptor.
  * @throws {Error} When a query kind is unknown or the plane or query options
  * are invalid.
  *
@@ -298,11 +300,11 @@ export interface PlaneSense {
  * @example
  * ```ts
  * import { parse } from '@pbroom/color-kit';
- * import { definePlane, sense } from '@pbroom/color-kit/plane';
+ * import { definePlane, displayP3, sense } from '@pbroom/color-kit/plane';
  *
  * const plane = sense(definePlane({ fixed: { h: 264 } }));
  * const white = parse('#ffffff');
- * plane.gamutBoundary({ gamut: 'display-p3' }).points.length; // → 101
+ * plane.gamutBoundary({ gamut: displayP3 }).points.length; // → 101
  * plane.contrastRegion({ reference: white, level: 'AA' }).paths.length; // → 1
  * plane.contrastPoint({ point: { x: 0.8, y: 0 }, reference: white }).status;
  * // → 'adjusted'

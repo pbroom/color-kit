@@ -2,7 +2,8 @@ import type { Color } from '../types.js';
 import { clamp, normalizeHue } from '../utils/index.js';
 import { gamutBoundaryPath } from './boundary-path.js';
 import { maxChromaAt } from './max-chroma.js';
-import { assertGamutTarget } from './target.js';
+import { srgb } from './spec.js';
+import { assertGamut } from './target.js';
 import type {
   ChromaBandOptions,
   GamutBoundaryPoint,
@@ -34,7 +35,7 @@ const CHROMA_BAND_CROSSING_ITERATIONS = 18;
  * @param requestedChroma - Desired OKLCH chroma (negative values act as 0).
  * @param options - Mode, sampling, gamut and search options.
  * @returns Colors ordered by increasing lightness.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor.
  * @throws {Error} When `requestedChroma` is not finite, `mode` or
  *   `samplingMode` is unknown, or `steps` is not an integer >= 2 (uniform
  *   mode).
@@ -67,8 +68,8 @@ export function chromaBand(
     );
   }
 
-  assertGamutTarget(options.gamut, 'chromaBand()');
-  const gamut = options.gamut ?? 'srgb';
+  assertGamut(options.gamut, 'chromaBand()');
+  const gamut = options.gamut ?? srgb;
   const alpha = options.alpha ?? 1;
   const h = normalizeHue(hue);
   const requested = Math.max(0, requestedChroma);

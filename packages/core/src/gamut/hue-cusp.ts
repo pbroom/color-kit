@@ -1,16 +1,12 @@
 import type { Color } from '../types.js';
-import { OKLAB_TO_LMS } from '../conversion/matrices.js';
+import { OKLAB_TO_LMS, type Matrix3 } from '../conversion/matrices.js';
 import { clamp, normalizeHue } from '../utils/index.js';
 import { findPositiveCubicRoot, type CubicCoefficients } from './cubic.js';
 import { maxChromaAt } from './max-chroma.js';
-import { assertGamutTarget } from './target.js';
-import {
-  getTargetRows,
-  isInTargetGamut,
-  type TargetRow,
-  type TargetRows,
-} from './membership.js';
-import type { GamutTarget, HueCusp, MaxChromaForHueOptions } from './types.js';
+import { assertGamut } from './target.js';
+import { inGamutSpec } from './membership.js';
+import { srgb, type Gamut } from './spec.js';
+import type { HueCusp, MaxChromaForHueOptions } from './types.js';
 
 const DEFAULT_HUE_CUSP_LUT_SIZE = 4096;
 const HUE_CUSP_CHANNEL_EPSILON = 1e-7;
@@ -40,7 +36,7 @@ function resolveHueLmsPrimeSlopes(
 }
 
 function channelPolynomialForSaturation(
-  row: TargetRow,
+  row: Matrix3[number],
   slopes: readonly [number, number, number],
 ): CubicCoefficients {
   const [mL, mM, mS] = row;
@@ -55,7 +51,7 @@ function channelPolynomialForSaturation(
 }
 
 function evaluateTargetChannelsAtSaturation(
-  rows: TargetRows,
+  rows: Matrix3,
   slopes: readonly [number, number, number],
   saturation: number,
 ): readonly [number, number, number] {
@@ -79,13 +75,13 @@ function evaluateTargetChannelsAtSaturation(
   ];
 }
 
-function resolveHueCuspDirect(hue: number, gamut: GamutTarget): HueCusp {
+function resolveHueCuspDirect(hue: number, gamut: Gamut): HueCusp {
   const h = normalizeHue(hue);
   const hueRad = (h * Math.PI) / 180;
   const hueUnitA = Math.cos(hueRad);
   const hueUnitB = Math.sin(hueRad);
 
-  const rows = getTargetRows(gamut);
+  const rows = gamut.lmsToLinear;
   const slopes = resolveHueLmsPrimeSlopes(hueUnitA, hueUnitB);
 
   let bestSaturation = Number.POSITIVE_INFINITY;
@@ -129,12 +125,10 @@ function getNormalizedHueCuspLutSize(lutSize?: number): number {
   return normalized >= 16 ? normalized : DEFAULT_HUE_CUSP_LUT_SIZE;
 }
 
-function getHueCuspLut(
-  gamut: GamutTarget,
-  lutSize?: number,
-): readonly HueCusp[] {
+function getHueCuspLut(gamut: Gamut, lutSize?: number): readonly HueCusp[] {
   const size = getNormalizedHueCuspLutSize(lutSize);
-  const cacheKey = `${gamut}:${size}`;
+  // Keyed by id: a descriptor may be a structured clone of another.
+  const cacheKey = `${gamut.id}:${size}`;
   const cached = hueCuspLutCache.get(cacheKey);
   if (cached) return cached;
 
@@ -150,7 +144,7 @@ function getHueCuspLut(
 
 function sampleHueCuspLut(
   hue: number,
-  gamut: GamutTarget,
+  gamut: Gamut,
   lutSize?: number,
 ): HueCusp {
   const table = getHueCuspLut(gamut, lutSize);
@@ -177,7 +171,7 @@ function sampleHueCuspLut(
 
   // The cusp curve changes branch near sRGB blue; linear interpolation across
   // those samples can overshoot out of gamut. Fall back only for that rare case.
-  if (!isInTargetGamut(candidate, gamut)) {
+  if (!inGamutSpec(candidate, gamut)) {
     return resolveHueCuspDirect(h, gamut);
   }
 
@@ -189,32 +183,33 @@ function sampleHueCuspLut(
  * in-gamut chroma for a fixed hue.
  *
  * `'direct'` solves the cusp analytically without scanning lightness.
- * `'lut'` (the default) interpolates a per-gamut lookup table built on first
- * use and cached, for high-throughput repeated queries (e.g. interactive
+ * `'lut'` (the default) interpolates a lookup table built on first use and
+ * cached per gamut `id`, for high-throughput repeated queries (e.g. interactive
  * wheels/overlays); its result can differ from `'direct'` by interpolation
  * error.
  *
  * @param hue - OKLCH hue in degrees.
  * @param options - Gamut, method and LUT size.
  * @returns The cusp `{ l, c }`.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor.
  * @throws {Error} When `options.method` is not `'direct'` or `'lut'`.
  * @see {@link maxChromaAt}
  *
  * @example
  * ```ts
- * import { maxChromaForHue } from '@pbroom/color-kit';
+ * import { displayP3, maxChromaForHue, rec2020 } from '@pbroom/color-kit';
  *
  * maxChromaForHue(250); // → { l: ≈ 0.6614, c: ≈ 0.1872 }
- * maxChromaForHue(250, { gamut: 'display-p3' }); // → { l: ≈ 0.6227, c: ≈ 0.2276 }
+ * maxChromaForHue(250, { gamut: displayP3 }); // → { l: ≈ 0.6227, c: ≈ 0.2276 }
+ * maxChromaForHue(250, { gamut: rec2020 }); // → { l: ≈ 0.4316, c: ≈ 0.3658 }
  * ```
  */
 export function maxChromaForHue(
   hue: number,
   options: MaxChromaForHueOptions = {},
 ): HueCusp {
-  assertGamutTarget(options.gamut, 'maxChromaForHue()');
-  const gamut = options.gamut ?? 'srgb';
+  assertGamut(options.gamut, 'maxChromaForHue()');
+  const gamut = options.gamut ?? srgb;
   const method = options.method ?? 'lut';
 
   if (method === 'direct') {
@@ -228,7 +223,7 @@ export function maxChromaForHue(
   throw new Error("maxChromaForHue() method must be 'direct' or 'lut'");
 }
 
-function resolveHueCuspFallback(hue: number, gamut: GamutTarget): HueCusp {
+function resolveHueCuspFallback(hue: number, gamut: Gamut): HueCusp {
   // Rare fallback: coarse scan + local refinement using the existing boundary primitive.
   const coarseSteps = 96;
   let bestLightness = 0;

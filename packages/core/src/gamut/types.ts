@@ -1,17 +1,12 @@
 import { MAX_CHROMA_SEARCH_TOLERANCE } from './constants.js';
+import type { Gamut } from './spec.js';
 
-export const DEFAULT_MAX_CHROMA = 0.4;
 export const DEFAULT_TOLERANCE = MAX_CHROMA_SEARCH_TOLERANCE;
 export const DEFAULT_MAX_ITERATIONS = 30;
 
 /**
- * RGB gamut a query targets: `'srgb'` or `'display-p3'`. The former `'p3'`
- * spelling was removed and throws a `TypeError` wherever a gamut is read.
- */
-export type GamutTarget = 'srgb' | 'display-p3';
-
-/**
- * Gamut mapping algorithm for `toSrgbGamut` / `toP3Gamut`:
+ * Gamut mapping algorithm for `toGamut` and the named `toSrgbGamut` /
+ * `toP3Gamut` / `toRec2020Gamut`:
  *
  * - `'chroma-reduction'`: reduce OKLCH chroma at fixed lightness and hue.
  * - `'css'`: CSS Color 4 gamut mapping (chroma bisection with a 0.02
@@ -19,7 +14,10 @@ export type GamutTarget = 'srgb' | 'display-p3';
  */
 export type GamutMapMethod = 'chroma-reduction' | 'css';
 
-/** Options for {@link toSrgbGamut}, {@link toP3Gamut} and their `Into` forms. */
+/**
+ * Options for {@link toGamut}, {@link toSrgbGamut}, {@link toP3Gamut},
+ * {@link toRec2020Gamut} and their `Into` forms.
+ */
 export interface GamutMapOptions {
   /**
    * Gamut mapping algorithm; see {@link GamutMapMethod}.
@@ -34,10 +32,10 @@ export interface GamutMapOptions {
  */
 export interface MaxChromaAtOptions {
   /**
-   * Target gamut.
-   * @defaultValue `'srgb'`
+   * Target gamut: an imported descriptor such as `displayP3`.
+   * @defaultValue `srgb`
    */
-  gamut?: GamutTarget;
+  gamut?: Gamut;
   /**
    * Width of the bisection interval at which the search stops; the result
    * can be up to this much below the true boundary chroma. Lower values
@@ -54,8 +52,11 @@ export interface MaxChromaAtOptions {
   maxIterations?: number;
   /**
    * Upper chroma search bound. If a color at this chroma is already in
-   * gamut, it is returned as is, so this also acts as a chroma cap.
-   * @defaultValue `0.4`
+   * gamut, it is returned as is, so this also acts as a chroma cap. The
+   * default is the gamut's own `maxChroma`, which clears its largest chroma:
+   * `0.4` for sRGB and Display P3, `0.5` for Rec. 2020 (whose green primary
+   * reaches about 0.468).
+   * @defaultValue `gamut.maxChroma`
    */
   maxChroma?: number;
   /**
@@ -93,10 +94,10 @@ export type MaxChromaForHueMethod = 'direct' | 'lut';
 /** Options for {@link maxChromaForHue}. */
 export interface MaxChromaForHueOptions {
   /**
-   * Target gamut.
-   * @defaultValue `'srgb'`
+   * Target gamut: an imported descriptor such as `displayP3`.
+   * @defaultValue `srgb`
    */
-  gamut?: GamutTarget;
+  gamut?: Gamut;
   /**
    * `lut` interpolates a cached hue lookup table, which is faster across
    * repeated calls. `direct` computes the cusp exactly for the requested hue

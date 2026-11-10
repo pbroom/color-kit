@@ -1,6 +1,6 @@
 import type { Color } from '@color-kit/core';
 import { toCss, toHex } from '@color-kit/core';
-import { assertActiveGamut, type GamutTarget } from './color-state.js';
+import { assertActiveGamut, type DisplayGamut } from './color-state.js';
 
 /**
  * Inline style pair for a color swatch. Set both properties: browsers that do
@@ -58,7 +58,7 @@ export function getColorDisplayHex(color: Color): string {
 export function getColorDisplayStyles(
   displayed: Color,
   srgbFallback: Color,
-  activeGamut: GamutTarget,
+  activeGamut: DisplayGamut,
 ): ColorDisplayStyles {
   assertActiveGamut(activeGamut, 'getColorDisplayStyles()');
   if (activeGamut === 'display-p3') {

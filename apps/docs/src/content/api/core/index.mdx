@@ -8,13 +8,16 @@ has no React dependency. `@pbroom/color-kit/core` is an alias of this entry.
 - **Conversion.** [`parse`](/api/core/conversion#parse) and
   [`tryParse`](/api/core/conversion#tryParse) read any CSS Color 4 string;
   [`toCss`](/api/core/conversion#toCss) writes hex, `rgb()`, `hsl()`, `oklch()`,
-  `oklab()` or `color(display-p3 …)`. `to*`/`from*` pairs cover RGB, HSL,
+  `oklab()`, `color(display-p3 …)` or `color(rec2020 …)`. `to*`/`from*` pairs cover RGB, HSL,
   HSV, HCT, OKLab and Display P3, with allocation-free `*Into` variants.
 - **Gamut.** Membership ([`inSrgbGamut`](/api/core/gamut#inSrgbGamut),
-  [`inP3Gamut`](/api/core/gamut#inP3Gamut)), mapping
-  ([`toSrgbGamut`](/api/core/gamut#toSrgbGamut), [`toP3Gamut`](/api/core/gamut#toP3Gamut))
+  [`inP3Gamut`](/api/core/gamut#inP3Gamut),
+  [`inRec2020Gamut`](/api/core/gamut#inRec2020Gamut)), mapping
+  ([`toSrgbGamut`](/api/core/gamut#toSrgbGamut), [`toP3Gamut`](/api/core/gamut#toP3Gamut),
+  [`toRec2020Gamut`](/api/core/gamut#toRec2020Gamut))
   and geometry ([`maxChromaAt`](/api/core/gamut#maxChromaAt),
-  [`gamutBoundaryPath`](/api/core/gamut#gamutBoundaryPath)).
+  [`gamutBoundaryPath`](/api/core/gamut#gamutBoundaryPath)) for sRGB, Display
+  P3 and Rec. 2020.
 - **Contrast.** WCAG ([`contrastRatio`](/api/core/contrast#contrastRatio),
   [`meetsAA`](/api/core/contrast#meetsAA)), APCA
   ([`contrastAPCA`](/api/core/contrast#contrastAPCA)), contrast regions

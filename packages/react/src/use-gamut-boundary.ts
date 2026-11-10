@@ -1,5 +1,10 @@
 import { useCallback, useMemo } from 'react';
-import { toSvgPath, type GamutTarget } from '@color-kit/core';
+import { toSvgPath } from '@color-kit/core';
+import {
+  assertDisplayGamut,
+  displayGamutDescriptor,
+  type DisplayGamut,
+} from '@color-kit/driver';
 import {
   getColorAreaGamutBoundaryPoints,
   toColorAreaPlaneDefinition,
@@ -43,7 +48,7 @@ export interface UseGamutBoundaryOptions extends ColorPlaneQueryOptions {
    * Gamut whose boundary is traced.
    * @defaultValue 'srgb'
    */
-  gamut?: GamutTarget;
+  gamut?: DisplayGamut;
   /** Hue of the boundary slice in degrees. Defaults to the plane color's hue. */
   hue?: number;
   /**
@@ -126,6 +131,7 @@ export function useGamutBoundary(
     isDragging = false,
     performanceProfile = 'auto',
   } = options;
+  assertDisplayGamut(gamut, 'gamutBoundary()');
   const { color, axes } = useStablePlane(plane);
   const hue = hueOption ?? color.h;
   const effectiveSteps = Math.max(
@@ -169,7 +175,7 @@ export function useGamutBoundary(
       queries: [
         {
           kind: 'gamutBoundary',
-          gamut,
+          gamut: displayGamutDescriptor(gamut),
           hue,
           steps: effectiveSteps,
           simplifyTolerance,

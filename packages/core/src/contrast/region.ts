@@ -15,7 +15,7 @@ import type {
  * Each side of the region (darker or lighter than the reference) is traced
  * as one luminance level curve along rays from black. Contour pieces start
  * and end exactly where the curve meets the gamut edge (with the
- * `GAMUT_EPSILON` slack of `inSrgbGamut` / `inP3Gamut`), the chroma axis, or
+ * `GAMUT_EPSILON` slack of the gamut's membership test), the chroma axis, or
  * `maxChroma`; `initialSamples`, `errorTolerance`, and `maxDepth` only set
  * how finely the curve between those ends is sampled. Every returned point
  * passes `contrastRatio` / `contrastAPCA` with the region's gamut and is in
@@ -31,7 +31,7 @@ import type {
  * @param trace - Internal tracing context used by the plane query layer;
  *   omit it.
  * @returns Contour paths of `{ l, c }` points, longest first.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`,
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor,
  *   or when an option removed with an earlier solver (such as
  *   `lightnessSteps` or `engine`) is set.
  * @throws {Error} When the threshold is out of range, `initialSamples` is not

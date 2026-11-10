@@ -11,6 +11,7 @@ import {
   type ContrastMetric,
 } from '../src/index.js';
 import { inspectPlaneQuery } from '../src/plane/index.js';
+import { srgb } from '../src/index.js';
 
 /**
  * Regression cases from a brute-force review of the contrast-region solver
@@ -52,7 +53,7 @@ function bruteForceCrossings(
   for (let row = 1; row < rows; row += 1) {
     const l = row / rows;
     const cMax = maxChromaAt(l, testCase.hue, {
-      gamut: 'srgb',
+      gamut: srgb,
       maxChroma: 0.4,
     });
     if (cMax <= 1e-6) continue;

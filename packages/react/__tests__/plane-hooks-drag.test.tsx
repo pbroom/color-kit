@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
-import type { Color } from '@color-kit/core';
+import { srgb, type Color } from '@color-kit/core';
 import {
   createPlaneComputeScheduler,
   packPlaneQueryResults,
@@ -45,7 +45,7 @@ function stubComputeWorker(
         ? packPlaneQueryResults([
             query.kind === 'chromaBand'
               ? { kind: 'chromaBand', hue, points: [] }
-              : { kind: 'gamutBoundary', gamut: 'srgb', hue, points: [] },
+              : { kind: 'gamutBoundary', gamut: srgb, hue, points: [] },
           ])
         : scheduler.run({
             plane: message.plane,

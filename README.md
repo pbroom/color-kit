@@ -57,7 +57,7 @@ pnpm add @pbroom/color-kit@next
 Define a plane through a color space and query its geometry:
 
 ```ts
-import { definePlane, sense, toSvgPath } from '@pbroom/color-kit';
+import { definePlane, displayP3, sense, toSvgPath } from '@pbroom/color-kit';
 
 const plane = definePlane({
   model: 'oklch',
@@ -67,7 +67,7 @@ const plane = definePlane({
 });
 
 const query = sense(plane);
-const boundary = query.gamutBoundary({ gamut: 'display-p3' });
+const boundary = query.gamutBoundary({ gamut: displayP3 });
 const d = toSvgPath(boundary.points); // resolution-independent SVG path
 ```
 
@@ -243,13 +243,38 @@ From `@pbroom/color-kit/plane`: `runPlaneQuery()` `runPlaneQueries()` `PlaneQuer
 
 ### Gamut
 
-`inSrgbGamut()` `inP3Gamut()` `toSrgbGamut()` `toP3Gamut()`
+`srgb` `displayP3` `rec2020` `inGamut()` `toGamut()` `inSrgbGamut()` `inP3Gamut()` `inRec2020Gamut()` `toSrgbGamut()` `toP3Gamut()` `toRec2020Gamut()` `maxChromaAt()` `maxChromaForHue()` `gamutBoundaryPath()` `chromaBand()`
+
+A gamut is an imported object, never a string. Every core `gamut` option, including the plane queries' and the contrast functions', takes a `Gamut` descriptor: `srgb` (the default), `displayP3`, `rec2020`, or one of your own. Bundles carry only the gamuts they import, and a custom gamut is an object of the same shape with its own `id`, so it works exactly like a built-in. Descriptors are plain data and survive `structuredClone` and `postMessage`. Passing a string such as `'display-p3'` throws a `TypeError`; replace `{ gamut: 'display-p3' }` with `{ gamut: displayP3 }`.
+
+```ts
+import {
+  inP3Gamut,
+  inRec2020Gamut,
+  maxChromaAt,
+  rec2020,
+  toRec2020Gamut,
+  type Gamut,
+} from '@pbroom/color-kit';
+
+const vivid = { l: 0.8, c: 0.4, h: 150, alpha: 1 };
+inP3Gamut(vivid); // false
+inRec2020Gamut(vivid); // true
+maxChromaAt(0.6, 250, { gamut: rec2020 }); // 0.24578857421875
+toRec2020Gamut({ l: 0.7, c: 0.5, h: 150, alpha: 1 }).c; // ≈ 0.3612
+
+// A custom gamut: the same shape with a unique id (caches key on it).
+const mine: Gamut = { ...rec2020, id: 'my-gamut' };
+maxChromaAt(0.6, 250, { gamut: mine }); // 0.24578857421875
+```
+
+Plane query results carry the descriptor back (`result.gamut.id` is `'srgb'`, `'display-p3'` or `'rec2020'`). `toCss(color, 'rec2020')` still takes a format name and writes `color(rec2020 r g b)`. The driver and React picker state model the gamut a color is displayed in and keep taking the strings `'srgb'` or `'display-p3'` (`activeGamut`, `setActiveGamut`, hook and component `gamut` options). Rec. 2020 holds all of sRGB but not quite all of Display P3: two thin slivers of P3, around its red primary and around its cyan near white, lie outside it.
 
 ### Allocation-free variants
 
 For per-pixel and per-frame loops, the hot-path functions have `*Into` twins that write into a caller-supplied `out` object (passed first) and return it. They create no result or intermediate objects and return bit-identical results to the allocating functions, which are thin wrappers over them. That is not a guarantee of zero heap allocation: JavaScript engines may still box the numbers written into object fields (V8 does in loops it does not fully inline and optimize), and V8 often optimizes away the allocating functions' short-lived objects anyway. The object-returning API stays the default; reach for `*Into` only where a profiler shows allocation or GC pressure, and benchmark the change at your call site.
 
-`toOklabInto()` `fromOklabInto()` `toLinearSrgbInto()` `fromLinearSrgbInto()` `toRgbInto()` `fromRgbInto()` `toP3Into()` `fromP3Into()` `mixInto()` `interpolateInto()` `toSrgbGamutInto()` `toP3GamutInto()`
+`toOklabInto()` `fromOklabInto()` `toLinearSrgbInto()` `fromLinearSrgbInto()` `toRgbInto()` `fromRgbInto()` `toP3Into()` `fromP3Into()` `mixInto()` `interpolateInto()` `toSrgbGamutInto()` `toP3GamutInto()` `toRec2020GamutInto()`
 
 Low-level converters: `srgbToLinearInto()` `linearToSrgbInto()` `linearRgbToOklabInto()` `oklabToLinearRgbInto()` `oklabToOklchInto()` `oklchToOklabInto()` `linearSrgbToLinearP3Into()` `linearP3ToLinearSrgbInto()` `linearP3ToP3Into()` `p3ToLinearP3Into()`
 

@@ -1,11 +1,9 @@
 import type { Color, LinearRgb } from '../types.js';
-import type { GamutTarget } from '../gamut/types.js';
-import { assertGamutTarget } from '../gamut/target.js';
+import type { Gamut, GamutTransfer } from '../gamut/spec.js';
+import { assertGamut } from '../gamut/target.js';
+import { decodeTransfer, encodeTransfer } from '../gamut/transfer.js';
 import { toLinearSrgbInto } from '../conversion/into.js';
-import {
-  linearP3ToLinearSrgbInto,
-  linearSrgbToLinearP3Into,
-} from '../conversion/p3.js';
+import { applyMatrix3Into } from '../conversion/rec2020.js';
 import {
   clamp,
   linearToSrgbChannel,
@@ -19,8 +17,9 @@ import {
  *   continuous function of the color (and agrees with colorjs.io for
  *   in-gamut colors).
  * - `'8bit'`: quantize the gamma-encoded channels to 8 bits first, the way
- *   hex-based tools (WebAIM, browser devtools) measure. For the sRGB gamut
- *   this reproduces color-kit 0.1 results bit for bit.
+ *   hex-based tools (WebAIM, browser devtools) measure. Channels are
+ *   quantized in the display gamut's own encoding (its transfer curve). For
+ *   the sRGB gamut this reproduces color-kit 0.1 results bit for bit.
  */
 export type ContrastPrecision = 'exact' | '8bit';
 
@@ -30,13 +29,14 @@ export type ContrastPrecision = 'exact' | '8bit';
  */
 export interface ContrastOptions {
   /**
-   * Display gamut the colors are shown in. Channels are clipped to this
-   * gamut before luminance is measured, so out-of-gamut colors are measured
-   * as the display would render them by clipping. Contrast regions with
-   * `gamut: 'display-p3'` use the same setting.
-   * @defaultValue `'srgb'`
+   * Gamut the colors are shown in: an imported descriptor such as
+   * `displayP3` or `rec2020`. Channels are clipped to this gamut before
+   * luminance is measured, so out-of-gamut colors are measured as the
+   * display would render them by clipping. Contrast regions and
+   * `ensureContrast` with the same `gamut` use the same model.
+   * @defaultValue `srgb`
    */
-  gamut?: GamutTarget;
+  gamut?: Gamut;
   /**
    * Channel precision; see {@link ContrastPrecision}.
    * @defaultValue `'exact'`
@@ -49,34 +49,51 @@ export interface ContrastOptions {
 const DISPLAYED: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
 
 /**
- * One channel clipped to `[0, 1]` in its own gamut, optionally quantized to
- * 8 bits in gamma-encoded form. Returns linear light, or the gamma-encoded
- * value when `encoded` is set.
+ * One linear-light channel clipped to `[0, 1]` in its own gamut, optionally
+ * quantized to 8 bits in that gamut's encoding.
+ *
+ * `transfer` is `undefined` for sRGB, which uses the sRGB transfer
+ * functions directly and can return the gamma-encoded value (`encoded`).
+ * Any other gamut is quantized with its descriptor's transfer curve and
+ * returns linear light.
  */
 function displayChannel(
   linear: number,
   quantize: boolean,
   encoded: boolean,
+  transfer: GamutTransfer | undefined,
 ): number {
-  if (!quantize) {
-    const clipped = clamp(linear, 0, 1);
-    return encoded ? linearToSrgbChannel(clipped) : clipped;
+  // Clipping before encoding rounds to the same byte as clipping the
+  // encoded value (the curves are monotonic and fix 0 and 1).
+  let value = clamp(linear, 0, 1);
+  if (quantize) {
+    value =
+      Math.round(
+        (transfer
+          ? encodeTransfer(transfer, value)
+          : linearToSrgbChannel(value)) * 255,
+      ) / 255;
+    // Only sRGB asks for the encoded value: the quantized one, as is.
+    if (encoded) return value;
+    value = transfer
+      ? decodeTransfer(transfer, value)
+      : srgbToLinearChannel(value);
   }
-  const byte = Math.round(clamp(linearToSrgbChannel(linear), 0, 1) * 255);
-  const value = byte / 255;
-  return encoded ? value : srgbToLinearChannel(value);
+  return encoded ? linearToSrgbChannel(value) : value;
 }
 
 /**
  * The sRGB channels of `color` as displayed in `options.gamut`: clipped to
- * that gamut and (with `precision: '8bit'`) quantized, never otherwise
- * rounded. Writes linear-light sRGB, or gamma-encoded sRGB when `encoded`
- * is set. For `'display-p3'` the values are extended-range sRGB (they may
- * fall outside `[0, 1]`).
+ * that gamut and (with `precision: '8bit'`) quantized in its encoding, never
+ * otherwise rounded. Writes linear-light sRGB, or gamma-encoded sRGB when
+ * `encoded` is set. For a gamut other than sRGB the values are
+ * extended-range sRGB (they may fall outside `[0, 1]`).
  *
  * This is the single display model behind every contrast metric and every
- * contrast region field, so a color inside a region passes the matching
- * check.
+ * contrast region field, for every gamut descriptor, so a color inside a
+ * region passes the matching check. sRGB (no `gamut`, or one whose id is
+ * `'srgb'`) is measured without reading a descriptor; any other gamut by
+ * the matrices and transfer numbers of the descriptor passed in.
  */
 function displayedSrgb(
   color: Color,
@@ -84,24 +101,26 @@ function displayedSrgb(
   encoded: boolean,
 ): LinearRgb {
   const quantize = options?.precision === '8bit';
-  assertGamutTarget(options?.gamut, 'contrast');
+  let gamut = options?.gamut;
+  assertGamut(gamut, 'contrast');
+  if (gamut?.id === 'srgb') gamut = undefined;
   const out = toLinearSrgbInto(DISPLAYED, color);
-  if (options?.gamut === 'display-p3') {
-    linearSrgbToLinearP3Into(out, out);
-    out.r = displayChannel(out.r, quantize, false);
-    out.g = displayChannel(out.g, quantize, false);
-    out.b = displayChannel(out.b, quantize, false);
-    linearP3ToLinearSrgbInto(out, out);
+  if (gamut?.fromLinearSrgb) applyMatrix3Into(out, gamut.fromLinearSrgb, out);
+  // sRGB channels are encoded in the same step; another gamut's are encoded
+  // after the conversion back to sRGB.
+  const direct = encoded && !gamut;
+  const transfer = gamut?.transfer;
+  out.r = displayChannel(out.r, quantize, direct, transfer);
+  out.g = displayChannel(out.g, quantize, direct, transfer);
+  out.b = displayChannel(out.b, quantize, direct, transfer);
+  if (gamut) {
+    if (gamut.toLinearSrgb) applyMatrix3Into(out, gamut.toLinearSrgb, out);
     if (encoded) {
       out.r = linearToSrgbChannel(out.r);
       out.g = linearToSrgbChannel(out.g);
       out.b = linearToSrgbChannel(out.b);
     }
-    return out;
   }
-  out.r = displayChannel(out.r, quantize, encoded);
-  out.g = displayChannel(out.g, quantize, encoded);
-  out.b = displayChannel(out.b, quantize, encoded);
   return out;
 }
 
@@ -116,8 +135,8 @@ function displayedSrgb(
  * @param color - Color to measure.
  * @param options - Display gamut and channel precision.
  * @returns Relative luminance in `[0, 1]`.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`
- *   (including the removed `'p3'` spelling).
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor (a
+ *   gamut name such as `'display-p3'` throws).
  * @see https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
  * @see {@link contrastRatio}
  *
@@ -158,7 +177,7 @@ export function wcagLuminanceOfLinear(r: number, g: number, b: number): number {
  * @param color2 - Second color.
  * @param options - Display gamut and channel precision.
  * @returns Contrast ratio in `[1, 21]`.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor.
  * @see https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio
  * @see {@link meetsAA}
  * @see {@link contrastAPCA}
@@ -257,7 +276,7 @@ export function apcaLuminanceOfEncoded(
  * @param bgColor - Background color.
  * @param options - Display gamut and channel precision.
  * @returns Normalized Lc contrast.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor.
  * @see https://github.com/Myndex/apca-w3
  *
  * @example
@@ -318,7 +337,7 @@ export function apcaContrastOfLuminances(txtY: number, bgY: number): number {
  * @param largeText - Apply the large-text threshold (3:1).
  * @param options - Display gamut and channel precision, as for
  *   {@link contrastRatio}.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor.
  * @see {@link meetsAAA}
  *
  * @example
@@ -348,7 +367,7 @@ export function meetsAA(
  * @param largeText - Apply the large-text threshold (4.5:1).
  * @param options - Display gamut and channel precision, as for
  *   {@link contrastRatio}.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor.
  * @see {@link meetsAA}
  *
  * @example

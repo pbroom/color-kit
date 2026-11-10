@@ -60,7 +60,7 @@ function distributeBatchDuration(totalMs: number, weights: number[]): number[] {
  *
  * const backend = createJsPlaneComputeBackend();
  * const response = runPlaneCompute(
- *   { plane: { model: 'oklch', fixed: { h: 250 } }, queries: [{ kind: 'gamutRegion', gamut: 'srgb' }] },
+ *   { plane: { model: 'oklch', fixed: { h: 250 } }, queries: [{ kind: 'gamutRegion' }] },
  *   backend,
  * );
  *

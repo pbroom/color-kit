@@ -314,7 +314,7 @@ describe('gamut validation', () => {
     }
     expect(() =>
       createColorState(IN_GAMUT, { activeGamut: 'p3' as 'srgb' }),
-    ).toThrow(/createColorState\(\): unknown gamut "p3".*use 'display-p3'/);
+    ).toThrow(/createColorState\(\): unknown gamut "p3".*'display-p3'/);
     expect(createColorState(IN_GAMUT).activeGamut).toBe('display-p3');
     expect(
       createColorState(IN_GAMUT, { activeGamut: 'srgb' }).activeGamut,
@@ -329,7 +329,7 @@ describe('gamut validation', () => {
       );
     }
     expect(() => setColorActiveGamut(base, 'p3' as 'srgb', 'user')).toThrow(
-      "use 'display-p3'",
+      "or 'display-p3'",
     );
   });
 

@@ -150,12 +150,14 @@ export type {
   ColorState,
   ColorUpdateEvent,
   CreateColorStateOptions,
-  GamutTarget,
   MapDisplayedColorsOptions,
   ResolveIncomingRequestedOptions,
   SetColorRequestedOptions,
   ViewModel,
 } from './color-state.js';
+
+export { assertDisplayGamut, displayGamutDescriptor } from './display-gamut.js';
+export type { DisplayGamut } from './display-gamut.js';
 
 export {
   addMultiColorEntry,

@@ -1,16 +1,16 @@
 import type { Color } from '../types.js';
 import { clamp, normalizeHue } from '../utils/index.js';
-import { isInTargetGamut } from './membership.js';
-import { assertGamutTarget } from './target.js';
+import { inGamutSpec } from './membership.js';
+import { srgb } from './spec.js';
+import { assertGamut } from './target.js';
 import {
-  DEFAULT_MAX_CHROMA,
   DEFAULT_MAX_ITERATIONS,
   DEFAULT_TOLERANCE,
   type MaxChromaAtOptions,
 } from './types.js';
 
 // Bisection probe, reused across calls so the search allocates nothing.
-// `isInTargetGamut` reads every field before touching its own scratch.
+// `inGamutSpec` reads every field before touching its own scratch.
 const PROBE: Color = { l: 0, c: 0, h: 0, alpha: 1 };
 
 /**
@@ -27,16 +27,18 @@ const PROBE: Color = { l: 0, c: 0, h: 0, alpha: 1 };
  * @param hue - OKLCH hue in degrees.
  * @param options - Target gamut and search settings.
  * @returns Chroma in `[0, options.maxChroma]`.
- * @throws {TypeError} When `options.gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor (a
+ *   gamut name such as `'display-p3'` throws).
  * @see {@link maxChromaForHue}
  * @see {@link gamutBoundaryPath}
  *
  * @example
  * ```ts
- * import { maxChromaAt } from '@pbroom/color-kit';
+ * import { displayP3, maxChromaAt, rec2020 } from '@pbroom/color-kit';
  *
  * maxChromaAt(0.6, 250); // → 0.16982421875
- * maxChromaAt(0.6, 250, { gamut: 'display-p3' }); // → 0.21923828125
+ * maxChromaAt(0.6, 250, { gamut: displayP3 }); // → 0.21923828125
+ * maxChromaAt(0.6, 250, { gamut: rec2020 }); // → 0.24578857421875
  * ```
  */
 export function maxChromaAt(
@@ -45,13 +47,14 @@ export function maxChromaAt(
   options: MaxChromaAtOptions = {},
 ): number {
   const {
-    gamut = 'srgb',
+    gamut: spec = srgb,
     tolerance = DEFAULT_TOLERANCE,
     maxIterations = DEFAULT_MAX_ITERATIONS,
-    maxChroma = DEFAULT_MAX_CHROMA,
     alpha = 1,
   } = options;
-  assertGamutTarget(gamut, 'maxChromaAt()');
+  assertGamut(spec, 'maxChromaAt()');
+  const maxChroma =
+    options.maxChroma === undefined ? spec.maxChroma : options.maxChroma;
 
   const l = clamp(lightness, 0, 1);
   if (l <= 0 || l >= 1) return 0;
@@ -70,7 +73,7 @@ export function maxChromaAt(
   probe.alpha = alpha;
 
   // If upper bound is already in gamut, caller supplied a hard cap.
-  if (isInTargetGamut(probe, gamut)) {
+  if (inGamutSpec(probe, spec)) {
     return hi;
   }
 
@@ -84,7 +87,7 @@ export function maxChromaAt(
     if (hi - lo <= minTolerance) break;
     const mid = (lo + hi) / 2;
     probe.c = mid;
-    if (isInTargetGamut(probe, gamut)) {
+    if (inGamutSpec(probe, spec)) {
       lo = mid;
     } else {
       hi = mid;

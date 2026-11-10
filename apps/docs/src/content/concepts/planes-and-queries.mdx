@@ -54,7 +54,7 @@ on OKLCH lightness-by-chroma planes and return empty geometry on others.
 model.
 
 The same queries exist as data: [`runPlaneQuery`](/api/plane/queries#runPlaneQuery)
-takes `{ kind: 'gamutRegion', gamut: 'srgb' }`, which can be cached with
+takes `{ kind: 'gamutRegion', gamut: srgb }`, which can be cached with
 [`PlaneQueryCache`](/api/plane/compile#PlaneQueryCache), sent to a worker, or batched
 through `@pbroom/color-kit/compute`.
 
@@ -66,10 +66,15 @@ Query points are normalized plane coordinates.
 default, so the result drops into `viewBox="0 0 100 100"`.
 
 ```tsx title="region.tsx"
-import { definePlane, sense, toSvgCompoundPath } from '@pbroom/color-kit/plane';
+import {
+  definePlane,
+  sense,
+  srgb,
+  toSvgCompoundPath,
+} from '@pbroom/color-kit/plane';
 
 const region = sense(definePlane({ fixed: { h: 264 } })).gamutRegion({
-  gamut: 'srgb',
+  gamut: srgb,
 });
 const d = toSvgCompoundPath(region.visibleRegion.paths, { closeLoop: true });
 

@@ -1,4 +1,4 @@
-import type { GamutTarget } from '../gamut/index.js';
+import type { Gamut } from '../gamut/spec.js';
 import type {
   PlaneGamutRegionScope,
   PlaneGamutSolver,
@@ -18,7 +18,7 @@ import type {
  * Bump whenever descriptor fields or buffer layouts change so producers and
  * consumers on different builds fail loudly instead of misreading data.
  */
-export const PACKED_PLANE_QUERY_ABI_VERSION = 2;
+export const PACKED_PLANE_QUERY_ABI_VERSION = 3;
 
 interface PackedPlaneQueryDescriptorBase<K extends PlaneQueryKind> {
   /** Query kind this descriptor belongs to. */
@@ -32,7 +32,7 @@ interface PackedPlaneQueryDescriptorBase<K extends PlaneQueryKind> {
 /** Packed metadata of a `gamutBoundary` result (one path). */
 export interface PackedGamutBoundaryDescriptor extends PackedPlaneQueryDescriptorBase<'gamutBoundary'> {
   /** Gamut that was traced. */
-  gamut: GamutTarget;
+  gamut: Gamut;
   /** Hue the boundary was traced at, in degrees. */
   hue: number;
 }
@@ -47,7 +47,7 @@ export interface PackedGamutRegionDescriptor extends PackedPlaneQueryDescriptorB
   /** Number of visible-region paths. */
   regionPathCount: number;
   /** Gamut that was analyzed. */
-  gamut: GamutTarget;
+  gamut: Gamut;
   /** Scope the boundary paths were traced in. */
   scope: PlaneGamutRegionScope;
   /** Solver that produced the geometry. */
@@ -77,7 +77,7 @@ export interface PackedChromaBandDescriptor extends PackedPlaneQueryDescriptorBa
 /** Packed metadata of a `fallbackPoint` result (one single-point path). */
 export interface PackedFallbackPointDescriptor extends PackedPlaneQueryDescriptorBase<'fallbackPoint'> {
   /** Gamut the color was mapped into. */
-  gamut: GamutTarget;
+  gamut: Gamut;
 }
 
 /**
@@ -148,10 +148,6 @@ export function invalidPackedResult(reason: string): never {
   throw new Error(`Invalid packed plane query result: ${reason}`);
 }
 
-const GAMUT_TARGETS: Record<GamutTarget, true> = {
-  srgb: true,
-  'display-p3': true,
-};
 const GAMUT_REGION_SCOPES: Record<PlaneGamutRegionScope, true> = {
   viewport: true,
   full: true,
@@ -210,8 +206,27 @@ export function requireNonNegativeInteger(
   return value;
 }
 
+/**
+ * A packed descriptor carries the query's {@link Gamut} descriptor itself
+ * (plain data, so it survives the structured clone to and from a worker).
+ * Any gamut is accepted, so this checks the shape only.
+ */
 export function requireGamutField(descriptor: object, label: string): void {
-  requireEnum(descriptor, 'gamut', GAMUT_TARGETS, label);
+  const value = requireField(
+    descriptor,
+    'gamut',
+    label,
+  ) as Partial<Gamut> | null;
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    typeof value.id !== 'string' ||
+    !Array.isArray(value.lmsToLinear)
+  ) {
+    invalidPackedResult(
+      `${label} has invalid gamut: expected a Gamut descriptor object.`,
+    );
+  }
 }
 
 export function requireHueField(descriptor: object, label: string): void {

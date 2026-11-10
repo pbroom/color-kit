@@ -1,17 +1,12 @@
 import {
-  linearSrgbToLinearP3,
-  oklabToLinearRgb,
-  oklchToOklab,
-} from '../../conversion/index.js';
-import {
   GAMUT_EPSILON,
   gamutBoundaryPath,
-  inP3Gamut,
-  inSrgbGamut,
   maxChromaAt,
 } from '../../gamut/index.js';
 import { MAX_CHROMA_SEARCH_TOLERANCE } from '../../gamut/constants.js';
 import { linearChannelGamutMargin } from '../../gamut/linear-bounds.js';
+import { inGamutSpec, scratchLinearTarget } from '../../gamut/membership.js';
+import type { Gamut } from '../../gamut/spec.js';
 import { maxHctChromaAtTone } from '../../hct/index.js';
 import type { Color } from '../../types.js';
 import { normalizeHue } from '../../utils/index.js';
@@ -73,17 +68,17 @@ function unclampedNormalize(value: number, range: [number, number]): number {
   return (value - range[0]) / span;
 }
 
-function gamutMargin(color: Color, gamut: 'srgb' | 'display-p3'): number {
-  const lab = oklchToOklab({
-    l: color.l,
-    c: color.c,
-    h: color.h,
-    alpha: color.alpha,
-  });
-  const linearSrgb = oklabToLinearRgb(lab);
-  const linear =
-    gamut === 'display-p3' ? linearSrgbToLinearP3(linearSrgb) : linearSrgb;
-  return linearChannelGamutMargin(linear.r, linear.g, linear.b);
+function gamutMargin(color: Color, spec: Gamut): number {
+  // The membership test's own channels, so the field and `inXGamut` cannot
+  // drift apart.
+  const linear = scratchLinearTarget(color, spec);
+  return linearChannelGamutMargin(
+    linear.r,
+    linear.g,
+    linear.b,
+    spec.linearMin,
+    spec.linearMax,
+  );
 }
 
 /**
@@ -101,9 +96,10 @@ function gamutMargin(color: Color, gamut: 'srgb' | 'display-p3'): number {
  */
 export function fieldInsideTolerance(
   resolvedPlane: Plane,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
 ): number {
-  if (resolvedPlane.model === 'hct' && gamut === 'srgb') return GAMUT_EPSILON;
+  if (resolvedPlane.model === 'hct' && gamut.id === 'srgb')
+    return GAMUT_EPSILON;
   return 0;
 }
 
@@ -128,19 +124,17 @@ function oklchChromaField(
   c: number,
   h: number,
   alpha: number,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
 ): number {
   const value = maxChromaAt(l, h, { gamut, alpha }) - c;
   if (value >= 0 || value <= -MAX_CHROMA_SEARCH_TOLERANCE) return value;
   const color: Color = { l, c, h, alpha };
-  const inGamut =
-    gamut === 'display-p3' ? inP3Gamut(color) : inSrgbGamut(color);
-  return inGamut ? IN_SEARCH_GAP_FIELD_VALUE : value;
+  return inGamutSpec(color, gamut) ? IN_SEARCH_GAP_FIELD_VALUE : value;
 }
 
 export function createFieldEvaluator(
   resolvedPlane: Plane,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
 ): ScalarField {
   if (resolvedPlane.model === 'oklch') {
     return (point) => {
@@ -159,7 +153,7 @@ export function createFieldEvaluator(
     };
   }
 
-  if (resolvedPlane.model === 'hct' && gamut === 'srgb') {
+  if (resolvedPlane.model === 'hct' && gamut.id === 'srgb') {
     return (point) => {
       const modelColor = planeToModelColor(resolvedPlane, point, {
         clampToViewport: false,
@@ -178,9 +172,15 @@ export function createFieldEvaluator(
     gamutMargin(planeToColorUnclamped(resolvedPlane, point), gamut);
 }
 
+/**
+ * The model domain of a channel, or `null` when it has none. `maxChroma`
+ * bounds the OKLab `a` / `b` axes: the target gamut's chroma search bound
+ * for a full-scope contour (0.4 for sRGB and Display P3).
+ */
 function canonicalChannelBounds(
   model: PlaneModel,
   channel: PlaneChannel,
+  maxChroma = 0.4,
 ): [number, number] | null {
   switch (model) {
     case 'oklch':
@@ -199,7 +199,7 @@ function canonicalChannelBounds(
       return null;
     case 'oklab':
       if (channel === 'L') return [0, 1];
-      if (channel === 'a' || channel === 'b') return [-0.4, 0.4];
+      if (channel === 'a' || channel === 'b') return [-maxChroma, maxChroma];
       return null;
     case 'hct':
       if (channel === 'h') return [0, 360];
@@ -212,14 +212,20 @@ function canonicalChannelBounds(
   }
 }
 
-export function fullScopeBounds(resolvedPlane: Plane): ScalarBounds {
+export function fullScopeBounds(
+  resolvedPlane: Plane,
+  gamut: Gamut,
+): ScalarBounds {
+  const { maxChroma } = gamut;
   const xDomain = canonicalChannelBounds(
     resolvedPlane.model,
     resolvedPlane.x.channel,
+    maxChroma,
   );
   const yDomain = canonicalChannelBounds(
     resolvedPlane.model,
     resolvedPlane.y.channel,
+    maxChroma,
   );
   const minX = xDomain
     ? unclampedNormalize(xDomain[0], resolvedPlane.x.range)
@@ -276,7 +282,7 @@ function buildHctBoundaryPoint(
 
 function buildAnalyticLcBoundary(
   resolvedPlane: Plane,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
 ): PlanePoint[] {
   const hue = planeHue(resolvedPlane);
   return gamutBoundaryPath(hue, {
@@ -289,7 +295,7 @@ function buildAnalyticLcBoundary(
 
 function buildAnalyticHcBoundary(
   resolvedPlane: Plane,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
 ): PlanePoint[] {
   const fixedLightness = Math.min(
     1,
@@ -353,7 +359,7 @@ function buildAnalyticHctBoundary(resolvedPlane: Plane): PlanePoint[] {
 
 export function buildDomainEdgeViewportResult(
   resolvedPlane: Plane,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
   scope: PlaneGamutRegionScope,
   simplifyTolerance?: number,
 ): PlaneGamutRegionResult {
@@ -499,18 +505,41 @@ export function buildDomainEdgeViewportResult(
 }
 
 /**
+ * Whether `gamut` contains every sRGB color, so an sRGB-model plane (`rgb`,
+ * `hsl`, `hsv`) is in gamut over its whole domain. The sRGB cube maps to a
+ * parallelepiped in the gamut's linear RGB; each channel's extremes over it
+ * are the sums of that matrix row's negative and positive entries.
+ */
+function containsSrgb(gamut: Gamut): boolean {
+  return (
+    !gamut.fromLinearSrgb ||
+    gamut.fromLinearSrgb.every((row) => {
+      let low = 0;
+      let high = 0;
+      for (const value of row) {
+        if (value < 0) low += value;
+        else high += value;
+      }
+      return low >= gamut.linearMin && high <= gamut.linearMax;
+    })
+  );
+}
+
+/**
  * Policy matrix mapping a resolved plane + gamut target to the solver
  * strategy used by `getPlaneGamutRegion()`.
  */
 export function resolveGamutSolver(
   resolvedPlane: Plane,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
 ): PlaneGamutSolver {
   if (
-    resolvedPlane.model === 'rgb' ||
-    resolvedPlane.model === 'hsl' ||
-    resolvedPlane.model === 'hsv' ||
-    (resolvedPlane.model === 'display-p3' && gamut === 'display-p3')
+    resolvedPlane.model === 'display-p3'
+      ? gamut.id === 'display-p3'
+      : (resolvedPlane.model === 'rgb' ||
+          resolvedPlane.model === 'hsl' ||
+          resolvedPlane.model === 'hsv') &&
+        containsSrgb(gamut)
   ) {
     return 'domain-edge';
   }
@@ -529,7 +558,7 @@ export function resolveGamutSolver(
 
   if (
     resolvedPlane.model === 'hct' &&
-    gamut === 'srgb' &&
+    gamut.id === 'srgb' &&
     ((resolvedPlane.x.channel === 'h' && resolvedPlane.y.channel === 'c') ||
       (resolvedPlane.x.channel === 'c' && resolvedPlane.y.channel === 'h') ||
       (resolvedPlane.x.channel === 't' && resolvedPlane.y.channel === 'c') ||
@@ -543,7 +572,7 @@ export function resolveGamutSolver(
 
 export function buildFullBoundaryPaths(
   resolvedPlane: Plane,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
   solver: PlaneGamutSolver,
   simplifyTolerance?: number,
 ): PlanePoint[][] {
@@ -566,12 +595,13 @@ export function buildImplicitBoundaryPaths(
   sampler: ScalarSampler,
   scope: PlaneGamutRegionScope,
   resolvedPlane: Plane,
+  gamut: Gamut,
   simplifyTolerance?: number,
   trace?: InternalPlaneTraceContext | null,
 ): PlanePoint[][] {
   const bounds =
     scope === 'full'
-      ? fullScopeBounds(resolvedPlane)
+      ? fullScopeBounds(resolvedPlane, gamut)
       : { minX: 0, maxX: 1, minY: 0, maxY: 1 };
   const adaptiveContour = extractAdaptiveContourSegments(
     sampler,

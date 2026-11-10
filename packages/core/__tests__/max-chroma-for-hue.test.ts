@@ -5,10 +5,11 @@ import {
   maxChromaAt,
   maxChromaForHue,
 } from '../src/index.js';
+import { displayP3 as P3, srgb as SRGB, type Gamut } from '../src/index.js';
 
 function bruteForceHueCusp(
   hue: number,
-  gamut: 'srgb' | 'display-p3',
+  gamut: Gamut,
 ): { l: number; c: number } {
   const coarseSteps = 256;
   let bestLightness = 0;
@@ -56,8 +57,8 @@ function bruteForceHueCusp(
 describe('maxChromaForHue()', () => {
   it('returns in-gamut cusp points and matches maxChromaAt at the returned lightness', () => {
     for (const hue of [0, 35, 90, 145, 215, 275, 320]) {
-      const cusp = maxChromaForHue(hue, { gamut: 'srgb', method: 'direct' });
-      const boundary = maxChromaAt(cusp.l, hue, { gamut: 'srgb' });
+      const cusp = maxChromaForHue(hue, { gamut: SRGB, method: 'direct' });
+      const boundary = maxChromaAt(cusp.l, hue, { gamut: SRGB });
 
       expect(cusp.l).toBeGreaterThanOrEqual(0);
       expect(cusp.l).toBeLessThanOrEqual(1);
@@ -71,7 +72,7 @@ describe('maxChromaForHue()', () => {
   });
 
   it('tracks brute-force peak search closely for sRGB and Display-P3', () => {
-    for (const gamut of ['srgb', 'display-p3'] as const) {
+    for (const gamut of [SRGB, P3]) {
       for (const hue of [18, 72, 145, 203, 288, 342]) {
         const direct = maxChromaForHue(hue, { gamut, method: 'direct' });
         const brute = bruteForceHueCusp(hue, gamut);
@@ -84,9 +85,9 @@ describe('maxChromaForHue()', () => {
 
   it('returns wider or equal hue cusps for Display-P3 than sRGB', () => {
     for (const hue of [0, 45, 90, 145, 180, 240, 300]) {
-      const srgb = maxChromaForHue(hue, { gamut: 'srgb', method: 'direct' });
+      const srgb = maxChromaForHue(hue, { gamut: SRGB, method: 'direct' });
       const p3 = maxChromaForHue(hue, {
-        gamut: 'display-p3',
+        gamut: P3,
         method: 'direct',
       });
 
@@ -96,18 +97,18 @@ describe('maxChromaForHue()', () => {
   });
 
   it('supports cached LUT interpolation for high-throughput queries', () => {
-    const direct = maxChromaForHue(145, { gamut: 'srgb', method: 'direct' });
+    const direct = maxChromaForHue(145, { gamut: SRGB, method: 'direct' });
     const lut = maxChromaForHue(-215, {
-      gamut: 'srgb',
+      gamut: SRGB,
       method: 'lut',
       lutSize: 4096,
     });
     const normalizedDirect = maxChromaForHue(145, {
-      gamut: 'srgb',
+      gamut: SRGB,
       method: 'direct',
     });
     const lutRepeat = maxChromaForHue(145, {
-      gamut: 'srgb',
+      gamut: SRGB,
       method: 'lut',
       lutSize: 4096,
     });
@@ -122,11 +123,11 @@ describe('maxChromaForHue()', () => {
   it('keeps LUT interpolation in gamut across the sRGB blue cusp branch crossover', () => {
     for (let hue = 264.03; hue <= 264.1; hue += 0.01) {
       const lut = maxChromaForHue(hue, {
-        gamut: 'srgb',
+        gamut: SRGB,
         method: 'lut',
         lutSize: 4096,
       });
-      const boundary = maxChromaAt(lut.l, hue, { gamut: 'srgb' });
+      const boundary = maxChromaAt(lut.l, hue, { gamut: SRGB });
 
       expect(inSrgbGamut({ l: lut.l, c: lut.c, h: hue, alpha: 1 })).toBe(true);
       expect(lut.c).toBeLessThanOrEqual(boundary + 0.0005);
@@ -135,7 +136,7 @@ describe('maxChromaForHue()', () => {
 
   it('does not miss the first cubic boundary root near the sRGB blue cusp', () => {
     const hue = 264.05;
-    const direct = maxChromaForHue(hue, { gamut: 'srgb', method: 'direct' });
+    const direct = maxChromaForHue(hue, { gamut: SRGB, method: 'direct' });
 
     expect(Math.abs(direct.l - 0.4899233835688325)).toBeLessThan(0.0002);
     expect(Math.abs(direct.c - 0.28770887901836667)).toBeLessThan(0.0002);

@@ -3,8 +3,8 @@ import {
   linearSrgbToLinearP3,
   oklabToLinearRgb,
   oklchToOklab,
-  type GamutTarget,
 } from '@color-kit/core';
+import type { DisplayGamut } from '@color-kit/driver';
 
 export interface LinearSrgb {
   r: number;
@@ -55,7 +55,7 @@ function inUnitCube(r: number, g: number, b: number): boolean {
  */
 function strictlyInTargetGamut(
   linearSrgb: LinearSrgb,
-  gamut: GamutTarget,
+  gamut: DisplayGamut,
 ): boolean {
   if (gamut === 'display-p3') {
     const p3 = linearSrgbToLinearP3({ ...linearSrgb, alpha: 1 });
@@ -64,7 +64,7 @@ function strictlyInTargetGamut(
   return inUnitCube(linearSrgb.r, linearSrgb.g, linearSrgb.b);
 }
 
-function inTargetGamut(linearSrgb: LinearSrgb, gamut: GamutTarget): boolean {
+function inTargetGamut(linearSrgb: LinearSrgb, gamut: DisplayGamut): boolean {
   return gamut === 'display-p3'
     ? inP3Linear(linearSrgb)
     : inSrgbLinear(linearSrgb);
@@ -74,7 +74,7 @@ export function mapToGamutLinear(
   lightness: number,
   chroma: number,
   hue: number,
-  gamut: GamutTarget,
+  gamut: DisplayGamut,
 ): LinearSrgb {
   const rawLinear = oklchToLinearSrgb(lightness, chroma, hue);
   if (inTargetGamut(rawLinear, gamut)) {

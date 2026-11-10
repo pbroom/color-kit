@@ -25,6 +25,8 @@ import {
 } from '../src/index.js';
 import type { Color, ContrastOptions } from '../src/index.js';
 import { srgbToLinearChannel } from '../src/utils/index.js';
+import { displayP3 } from '../src/index.js';
+import { srgb, type Gamut } from '../src/index.js';
 
 function createRandom(seed: number): () => number {
   let state = seed >>> 0;
@@ -148,13 +150,13 @@ describe('unrounded contrast metrics', () => {
     expect(inSrgbGamut(p3Only)).toBe(false);
     // Clipping the negative sRGB channels to 0 lightens this red, so it
     // fails 4.8:1 on an sRGB display but passes on a P3 display, which is
-    // what a `gamut: 'display-p3'` contrast region reports for it.
+    // what a `gamut: displayP3` contrast region reports for it.
     expect(contrastRatio(p3Only, reference)).toBeLessThan(4.8);
     expect(
-      contrastRatio(p3Only, reference, { gamut: 'display-p3' }),
+      contrastRatio(p3Only, reference, { gamut: displayP3 }),
     ).toBeGreaterThan(4.8);
     const paths = contrastRegionPaths(reference, p3Only.h, {
-      gamut: 'display-p3',
+      gamut: displayP3,
       threshold: 4.8,
     });
     expect(Math.max(...paths.flat().map((point) => point.l))).toBeGreaterThan(
@@ -165,11 +167,11 @@ describe('unrounded contrast metrics', () => {
     for (let i = 0; i < 200; i += 1) {
       const a = byteColor();
       const b = byteColor();
-      expect(contrastRatio(a, b, { gamut: 'display-p3' })).toBeCloseTo(
+      expect(contrastRatio(a, b, { gamut: displayP3 })).toBeCloseTo(
         contrastRatio(a, b),
         9,
       );
-      expect(contrastAPCA(a, b, { gamut: 'display-p3' })).toBeCloseTo(
+      expect(contrastAPCA(a, b, { gamut: displayP3 })).toBeCloseTo(
         contrastAPCA(a, b),
         9,
       );
@@ -180,7 +182,6 @@ describe('unrounded contrast metrics', () => {
 // ─── Regions agree with the checks ──────────────────────────────────
 
 type Metric = 'wcag' | 'apca';
-type Gamut = 'srgb' | 'display-p3';
 
 /** Signed margin of the public check (>= 0 passes). */
 function checkMargin(
@@ -209,11 +210,11 @@ describe('contrast regions use the public metric', () => {
         fc.double({ min: 0, max: 0.15, noNaN: true }),
         fc.double({ min: 0, max: 360, maxExcluded: true, noNaN: true }),
         fc.constantFrom<Metric>('wcag', 'apca'),
-        fc.constantFrom<Gamut>('srgb', 'display-p3'),
+        fc.constantFrom<Gamut>(srgb, displayP3),
         (hue, refL, refC, refH, metric, gamut) => {
           const reference: Color = { l: refL, c: refC, h: refH, alpha: 1 };
           fc.pre(
-            gamut === 'srgb' ? inSrgbGamut(reference) : inP3Gamut(reference),
+            gamut.id === 'srgb' ? inSrgbGamut(reference) : inP3Gamut(reference),
           );
           const threshold = metric === 'wcag' ? 3 : 0.45;
           const options: ContrastOptions = { gamut };
@@ -265,9 +266,9 @@ describe('contrast regions with an out-of-gamut reference', () => {
     ];
     let checked = 0;
     for (const reference of references) {
-      for (const gamut of ['srgb', 'display-p3'] as Gamut[]) {
+      for (const gamut of [srgb, displayP3]) {
         expect(
-          gamut === 'srgb' ? inSrgbGamut(reference) : inP3Gamut(reference),
+          gamut.id === 'srgb' ? inSrgbGamut(reference) : inP3Gamut(reference),
         ).toBe(false);
         for (const metric of ['wcag', 'apca'] as Metric[]) {
           const threshold = metric === 'wcag' ? 3 : 0.45;

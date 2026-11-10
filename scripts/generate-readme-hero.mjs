@@ -29,8 +29,17 @@ try {
   process.exit(1);
 }
 
-const { definePlane, sense, toSvgPath, parse, toCss, toHex, toSrgbGamut } =
-  core;
+const {
+  definePlane,
+  sense,
+  toSvgPath,
+  parse,
+  toCss,
+  toHex,
+  toSrgbGamut,
+  srgb: srgbGamut,
+  displayP3,
+} = core;
 
 // ---------------------------------------------------------------------------
 // Query the engine
@@ -48,12 +57,12 @@ const plane = definePlane({
 });
 const query = sense(plane);
 
-const srgb = query.gamutBoundary({ gamut: 'srgb', steps: 160 });
-const p3 = query.gamutBoundary({ gamut: 'display-p3', steps: 160 });
+const srgb = query.gamutBoundary({ gamut: srgbGamut, steps: 160 });
+const p3 = query.gamutBoundary({ gamut: displayP3, steps: 160 });
 const contrast = query.contrastRegion({
   reference,
   level: 'AA',
-  gamut: 'display-p3',
+  gamut: displayP3,
 });
 
 // ---------------------------------------------------------------------------

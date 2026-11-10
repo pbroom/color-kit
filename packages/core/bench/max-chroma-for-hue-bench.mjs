@@ -15,13 +15,15 @@ if (!existsSync(distEntry)) {
   process.exit(1);
 }
 
-const { maxChromaAt, maxChromaForHue } = await import(distEntry);
+const { displayP3, maxChromaAt, maxChromaForHue, srgb } = await import(
+  distEntry
+);
 
 const HUE_COUNT = 4096;
 const WARMUP_ROUNDS = 2;
 const MEASURE_ROUNDS = 5;
 const SCAN_STEPS = 64;
-const GAMUTS = ['srgb', 'display-p3'];
+const GAMUTS = [srgb, displayP3];
 
 function hueList(count) {
   return Array.from({ length: count }, (_, index) => (index / count) * 360);
@@ -57,7 +59,7 @@ function runCase(name, gamut, hues, fn) {
   const stats = summarize(times);
   return {
     name,
-    gamut,
+    gamut: gamut.id,
     hues: hues.length,
     checksum: Number(checksum.toFixed(6)),
     opsPerSecond: Number(((hues.length / stats.meanMs) * 1000).toFixed(0)),

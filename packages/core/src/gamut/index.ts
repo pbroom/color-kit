@@ -6,14 +6,23 @@ export { maxChromaAt } from './max-chroma.js';
 export {
   GAMUT_LINEAR_MAX,
   GAMUT_LINEAR_MIN,
+  inGamut,
   inP3Gamut,
+  inRec2020Gamut,
   inSrgbGamut,
   isLinearRgbInGamut,
+  toGamut,
+  toGamutInto,
   toP3Gamut,
   toP3GamutInto,
+  toRec2020Gamut,
+  toRec2020GamutInto,
   toSrgbGamut,
   toSrgbGamutInto,
 } from './membership.js';
+export { displayP3, rec2020, srgb } from './spec.js';
+export type { Gamut, GamutTransfer } from './spec.js';
+export { assertGamut } from './target.js';
 export type {
   ChromaBandMode,
   ChromaBandOptions,
@@ -21,7 +30,6 @@ export type {
   GamutBoundaryPoint,
   GamutMapMethod,
   GamutMapOptions,
-  GamutTarget,
   HueCusp,
   MaxChromaAtOptions,
   MaxChromaForHueMethod,

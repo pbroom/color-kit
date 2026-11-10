@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { inP3Gamut, inSrgbGamut, maxChromaAt } from '../src/index.js';
+import { displayP3 as P3, srgb as SRGB } from '../src/index.js';
 
 describe('maxChromaAt()', () => {
   it('returns zero at lightness extremes', () => {
@@ -10,7 +11,7 @@ describe('maxChromaAt()', () => {
   it('resolves an in-gamut boundary chroma for sRGB', () => {
     const l = 0.85;
     const h = 145;
-    const c = maxChromaAt(l, h, { gamut: 'srgb' });
+    const c = maxChromaAt(l, h, { gamut: SRGB });
 
     expect(c).toBeGreaterThanOrEqual(0);
     expect(c).toBeLessThan(0.399);
@@ -21,8 +22,8 @@ describe('maxChromaAt()', () => {
   it('returns wider or equal bounds for Display-P3 compared with sRGB', () => {
     const l = 0.7;
     const h = 145;
-    const srgb = maxChromaAt(l, h, { gamut: 'srgb' });
-    const p3 = maxChromaAt(l, h, { gamut: 'display-p3' });
+    const srgb = maxChromaAt(l, h, { gamut: SRGB });
+    const p3 = maxChromaAt(l, h, { gamut: P3 });
 
     expect(p3).toBeGreaterThanOrEqual(srgb);
     expect(inP3Gamut({ l, c: p3, h, alpha: 1 })).toBe(true);
@@ -30,17 +31,17 @@ describe('maxChromaAt()', () => {
 
   it('is deterministic and respects custom bounds', () => {
     const first = maxChromaAt(0.62, 215, {
-      gamut: 'display-p3',
+      gamut: P3,
       tolerance: 0.00001,
       maxIterations: 40,
     });
     const second = maxChromaAt(0.62, 215, {
-      gamut: 'display-p3',
+      gamut: P3,
       tolerance: 0.00001,
       maxIterations: 40,
     });
     const capped = maxChromaAt(0.62, 215, {
-      gamut: 'display-p3',
+      gamut: P3,
       maxChroma: 0.05,
     });
 
@@ -52,7 +53,7 @@ describe('maxChromaAt()', () => {
     const l = 0.85;
     const h = 145;
     const c = maxChromaAt(l, h, {
-      gamut: 'srgb',
+      gamut: SRGB,
       maxIterations: 0.5,
     });
 

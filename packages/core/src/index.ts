@@ -150,10 +150,11 @@ export {
   grayscale,
 } from './manipulation/index.js';
 
-// Full-precision OKLab / sRGB / Display P3 matrices (CSS Color 4), for
-// renderers such as shaders that re-implement the conversion math.
+// Full-precision OKLab / sRGB / Display P3 / Rec. 2020 matrices (CSS Color
+// 4), for renderers such as shaders that re-implement the conversion math.
 export {
   LINEAR_SRGB_TO_LINEAR_P3,
+  LINEAR_SRGB_TO_LINEAR_REC2020,
   LMS_TO_LINEAR_SRGB,
   OKLAB_TO_LMS,
 } from './conversion/matrices.js';
@@ -164,21 +165,31 @@ export {
   GAMUT_EPSILON,
   GAMUT_LINEAR_MAX,
   GAMUT_LINEAR_MIN,
+  srgb,
+  displayP3,
+  rec2020,
+  assertGamut,
+  inGamut,
+  toGamut,
+  toGamutInto,
   inSrgbGamut,
   isLinearRgbInGamut,
   inP3Gamut,
+  inRec2020Gamut,
   toSrgbGamut,
   toSrgbGamutInto,
   toP3Gamut,
   toP3GamutInto,
+  toRec2020Gamut,
+  toRec2020GamutInto,
   maxChromaForHue,
   maxChromaAt,
   gamutBoundaryPath,
   chromaBand,
 } from './gamut/index.js';
-export { assertGamutTarget } from './gamut/target.js';
 export type {
-  GamutTarget,
+  Gamut,
+  GamutTransfer,
   GamutMapMethod,
   GamutMapOptions,
   GamutBoundaryPoint,

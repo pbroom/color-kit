@@ -1,6 +1,6 @@
 ---
 title: Gamut and tolerance
-description: How color-kit decides whether a display can show a color, how much floating-point slack it allows, and why the identifier is 'display-p3'.
+description: How color-kit decides whether a color is inside sRGB, Display P3 or Rec. 2020, why a gamut is an imported object, how much floating-point slack it allows, and why the identifier is 'display-p3'.
 order: 40
 ---
 
@@ -9,30 +9,154 @@ import exampleSource, {
   code as exampleCode,
 } from '@/examples/guides/gamut-probe.tsx?highlighted';
 
-## Two gamuts
+## Three gamuts
 
-Every gamut option takes a [`GamutTarget`](/api/core/gamut#GamutTarget):
-`'srgb'` or `'display-p3'`. Display P3 contains sRGB and reaches further,
-most visibly in greens and reds: sRGB chroma peaks around `0.32`, P3 around
-`0.37`. A color can fit P3 and not sRGB.
+Every core `gamut` option takes a [`Gamut`](/api/plane/gamut#Gamut), and
+three are built in: [`srgb`](/api/plane/gamut#srgb),
+[`displayP3`](/api/plane/gamut#displayP3) and
+[`rec2020`](/api/plane/gamut#rec2020). Display P3 contains sRGB and reaches
+further, most visibly in greens and reds, and Rec. 2020 reaches further
+again: sRGB chroma peaks around `0.32`, P3 around `0.37` and Rec. 2020 around
+`0.47`. A color can fit one gamut and not the next one in.
 
 ```ts title="gamuts.ts"
-import { inP3Gamut, inSrgbGamut, parse } from '@pbroom/color-kit';
+import {
+  inP3Gamut,
+  inRec2020Gamut,
+  inSrgbGamut,
+  parse,
+} from '@pbroom/color-kit';
 
 const green = parse('oklch(0.75 0.22 150)');
 inSrgbGamut(green); // → false
 inP3Gamut(green); // → true
+
+const vivid = parse('oklch(0.8 0.4 150)');
+inP3Gamut(vivid); // → false
+inRec2020Gamut(vivid); // → true
+```
+
+## Gamuts are imported objects
+
+A gamut is a descriptor you import, never a string. `srgb` is the default of
+every `gamut` option.
+
+```ts title="gamut-objects.ts"
+import { displayP3, maxChromaAt, rec2020 } from '@pbroom/color-kit';
+
+maxChromaAt(0.6, 250); // → sRGB, the default
+maxChromaAt(0.6, 250, { gamut: displayP3 }); // → 0.21923828125
+maxChromaAt(0.6, 250, { gamut: rec2020 }); // → 0.24578857421875
+```
+
+There are two reasons. A bundle carries only the gamuts it imports: code that
+never names `rec2020` does not ship its matrices. And a custom gamut works
+exactly like a built-in one, because the built-ins are ordinary objects of
+the same [`Gamut`](/api/plane/gamut#Gamut) shape: an `id`, the conversion
+matrices, a transfer curve, the linear membership bounds and a default
+`maxChroma`.
+
+```ts title="custom-gamut.ts"
+import { inGamut, maxChromaAt, rec2020, type Gamut } from '@pbroom/color-kit';
+
+const mine: Gamut = { ...rec2020, id: 'my-gamut' };
+maxChromaAt(0.6, 250, { gamut: mine }); // → 0.24578857421875
+inGamut({ l: 0.8, c: 0.4, h: 150, alpha: 1 }, mine); // → true
+```
+
+Gamuts are identified by `id`, not by object identity, and caches key on it.
+Two descriptors with the same `id` must describe the same gamut, so give a
+custom gamut an `id` of its own. The built-in ids are the CSS `color()`
+names: `'srgb'`, `'display-p3'` and `'rec2020'`. Plane query results carry
+the descriptor back, so read `result.gamut.id` for the name.
+
+A descriptor is plain data (numbers, arrays and one string), so it survives
+`structuredClone` and `postMessage`. Queries that name a gamut can cross to a
+worker unchanged.
+
+Migrating from the string form: replace `{ gamut: 'display-p3' }` with
+`{ gamut: displayP3 }` and import `displayP3` from `@pbroom/color-kit` (or
+`@pbroom/color-kit/plane`). The same goes for `srgb` and `rec2020`. A string
+now throws a `TypeError`.
+
+```ts title="string-gamut.ts"
+import { maxChromaAt } from '@pbroom/color-kit';
+
+maxChromaAt(0.5, 30, { gamut: 'display-p3' });
+// TypeError: maxChromaAt(): gamut "display-p3" is not a Gamut object; import one, such as displayP3
+```
+
+Validate a gamut in your own options the same way with
+[`assertGamut`](/api/plane/gamut#assertGamut).
+
+## Chroma bounds and nesting
+
+Searches that take a chroma bound (`maxChroma` on
+[`maxChromaAt`](/api/core/gamut#maxChromaAt), boundary paths and contrast
+regions) default to the gamut's own `maxChroma`: `0.4` for sRGB and Display
+P3 and `0.5` for Rec. 2020, so each default clears its gamut.
+
+### The gamuts are not strictly nested
+
+sRGB is inside both wider gamuts. Display P3 is not quite inside Rec. 2020:
+two thin slivers of it stick out, by at most about `0.002` chroma. One is
+around the P3 red primary (OKLCH hues 29 to 39), where the Rec. 2020 blue
+channel goes negative, and the other is around P3 cyan near white (hues 193 to
+200, lightness above `0.88`), where it goes above 1.
+
+```ts title="p3-red.ts"
+import { inRec2020Gamut, parse, toCss } from '@pbroom/color-kit';
+
+const p3Red = parse('color(display-p3 1 0 0)');
+inRec2020Gamut(p3Red); // → false
+toCss(p3Red, 'rec2020'); // → 'color(rec2020 0.8889 0.2766 0)' (blue clipped from -0.061)
+```
+
+A plane on the Display P3 model therefore reports `'domain-edge'` for a
+`displayP3` target and solves a contour for a `rec2020` one.
+
+### Display gamuts
+
+Every core function accepts any gamut, Rec. 2020 and custom ones included.
+That covers the contrast metrics
+([`contrastRatio`](/api/core/contrast#contrastRatio),
+[`contrastAPCA`](/api/core/contrast#contrastAPCA) and the `meets*` checks),
+[`ensureContrast`](/api/core/contrast#ensureContrast) and the plane contrast
+queries (`contrastRegion`, `contrastBoundary`, `contrastPoint`), which keep
+results inside the gamut and measure colors as clipped to it.
+
+The driver's and React's picker state is narrower. It models the gamut a
+color is shown in, and names it with a string, a `DisplayGamut` exported from
+`@pbroom/color-kit/driver` and `@pbroom/color-kit/react`: `'srgb'` or
+`'display-p3'`. `activeGamut`, `setActiveGamut` and the React hooks' and
+components' `gamut` options take those strings, not descriptors. To pass the
+active gamut on to a core function, map it with the driver's
+`displayGamutDescriptor`:
+
+```ts title="active-gamut.ts"
+import { maxChromaAt } from '@pbroom/color-kit';
+import {
+  displayGamutDescriptor,
+  type DisplayGamut,
+} from '@pbroom/color-kit/driver';
+
+function maxChromaFor(activeGamut: DisplayGamut, l: number, h: number) {
+  // 'display-p3' → displayP3, 'srgb' → srgb
+  return maxChromaAt(l, h, { gamut: displayGamutDescriptor(activeGamut) });
+}
 ```
 
 ## Membership reads unclamped channels
 
 [`inSrgbGamut`](/api/core/gamut#inSrgbGamut) converts OKLCH to linear sRGB without
 clamping and checks each channel against `[0, 1]`.
-[`inP3Gamut`](/api/core/gamut#inP3Gamut) does the same in linear Display P3. A
-check that clamped first, the way [`toRgb`](/api/core/conversion#toRgb) must, would call
-every color in gamut. For loops that already hold linear channels,
+[`inP3Gamut`](/api/core/gamut#inP3Gamut) and
+[`inRec2020Gamut`](/api/core/gamut#inRec2020Gamut) do the same in linear
+Display P3 and linear Rec. 2020. A check that clamped first, the way [`toRgb`](/api/core/conversion#toRgb) must, would call
+every color in gamut. [`inGamut`](/api/core/gamut#inGamut) runs the same test
+for any `Gamut` descriptor, custom ones included. For loops that already hold linear channels,
 [`isLinearRgbInGamut`](/api/core/gamut#isLinearRgbInGamut) is the same test without
-the conversion.
+the conversion, for linear sRGB or linear Display P3 channels.
 
 ## `GAMUT_EPSILON`
 
@@ -48,28 +172,28 @@ The slack is applied in encoded space on purpose. The same `0.000075` in
 linear light is about `0.00097` encoded near black, wide enough to accept
 `oklch(0.028 0.066 131)`, whose true boundary chroma is near `0.008`.
 
-These bounds are shared: `inSrgbGamut`, `inP3Gamut`, the plane
-`gamutRegion` field and the contrast-region solver all classify a boundary
-color the same way. Gamut mapping uses the slack only to return colors that
+Rec. 2020 gets the same `0.000075` on its own encoded channels. CSS Color 4
+and colorjs.io encode `rec2020` with a 2.4 power curve, which has no linear
+segment near black, so its linear bounds are `-(0.000075 ** 2.4)` to
+`1.000075 ** 2.4`: about `-1.26e-10` to `1.00018`. That is far tighter near
+black than the sRGB bounds. A very dark color that passes `inSrgbGamut` on
+tolerance alone can fail `inRec2020Gamut`, and below OKLCH lightness of about
+`0.05` (`0.15` for Display P3) a reported sRGB or P3 boundary can sit outside
+the Rec. 2020 one.
+
+Each gamut's bounds are defined once: `inSrgbGamut`, `inP3Gamut`,
+`inRec2020Gamut`, the plane `gamutRegion` field and the contrast-region
+solver all classify a boundary color the same way. Gamut mapping uses the slack only to return colors that
 are already in gamut unchanged; while reducing chroma it accepts only colors
 strictly inside.
 
 ## `'display-p3'`, never `'p3'`
 
-Display P3 is spelled `'display-p3'` everywhere: gamut options, the plane
-model, `mix` spaces, `toCss` formats, the interop array spaces, and the
-driver's and React's active gamut. The old `'p3'` spelling was removed
-without an alias, and passing it throws a `TypeError` that says so.
-
-```ts title="p3.ts"
-import { maxChromaAt } from '@pbroom/color-kit';
-
-maxChromaAt(0.5, 30, { gamut: 'p3' });
-// TypeError: maxChromaAt(): unknown gamut "p3". 'p3' is not supported; use 'display-p3'
-```
-
-Validate your own options the same way with
-[`assertGamutTarget`](/api/plane/gamut#assertGamutTarget).
+Wherever Display P3 is named by a string, the string is `'display-p3'`: the
+`displayP3` descriptor's `id`, the plane model, `mix` spaces, `toCss`
+formats, the interop array spaces, and the driver's and React's active gamut.
+Rec. 2020 is `'rec2020'`, as in CSS. The old `'p3'` spelling was removed
+without an alias.
 
 ## Try it
 

@@ -1,4 +1,4 @@
-import type { GamutTarget } from '../gamut/index.js';
+import type { Gamut } from '../gamut/spec.js';
 
 /**
  * WCAG contrast-ratio preset for contrast regions: `'AA'` is 4.5:1, `'AAA'`
@@ -53,12 +53,13 @@ export interface ContrastRegionPoint {
  */
 export interface ContrastRegionPathOptions {
   /**
-   * Target gamut. The reference and samples are measured as displayed in it,
-   * with channels clipped as `contrastRatio` / `contrastAPCA` clip them (an
+   * Target gamut: an imported descriptor such as `displayP3`. The reference
+   * and samples are measured as displayed in it, with channels clipped as
+   * `contrastRatio` / `contrastAPCA` clip them for the same `gamut` (an
    * out-of-gamut reference is not gamut-mapped), and paths stay inside it.
-   * @defaultValue `'srgb'`
+   * @defaultValue `srgb`
    */
-  gamut?: GamutTarget;
+  gamut?: Gamut;
   /**
    * Contrast metric used when evaluating region membership.
    * @defaultValue `'wcag'`
@@ -101,7 +102,7 @@ export interface ContrastRegionPathOptions {
   apcaRole?: ContrastApcaRole;
   /**
    * Upper chroma bound of the region: paths end at this chroma.
-   * @defaultValue `0.4`
+   * @defaultValue `gamut.maxChroma` (`0.4`; `0.5` for `rec2020`)
    */
   maxChroma?: number;
   /**

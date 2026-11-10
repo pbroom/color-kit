@@ -144,7 +144,8 @@ function stableStringify(value: unknown): string {
  * object keys, so equivalent definitions (defaults omitted or spelled out,
  * properties in any order) produce the same key. The key starts with the
  * serialized plane, so `PlaneQueryCache.invalidateByPrefix()` can drop every
- * entry for one plane.
+ * entry for one plane. A query's `gamut` contributes its `id` only, so two
+ * gamut descriptors with the same id share cache entries.
  *
  * @param plane - Plane the query runs against; a {@link Plane} or any
  * {@link PlaneDefinition}.
@@ -169,7 +170,16 @@ export function createPlaneQueryKey(
   plane: PlaneDefinition,
   query: PlaneQuery,
 ): string {
-  return `${stableStringify(resolvePlaneDefinition(plane))}:${stableStringify(query)}`;
+  // A gamut is keyed by its id, not by serializing its matrices per call.
+  // The id stays wrapped in an object so an invalid string gamut (the
+  // removed `gamut: 'display-p3'` form) never shares a key, and a cache hit,
+  // with a valid query.
+  const gamut = (query as { gamut?: { id?: unknown } }).gamut;
+  const keyed =
+    typeof gamut === 'object' && gamut !== null
+      ? { ...query, gamut: { id: gamut.id } }
+      : query;
+  return `${stableStringify(resolvePlaneDefinition(plane))}:${stableStringify(keyed)}`;
 }
 
 /** Options for the {@link PlaneQueryCache} constructor. */

@@ -11,8 +11,8 @@ import {
   toSrgbGamut,
   type Color,
   type ContrastApcaPolarity,
-  type GamutTarget,
 } from '@color-kit/core';
+import { displayGamutDescriptor, type DisplayGamut } from '@color-kit/driver';
 import { packPlaneQueryResults } from '@color-kit/core/compute';
 import * as driver from '@color-kit/driver';
 import { useAdaptiveQuality } from '../src/use-adaptive-quality.js';
@@ -132,6 +132,35 @@ function stubWorker(respond: (message: { id: number }) => object) {
   vi.stubGlobal('Worker', MockWorker as unknown as typeof Worker);
   return posted;
 }
+
+describe('plane geometry hooks and Rec. 2020', () => {
+  // Core takes any gamut descriptor; the hooks draw for a display gamut,
+  // named by string, and reject everything else.
+  const color: Color = { l: 0.6, c: 0.1, h: 250, alpha: 1 };
+  const options = { gamut: 'rec2020' as DisplayGamut };
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  it('useGamutBoundary() throws for gamut "rec2020"', () => {
+    quiet();
+    expect(() =>
+      renderHook(() => useGamutBoundary({ color }, options)),
+    ).toThrow(/gamutBoundary\(\): unknown gamut "rec2020"; use 'srgb'/);
+  });
+
+  it('useChromaBand() throws for gamut "rec2020"', () => {
+    quiet();
+    expect(() => renderHook(() => useChromaBand({ color }, options))).toThrow(
+      /chromaBand\(\): unknown gamut "rec2020"/,
+    );
+  });
+
+  it('useContrastRegion() throws for gamut "rec2020"', () => {
+    quiet();
+    expect(() =>
+      renderHook(() => useContrastRegion({ color }, options)),
+    ).toThrow(/contrastRegion\(\): unknown gamut "rec2020"/);
+  });
+});
 
 describe('useGamutBoundary()', () => {
   it('traces the boundary as points and a viewBox path', () => {
@@ -370,7 +399,7 @@ describe('useContrastRegion()', () => {
     ).toBe(false);
   });
 
-  it.each<{ gamut: GamutTarget; threshold: number }>([
+  it.each<{ gamut: DisplayGamut; threshold: number }>([
     { gamut: 'display-p3', threshold: 3 },
     { gamut: 'srgb', threshold: 4.5 },
   ])(
@@ -389,11 +418,17 @@ describe('useContrastRegion()', () => {
       let passing = 0;
       let failing = 0;
       for (let l = 0.025; l < 1; l += 0.05) {
-        const edge = maxChromaAt(l, reference.h, { gamut });
+        const edge = maxChromaAt(l, reference.h, {
+          gamut: displayGamutDescriptor(gamut),
+        });
         for (let c = 0.005; c < edge * 0.9; c += 0.02) {
           const sample: Color = { l, c, h: reference.h, alpha: 1 };
           const margin =
-            contrastRatio(sample, mapped, { gamut }) / threshold - 1;
+            contrastRatio(sample, mapped, {
+              gamut: displayGamutDescriptor(gamut),
+            }) /
+              threshold -
+            1;
           if (Math.abs(margin) < 0.15) continue;
           expect(
             pathContainsPoint(result.current.fillPath, lcToViewBox(l, c)),

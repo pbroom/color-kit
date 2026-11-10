@@ -9,6 +9,14 @@
  * <-> LMS and linear-P3 <-> LMS matrices are the products
  * `XYZtoLMS · RGBtoXYZ` / `XYZtoRGB · LMStoXYZ`, evaluated in float64.
  *
+ * The Rec. 2020 matrices have the same provenance: `XYZ_to_lin_2020` is the
+ * rational matrix of the CSS Color 4 sample code
+ * (https://www.w3.org/TR/css-color-4/#color-conversion-code) evaluated in
+ * float64, `lin_2020_to_XYZ` is the value colorjs.io ships for the same
+ * rationals, and the linear-sRGB <-> linear-Rec2020 and LMS -> linear-Rec2020
+ * matrices are the float64 products `XYZ_to_lin_2020 · lin_sRGB_to_XYZ`,
+ * `XYZ_to_lin_sRGB · lin_2020_to_XYZ` and `XYZ_to_lin_2020 · LMStoXYZ`.
+ *
  * The previous 10-significant-digit values (Ottosson's original blog post and
  * an 8-digit-derived sRGB -> P3 matrix) disagreed with the reference by up to
  * ~2e-7 per matrix entry, which put white at L = 0.99999999, C = 3.7e-8 and
@@ -68,4 +76,39 @@ export const LMS_TO_LINEAR_P3: Matrix3 = [
   [3.127768971361874, -2.257135762591639, 0.12936679122976524],
   [-1.0910090184377974, 2.413331710306921, -0.32232269186912466],
   [-0.026010801938570305, -0.508041331704167, 1.534052133642737],
+];
+
+/** Linear Rec. 2020 -> CIE XYZ (D65). */
+export const LINEAR_REC2020_TO_XYZ_D65: Matrix3 = [
+  [0.6369580483012914, 0.14461690358620832, 0.1688809751641721],
+  [0.2627002120112671, 0.6779980715188708, 0.05930171646986196],
+  [0, 0.028072693049087428, 1.060985057710791],
+];
+
+/** CIE XYZ (D65) -> linear Rec. 2020. */
+export const XYZ_D65_TO_LINEAR_REC2020: Matrix3 = [
+  [1.7166511879712676, -0.3556707837763924, -0.2533662813736598],
+  [-0.666684351832489, 1.616481236634939, 0.01576854581391113],
+  [0.017639857445310915, -0.042770613257808655, 0.942103121235474],
+];
+
+/** Linear sRGB -> linear Rec. 2020 (`XYZ_to_lin_2020 · lin_sRGB_to_XYZ`). */
+export const LINEAR_SRGB_TO_LINEAR_REC2020: Matrix3 = [
+  [0.627403895934699, 0.3292830383778836, 0.043313065687417246],
+  [0.06909728935823205, 0.9195403950754587, 0.011362315566309173],
+  [0.01639143887515028, 0.08801330787722576, 0.895595253247624],
+];
+
+/** Linear Rec. 2020 -> linear sRGB (`XYZ_to_lin_sRGB · lin_2020_to_XYZ`). */
+export const LINEAR_REC2020_TO_LINEAR_SRGB: Matrix3 = [
+  [1.6604910021084343, -0.5876411387885496, -0.0728498633198848],
+  [-0.12455047452159085, 1.1328998971259603, -0.008349422604369473],
+  [-0.018150763354905307, -0.10057889800800737, 1.1187296613629127],
+];
+
+/** LMS -> linear Rec. 2020 (`XYZ_to_lin_2020 · LMStoXYZ`). */
+export const LMS_TO_LINEAR_REC2020: Matrix3 = [
+  [2.1399067304346513, -1.2463894937606177, 0.10648276332596673],
+  [-0.8847358357577673, 2.1632309383612003, -0.2784951026034336],
+  [-0.04857374640044399, -0.45450314971409633, 1.5030768961145402],
 ];

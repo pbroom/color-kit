@@ -13,7 +13,6 @@ const schedulerRequest = {
   queries: [
     {
       kind: 'gamutBoundary',
-      gamut: 'srgb',
       hue: 275,
       steps: 8,
     },
@@ -178,7 +177,7 @@ assert.equal(typeof plane.getPlaneContrastPoint, 'function');
     .contrastPoint({
       point: { x: 0.8, y: 0 },
       reference: white,
-      gamut: 'srgb',
+      gamut: root.srgb,
     });
   assert.equal(solved.kind, 'contrastPoint');
   assert.equal(solved.status, 'adjusted');
@@ -202,8 +201,70 @@ await assert.rejects(import('@pbroom/color-kit/react/color-input'), {
 // point.
 assert.equal(root.definePlane, plane.definePlane);
 assert.equal(root.definePlane, core.definePlane);
-assert.equal(typeof root.assertGamutTarget, 'function');
-assert.equal(root.assertGamutTarget, plane.assertGamutTarget);
+// Gamuts are descriptor objects, exported from the root and plane entries
+// (one object each, shared by every entry).
+for (const [name, id] of [
+  ['srgb', 'srgb'],
+  ['displayP3', 'display-p3'],
+  ['rec2020', 'rec2020'],
+]) {
+  assert.equal(root[name].id, id, `root.${name}.id`);
+  assert.equal(root[name], plane[name], `plane.${name}`);
+  assert.equal(root[name], core[name], `core.${name}`);
+}
+assert.equal(typeof root.assertGamut, 'function');
+assert.equal(root.assertGamut, plane.assertGamut);
+for (const name of ['inGamut', 'toGamut', 'toGamutInto']) {
+  assert.equal(typeof root[name], 'function', `root.${name}`);
+}
+for (const name of ['assertGamutTarget', 'assertDisplayGamut']) {
+  assert.equal(name in root, false, `root.${name} was removed`);
+  assert.equal(name in plane, false, `plane.${name} was removed`);
+}
+// The old string form throws instead of silently meaning sRGB.
+assert.throws(
+  () => root.maxChromaAt(0.6, 250, { gamut: 'display-p3' }),
+  /maxChromaAt\(\): gamut "display-p3" is not a Gamut object/,
+);
+assert.equal(
+  root.maxChromaAt(0.6, 250, { gamut: root.displayP3 }),
+  0.21923828125,
+);
+assert.ok(
+  root.contrastRatio(root.parse('#777'), root.parse('#fff'), {
+    gamut: root.rec2020,
+  }) > 4,
+);
+// The driver names its two display gamuts by string and maps them to core
+// descriptors; Rec. 2020 is not a display gamut there.
+assert.equal(typeof driver.assertDisplayGamut, 'function');
+assert.equal(driver.displayGamutDescriptor('display-p3'), root.displayP3);
+assert.equal(driver.displayGamutDescriptor('srgb'), root.srgb);
+for (const name of ['inRec2020Gamut', 'toRec2020Gamut', 'toRec2020GamutInto']) {
+  assert.equal(typeof root[name], 'function', `root.${name}`);
+  assert.equal(root[name], core[name], `core.${name}`);
+}
+assert.equal(root.LINEAR_SRGB_TO_LINEAR_REC2020.length, 3);
+assert.equal(
+  root.inRec2020Gamut(root.parse('color(rec2020 0 1 0)')),
+  true,
+  'inRec2020Gamut',
+);
+assert.equal(
+  root.toCss(root.parse('color(rec2020 0 1 0)'), 'rec2020'),
+  'color(rec2020 0 1 0)',
+);
+assert.equal(
+  plane.sense(plane.definePlane({ model: 'oklch' })).gamutBoundary({
+    gamut: plane.rec2020,
+  }).gamut,
+  plane.rec2020,
+);
+assert.throws(
+  () =>
+    driver.createColorState(root.parse('#3b82f6'), { activeGamut: 'rec2020' }),
+  /unknown gamut "rec2020"/,
+);
 assertNotOnRoot(root);
 assertNotOnRoot(core);
 assertNotOnReact(react);
@@ -244,7 +305,13 @@ assert.throws(() => require('@pbroom/color-kit/react/color-input'), {
 });
 assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);
 assert.equal(cjsRoot.definePlane, cjsCore.definePlane);
-assert.equal(cjsRoot.assertGamutTarget, cjsPlane.assertGamutTarget);
+assert.equal(cjsRoot.assertGamut, cjsPlane.assertGamut);
+assert.equal(cjsRoot.rec2020, cjsPlane.rec2020);
+assert.equal(cjsRoot.displayP3.id, 'display-p3');
+assert.equal(cjsDriver.displayGamutDescriptor('display-p3'), cjsRoot.displayP3);
+assert.equal(typeof cjsRoot.inRec2020Gamut, 'function');
+assert.equal(typeof cjsRoot.toRec2020Gamut, 'function');
+assert.equal(typeof cjsRoot.toRec2020GamutInto, 'function');
 assertNotOnRoot(cjsRoot);
 assertNotOnRoot(cjsCore);
 assertNotOnReact(cjsReact);

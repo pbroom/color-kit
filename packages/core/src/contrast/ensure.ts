@@ -1,11 +1,13 @@
-import { isInTargetGamut } from '../gamut/membership.js';
-import type { GamutTarget } from '../gamut/types.js';
+import { inGamutSpec } from '../gamut/membership.js';
+import { srgb } from '../gamut/spec.js';
+import { assertGamut } from '../gamut/target.js';
 import type { Color } from '../types.js';
 import {
   createContrastTest,
   firstPassingBetween,
   type ContrastTargetOptions,
 } from './point-solver.js';
+import { resolveContrastCriterion } from './region-shared.js';
 
 /**
  * Which way {@link ensureContrast} may move lightness: `'nearest'` takes the
@@ -40,14 +42,18 @@ const CHROMA_TOLERANCE = 1e-10;
  * gamut at the sample's lightness and hue (bisected; zero chroma is always
  * in gamut for lightness in `[0, 1]`).
  */
-function fitChroma(sample: Color, chroma: number, gamut: GamutTarget): void {
+function fitChroma(
+  sample: Color,
+  chroma: number,
+  isInGamut: (color: Color) => boolean,
+): void {
   sample.c = chroma;
-  if (isInTargetGamut(sample, gamut)) return;
+  if (isInGamut(sample)) return;
   let inGamut = 0;
   let outOfGamut = chroma;
   while (outOfGamut - inGamut > CHROMA_TOLERANCE) {
     sample.c = (inGamut + outOfGamut) / 2;
-    if (isInTargetGamut(sample, gamut)) {
+    if (isInGamut(sample)) {
       inGamut = sample.c;
     } else {
       outOfGamut = sample.c;
@@ -69,7 +75,7 @@ function fitChroma(sample: Color, chroma: number, gamut: GamutTarget): void {
  * @param options - Contrast target, gamut and direction.
  * @returns A new Color, or `null` when the threshold is unreachable in the
  * allowed direction.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`, or
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor, or
  * `direction` is not `'nearest'`, `'lighter'` or `'darker'`.
  * @throws {Error} When the threshold is out of range for the metric.
  *
@@ -88,7 +94,9 @@ export function tryEnsureContrast(
   reference: Color,
   options: EnsureContrastOptions = {},
 ): Color | null {
-  const gamut = options.gamut ?? 'srgb';
+  assertGamut(options.gamut, 'ensureContrast()');
+  const gamut = options.gamut ?? srgb;
+  const isInGamut = (sample: Color): boolean => inGamutSpec(sample, gamut);
   const direction = options.direction ?? 'nearest';
   if (
     direction !== 'nearest' &&
@@ -101,9 +109,8 @@ export function tryEnsureContrast(
   }
   const test = createContrastTest(
     reference,
-    { ...options, gamut },
-    gamut,
-    'ensureContrast()',
+    resolveContrastCriterion(options, 'ensureContrast()'),
+    isInGamut,
   );
   // A powerless (non-finite) hue is measured as 0 and handed back as given.
   const sample: Color = { ...color, h: Number.isFinite(color.h) ? color.h : 0 };
@@ -112,7 +119,7 @@ export function tryEnsureContrast(
   // chroma reduced only as far as the gamut requires.
   const passesAt = (l: number): boolean => {
     sample.l = l;
-    fitChroma(sample, chroma, gamut);
+    fitChroma(sample, chroma, isInGamut);
     return test.passes(sample);
   };
   const finish = (): Color => {
@@ -151,8 +158,8 @@ export function tryEnsureContrast(
  * Hue and alpha are kept. Chroma is kept wherever the target gamut can show
  * it at the new lightness and otherwise reduced only as far as needed to
  * stay in gamut (to within `1e-10` of the gamut edge, tighter than the
- * `1e-4` of {@link toSrgbGamut} / {@link toP3Gamut}). The result is always
- * in `gamut` per {@link inSrgbGamut} / {@link inP3Gamut} and passes the same
+ * `1e-4` of {@link toGamut}). The result is always in `gamut` per
+ * {@link inGamut} and passes the same
  * check the library's metrics make: `contrastRatio(result, reference,
  * { gamut })` (or `contrastAPCA`) meets the threshold, measured unrounded.
  * A color that already passes is returned as is, with its chroma reduced
@@ -172,13 +179,15 @@ export function tryEnsureContrast(
  *
  * @param color - Color to adjust.
  * @param reference - Color it must contrast with.
- * @param options - Contrast target, gamut (`'srgb'` by default) and
- * direction (`'nearest'` by default).
+ * @param options - Contrast target, gamut (the `srgb` descriptor by
+ * default; any `Gamut`, such as `displayP3` or `rec2020`) and direction
+ * (`'nearest'` by default).
  * @returns A new Color.
  * @throws {RangeError} When no lightness in the allowed direction reaches
  * the threshold; use {@link tryEnsureContrast} to get `null` instead.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`, or
- * `direction` is not `'nearest'`, `'lighter'` or `'darker'`.
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor (a gamut
+ * name such as `'display-p3'` throws), or `direction` is not `'nearest'`,
+ * `'lighter'` or `'darker'`.
  * @throws {Error} When the threshold is out of range for the metric.
  * @see {@link contrastRatio}
  * @see {@link contrastAPCA}

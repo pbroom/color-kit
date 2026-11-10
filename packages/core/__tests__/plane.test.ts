@@ -34,6 +34,7 @@ import {
   translateRegion,
   unionRegions,
 } from '../src/plane/index.js';
+import { displayP3, srgb } from '../src/index.js';
 
 const basePlane = definePlane({
   model: 'oklch',
@@ -288,10 +289,10 @@ describe('plane api', () => {
 
   it('executes mvp plane queries', () => {
     const query = sense(basePlane);
-    const boundary = query.gamutBoundary({ gamut: 'srgb', steps: 16 });
+    const boundary = query.gamutBoundary({ gamut: srgb, steps: 16 });
     expect(boundary.points.length).toBeGreaterThan(8);
 
-    const gamutRegion = query.gamutRegion({ gamut: 'srgb' });
+    const gamutRegion = query.gamutRegion({ gamut: srgb });
     expect(gamutRegion.solver).toBe('analytic-lc');
     expect(gamutRegion.viewportRelation).toBe('intersects');
     expect(gamutRegion.boundaryPaths.length).toBeGreaterThan(0);
@@ -320,7 +321,7 @@ describe('plane api', () => {
 
     const fallback = query.fallbackPoint({
       color: { l: 0.82, c: 0.34, h: 10, alpha: 1 },
-      gamut: 'srgb',
+      gamut: srgb,
     });
     expect(fallback.point.x).toBeGreaterThanOrEqual(0);
     expect(fallback.point.x).toBeLessThanOrEqual(1);
@@ -342,7 +343,7 @@ describe('plane api', () => {
     });
     const query = sense(zoomedPlane);
 
-    const viewportRegion = query.gamutRegion({ gamut: 'srgb' });
+    const viewportRegion = query.gamutRegion({ gamut: srgb });
     expect(viewportRegion.solver).toBe('analytic-lc');
     expect(viewportRegion.viewportRelation).toBe('inside');
     expect(viewportRegion.boundaryPaths).toEqual([]);
@@ -355,7 +356,7 @@ describe('plane api', () => {
       ],
     ]);
 
-    const fullRegion = query.gamutRegion({ gamut: 'srgb', scope: 'full' });
+    const fullRegion = query.gamutRegion({ gamut: srgb, scope: 'full' });
     expect(fullRegion.viewportRelation).toBe('inside');
     expect(fullRegion.boundaryPaths.length).toBeGreaterThan(0);
     expect(
@@ -374,7 +375,7 @@ describe('plane api', () => {
       y: { channel: 'c', range: [0.35, 0] },
       fixed: { l: 0.62, alpha: 1 },
     });
-    const hueChroma = sense(hueChromaPlane).gamutRegion({ gamut: 'srgb' });
+    const hueChroma = sense(hueChromaPlane).gamutRegion({ gamut: srgb });
     expect(hueChroma.solver).toBe('analytic-hc');
     expect(hueChroma.viewportRelation).toBe('intersects');
     expect(hueChroma.boundaryPaths.length).toBeGreaterThan(0);
@@ -386,7 +387,7 @@ describe('plane api', () => {
       y: { channel: 'g', range: [255, 0] },
       fixed: { b: 180, alpha: 1 },
     });
-    const rgbRegion = sense(rgbPlane).gamutRegion({ gamut: 'srgb' });
+    const rgbRegion = sense(rgbPlane).gamutRegion({ gamut: srgb });
     expect(rgbRegion.solver).toBe('domain-edge');
     expect(rgbRegion.viewportRelation).toBe('intersects');
     expect(rgbRegion.boundaryPaths).toHaveLength(1);
@@ -398,7 +399,7 @@ describe('plane api', () => {
       y: { channel: 's', range: [100, 0] },
       fixed: { l: 50, alpha: 1 },
     });
-    const hslRegion = sense(hslPlane).gamutRegion({ gamut: 'srgb' });
+    const hslRegion = sense(hslPlane).gamutRegion({ gamut: srgb });
     expect(hslRegion.solver).toBe('domain-edge');
     expect(hslRegion.viewportRelation).toBe('inside');
     expect(hslRegion.boundaryPaths).toEqual([]);
@@ -412,7 +413,7 @@ describe('plane api', () => {
       y: { channel: 'g', range: [1, 0] },
       fixed: { b: 0.5, alpha: 1 },
     });
-    const p3Region = sense(p3Plane).gamutRegion({ gamut: 'srgb' });
+    const p3Region = sense(p3Plane).gamutRegion({ gamut: srgb });
     expect(p3Region.solver).toBe('implicit-contour');
     expect(p3Region.viewportRelation).toBe('intersects');
     expect(p3Region.boundaryPaths.length).toBeGreaterThan(0);
@@ -425,7 +426,7 @@ describe('plane api', () => {
       fixed: { t: 50, alpha: 1 },
     });
     const hctHueChroma = sense(hctHueChromaPlane).gamutRegion({
-      gamut: 'srgb',
+      gamut: srgb,
     });
     expect(hctHueChroma.solver).toBe('analytic-hct');
     expect(hctHueChroma.viewportRelation).toBe('intersects');
@@ -439,7 +440,7 @@ describe('plane api', () => {
       fixed: { h: 210, alpha: 1 },
     });
     const hctToneChroma = sense(hctToneChromaPlane).gamutRegion({
-      gamut: 'srgb',
+      gamut: srgb,
     });
     expect(hctToneChroma.solver).toBe('analytic-hct');
     expect(hctToneChroma.boundaryPaths.length).toBeGreaterThan(0);
@@ -449,7 +450,7 @@ describe('plane api', () => {
   it('returns identical results when using the inspection sidecar', () => {
     const gamutQuery = {
       kind: 'gamutRegion' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       scope: 'viewport' as const,
       simplifyTolerance: 0.0015,
     };
@@ -484,7 +485,7 @@ describe('plane api', () => {
       p3Plane,
       {
         kind: 'gamutRegion',
-        gamut: 'srgb',
+        gamut: srgb,
         scope: 'viewport',
       },
       {
@@ -570,7 +571,7 @@ describe('plane api', () => {
     });
     const query = sense(rgbPlane);
 
-    const boundary = query.gamutBoundary({ gamut: 'srgb', steps: 12 });
+    const boundary = query.gamutBoundary({ gamut: srgb, steps: 12 });
     expect(boundary.points).toEqual([]);
     expect(boundary.hue).toBeGreaterThanOrEqual(0);
     expect(boundary.hue).toBeLessThan(360);
@@ -597,7 +598,7 @@ describe('plane api', () => {
 
     const fallback = query.fallbackPoint({
       color: parse('#ef4444'),
-      gamut: 'srgb',
+      gamut: srgb,
     });
     expectUnitInterval(fallback.point.x);
     expectUnitInterval(fallback.point.y);
@@ -614,7 +615,7 @@ describe('plane api', () => {
     const query = sense(basePlane);
     const boundaryQuery = {
       kind: 'gamutBoundary' as const,
-      gamut: 'display-p3' as const,
+      gamut: displayP3,
       steps: 24,
     };
     const cache = new PlaneQueryCache();
@@ -636,12 +637,12 @@ describe('plane api', () => {
     const cache = new PlaneQueryCache({ maxEntries: 2 });
     const queryFor = (steps: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       steps,
     });
     const resultFor = (hue: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       hue,
       points: [],
     });
@@ -659,12 +660,12 @@ describe('plane api', () => {
     const cache = new PlaneQueryCache({ maxEntries: 2 });
     const queryFor = (steps: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       steps,
     });
     const resultFor = (hue: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       hue,
       points: [],
     });
@@ -684,12 +685,12 @@ describe('plane api', () => {
     const cache = new PlaneQueryCache({ maxEntries: 2 });
     const queryFor = (steps: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       steps,
     });
     const resultFor = (hue: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       hue,
       points: [],
     });
@@ -709,12 +710,12 @@ describe('plane api', () => {
     const cache = new PlaneQueryCache({ maxEntries: 1 });
     const queryFor = (steps: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       steps,
     });
     const resultFor = (hue: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       hue,
       points: [],
     });
@@ -738,12 +739,12 @@ describe('plane api', () => {
     const cache = new PlaneQueryCache({ maxEntries: Number.NaN });
     const queryFor = (steps: number) => ({
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       steps,
     });
     const result = {
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
       hue: 0,
       points: [],
     };
@@ -759,7 +760,7 @@ describe('plane api', () => {
   it('normalizes equivalent plane definitions into the same cache key', () => {
     const query = {
       kind: 'gamutBoundary' as const,
-      gamut: 'srgb' as const,
+      gamut: srgb,
     };
     const color = parse('#3b82f6');
     const rgb = toRgb(color);

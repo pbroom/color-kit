@@ -1,12 +1,7 @@
 import type { Color } from '../types.js';
-import {
-  LINEAR_P3_TO_LINEAR_SRGB,
-  LMS_TO_LINEAR_P3,
-  LMS_TO_LINEAR_SRGB,
-  OKLAB_TO_LMS,
-} from '../conversion/matrices.js';
-import { inP3Gamut, inSrgbGamut } from '../gamut/index.js';
-import { GAMUT_LINEAR_MAX, GAMUT_LINEAR_MIN } from '../gamut/linear-bounds.js';
+import { OKLAB_TO_LMS } from '../conversion/matrices.js';
+import { inGamutSpec } from '../gamut/membership.js';
+import { srgb, type Gamut } from '../gamut/spec.js';
 import {
   incrementTraceSummary,
   limitTracePaths,
@@ -14,9 +9,9 @@ import {
   setTraceSummaryField,
   type InternalPlaneTraceContext,
 } from '../trace/context.js';
-import { linearToSrgbChannel, simplifyPolyline } from '../utils/index.js';
-import { apcaLuminanceOfEncoded, wcagLuminanceOfLinear } from './metrics.js';
+import { simplifyPolyline } from '../utils/index.js';
 import {
+  createDisplayLuminance,
   CONTRAST_REGION_DEFAULTS,
   resolveContrastCriterion,
   resolveContrastSampling,
@@ -42,8 +37,8 @@ import type {
  * Along a ray every linear channel is `r³` times a constant, so:
  *
  * - the in-gamut part of a ray is `[0, R(θ)]`, where `R(θ)³` is the smallest
- *   ratio of a channel bound (`GAMUT_LINEAR_MIN` / `GAMUT_LINEAR_MAX`, the
- *   bounds behind `inSrgbGamut` / `inP3Gamut`) to that channel's constant;
+ *   ratio of a channel bound (the gamut's `linearMin` / `linearMax`, the
+ *   bounds behind its membership test) to that channel's constant;
  * - the displayed luminance never decreases along the in-gamut part, so each
  *   side crosses a ray at most once, found by a bracketed 1-D solve;
  * - a side's curve is visible exactly where the gamut-edge point of the ray
@@ -127,13 +122,11 @@ interface Kernel {
   polynomials: (half: 0 | 1) => number[][];
 }
 
-function clip(value: number): number {
-  return value < 0 ? 0 : value > 1 ? 1 : value;
-}
-
 function createKernel(
   hue: number,
   gamutRows: Rows,
+  linearMin: number,
+  linearMax: number,
   displayLuminance: (r: number, g: number, b: number) => number,
   maxChromaCubed: number,
   stats: ContrastSolverStats,
@@ -162,8 +155,8 @@ function createKernel(
     let edge = Number.POSITIVE_INFINITY;
     for (let m = 0; m < 3; m += 1) {
       const value = tau[m];
-      if (value > 0) edge = Math.min(edge, GAMUT_LINEAR_MAX / value);
-      else if (value < 0) edge = Math.min(edge, GAMUT_LINEAR_MIN / value);
+      if (value > 0) edge = Math.min(edge, linearMax / value);
+      else if (value < 0) edge = Math.min(edge, linearMin / value);
     }
     if (sinCubed > 0 && Number.isFinite(maxChromaCubed)) {
       edge = Math.min(edge, maxChromaCubed / sinCubed);
@@ -210,11 +203,7 @@ function createKernel(
       for (const t of ts) {
         if (!(t >= 0 && t <= 1)) continue;
         const value = at(t);
-        margin = Math.min(
-          margin,
-          value - GAMUT_LINEAR_MIN,
-          GAMUT_LINEAR_MAX - value,
-        );
+        margin = Math.min(margin, value - linearMin, linearMax - value);
       }
     }
     return margin;
@@ -242,43 +231,6 @@ function createKernel(
     chordMargin,
     polynomials,
   };
-}
-
-/**
- * Displayed luminance of target-gamut linear channels, measured as the
- * public metric measures it: channels clipped to [0, 1] in the target gamut,
- * then WCAG relative luminance or APCA screen luminance of the sRGB result.
- */
-function createDisplayLuminance(
-  gamut: 'srgb' | 'display-p3',
-  metric: 'wcag' | 'apca',
-): (r: number, g: number, b: number) => number {
-  if (gamut === 'display-p3') {
-    const [sr, sg, sb] = LINEAR_P3_TO_LINEAR_SRGB;
-    return (r, g, b) => {
-      const pr = clip(r);
-      const pg = clip(g);
-      const pb = clip(b);
-      const lr = sr[0] * pr + sr[1] * pg + sr[2] * pb;
-      const lg = sg[0] * pr + sg[1] * pg + sg[2] * pb;
-      const lb = sb[0] * pr + sb[1] * pg + sb[2] * pb;
-      return metric === 'apca'
-        ? apcaLuminanceOfEncoded(
-            linearToSrgbChannel(lr),
-            linearToSrgbChannel(lg),
-            linearToSrgbChannel(lb),
-          )
-        : wcagLuminanceOfLinear(lr, lg, lb);
-    };
-  }
-  return metric === 'apca'
-    ? (r, g, b) =>
-        apcaLuminanceOfEncoded(
-          linearToSrgbChannel(clip(r)),
-          linearToSrgbChannel(clip(g)),
-          linearToSrgbChannel(clip(b)),
-        )
-    : (r, g, b) => wcagLuminanceOfLinear(clip(r), clip(g), clip(b));
 }
 
 /**
@@ -380,9 +332,14 @@ function unitCubicRoots(
  * clipping starts) on the edge. Every condition is a cubic in `tan θ` (or
  * `cot θ`), solved exactly.
  */
-function edgeBreakpoints(kernel: Kernel, maxChromaCubed: number): number[] {
+function edgeBreakpoints(
+  kernel: Kernel,
+  maxChromaCubed: number,
+  linearMin: number,
+  linearMax: number,
+): number[] {
   const out: number[] = [];
-  const bounds = [GAMUT_LINEAR_MIN, GAMUT_LINEAR_MAX];
+  const bounds = [linearMin, linearMax];
   const roots: number[] = [];
   const capped = Number.isFinite(maxChromaCubed);
   for (const half of [0, 1] as const) {
@@ -412,11 +369,11 @@ function edgeBreakpoints(kernel: Kernel, maxChromaCubed: number): number[] {
           }
         }
         // Channel n reaches 1 on the edge of m's upper bound.
-        solve(n, GAMUT_LINEAR_MAX, m, 1, 0);
+        solve(n, linearMax, m, 1, 0);
       }
       if (capped) {
         // Bound of m meets the maxChroma cap, or channel m reaches 1 on it.
-        for (const level of [GAMUT_LINEAR_MIN, GAMUT_LINEAR_MAX, 1]) {
+        for (const level of [linearMin, linearMax, 1]) {
           solve(m, maxChromaCubed, m, 0, level);
         }
       }
@@ -452,8 +409,9 @@ export function solveContrastRegionPaths(
 ): ContrastRegionPoint[][] {
   const criterion = resolveContrastCriterion(options);
   const sampling = resolveContrastSampling(options);
-  const gamut = options.gamut ?? 'srgb';
-  const maxChroma = options.maxChroma ?? CONTRAST_REGION_DEFAULTS.maxChroma;
+  // `resolveContrastCriterion` validated `options.gamut`.
+  const spec = options.gamut ?? srgb;
+  const maxChroma = options.maxChroma ?? spec.maxChroma;
   const alpha = options.alpha ?? 1;
   const simplifyTolerance = options.simplifyTolerance;
 
@@ -479,7 +437,7 @@ export function solveContrastRegionPaths(
     tracePaths(
       reference,
       hue,
-      gamut,
+      spec,
       criterion,
       sampling,
       maxChroma,
@@ -523,7 +481,7 @@ export function solveContrastRegionPaths(
 function tracePaths(
   reference: Color,
   hue: number,
-  gamut: 'srgb' | 'display-p3',
+  spec: Gamut,
   criterion: ReturnType<typeof resolveContrastCriterion>,
   sampling: ReturnType<typeof resolveContrastSampling>,
   maxChroma: number,
@@ -535,15 +493,18 @@ function tracePaths(
   // Measured unmapped, like the public checks: they clip an out-of-gamut
   // reference to the display gamut rather than chroma-reducing it.
   const maxChromaCubed = maxChroma ** 3;
-  const displayLuminance = createDisplayLuminance(gamut, criterion.metric);
+  const { linearMin, linearMax } = spec;
+  const displayLuminance = createDisplayLuminance(spec, criterion.metric);
   const kernel = createKernel(
     hue,
-    gamut === 'display-p3' ? LMS_TO_LINEAR_P3 : LMS_TO_LINEAR_SRGB,
+    spec.lmsToLinear,
+    linearMin,
+    linearMax,
     displayLuminance,
     maxChromaCubed,
     stats,
   );
-  const inGamut = gamut === 'display-p3' ? inP3Gamut : inSrgbGamut;
+  const inGamut = (color: Color): boolean => inGamutSpec(color, spec);
 
   // Pass/fail is a function of the sample's displayed luminance only, and
   // never improves toward the reference's: each side passes up to (dark) or
@@ -555,7 +516,7 @@ function tracePaths(
     return criterion.evaluateLuminance(y, referenceY);
   };
   kernel.direction(0);
-  const whiteY = kernel.luminanceAt(GAMUT_LINEAR_MAX);
+  const whiteY = kernel.luminanceAt(linearMax);
   // Near black the metrics change by less than one ulp across wide
   // luminance ranges, so the public margin is not monotone at the ulp level
   // there. Targets keep a small margin (`MARGIN_FLOOR` times the threshold)
@@ -591,7 +552,12 @@ function tracePaths(
   }
   if (sides.length === 0) return;
 
-  const breakpoints = edgeBreakpoints(kernel, maxChromaCubed);
+  const breakpoints = edgeBreakpoints(
+    kernel,
+    maxChromaCubed,
+    linearMin,
+    linearMax,
+  );
   const scan: number[] = [...breakpoints];
   for (let index = 0; index <= EVENT_SCAN_STEPS; index += 1) {
     scan.push((HALF_PI * index) / EVENT_SCAN_STEPS);

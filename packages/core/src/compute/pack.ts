@@ -79,7 +79,7 @@ export function packPlaneQueryResults(
  *
  * const packed = runPackedPlaneQueries({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
- *   queries: [{ kind: 'gamutRegion', gamut: 'srgb' }],
+ *   queries: [{ kind: 'gamutRegion' }],
  * });
  * const transfer = getPackedPlaneQueryTransferables(packed);
  *

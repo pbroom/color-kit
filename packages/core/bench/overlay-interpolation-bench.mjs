@@ -20,7 +20,7 @@ if (!existsSync(distEntry)) {
   process.exit(1);
 }
 
-const { gamutBoundaryPath, contrastRegionPaths, fromHex } = await import(
+const { gamutBoundaryPath, contrastRegionPaths, fromHex, srgb } = await import(
   distEntry
 );
 
@@ -41,7 +41,7 @@ function median(times) {
 
 console.log('--- Gamut boundary (hue=180, srgb) ---\n');
 
-const uniform64 = () => gamutBoundaryPath(HUE, { gamut: 'srgb', steps: 64 });
+const uniform64 = () => gamutBoundaryPath(HUE, { gamut: srgb, steps: 64 });
 for (let i = 0; i < WARMUP; i++) uniform64();
 const t1 = [];
 for (let i = 0; i < MEASURE_ROUNDS; i++) t1.push(timeMs(uniform64));
@@ -52,7 +52,7 @@ console.log(
 
 const uniformSimplify = () =>
   gamutBoundaryPath(HUE, {
-    gamut: 'srgb',
+    gamut: srgb,
     steps: 64,
     simplifyTolerance: 0.0015,
   });
@@ -66,7 +66,7 @@ console.log(
 
 const adaptive = () =>
   gamutBoundaryPath(HUE, {
-    gamut: 'srgb',
+    gamut: srgb,
     samplingMode: 'adaptive',
     adaptiveTolerance: 0.001,
     adaptiveMaxDepth: 12,
@@ -85,7 +85,7 @@ const ref = fromHex('#ffffff');
 const contrastDefaults = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
-    gamut: 'srgb',
+    gamut: srgb,
   });
 for (let i = 0; i < WARMUP; i++) contrastDefaults();
 const ct1 = [];
@@ -99,7 +99,7 @@ console.log(
 const contrastSimplify = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
-    gamut: 'srgb',
+    gamut: srgb,
     simplifyTolerance: 0.002,
   });
 for (let i = 0; i < WARMUP; i++) contrastSimplify();
@@ -114,7 +114,7 @@ console.log(
 const contrastInteractive = () =>
   contrastRegionPaths(ref, 200, {
     level: 'AA',
-    gamut: 'srgb',
+    gamut: srgb,
     initialSamples: 8,
     errorTolerance: 0.004,
     maxDepth: 3,

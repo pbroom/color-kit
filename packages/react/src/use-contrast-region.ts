@@ -4,9 +4,13 @@ import {
   toSvgCompoundPath,
   type Color,
   type ContrastMetric,
-  type GamutTarget,
   type PlaneContrastRegionResult,
 } from '@color-kit/core';
+import {
+  assertDisplayGamut,
+  displayGamutDescriptor,
+  type DisplayGamut,
+} from '@color-kit/driver';
 import {
   unpackPlaneQueryResults,
   type PlaneComputeBackendKind,
@@ -95,7 +99,7 @@ export interface UseContrastRegionOptions extends ColorPlaneQueryOptions {
    * Gamut the reference and samples are measured in; paths stay inside it.
    * @defaultValue 'srgb'
    */
-  gamut?: GamutTarget;
+  gamut?: DisplayGamut;
   /**
    * Contrast metric.
    * @defaultValue 'wcag'
@@ -197,7 +201,7 @@ export interface ContrastRegionGeometry {
  * The reference mapped into `gamut`, keyed on its channel values so an
  * inline reference object does not re-solve the region every render.
  */
-function useMappedReference(reference: Color, gamut: GamutTarget): Color {
+function useMappedReference(reference: Color, gamut: DisplayGamut): Color {
   const { l, c, h, alpha } = reference;
   return useMemo(
     () => mapColorToGamut({ l, c, h, alpha }, gamut),
@@ -268,6 +272,7 @@ export function useContrastRegion(
     isDragging = false,
     performanceProfile = 'auto',
   } = options;
+  assertDisplayGamut(gamut, 'contrastRegion()');
   const { color, axes } = useStablePlane(plane);
   const multiplier = qualityStepMultiplier(
     quality,
@@ -390,6 +395,9 @@ export function useContrastRegion(
           kind: 'contrastRegion' as const,
           reference: contrastReference,
           ...solverOptions,
+          // Core plane queries take a gamut descriptor (plain data, so it
+          // survives the structured clone into the worker).
+          gamut: displayGamutDescriptor(solverOptions.gamut),
           hue: resolvedHue,
         },
       ],

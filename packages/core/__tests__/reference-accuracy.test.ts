@@ -285,7 +285,7 @@ function vecError(kit: Vec3, expected: Vec3): number {
 /**
  * Error of an 8-bit channel against an unrounded reference (0-255 scale).
  * Returns 0 when the byte is the correctly rounded reference, allowing
- * either neighbour when the reference sits within 1e-6 of a .5 tie (where
+ * either neighbor when the reference sits within 1e-6 of a .5 tie (where
  * float noise legitimately decides the rounding direction). Otherwise the
  * distance past the correctly rounded value.
  */

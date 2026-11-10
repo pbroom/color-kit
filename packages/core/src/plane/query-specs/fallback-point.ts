@@ -1,5 +1,6 @@
-import { toP3Gamut, toSrgbGamut } from '../../gamut/index.js';
-import { assertGamutTarget } from '../../gamut/target.js';
+import { mapToGamutSpecInto } from '../../gamut/membership.js';
+import { srgb } from '../../gamut/spec.js';
+import { assertGamut } from '../../gamut/target.js';
 import { colorToPlane } from '../mapping.js';
 import { requireGamutField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
@@ -25,18 +26,22 @@ import { withFiniteHue } from './shared.js';
  * @param query - The `color` to map and the target `gamut`.
  * @returns A new result with the gamut and the plane point, including the
  * mapped color.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`.
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor.
  * @see {@link sense} for the fluent form.
  *
  * @example
  * ```ts
  * import { parse, toHex } from '@pbroom/color-kit';
- * import { definePlane, getPlaneFallbackPoint } from '@pbroom/color-kit/plane';
+ * import {
+ *   definePlane,
+ *   getPlaneFallbackPoint,
+ *   srgb,
+ * } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } });
  * const { point } = getPlaneFallbackPoint(plane, {
  *   color: parse('oklch(0.7 0.3 264)'),
- *   gamut: 'srgb',
+ *   gamut: srgb,
  * });
  * point.x; // → 0.7
  * point.y.toFixed(3); // → '0.609'
@@ -47,16 +52,16 @@ export function getPlaneFallbackPoint(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneFallbackPointQuery, 'kind'>,
 ): PlaneFallbackPointResult {
-  assertGamutTarget(query.gamut, 'fallbackPoint()');
+  assertGamut(query.gamut, 'fallbackPoint()');
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   const color = withFiniteHue(query.color);
-  const mapped =
-    query.gamut === 'display-p3' ? toP3Gamut(color) : toSrgbGamut(color);
+  const gamut = query.gamut ?? srgb;
+  const mapped = mapToGamutSpecInto({ ...color }, color, gamut);
   const point = colorToPlane(resolvedPlane, mapped);
 
   return {
     kind: 'fallbackPoint',
-    gamut: query.gamut,
+    gamut,
     point: {
       x: point.x,
       y: point.y,

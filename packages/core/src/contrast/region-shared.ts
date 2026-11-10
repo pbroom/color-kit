@@ -1,12 +1,16 @@
 import type { Color } from '../types.js';
-import { assertGamutTarget } from '../gamut/target.js';
+import type { Gamut } from '../gamut/spec.js';
+import { assertGamut } from '../gamut/target.js';
 import type { PlanePoint } from '../geometry/types.js';
+import { linearToSrgbChannel } from '../utils/index.js';
 import {
   apcaContrastOfLuminances,
+  apcaLuminanceOfEncoded,
   apcaScreenLuminance,
   contrastAPCA,
   contrastRatio,
   relativeLuminance,
+  wcagLuminanceOfLinear,
   type ContrastOptions,
 } from './metrics.js';
 import type {
@@ -189,6 +193,14 @@ export interface ResolvedContrastCriterion {
    * arithmetic the public metric uses.
    */
   evaluateLuminance: (sampleY: number, referenceY: number) => number;
+  /**
+   * The contrast of `sample` against `reference` as the public metric
+   * reports it: `contrastRatio` for WCAG, signed `contrastAPCA` (with
+   * `apcaRole` applied) for APCA. `evaluate` is its margin.
+   */
+  measure: (sample: Color, reference: Color) => number;
+  /** `measure` from the two displayed luminances. */
+  measureLuminance: (sampleY: number, referenceY: number) => number;
 }
 
 function resolveContrastThreshold(options: ContrastRegionPathOptions): number {
@@ -207,13 +219,56 @@ function resolveContrastThreshold(options: ContrastRegionPathOptions): number {
   }
 }
 
+function clip(value: number): number {
+  return value < 0 ? 0 : value > 1 ? 1 : value;
+}
+
+/**
+ * Displayed luminance of target-gamut linear channels, measured as the
+ * public metric measures it: channels clipped to [0, 1] in the target gamut,
+ * converted back to (extended-range) linear sRGB, then WCAG relative
+ * luminance or APCA screen luminance of the result. The one display model
+ * of the contrast-region solver, for every gamut descriptor.
+ */
+export function createDisplayLuminance(
+  spec: Gamut,
+  metric: ContrastMetric,
+): (r: number, g: number, b: number) => number {
+  const toSrgb = spec.toLinearSrgb;
+  return (r, g, b) => {
+    let lr = clip(r);
+    let lg = clip(g);
+    let lb = clip(b);
+    if (toSrgb) {
+      const pr = lr;
+      const pg = lg;
+      const pb = lb;
+      lr = toSrgb[0][0] * pr + toSrgb[0][1] * pg + toSrgb[0][2] * pb;
+      lg = toSrgb[1][0] * pr + toSrgb[1][1] * pg + toSrgb[1][2] * pb;
+      lb = toSrgb[2][0] * pr + toSrgb[2][1] * pg + toSrgb[2][2] * pb;
+    }
+    return metric === 'apca'
+      ? apcaLuminanceOfEncoded(
+          linearToSrgbChannel(lr),
+          linearToSrgbChannel(lg),
+          linearToSrgbChannel(lb),
+        )
+      : wcagLuminanceOfLinear(lr, lg, lb);
+  };
+}
+
+/**
+ * The contrast criterion of `options`: metric, threshold and margin, measured
+ * with the public metrics (`contrastRatio` / `contrastAPCA`) in
+ * `options.gamut`, whatever descriptor that is. Validates the gamut.
+ */
 export function resolveContrastCriterion(
   options: ContrastRegionPathOptions,
   caller = 'contrastRegionPaths()',
 ): ResolvedContrastCriterion {
+  assertGamut(options.gamut, caller);
   const metric = options.metric ?? 'wcag';
-  assertGamutTarget(options.gamut, caller);
-  const metricOptions: ContrastOptions = { gamut: options.gamut ?? 'srgb' };
+  const metricOptions: ContrastOptions = { gamut: options.gamut };
   if (metric === 'apca') {
     const preset = options.apcaPreset ?? 'body';
     const threshold =
@@ -224,7 +279,7 @@ export function resolveContrastCriterion(
       throw new Error(`${caller} APCA threshold must be > 0`);
     }
     const polarity = options.apcaPolarity ?? 'absolute';
-    const role = options.apcaRole ?? 'sample-text';
+    const sampleIsBackground = options.apcaRole === 'sample-background';
     const margin = (lc: number): number => {
       if (polarity === 'positive') {
         return lc - threshold;
@@ -234,22 +289,23 @@ export function resolveContrastCriterion(
       }
       return Math.abs(lc) - threshold;
     };
+    const measure = (sample: Color, reference: Color): number =>
+      sampleIsBackground
+        ? contrastAPCA(reference, sample, metricOptions)
+        : contrastAPCA(sample, reference, metricOptions);
+    const measureLuminance = (sampleY: number, referenceY: number): number =>
+      sampleIsBackground
+        ? apcaContrastOfLuminances(referenceY, sampleY)
+        : apcaContrastOfLuminances(sampleY, referenceY);
     return {
       metric,
       threshold,
-      evaluate: (sample, reference) =>
-        margin(
-          role === 'sample-background'
-            ? contrastAPCA(reference, sample, metricOptions)
-            : contrastAPCA(sample, reference, metricOptions),
-        ),
+      measure,
+      measureLuminance,
+      evaluate: (sample, reference) => margin(measure(sample, reference)),
       luminance: (color) => apcaScreenLuminance(color, metricOptions),
       evaluateLuminance: (sampleY, referenceY) =>
-        margin(
-          role === 'sample-background'
-            ? apcaContrastOfLuminances(referenceY, sampleY)
-            : apcaContrastOfLuminances(sampleY, referenceY),
-        ),
+        margin(measureLuminance(sampleY, referenceY)),
     };
   }
 
@@ -257,18 +313,22 @@ export function resolveContrastCriterion(
   if (!Number.isFinite(threshold) || threshold <= 1) {
     throw new Error(`${caller} requires threshold > 1`);
   }
+  // `contrastRatio`'s arithmetic, kept inline so it adds nothing to that
+  // function's bundle.
+  const measureLuminance = (sampleY: number, referenceY: number): number =>
+    (Math.max(sampleY, referenceY) + 0.05) /
+    (Math.min(sampleY, referenceY) + 0.05);
   return {
     metric,
     threshold,
+    measure: (sample, reference) =>
+      contrastRatio(sample, reference, metricOptions),
+    measureLuminance,
     evaluate: (sample, reference) =>
       contrastRatio(sample, reference, metricOptions) - threshold,
     luminance: (color) => relativeLuminance(color, metricOptions),
-    // `contrastRatio`'s arithmetic, kept inline so it adds nothing to that
-    // function's bundle.
     evaluateLuminance: (sampleY, referenceY) =>
-      (Math.max(sampleY, referenceY) + 0.05) /
-        (Math.min(sampleY, referenceY) + 0.05) -
-      threshold,
+      measureLuminance(sampleY, referenceY) - threshold,
   };
 }
 

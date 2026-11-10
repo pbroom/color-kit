@@ -3,7 +3,9 @@ import {
   nearestPassingPoint,
   NEAREST_POINT_GRID,
 } from '../../contrast/point-solver.js';
-import { assertGamutTarget } from '../../gamut/target.js';
+import { resolveContrastCriterion } from '../../contrast/region-shared.js';
+import { inGamutSpec } from '../../gamut/membership.js';
+import { assertGamut } from '../../gamut/target.js';
 import {
   incrementTraceSummary,
   type InternalPlaneTraceContext,
@@ -66,7 +68,7 @@ function resolveStart(
  * A point "passes" exactly when the public checks say so:
  * `contrastRatio(color, reference, { gamut })` (or `contrastAPCA` with the
  * roles of `apcaRole`) meets the threshold, measured unrounded, and
- * `inSrgbGamut(color)` / `inP3Gamut(color)` holds when `gamut` is set. On an
+ * `inGamut(color, gamut)` holds when `gamut` is set. On an
  * OKLCH lightness × chroma plane this is the area the `contrastRegion` query
  * outlines with the same options.
  *
@@ -85,7 +87,7 @@ function resolveStart(
  * @param trace - Internal trace hook; leave it out and use
  * {@link inspectPlaneQuery} to capture a trace.
  * @returns A new result with the status, point, contrast and distance.
- * @throws {TypeError} When `gamut` is not `'srgb'` or `'display-p3'`, or
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor, or
  * not exactly one of `color` and `point` is given.
  * @throws {RangeError} When the start point is not finite.
  * @throws {Error} When the threshold is out of range for the metric.
@@ -95,14 +97,18 @@ function resolveStart(
  * @example
  * ```ts
  * import { contrastRatio, parse, toHex } from '@pbroom/color-kit';
- * import { definePlane, getPlaneContrastPoint } from '@pbroom/color-kit/plane';
+ * import {
+ *   definePlane,
+ *   getPlaneContrastPoint,
+ *   srgb,
+ * } from '@pbroom/color-kit/plane';
  *
  * const plane = definePlane({ fixed: { h: 264 } }); // OKLCH, x: l, y: c
  * const white = parse('#ffffff');
  * const result = getPlaneContrastPoint(plane, {
  *   color: parse('oklch(0.7 0.12 264)'),
  *   reference: white,
- *   gamut: 'srgb',
+ *   gamut: srgb,
  * });
  * result.status; // → 'adjusted'
  * toHex(result.point!.color); // → '#5375bf'
@@ -122,13 +128,13 @@ export function getPlaneContrastPoint(
   query: PlaneContrastPointOptions,
   trace?: InternalPlaneTraceContext | null,
 ): PlaneContrastPointResult {
-  assertGamutTarget(query.gamut, 'contrastPoint()');
+  assertGamut(query.gamut, 'contrastPoint()');
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
+  const { gamut } = query;
   const test = createContrastTest(
     query.reference,
-    query,
-    query.gamut,
-    'contrastPoint()',
+    resolveContrastCriterion(query, 'contrastPoint()'),
+    gamut === undefined ? undefined : (color) => inGamutSpec(color, gamut),
   );
   const start = resolveStart(query, (color) =>
     colorToPlane(resolvedPlane, color),

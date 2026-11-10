@@ -33,10 +33,19 @@ describe('route registry', () => {
     expect(new Set(paths).size).toBe(paths.length);
     // Paths that differ only by case prerender into the same folder on
     // case-insensitive file systems, so one page silently replaces the other.
-    // Retired symbol paths count: each gets a redirect stub folder.
+    // Retired symbol paths count: each gets a redirect stub folder. The one
+    // exception is an export named like its own group (the `Gamut` type in
+    // the `gamut` group): its retired path folds onto the page that documents
+    // it, and the prerender writes no stub there.
     const folded = [
       ...paths,
-      ...apiSymbols.map((symbol) => decodeURIComponent(symbol.legacyPath)),
+      ...apiSymbols
+        .filter(
+          (symbol) =>
+            symbol.legacyPath.toLowerCase() !==
+            symbol.href.split('#')[0].toLowerCase(),
+        )
+        .map((symbol) => decodeURIComponent(symbol.legacyPath)),
     ].map((path) => path.toLowerCase());
     expect(
       folded.filter((path, index) => folded.indexOf(path) !== index),

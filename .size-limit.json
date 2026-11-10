@@ -28,6 +28,13 @@
     "limit": "1.5 kB"
   },
   {
+    "name": "color-kit: contrastRatio",
+    "path": "packages/color-kit/dist/index.js",
+    "import": "{ contrastRatio }",
+    "gzip": true,
+    "limit": "1.2 kB"
+  },
+  {
     "name": "color-kit: ensureContrast",
     "path": "packages/color-kit/dist/index.js",
     "import": "{ ensureContrast }",
@@ -61,6 +68,13 @@
     "import": "{ definePlane, sense, toSvgPath }",
     "gzip": true,
     "limit": "30 kB"
+  },
+  {
+    "name": "@pbroom/color-kit/plane: definePlane + sense + toSvgPath + rec2020",
+    "path": "packages/color-kit/dist/plane/index.js",
+    "import": "{ definePlane, sense, toSvgPath, rec2020 }",
+    "gzip": true,
+    "limit": "30.4 kB"
   },
   {
     "name": "@pbroom/color-kit/react: Color + useColor",

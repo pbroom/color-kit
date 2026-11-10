@@ -6,6 +6,7 @@ import {
   maxChromaForHue,
   maxChromaAt,
 } from '../src/index.js';
+import { displayP3, srgb } from '../src/index.js';
 
 function interpolateChromaAt(
   points: Array<{ l: number; c: number }>,
@@ -37,7 +38,7 @@ function interpolateChromaAt(
 
 describe('gamutBoundaryPath()', () => {
   it('returns deterministic lightness/chroma points with expected shape', () => {
-    const points = gamutBoundaryPath(200, { gamut: 'srgb', steps: 16 });
+    const points = gamutBoundaryPath(200, { gamut: srgb, steps: 16 });
 
     expect(points).toHaveLength(17);
     expect(points[0]).toEqual({ l: 0, c: 0 });
@@ -49,9 +50,9 @@ describe('gamutBoundaryPath()', () => {
   });
 
   it('returns only in-gamut points for the selected gamut', () => {
-    const srgbBoundary = gamutBoundaryPath(145, { gamut: 'srgb', steps: 32 });
+    const srgbBoundary = gamutBoundaryPath(145, { gamut: srgb, steps: 32 });
     const p3Boundary = gamutBoundaryPath(145, {
-      gamut: 'display-p3',
+      gamut: displayP3,
       steps: 32,
     });
 
@@ -69,9 +70,9 @@ describe('gamutBoundaryPath()', () => {
   });
 
   it('produces a wider or equal boundary in Display-P3 than sRGB', () => {
-    const srgbBoundary = gamutBoundaryPath(145, { gamut: 'srgb', steps: 32 });
+    const srgbBoundary = gamutBoundaryPath(145, { gamut: srgb, steps: 32 });
     const p3Boundary = gamutBoundaryPath(145, {
-      gamut: 'display-p3',
+      gamut: displayP3,
       steps: 32,
     });
 
@@ -94,15 +95,15 @@ describe('gamutBoundaryPath()', () => {
   });
 
   it('normalizes hue input', () => {
-    const a = gamutBoundaryPath(-300, { gamut: 'srgb', steps: 24 });
-    const b = gamutBoundaryPath(60, { gamut: 'srgb', steps: 24 });
+    const a = gamutBoundaryPath(-300, { gamut: srgb, steps: 24 });
+    const b = gamutBoundaryPath(60, { gamut: srgb, steps: 24 });
     expect(a).toEqual(b);
   });
 
   it('simplifyTolerance reduces point count while preserving endpoints', () => {
-    const dense = gamutBoundaryPath(100, { gamut: 'srgb', steps: 64 });
+    const dense = gamutBoundaryPath(100, { gamut: srgb, steps: 64 });
     const simplified = gamutBoundaryPath(100, {
-      gamut: 'srgb',
+      gamut: srgb,
       steps: 64,
       simplifyTolerance: 0.002,
     });
@@ -117,12 +118,12 @@ describe('gamutBoundaryPath()', () => {
 
   it('adaptive sampling returns deterministic, in-gamut boundary', () => {
     const a = gamutBoundaryPath(180, {
-      gamut: 'srgb',
+      gamut: srgb,
       samplingMode: 'adaptive',
       adaptiveTolerance: 0.001,
     });
     const b = gamutBoundaryPath(180, {
-      gamut: 'srgb',
+      gamut: srgb,
       samplingMode: 'adaptive',
       adaptiveTolerance: 0.001,
     });
@@ -144,11 +145,11 @@ describe('gamutBoundaryPath()', () => {
   it('adaptive mode includes the resolved hue cusp point', () => {
     const hue = 252;
     const cusp = maxChromaForHue(hue, {
-      gamut: 'display-p3',
+      gamut: displayP3,
       method: 'direct',
     });
     const adaptive = gamutBoundaryPath(hue, {
-      gamut: 'display-p3',
+      gamut: displayP3,
       samplingMode: 'adaptive',
       adaptiveTolerance: 0.001,
       adaptiveMaxDepth: 12,
@@ -157,7 +158,7 @@ describe('gamutBoundaryPath()', () => {
       (point) => Math.abs(point.l - cusp.l) <= 1e-12,
     );
     const expectedCuspChroma = maxChromaAt(cusp.l, hue, {
-      gamut: 'display-p3',
+      gamut: displayP3,
     });
 
     expect(cuspPoint).toBeDefined();
@@ -167,7 +168,7 @@ describe('gamutBoundaryPath()', () => {
   it('adaptive cusp anchor respects maxChromaAt search options', () => {
     const hue = 252;
     const searchOptions = {
-      gamut: 'display-p3' as const,
+      gamut: displayP3,
       tolerance: 0.01,
       maxIterations: 1,
       maxChroma: 0.4,
@@ -193,7 +194,7 @@ describe('gamutBoundaryPath()', () => {
   it('adaptive boundary interpolation stays close to maxChromaAt samples', () => {
     const hue = 90;
     const adaptive = gamutBoundaryPath(hue, {
-      gamut: 'srgb',
+      gamut: srgb,
       samplingMode: 'adaptive',
       adaptiveTolerance: 0.001,
       adaptiveMaxDepth: 10,
@@ -203,7 +204,7 @@ describe('gamutBoundaryPath()', () => {
 
     for (let index = 0; index <= probes; index += 1) {
       const l = index / probes;
-      const expected = maxChromaAt(l, hue, { gamut: 'srgb' });
+      const expected = maxChromaAt(l, hue, { gamut: srgb });
       const approximated = interpolateChromaAt(adaptive, l);
       expect(Math.abs(expected - approximated)).toBeLessThanOrEqual(maxError);
     }
@@ -212,14 +213,14 @@ describe('gamutBoundaryPath()', () => {
   it('adaptive sampled points stay on the maxChromaAt boundary', () => {
     const hue = 252;
     const adaptive = gamutBoundaryPath(hue, {
-      gamut: 'display-p3',
+      gamut: displayP3,
       samplingMode: 'adaptive',
       adaptiveTolerance: 0.001,
       adaptiveMaxDepth: 12,
     });
     const maxBoundaryError = 0.006;
     for (const point of adaptive) {
-      const expected = maxChromaAt(point.l, hue, { gamut: 'display-p3' });
+      const expected = maxChromaAt(point.l, hue, { gamut: displayP3 });
       expect(Math.abs(point.c - expected)).toBeLessThanOrEqual(
         maxBoundaryError,
       );

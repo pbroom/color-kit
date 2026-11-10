@@ -9,6 +9,7 @@ import {
   colorToPlane,
   definePlane,
   sense,
+  srgb,
   toSvgCompoundPath,
 } from '@pbroom/color-kit/plane';
 
@@ -60,7 +61,7 @@ export function contrastPalette(hue: number, chroma: number, steps = 9) {
 
   return {
     palette,
-    gamut: svg(query.gamutRegion({ gamut: 'srgb' }).visibleRegion.paths, true),
+    gamut: svg(query.gamutRegion({ gamut: srgb }).visibleRegion.paths, true),
     // Everything darker than this edge passes AA as text on white…
     onWhite: svg(query.contrastRegion({ reference: WHITE, level: 'AA' }).paths),
     // …and everything lighter than this one passes on black.
