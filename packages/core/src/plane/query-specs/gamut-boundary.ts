@@ -2,7 +2,8 @@ import {
   DEFAULT_GAMUT_BOUNDARY_STEPS,
   gamutBoundaryPath,
 } from '../../gamut/boundary-path.js';
-import { assertGamutTarget } from '../../gamut/target.js';
+import { srgb } from '../../gamut/spec.js';
+import { assertGamut } from '../../gamut/target.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
 import { requireGamutField, requireHueField } from '../packed-abi.js';
 import type { PlaneQuerySpec } from '../query-spec.js';
@@ -35,8 +36,8 @@ import {
  * {@link PlaneDefinition}.
  * @param query - Boundary options; see {@link PlaneGamutBoundaryQuery}.
  * @returns A new result with the gamut, resolved hue and boundary points.
- * @throws {TypeError} When `gamut` is not a `GamutTarget`
- * (including the removed `'p3'`).
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor (a gamut
+ * name such as `'display-p3'` throws).
  * @throws {Error} On an OKLCH lightness × chroma plane with uniform sampling,
  * when `steps` is not an integer of at least 2.
  * @see {@link sense} for the fluent form.
@@ -55,12 +56,12 @@ export function getPlaneGamutBoundary(
   planeDefinition: PlaneDefinition,
   query: Omit<PlaneGamutBoundaryQuery, 'kind'> = {},
 ): PlaneGamutBoundaryResult {
-  assertGamutTarget(query.gamut, 'gamutBoundary()');
+  assertGamut(query.gamut, 'gamutBoundary()');
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'gamutBoundary',
-      gamut: query.gamut ?? 'srgb',
+      gamut: query.gamut ?? srgb,
       hue: planeHue(resolvedPlane, query.hue),
       points: [],
     };
@@ -68,7 +69,7 @@ export function getPlaneGamutBoundary(
 
   const hue = planeHue(resolvedPlane, query.hue);
   const boundary = gamutBoundaryPath(hue, {
-    gamut: query.gamut ?? 'srgb',
+    gamut: query.gamut ?? srgb,
     steps: query.steps,
     simplifyTolerance: query.simplifyTolerance,
     samplingMode: query.samplingMode,
@@ -78,7 +79,7 @@ export function getPlaneGamutBoundary(
 
   return {
     kind: 'gamutBoundary',
-    gamut: query.gamut ?? 'srgb',
+    gamut: query.gamut ?? srgb,
     hue,
     points: boundary.map((point) =>
       toPlaneBoundaryPoint(resolvedPlane, hue, point),

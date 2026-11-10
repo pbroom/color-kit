@@ -3,7 +3,9 @@
 import { performance } from 'node:perf_hooks';
 import {
   contrastRegionPaths,
+  displayP3,
   gamutBoundaryPath,
+  srgb,
   toP3Gamut,
   toSrgbGamut,
 } from '@color-kit/core';
@@ -74,10 +76,10 @@ function runDragScenario({ name, steps, axes, withAnalysis }) {
     toP3Gamut(requested);
 
     if (withAnalysis) {
-      gamutBoundaryPath(requested.h, { gamut: 'display-p3', steps: 48 });
-      gamutBoundaryPath(requested.h, { gamut: 'srgb', steps: 48 });
+      gamutBoundaryPath(requested.h, { gamut: displayP3, steps: 48 });
+      gamutBoundaryPath(requested.h, { gamut: srgb, steps: 48 });
       contrastRegionPaths(displayedP3, requested.h, {
-        gamut: 'display-p3',
+        gamut: displayP3,
         threshold: 4.5,
         initialSamples: 8,
         errorTolerance: 0.004,

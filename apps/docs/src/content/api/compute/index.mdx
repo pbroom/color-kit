@@ -25,7 +25,7 @@ when you want timing telemetry about them.
   ([`createJsPlaneComputeBackend`](/api/compute/scheduling#createJsPlaneComputeBackend)).
 
 ```ts title="plane-worker.ts"
-import { parse } from '@pbroom/color-kit';
+import { parse, srgb } from '@pbroom/color-kit';
 import {
   getPackedPlaneQueryTransferables,
   runPlaneCompute,
@@ -34,7 +34,7 @@ import {
 const { result } = runPlaneCompute({
   plane: { model: 'oklch', fixed: { h: 250 } },
   queries: [
-    { kind: 'gamutRegion', gamut: 'srgb' },
+    { kind: 'gamutRegion', gamut: srgb },
     { kind: 'contrastRegion', reference: parse('#fff'), level: 'AA' },
   ],
 });

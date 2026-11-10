@@ -28,10 +28,12 @@ gamut and view, and out-of-gamut flags. Four reducers update it:
 [`setColorActiveGamut`](/api/driver/color-state#setColorActiveGamut) and
 [`setColorActiveView`](/api/driver/color-state#setColorActiveView). Each returns the same
 object for a no-op, so `next === state` is enough to skip a render.
-`createColorState` and `setColorActiveGamut` check the gamut with
-[`assertDisplayGamut`](/api/plane/gamut#assertDisplayGamut), so `'p3'` throws the same
-`TypeError` as the plane queries. Picker state is sRGB or Display P3 only:
-`'rec2020'`, which core's gamut and plane queries accept, throws too.
+`createColorState` and `setColorActiveGamut` take the gamut as a string, a
+`DisplayGamut`: `'srgb'` or `'display-p3'`. Anything else, `'p3'` and
+`'rec2020'` included, throws a `TypeError`. Picker state names the gamut a
+color is shown in; core's gamut and plane queries take an imported
+[`Gamut`](/api/plane/gamut#Gamut) object instead (see
+[Gamut and tolerance](/concepts/gamut-and-tolerance#gamuts-are-imported-objects)).
 
 ```ts title="state.ts"
 import { parse, toHex } from '@pbroom/color-kit';

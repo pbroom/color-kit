@@ -10,6 +10,7 @@ import {
   sense,
 } from '../src/index.js';
 import { inspectPlaneQuery } from '../src/plane/index.js';
+import { displayP3, srgb } from '../src/index.js';
 
 function flattenLightness(paths: Array<Array<{ l: number }>>): number[] {
   return paths.flatMap((path) => path.map((point) => point.l));
@@ -21,12 +22,12 @@ describe('contrastRegionPaths()', () => {
 
     const first = contrastRegionPaths(reference, 210, {
       level: 'AA',
-      gamut: 'srgb',
+      gamut: srgb,
       initialSamples: 24,
     });
     const second = contrastRegionPaths(reference, 210, {
       level: 'AA',
-      gamut: 'srgb',
+      gamut: srgb,
       initialSamples: 24,
     });
 
@@ -91,7 +92,7 @@ describe('contrastRegionPaths()', () => {
 
     const maxChroma = sample.c * 2;
     const paths = contrastRegionPaths(reference, sample.h, {
-      gamut: 'display-p3',
+      gamut: displayP3,
       threshold,
       initialSamples: 2,
       maxChroma,
@@ -354,12 +355,12 @@ describe('contrastRegionPaths()', () => {
     const reference = fromHex('#ffffff');
     const raw = contrastRegionPaths(reference, 200, {
       level: 'AA',
-      gamut: 'srgb',
+      gamut: srgb,
       initialSamples: 32,
     });
     const simplified = contrastRegionPaths(reference, 200, {
       level: 'AA',
-      gamut: 'srgb',
+      gamut: srgb,
       initialSamples: 32,
       simplifyTolerance: 0.002,
     });

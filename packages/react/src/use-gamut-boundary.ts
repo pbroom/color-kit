@@ -1,9 +1,10 @@
 import { useCallback, useMemo } from 'react';
+import { toSvgPath } from '@color-kit/core';
 import {
   assertDisplayGamut,
-  toSvgPath,
+  displayGamutDescriptor,
   type DisplayGamut,
-} from '@color-kit/core';
+} from '@color-kit/driver';
 import {
   getColorAreaGamutBoundaryPoints,
   toColorAreaPlaneDefinition,
@@ -174,7 +175,7 @@ export function useGamutBoundary(
       queries: [
         {
           kind: 'gamutBoundary',
-          gamut,
+          gamut: displayGamutDescriptor(gamut),
           hue,
           steps: effectiveSteps,
           simplifyTolerance,

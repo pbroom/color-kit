@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { parse } from '@pbroom/color-kit';
 import {
   definePlane,
+  displayP3,
   inspectPlaneQuery,
   sense,
+  srgb,
   toSvgCompoundPath,
   toSvgPath,
 } from '@pbroom/color-kit/plane';
@@ -18,8 +20,8 @@ export default function PlaneQueries() {
   const plane = definePlane({ fixed: { h: hue } });
   const query = sense(plane);
 
-  const srgb = query.gamutRegion({ gamut: 'srgb' });
-  const p3 = query.gamutBoundary({ gamut: 'display-p3' });
+  const srgbRegion = query.gamutRegion({ gamut: srgb });
+  const p3Edge = query.gamutBoundary({ gamut: displayP3 });
   const { result: aa, trace } = inspectPlaneQuery(plane, {
     kind: 'contrastRegion',
     reference: WHITE,
@@ -49,12 +51,14 @@ export default function PlaneQueries() {
           passes WCAG AA against white (outlined)
         </title>
         <path
-          d={toSvgCompoundPath(srgb.visibleRegion.paths, { closeLoop: true })}
+          d={toSvgCompoundPath(srgbRegion.visibleRegion.paths, {
+            closeLoop: true,
+          })}
           fill="currentColor"
           fillOpacity={0.12}
         />
         <path
-          d={toSvgPath(p3.points)}
+          d={toSvgPath(p3Edge.points)}
           fill="none"
           stroke="currentColor"
           strokeDasharray="2 2"

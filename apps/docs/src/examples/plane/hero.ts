@@ -7,7 +7,9 @@ import {
 } from '@pbroom/color-kit';
 import {
   definePlane,
+  displayP3,
   sense,
+  srgb,
   toSvgCompoundPath,
   toSvgPath,
   type Plane,
@@ -36,15 +38,15 @@ const svg = { scale: 100, precision: 2 };
  */
 export function queryHue(hue: number) {
   const plane = sense(hueSlice(hue));
-  const srgb = plane.gamutRegion({ gamut: 'srgb' });
-  const srgbEdge = plane.gamutBoundary({ gamut: 'srgb' });
-  const p3Edge = plane.gamutBoundary({ gamut: 'display-p3' });
+  const srgbRegion = plane.gamutRegion({ gamut: srgb });
+  const srgbEdge = plane.gamutBoundary({ gamut: srgb });
+  const p3Edge = plane.gamutBoundary({ gamut: displayP3 });
   const onWhite = plane.contrastRegion({ reference: WHITE, level: 'AA' });
   const onBlack = plane.contrastRegion({ reference: BLACK, level: 'AA' });
 
   return {
     hue,
-    srgb: toSvgCompoundPath(srgb.visibleRegion.paths, {
+    srgb: toSvgCompoundPath(srgbRegion.visibleRegion.paths, {
       ...svg,
       closeLoop: true,
     }),

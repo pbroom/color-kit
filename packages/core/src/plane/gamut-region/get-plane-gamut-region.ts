@@ -1,4 +1,5 @@
-import { assertGamutTarget } from '../../gamut/target.js';
+import { srgb } from '../../gamut/spec.js';
+import { assertGamut } from '../../gamut/target.js';
 import { resolvePlaneDefinition } from '../plane.js';
 import {
   limitTracePaths,
@@ -44,7 +45,7 @@ import {
  * Works on every plane model and axis pair. The solver is chosen from the
  * plane and gamut and reported as `solver`: `'domain-edge'` when the whole
  * model domain is in gamut (RGB, HSL and HSV planes for every target, Display
- * P3 planes with a `'display-p3'` target), analytic solvers for OKLCH lightness × chroma
+ * P3 planes with the `displayP3` gamut), analytic solvers for OKLCH lightness × chroma
  * (`'analytic-lc'`), OKLCH hue × chroma (`'analytic-hc'`) and HCT hue/tone ×
  * chroma (`'analytic-hct'`, sRGB only), and an adaptive marching-squares
  * contour of the gamut field (`'implicit-contour'`) for everything else.
@@ -65,8 +66,8 @@ import {
  * {@link inspectPlaneQuery} to capture a trace.
  * @returns A new result with the gamut, scope, solver, viewport relation,
  * boundary paths and visible region.
- * @throws {TypeError} When `gamut` is not a `GamutTarget`
- * (including the removed `'p3'`).
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor (a gamut
+ * name such as `'display-p3'` throws).
  * @see {@link toSvgCompoundPath} to draw the region.
  * @see {@link sense} for the fluent form.
  *
@@ -88,8 +89,8 @@ export function getPlaneGamutRegion(
   trace?: InternalPlaneTraceContext | null,
 ): PlaneGamutRegionResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
-  assertGamutTarget(query.gamut, 'gamutRegion()');
-  const gamut = query.gamut ?? 'srgb';
+  assertGamut(query.gamut, 'gamutRegion()');
+  const gamut = query.gamut ?? srgb;
   const scope = query.scope ?? 'viewport';
   const solver = resolveGamutSolver(resolvedPlane, gamut);
   setTraceSummaryField(trace, 'solver', solver);

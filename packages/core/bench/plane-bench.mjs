@@ -15,8 +15,15 @@ if (!existsSync(distEntry)) {
   process.exit(1);
 }
 
-const { definePlane, parse, sense, toSvgPath, toSvgCompoundPath } =
-  await import(distEntry);
+const {
+  definePlane,
+  displayP3,
+  parse,
+  sense,
+  srgb,
+  toSvgPath,
+  toSvgCompoundPath,
+} = await import(distEntry);
 
 const WARMUP = 2;
 const ROUNDS = 5;
@@ -64,7 +71,7 @@ const reference = parse('#ffffff');
 const boundary = runCase('plane.gamutBoundary adaptive', () =>
   HUES.map((hue) =>
     query.gamutBoundary({
-      gamut: 'display-p3',
+      gamut: displayP3,
       hue,
       samplingMode: 'adaptive',
       adaptiveTolerance: 0.001,
@@ -96,7 +103,7 @@ const contrastInteractive = runCase('plane.contrastRegion interactive', () =>
 
 const compile = runCase('plane.compile svg', () => {
   const boundaryPath = query.gamutBoundary({
-    gamut: 'srgb',
+    gamut: srgb,
     hue: 220,
     samplingMode: 'adaptive',
   });

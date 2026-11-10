@@ -1,8 +1,5 @@
-import {
-  linearToSrgbChannel,
-  type Color,
-  type DisplayGamut,
-} from '@color-kit/core';
+import { linearToSrgbChannel, type Color } from '@color-kit/core';
+import type { DisplayGamut } from '@color-kit/driver';
 import {
   colorFromColorAreaPosition,
   type ResolvedColorAreaAxes,

@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { contrastRatio, parse } from '@pbroom/color-kit';
+import {
+  contrastRatio,
+  displayP3,
+  parse,
+  srgb,
+  type Gamut,
+} from '@pbroom/color-kit';
 import {
   CONTRAST_PAIRS,
   GRAY_LIGHTNESS,
@@ -26,11 +32,11 @@ function declarations(css: string, selector: string): Record<string, string> {
   );
 }
 
-function emittedColors(theme: ThemeName, gamut: 'srgb' | 'display-p3') {
+function emittedColors(theme: ThemeName, gamut: Gamut) {
   const [base, overrides = ''] = EMITTED_CSS.split(
     '@media (color-gamut: p3) {',
   );
-  const p3 = gamut === 'display-p3' ? overrides : '';
+  const p3 = gamut.id === 'display-p3' ? overrides : '';
   // Explicit dark selectors outrank :root, including the light P3 overrides.
   const values = {
     ...declarations(base!, ':root'),
@@ -77,8 +83,8 @@ describe('design tokens', () => {
   });
 
   for (const theme of THEMES) {
-    for (const gamut of ['srgb', 'display-p3'] as const) {
-      describe(`${theme} ${gamut} emitted contrast`, () => {
+    for (const gamut of [srgb, displayP3]) {
+      describe(`${theme} ${gamut.id} emitted contrast`, () => {
         const resolve = emittedColors(theme, gamut);
         it.each(CONTRAST_PAIRS)(
           '$fg on $bg meets $min:1',

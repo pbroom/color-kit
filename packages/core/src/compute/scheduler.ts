@@ -155,7 +155,7 @@ function sortBucketsByRecentUse(
  * const scheduler = createPlaneComputeScheduler({ options: { maxTelemetryBuckets: 16 } });
  * const response = scheduler.run({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
- *   queries: [{ kind: 'gamutRegion', gamut: 'srgb' }],
+ *   queries: [{ kind: 'gamutRegion' }],
  *   priority: 'drag',
  * });
  *

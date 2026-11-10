@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parse, type DisplayGamut } from '@color-kit/core';
+import { displayP3, maxChromaAt, parse, srgb } from '@color-kit/core';
 import {
+  assertDisplayGamut,
+  displayGamutDescriptor,
+  type DisplayGamut,
   areColorAreaAxesDistinct,
   colorFromColorInputChannelValue,
   colorFromColorInputKey,
@@ -152,8 +155,8 @@ describe('Color API helpers', () => {
   });
 
   it('keeps color area geometry to display gamuts', () => {
-    // Core accepts 'rec2020' as a query target; the driver's dual-state
-    // model is sRGB / Display P3 only.
+    // Core takes any gamut descriptor; the driver's dual-state model names
+    // its two display gamuts, sRGB and Display P3, by string.
     const axes = resolveColorAreaAxes({
       x: { channel: 'l', range: [0, 1] },
       y: { channel: 'c', range: [0, 0.4] },
@@ -161,7 +164,7 @@ describe('Color API helpers', () => {
     const color = parse('#3b82f6');
     const options = { gamut: 'rec2020' as DisplayGamut };
     const hint =
-      "unknown gamut \"rec2020\". 'rec2020' is a query target, not a display gamut; use 'srgb' or 'display-p3'";
+      "unknown gamut \"rec2020\". 'rec2020' is not a display gamut; use 'srgb' or 'display-p3'";
 
     expect(() => getColorAreaGamutBoundaryPoints(250, axes, options)).toThrow(
       new TypeError(`gamutBoundary(): ${hint}`),
@@ -176,6 +179,42 @@ describe('Color API helpers', () => {
       getColorAreaGamutBoundaryPoints(250, axes, { gamut: 'display-p3' })
         .length,
     ).toBeGreaterThan(10);
+  });
+
+  it('maps display gamut names to core gamut descriptors', () => {
+    expect(displayGamutDescriptor('srgb')).toBe(srgb);
+    expect(displayGamutDescriptor('display-p3')).toBe(displayP3);
+    expect(displayGamutDescriptor(undefined)).toBe(srgb);
+    expect(() => assertDisplayGamut('display-p3', 'f()')).not.toThrow();
+    expect(() => assertDisplayGamut(undefined, 'f()')).not.toThrow();
+    expect(() => assertDisplayGamut('p3', 'f()')).toThrow(
+      new TypeError(
+        "f(): unknown gamut \"p3\". 'p3' is not supported; use 'display-p3'",
+      ),
+    );
+    // The driver keeps the string vocabulary: a core descriptor is rejected.
+    expect(() => assertDisplayGamut(displayP3, 'f()')).toThrow(
+      new TypeError(
+        "f(): unknown gamut { id: \"display-p3\" }. Display gamuts are named by string here: use 'srgb' or 'display-p3'",
+      ),
+    );
+  });
+
+  it('traces color area geometry in the named display gamut', () => {
+    const axes = resolveColorAreaAxes({
+      x: { channel: 'l', range: [0, 1] },
+      y: { channel: 'c', range: [0, 0.4] },
+    });
+    for (const gamut of ['srgb', 'display-p3'] as const) {
+      const points = getColorAreaGamutBoundaryPoints(250, axes, {
+        gamut,
+        steps: 10,
+      });
+      const mid = points[5];
+      expect(mid.c).toBe(
+        maxChromaAt(mid.l, 250, { gamut: displayGamutDescriptor(gamut) }),
+      );
+    }
   });
 
   it('rejects unknown gamuts in the color area fallback point', () => {

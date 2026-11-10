@@ -49,16 +49,23 @@ toCss(blue, 'hex'); // → '#387aba'
 ## Measured as displayed
 
 A color outside the display gamut is measured the way the display renders it
-by clipping: channels are clipped to the `gamut` option (`'srgb'` by default,
-or `'display-p3'`). If you paint a gamut-mapped color, measure that one.
+by clipping: channels are clipped to the `gamut` option (`srgb` by default;
+pass `displayP3`, `rec2020` or any other
+[`Gamut`](/api/plane/gamut#Gamut)). If you paint a gamut-mapped color, measure
+that one.
 
 ```ts title="displayed.ts"
-import { contrastRatio, parse, toSrgbGamut } from '@pbroom/color-kit';
+import {
+  contrastRatio,
+  displayP3,
+  parse,
+  toSrgbGamut,
+} from '@pbroom/color-kit';
 
 const green = parse('oklch(0.75 0.22 150)'); // outside sRGB
 const black = parse('#000');
 contrastRatio(green, black); // → ≈ 10.37 (clipped to sRGB)
-contrastRatio(green, black, { gamut: 'display-p3' }); // → ≈ 10.26
+contrastRatio(green, black, { gamut: displayP3 }); // → ≈ 10.26
 contrastRatio(toSrgbGamut(green), black); // → ≈ 10.21 (what you paint)
 ```
 

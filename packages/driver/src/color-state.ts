@@ -1,18 +1,18 @@
-import type { Color, DisplayGamut, GamutMapMethod } from '@color-kit/core';
+import type { Color, GamutMapMethod } from '@color-kit/core';
 import {
-  assertDisplayGamut,
   inP3Gamut,
   inSrgbGamut,
   isAchromatic,
   toP3Gamut,
   toSrgbGamut,
 } from '@color-kit/core';
+import { assertDisplayGamut, type DisplayGamut } from './display-gamut.js';
 
-// The display gamut a color state renders in is core's `DisplayGamut`
+// The display gamut a color state renders in is a `DisplayGamut` name
 // (`'srgb'` or `'display-p3'`). The color-state, multi-color and display
-// helpers validate it with core's `assertDisplayGamut`: any other value,
-// including `'rec2020'` (a core query target only) and the removed `'p3'`
-// spelling, throws a `TypeError`.
+// helpers validate it with `assertDisplayGamut`: any other value, including
+// `'rec2020'`, the removed `'p3'` spelling and a core gamut descriptor
+// object, throws a `TypeError`.
 export type { DisplayGamut };
 /** Color model a picker shows its channels or text in. */
 export type ViewModel = 'oklch' | 'oklab' | 'rgb' | 'hex' | 'hsl' | 'hsv';
@@ -88,7 +88,7 @@ export interface ColorUpdateEvent {
 }
 
 /**
- * Asserts a required active gamut with core's `assertDisplayGamut`, also
+ * Asserts a required active gamut with `assertDisplayGamut`, also
  * rejecting `undefined` (which `assertDisplayGamut` treats as the sRGB
  * default). Internal to the driver; not exported from the package.
  */

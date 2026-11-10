@@ -10,7 +10,7 @@ import {
   relativeLuminance,
   type ContrastApcaPolarity,
   type ContrastApcaRole,
-  type GamutTarget,
+  type Gamut,
 } from '../src/index.js';
 import { simplifyPolyline } from '../src/utils/index.js';
 import {
@@ -31,6 +31,7 @@ import {
   expectVerticesPass,
   wcag,
 } from './contrast-region-brute-force-harness.js';
+import { srgb, displayP3 } from '../src/index.js';
 
 describe('contrast regions agree with brute force', () => {
   it.each(FOLDED_REPROS)(
@@ -101,7 +102,7 @@ describe('contrast regions follow the sRGB blue fold', () => {
     },
   );
 
-  it.each([...FOLD_BAND, wcag('#000000', 2, 264.1, 'display-p3')])(
+  it.each([...FOLD_BAND, wcag('#000000', 2, 264.1, displayP3)])(
     'fold band: $metric $threshold on $hex at h$hue in $gamut',
     (query) => {
       const truth = absolute(query);
@@ -164,7 +165,7 @@ describe('contrast regions split at gamut notches', () => {
         ...sampling,
       });
       expect(paths).toHaveLength(2);
-      expectChordsInGamut(paths, hue, 'srgb');
+      expectChordsInGamut(paths, hue, srgb);
       for (const path of paths) {
         for (const point of path) {
           const sample = { l: point.l, c: point.c, h: hue, alpha: 1 };
@@ -250,7 +251,7 @@ describe('contrast regions at the edges of the criterion', () => {
     (hex) => {
       const reference = parse(hex);
       const white = { l: 1, c: 0 };
-      for (const gamut of ['srgb', 'display-p3'] as const) {
+      for (const gamut of [srgb, displayP3]) {
         const threshold = contrastRatio(
           { ...white, h: 0, alpha: 1 },
           reference,
@@ -276,7 +277,7 @@ describe('contrast regions at the edges of the criterion', () => {
       '#6c691c',
       3.6739755325760246,
       69.9028090853244,
-      'display-p3',
+      displayP3,
     );
     for (const sampling of [{}, INTERACTIVE]) {
       const paths = contrastRegionPaths(parse(query.hex), query.hue, {
@@ -300,7 +301,7 @@ describe('contrast regions at the edges of the criterion', () => {
 
   it('traces both sides of a WCAG threshold just above 1', () => {
     // Only a band a few 1e-5 wide around the reference's luminance fails.
-    const query = wcag('#767676', 1.0001, 315, 'srgb');
+    const query = wcag('#767676', 1.0001, 315, srgb);
     const reference = parse(query.hex);
     const paths = contrastRegionPaths(reference, query.hue, {
       threshold: query.threshold,
@@ -337,7 +338,7 @@ describe('contrast regions at the edges of the criterion', () => {
   it('keeps the light region 1e-9 below the largest WCAG ratio', () => {
     // 4.542224958605249 is 1e-9 below #767676's ratio against white, so
     // only colors within ~1e-10 of white's luminance pass on the light side.
-    const query = wcag('#767676', 4.542224958605249, 0, 'srgb');
+    const query = wcag('#767676', 4.542224958605249, 0, srgb);
     const paths = contrastRegionPaths(parse(query.hex), query.hue, {
       threshold: query.threshold,
     });
@@ -366,7 +367,7 @@ describe('contrast regions agree with the public checks', () => {
           h: fc.double({ min: 0, max: 360, maxExcluded: true, noNaN: true }),
         }),
         fc.double({ min: 0, max: 360, maxExcluded: true, noNaN: true }),
-        fc.constantFrom<GamutTarget>('srgb', 'display-p3'),
+        fc.constantFrom<Gamut>(srgb, displayP3),
         fc.oneof(
           fc.record({
             metric: fc.constant<'wcag'>('wcag'),
@@ -399,7 +400,7 @@ describe('contrast regions agree with the public checks', () => {
           const options = { gamut };
           // Measured unmapped, as the solver and the public checks do.
           const mapped = reference;
-          const inGamut = gamut === 'display-p3' ? inP3Gamut : inSrgbGamut;
+          const inGamut = gamut.id === 'display-p3' ? inP3Gamut : inSrgbGamut;
           const passes = (l: number, c: number): boolean => {
             const sample = { l, c, h: hue, alpha: 1 };
             if (criterion.metric === 'wcag') {

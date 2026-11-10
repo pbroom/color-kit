@@ -19,8 +19,7 @@ import type {
  * `maxChroma`; `initialSamples`, `errorTolerance`, and `maxDepth` only set
  * how finely the curve between those ends is sampled. Every returned point
  * passes `contrastRatio` / `contrastAPCA` with the region's gamut and is in
- * that gamut. (For `gamut: 'rec2020'`, which those functions do not take,
- * points pass the same check measured with channels clipped to Rec. 2020.)
+ * that gamut.
  *
  * A reference with room on both sides typically yields two paths (darker and
  * lighter); paths are sorted by point count, longest first. A non-finite
@@ -32,7 +31,7 @@ import type {
  * @param trace - Internal tracing context used by the plane query layer;
  *   omit it.
  * @returns Contour paths of `{ l, c }` points, longest first.
- * @throws {TypeError} When `options.gamut` is not a `GamutTarget`,
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor,
  *   or when an option removed with an earlier solver (such as
  *   `lightnessSteps` or `engine`) is set.
  * @throws {Error} When the threshold is out of range, `initialSamples` is not

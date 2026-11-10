@@ -39,14 +39,15 @@ import {
   containsPoint,
   definePlane,
   sense,
+  srgb,
 } from '@pbroom/color-kit/plane';
 
 const plane = definePlane({ fixed: { h: 290 } }); // OKLCH lightness × chroma
-const srgb = sense(plane).gamutRegion({ gamut: 'srgb' });
+const region = sense(plane).gamutRegion({ gamut: srgb });
 const brand = parse('oklch(0.62 0.24 290)');
 
 colorToPlane(plane, brand); // → { x: 0.62, y: ≈ 0.4 }
-containsPoint(srgb.visibleRegion, colorToPlane(plane, brand)); // → false
+containsPoint(region.visibleRegion, colorToPlane(plane, brand)); // → false
 ```
 
 See [Planes and queries](/concepts/planes-and-queries) for the model.

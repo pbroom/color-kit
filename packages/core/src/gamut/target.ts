@@ -1,40 +1,41 @@
-import { withP3Hint } from '../utils/space-hint.js';
-import { GAMUT_SPECS } from './spec.js';
-import type { GamutTarget } from './types.js';
+import type { Gamut } from './spec.js';
 
 /**
- * Asserts `gamut` is `undefined` (the sRGB default) or a supported
- * {@link GamutTarget} (`'srgb'`, `'display-p3'` or `'rec2020'`), narrowing
- * its type. Anything else, such as the removed `'p3'` spelling, throws
- * instead of silently mapping to sRGB.
+ * Asserts `gamut` is `undefined` (the sRGB default) or a {@link Gamut}
+ * descriptor, narrowing its type. The check is by shape (a string `id` and
+ * the `lmsToLinear` matrix), so custom descriptors and structured clones
+ * pass.
+ *
+ * Gamut names such as `'display-p3'`, which earlier versions took, throw:
+ * a gamut is always an imported object.
  *
  * @param gamut - Value read from caller options or a query.
  * @param fn - Public function name used as the message prefix.
- * @throws {TypeError} When `gamut` is not `undefined`, `'srgb'`,
- *   `'display-p3'` or `'rec2020'` (including `null`). The message is
- *   `` `${fn}: unknown gamut "${gamut}"` ``; for `'p3'` it adds
- *   `'p3' is not supported; use 'display-p3'`.
- * @see {@link assertDisplayGamut}
+ * @throws {TypeError} When `gamut` is neither `undefined` nor shaped like a
+ *   `Gamut` (including strings and `null`).
  *
  * @example
  * ```ts
- * import { assertGamutTarget } from '@pbroom/color-kit/plane';
+ * import { assertGamut, rec2020 } from '@pbroom/color-kit';
  *
- * assertGamutTarget('rec2020', 'render()'); // returns; narrows the type
- * assertGamutTarget('p3', 'render()');
- * // throws TypeError: render(): unknown gamut "p3". 'p3' is not supported; use 'display-p3'
+ * assertGamut(rec2020, 'render()'); // returns; narrows the type
+ * assertGamut('rec2020', 'render()');
+ * // throws TypeError: render(): gamut "rec2020" is not a Gamut object; import one, such as displayP3
  * ```
  */
-export function assertGamutTarget(
+export function assertGamut(
   gamut: unknown,
   fn: string,
-): asserts gamut is GamutTarget | undefined {
+): asserts gamut is Gamut | undefined {
   if (
-    gamut === undefined ||
-    (typeof gamut === 'string' &&
-      Object.prototype.hasOwnProperty.call(GAMUT_SPECS, gamut))
+    gamut !== undefined &&
+    !(
+      (gamut as Partial<Gamut> | null)?.lmsToLinear &&
+      typeof (gamut as Partial<Gamut>).id === 'string'
+    )
   ) {
-    return;
+    throw new TypeError(
+      `${fn}: gamut "${gamut}" is not a Gamut object; import one, such as displayP3`,
+    );
   }
-  throw new TypeError(withP3Hint(`${fn}: unknown gamut "${gamut}"`, gamut));
 }

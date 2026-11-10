@@ -5,17 +5,18 @@ import {
   inSrgbGamut,
   maxChromaAt,
 } from '../src/index.js';
+import { displayP3, srgb } from '../src/index.js';
 
 describe('chromaBand()', () => {
   it('returns a deterministic tonal strip with bounded endpoints', () => {
     const first = chromaBand(210, 0.2, {
       mode: 'clamped',
-      gamut: 'srgb',
+      gamut: srgb,
       steps: 16,
     });
     const second = chromaBand(210, 0.2, {
       mode: 'clamped',
-      gamut: 'srgb',
+      gamut: srgb,
       steps: 16,
     });
 
@@ -52,7 +53,7 @@ describe('chromaBand()', () => {
     const requested = 0.14;
     const band = chromaBand(hue, requested, {
       mode: 'clamped',
-      gamut: 'srgb',
+      gamut: srgb,
       steps: 20,
     });
 
@@ -60,7 +61,7 @@ describe('chromaBand()', () => {
     let hasClampedPoint = false;
 
     for (const point of band) {
-      const max = maxChromaAt(point.l, hue, { gamut: 'srgb' });
+      const max = maxChromaAt(point.l, hue, { gamut: srgb });
       expect(point.c).toBeLessThanOrEqual(requested + 1e-6);
       expect(point.c).toBeLessThanOrEqual(max + 1e-6);
 
@@ -81,19 +82,19 @@ describe('chromaBand()', () => {
     const requested = 0.16;
     const selectedLightness = 0.62;
     const selectedMax = maxChromaAt(selectedLightness, hue, {
-      gamut: 'display-p3',
+      gamut: displayP3,
     });
     const ratio = Math.min(1, requested / selectedMax);
 
     const band = chromaBand(hue, requested, {
       mode: 'proportional',
-      gamut: 'display-p3',
+      gamut: displayP3,
       selectedLightness,
       steps: 18,
     });
 
     for (const point of band) {
-      const max = maxChromaAt(point.l, hue, { gamut: 'display-p3' });
+      const max = maxChromaAt(point.l, hue, { gamut: displayP3 });
       expect(point.c).toBeCloseTo(ratio * max, 6);
       expect(point.c).toBeLessThanOrEqual(max + 1e-6);
       expect(inP3Gamut(point)).toBe(true);
@@ -115,7 +116,7 @@ describe('chromaBand()', () => {
     const requested = 0.18;
     const adaptive = chromaBand(hue, requested, {
       mode: 'clamped',
-      gamut: 'display-p3',
+      gamut: displayP3,
       samplingMode: 'adaptive',
       adaptiveTolerance: 0.001,
       adaptiveMaxDepth: 12,
@@ -128,7 +129,7 @@ describe('chromaBand()', () => {
       expect(adaptive[index].l).toBeGreaterThan(adaptive[index - 1].l);
     }
     for (const point of adaptive) {
-      const max = maxChromaAt(point.l, hue, { gamut: 'display-p3' });
+      const max = maxChromaAt(point.l, hue, { gamut: displayP3 });
       expect(point.c).toBeLessThanOrEqual(requested + 1e-6);
       expect(point.c).toBeLessThanOrEqual(max + 1e-6);
       expect(inP3Gamut(point)).toBe(true);

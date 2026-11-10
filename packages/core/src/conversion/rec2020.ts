@@ -5,9 +5,10 @@ import type { Matrix3 } from './matrices.js';
  * Multiply linear-light RGB channels by a 3x3 matrix, writing into `out`
  * (allocation-free). `out` may be the same object as `rgb`.
  *
- * Each channel is evaluated as `m0 * r + m1 * g + m2 * b`, the operation
- * order of `linearSrgbToLinearP3Into` / `linearP3ToLinearSrgbInto`, so
- * passing their matrices gives bit-identical results.
+ * Each channel is evaluated as `m0 * r + m1 * g + m2 * b`. The Display P3
+ * conversions (`linearSrgbToLinearP3Into` / `linearP3ToLinearSrgbInto`) are
+ * this function with their matrix, so a gamut descriptor carrying the same
+ * matrix converts bit-identically.
  */
 export function applyMatrix3Into(
   out: LinearRgb,

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  assertDisplayGamut,
   clampContrastRegionSampling,
   toSvgCompoundPath,
   type Color,
   type ContrastMetric,
-  type DisplayGamut,
   type PlaneContrastRegionResult,
 } from '@color-kit/core';
+import {
+  assertDisplayGamut,
+  displayGamutDescriptor,
+  type DisplayGamut,
+} from '@color-kit/driver';
 import {
   unpackPlaneQueryResults,
   type PlaneComputeBackendKind,
@@ -392,6 +395,9 @@ export function useContrastRegion(
           kind: 'contrastRegion' as const,
           reference: contrastReference,
           ...solverOptions,
+          // Core plane queries take a gamut descriptor (plain data, so it
+          // survives the structured clone into the worker).
+          gamut: displayGamutDescriptor(solverOptions.gamut),
           hue: resolvedHue,
         },
       ],

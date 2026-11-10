@@ -1,7 +1,7 @@
 import type { Color } from '../types.js';
 import { OKLAB_TO_LMS } from '../conversion/matrices.js';
 import { inGamutSpec } from '../gamut/membership.js';
-import { gamutSpec, type GamutSpec } from '../gamut/spec.js';
+import { srgb, type Gamut } from '../gamut/spec.js';
 import {
   incrementTraceSummary,
   limitTracePaths,
@@ -410,7 +410,7 @@ export function solveContrastRegionPaths(
   const criterion = resolveContrastCriterion(options);
   const sampling = resolveContrastSampling(options);
   // `resolveContrastCriterion` validated `options.gamut`.
-  const spec = gamutSpec(options.gamut ?? 'srgb');
+  const spec = options.gamut ?? srgb;
   const maxChroma = options.maxChroma ?? spec.maxChroma;
   const alpha = options.alpha ?? 1;
   const simplifyTolerance = options.simplifyTolerance;
@@ -481,7 +481,7 @@ export function solveContrastRegionPaths(
 function tracePaths(
   reference: Color,
   hue: number,
-  spec: GamutSpec,
+  spec: Gamut,
   criterion: ReturnType<typeof resolveContrastCriterion>,
   sampling: ReturnType<typeof resolveContrastSampling>,
   maxChroma: number,

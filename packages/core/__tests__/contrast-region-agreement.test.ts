@@ -6,8 +6,10 @@ import {
   inSrgbGamut,
   maxChromaAt,
   parse,
-  type GamutTarget,
+  type Gamut,
 } from '../src/index.js';
+import { displayP3 } from '../src/index.js';
+import { srgb } from '../src/index.js';
 
 /**
  * Contrast regions checked against a brute-force grid of the public
@@ -24,7 +26,7 @@ interface Point {
 }
 
 interface BruteForce {
-  /** Threshold crossings between neighbouring in-gamut grid samples. */
+  /** Threshold crossings between neighboring in-gamut grid samples. */
   crossings: Point[];
   /** 4-connected components of the passing grid samples. */
   components: number;
@@ -33,7 +35,7 @@ interface BruteForce {
 function bruteForce(
   hue: number,
   referenceHex: string,
-  gamut: GamutTarget,
+  gamut: Gamut,
   size = 400,
   threshold = THRESHOLD,
 ): BruteForce {
@@ -151,7 +153,7 @@ function maxGap(truth: BruteForce, paths: Point[][]): number {
 }
 
 const references = ['#ffffff', '#000000'] as const;
-const gamuts: GamutTarget[] = ['srgb', 'display-p3'];
+const gamuts: Gamut[] = [srgb, displayP3];
 
 describe('contrast regions agree with a brute-force grid', () => {
   // The README hero query (OKLCH plane, WCAG AA) at hue 150. The passing set
@@ -160,9 +162,9 @@ describe('contrast regions agree with a brute-force grid', () => {
   // nothing between chroma 0.049 and 0.114.
   describe.each(
     references.flatMap((reference) =>
-      gamuts.map((gamut) => [reference, gamut] as const),
+      gamuts.map((gamut) => [reference, gamut.id, gamut] as const),
     ),
-  )('WCAG AA at h150 on %s in %s', (reference, gamut) => {
+  )('WCAG AA at h150 on %s in %s', (reference, _id, gamut) => {
     const truth = bruteForce(150, reference, gamut);
 
     it('has one passing region', () => {
@@ -183,7 +185,7 @@ describe('contrast regions agree with a brute-force grid', () => {
       expect(ends[0].c).toBe(0);
       // The outer end is on the gamut edge: in gamut, and out of gamut a
       // hair further out in chroma.
-      const inGamut = gamut === 'display-p3' ? inP3Gamut : inSrgbGamut;
+      const inGamut = gamut.id === 'display-p3' ? inP3Gamut : inSrgbGamut;
       const outer = { l: ends[1].l, c: ends[1].c, h: 150, alpha: 1 };
       expect(inGamut(outer)).toBe(true);
       expect(inGamut({ ...outer, c: outer.c + 1e-7 })).toBe(false);
@@ -213,11 +215,11 @@ describe('contrast regions agree with a brute-force grid', () => {
   ] as const)(
     'keeps the folded WCAG AA contour at h%i on %s connected',
     (hue, reference) => {
-      const truth = bruteForce(hue, reference, 'display-p3', 200);
+      const truth = bruteForce(hue, reference, displayP3, 200);
       expect(truth.components).toBe(1);
       const paths = contrastRegionPaths(parse(reference), hue, {
         level: 'AA',
-        gamut: 'display-p3',
+        gamut: displayP3,
       });
       expect(paths).toHaveLength(1);
       expect(maxGap(truth, paths)).toBeLessThan(0.002);

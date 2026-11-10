@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { srgb } from '@color-kit/core';
 import type {
   PlaneQueryWorkerRequest,
   PlaneQueryWorkerResponse,
@@ -54,7 +55,7 @@ const payload: PlaneQueryWorkerPayload = {
   queries: [
     {
       kind: 'gamutBoundary',
-      gamut: 'srgb',
+      gamut: srgb,
       hue: 220,
     },
   ],

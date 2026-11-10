@@ -14,7 +14,7 @@ import {
   tryEnsureContrast,
   type Color,
   type ContrastTargetOptions,
-  type GamutTarget,
+  type Gamut,
   type Plane,
   type PlaneContrastPointOptions,
   type PlaneContrastPointResult,
@@ -36,6 +36,7 @@ import {
   runPlaneQuery,
   PlaneQueryCache,
 } from '../src/plane/index.js';
+import { displayP3 as P3, srgb as SRGB } from '../src/index.js';
 
 const WHITE = parse('#ffffff');
 const BLACK = parse('#000000');
@@ -48,7 +49,7 @@ function passesPublicChecks(
   color: Color,
   reference: Color,
   options: ContrastTargetOptions,
-  constrainTo: GamutTarget | undefined = options.gamut,
+  constrainTo: Gamut | undefined = options.gamut,
 ): boolean {
   const metricOptions = { gamut: options.gamut };
   let meets: boolean;
@@ -72,7 +73,9 @@ function passesPublicChecks(
   }
   if (!meets) return false;
   if (constrainTo === undefined) return true;
-  return constrainTo === 'display-p3' ? inP3Gamut(color) : inSrgbGamut(color);
+  return constrainTo.id === 'display-p3'
+    ? inP3Gamut(color)
+    : inSrgbGamut(color);
 }
 
 /** Distance from `start` to the nearest passing sample of a dense lattice. */
@@ -113,8 +116,8 @@ function towardStart(
 }
 
 /** The color at lightness `l` on the line ensureContrast() searches. */
-function onLightnessLine(color: Color, l: number, gamut: GamutTarget): Color {
-  const inGamut = gamut === 'display-p3' ? inP3Gamut : inSrgbGamut;
+function onLightnessLine(color: Color, l: number, gamut: Gamut): Color {
+  const inGamut = gamut.id === 'display-p3' ? inP3Gamut : inSrgbGamut;
   const sample = { ...color, l };
   if (inGamut(sample)) return sample;
   let lo = 0;
@@ -137,12 +140,12 @@ describe('ensureContrast()', () => {
       [BLUE, NAVY, { threshold: 7 }],
       [BLUE, WHITE, { metric: 'apca', threshold: 0.75 }],
       [BLUE, NAVY, { metric: 'apca' }],
-      [parse('oklch(0.7 0.2 150)'), WHITE, { gamut: 'display-p3' }],
+      [parse('oklch(0.7 0.2 150)'), WHITE, { gamut: P3 }],
     ];
     for (const [color, reference, options] of cases) {
-      expect(passesPublicChecks(color, reference, options, 'srgb')).toBe(false);
+      expect(passesPublicChecks(color, reference, options, SRGB)).toBe(false);
       const result = ensureContrast(color, reference, options);
-      const gamut = options.gamut ?? 'srgb';
+      const gamut = options.gamut ?? SRGB;
       expect(passesPublicChecks(result, reference, options, gamut)).toBe(true);
       expect(result.h).toBe(color.h);
       expect(result.alpha).toBe(color.alpha);
@@ -275,8 +278,8 @@ describe('ensureContrast()', () => {
 
   it('reduces chroma only as far as the gamut requires', () => {
     const vivid = parse('oklch(0.75 0.3 145)');
-    for (const gamut of ['srgb', 'display-p3'] as const) {
-      const inGamut = gamut === 'srgb' ? inSrgbGamut : inP3Gamut;
+    for (const gamut of [SRGB, P3]) {
+      const inGamut = gamut.id === 'srgb' ? inSrgbGamut : inP3Gamut;
       const result = ensureContrast(vivid, WHITE, { threshold: 7, gamut });
       expect(inGamut(result)).toBe(true);
       expect(result.h).toBe(vivid.h);
@@ -293,7 +296,7 @@ describe('ensureContrast()', () => {
     const srgb = ensureContrast(vivid, WHITE, { threshold: 7 });
     const p3 = ensureContrast(vivid, WHITE, {
       threshold: 7,
-      gamut: 'display-p3',
+      gamut: P3,
     });
     expect(p3.c).toBeGreaterThan(srgb.c);
   });
@@ -325,7 +328,7 @@ describe('ensureContrast()', () => {
         color,
         color,
         fc.double({ min: 1.1, max: 12, noNaN: true }),
-        fc.constantFrom<GamutTarget>('srgb', 'display-p3'),
+        fc.constantFrom<Gamut>(SRGB, P3),
         fc.constantFrom('nearest', 'lighter', 'darker'),
         (input, reference, threshold, gamut, direction) => {
           const options = { threshold, gamut, direction } as const;
@@ -367,7 +370,7 @@ describe('contrastPoint plane query', () => {
     const options: PlaneContrastPointOptions = {
       color: parse('oklch(0.7 0.12 264)'),
       reference: WHITE,
-      gamut: 'srgb',
+      gamut: SRGB,
     };
     const direct = getPlaneContrastPoint(LC_264, options);
     expect(direct.kind).toBe('contrastPoint');
@@ -420,7 +423,7 @@ describe('contrastPoint plane query', () => {
     const result = getPlaneContrastPoint(LC_264, {
       point: start,
       reference: WHITE,
-      gamut: 'srgb',
+      gamut: SRGB,
     });
     expect(result.status).toBe('satisfied');
     expect(result.distance).toBe(0);
@@ -440,7 +443,7 @@ describe('contrastPoint plane query', () => {
     const mapped = getPlaneContrastPoint(LC_264, {
       point: vivid,
       reference: WHITE,
-      gamut: 'srgb',
+      gamut: SRGB,
     });
     expect(mapped.status).toBe('adjusted');
     expect(inSrgbGamut(mapped.point!.color)).toBe(true);
@@ -526,7 +529,7 @@ describe('contrastPoint plane query', () => {
       point: start,
       reference: WHITE,
       threshold: 20.99,
-      gamut: 'srgb',
+      gamut: SRGB,
     });
     expect(black.status).toBe('adjusted');
     expect(black.point!.color.l).toBeLessThan(0.05);
@@ -583,10 +586,10 @@ describe('contrastPoint plane query', () => {
       const start = { x: 0.8, y: 0 };
       const query = { point: start, reference: WHITE, threshold: 4.5 };
       const free = getPlaneContrastPoint(plane, query);
-      const srgb = getPlaneContrastPoint(plane, { ...query, gamut: 'srgb' });
+      const srgb = getPlaneContrastPoint(plane, { ...query, gamut: SRGB });
       const p3 = getPlaneContrastPoint(plane, {
         ...query,
-        gamut: 'display-p3',
+        gamut: P3,
       });
       expect(inSrgbGamut(srgb.point!.color)).toBe(true);
       expect(inP3Gamut(p3.point!.color)).toBe(true);
@@ -594,7 +597,7 @@ describe('contrastPoint plane query', () => {
         4.5,
       );
       expect(
-        contrastRatio(p3.point!.color, WHITE, { gamut: 'display-p3' }),
+        contrastRatio(p3.point!.color, WHITE, { gamut: P3 }),
       ).toBeGreaterThanOrEqual(4.5);
       // A wider gamut can only bring the answer closer.
       expect(p3.distance).toBeLessThanOrEqual(srgb.distance! + 1e-9);
@@ -602,8 +605,8 @@ describe('contrastPoint plane query', () => {
       // The constrained answers sit on the gamut edge: a hair toward the
       // start leaves the gamut (or the threshold).
       for (const [result, gamut] of [
-        [srgb, 'srgb'],
-        [p3, 'display-p3'],
+        [srgb, SRGB],
+        [p3, P3],
       ] as const) {
         const inside = planeToColor(plane, towardStart(result, start, 1e-6));
         expect(
@@ -629,17 +632,17 @@ describe('contrastPoint plane query', () => {
       maxDepth: 12,
     };
     const cases: Array<[number, Color, ContrastTargetOptions]> = [
-      [264, WHITE, { gamut: 'srgb' }],
-      [264, NAVY, { gamut: 'srgb', threshold: 7 }],
-      [30, MID_GRAY, { gamut: 'srgb', threshold: 3 }],
-      [145, WHITE, { gamut: 'display-p3' }],
-      [330, BLACK, { gamut: 'display-p3', threshold: 7 }],
-      [264, WHITE, { gamut: 'srgb', metric: 'apca' }],
+      [264, WHITE, { gamut: SRGB }],
+      [264, NAVY, { gamut: SRGB, threshold: 7 }],
+      [30, MID_GRAY, { gamut: SRGB, threshold: 3 }],
+      [145, WHITE, { gamut: P3 }],
+      [330, BLACK, { gamut: P3, threshold: 7 }],
+      [264, WHITE, { gamut: SRGB, metric: 'apca' }],
       [
         80,
         MID_GRAY,
         {
-          gamut: 'srgb',
+          gamut: SRGB,
           metric: 'apca',
           threshold: 0.3,
           apcaPolarity: 'negative',
@@ -778,9 +781,9 @@ describe('contrastPoint plane query', () => {
   ])('on a %s plane', (_name, plane) => {
     const targets: Array<[Color, ContrastTargetOptions]> = [
       [WHITE, {}],
-      [NAVY, { gamut: 'srgb' }],
-      [MID_GRAY, { threshold: 3, gamut: 'display-p3' }],
-      [WHITE, { metric: 'apca', threshold: 0.5, gamut: 'srgb' }],
+      [NAVY, { gamut: SRGB }],
+      [MID_GRAY, { threshold: 3, gamut: P3 }],
+      [WHITE, { metric: 'apca', threshold: 0.5, gamut: SRGB }],
     ];
     const starts: PlanePoint[] = [
       { x: 0.5, y: 0.5 },
@@ -846,11 +849,7 @@ describe('contrastPoint plane query', () => {
           alpha: fc.constant(1),
         }),
         fc.double({ min: 1.5, max: 9, noNaN: true }),
-        fc.constantFrom<GamutTarget | undefined>(
-          undefined,
-          'srgb',
-          'display-p3',
-        ),
+        fc.constantFrom<Gamut | undefined>(undefined, SRGB, P3),
         (hue, start, reference, threshold, gamut) => {
           const plane = definePlane({ fixed: { h: hue } });
           const options = { threshold, gamut };
@@ -904,7 +903,7 @@ describe('contrastPoint plane query', () => {
     ).toThrow(RangeError);
     expect(() =>
       getPlaneContrastPoint(LC_264, { reference, point, gamut: 'p3' as never }),
-    ).toThrow(/contrastPoint\(\): unknown gamut "p3".*use 'display-p3'/);
+    ).toThrow(/contrastPoint\(\): gamut "p3" is not a Gamut object/);
     expect(() =>
       getPlaneContrastPoint(LC_264, { reference, point, threshold: 1 }),
     ).toThrow('contrastPoint() requires threshold > 1');
@@ -949,7 +948,7 @@ describe('contrastPoint plane query', () => {
     expect(createPlaneQueryKey(LC_264, { ...query, threshold: 7 })).not.toBe(
       key,
     );
-    expect(createPlaneQueryKey(LC_264, { ...query, gamut: 'srgb' })).not.toBe(
+    expect(createPlaneQueryKey(LC_264, { ...query, gamut: SRGB })).not.toBe(
       key,
     );
     const cache = new PlaneQueryCache();
@@ -971,7 +970,7 @@ describe('contrastPoint plane query', () => {
         kind: 'contrastPoint',
         point: { x: 0.7, y: 0.7 },
         reference: WHITE,
-        gamut: 'srgb',
+        gamut: SRGB,
       },
       { kind: 'contrastPoint', point: { x: 0.2, y: 0.8 }, reference: WHITE },
       {

@@ -6,7 +6,7 @@ import {
   useState,
   type RefCallback,
 } from 'react';
-import type { DisplayGamut } from '@color-kit/core';
+import type { DisplayGamut } from '@color-kit/driver';
 import { useColorStoreSelector } from './color-store.js';
 import { useOptionalColorContext } from './context.js';
 import {

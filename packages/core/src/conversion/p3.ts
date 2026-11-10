@@ -8,9 +8,11 @@ import {
   LINEAR_P3_TO_LINEAR_SRGB,
   LINEAR_SRGB_TO_LINEAR_P3,
 } from './matrices.js';
+import { applyMatrix3Into } from './rec2020.js';
 
-const [SP3R, SP3G, SP3B] = LINEAR_SRGB_TO_LINEAR_P3;
-const [P3SR, P3SG, P3SB] = LINEAR_P3_TO_LINEAR_SRGB;
+// Both directions go through `applyMatrix3Into` with the matrix named at
+// the call, so a bundle that converts one way does not keep the other
+// direction's matrix alive (a module-level destructuring of both would).
 
 /**
  * Convert linear sRGB to linear Display P3, writing into `out`
@@ -32,16 +34,7 @@ const [P3SR, P3SG, P3SB] = LINEAR_P3_TO_LINEAR_SRGB;
  * ```
  */
 export function linearSrgbToLinearP3Into(out: P3, rgb: LinearRgb): P3 {
-  // Read every input field before writing `out` (see conversion/into.ts).
-  const r = rgb.r;
-  const g = rgb.g;
-  const b = rgb.b;
-  const alpha = rgb.alpha;
-  out.r = SP3R[0] * r + SP3R[1] * g + SP3R[2] * b;
-  out.g = SP3G[0] * r + SP3G[1] * g + SP3G[2] * b;
-  out.b = SP3B[0] * r + SP3B[1] * g + SP3B[2] * b;
-  out.alpha = alpha;
-  return out;
+  return applyMatrix3Into(out, LINEAR_SRGB_TO_LINEAR_P3, rgb);
 }
 
 /**
@@ -84,16 +77,7 @@ export function linearSrgbToLinearP3(rgb: LinearRgb): P3 {
  * ```
  */
 export function linearP3ToLinearSrgbInto(out: LinearRgb, p3: P3): LinearRgb {
-  // Read every input field before writing `out` (see conversion/into.ts).
-  const r = p3.r;
-  const g = p3.g;
-  const b = p3.b;
-  const alpha = p3.alpha;
-  out.r = P3SR[0] * r + P3SR[1] * g + P3SR[2] * b;
-  out.g = P3SG[0] * r + P3SG[1] * g + P3SG[2] * b;
-  out.b = P3SB[0] * r + P3SB[1] * g + P3SB[2] * b;
-  out.alpha = alpha;
-  return out;
+  return applyMatrix3Into(out, LINEAR_P3_TO_LINEAR_SRGB, p3);
 }
 
 /**

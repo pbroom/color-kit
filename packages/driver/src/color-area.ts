@@ -1,15 +1,18 @@
 import type { Color } from '@color-kit/core';
 import { clamp } from './clamp.js';
 import {
-  assertDisplayGamut,
   definePlane,
   sense,
   toP3Gamut,
   toSrgbGamut,
   type ChromaBandMode,
   type ContrastRegionPathOptions,
-  type DisplayGamut,
 } from '@color-kit/core';
+import {
+  assertDisplayGamut,
+  displayGamutDescriptor,
+  type DisplayGamut,
+} from './display-gamut.js';
 import { PLANE_MODEL_DEFAULT_RANGES } from '@color-kit/core/plane';
 import {
   DEFAULT_LARGE_STEP_RATIO,
@@ -190,9 +193,18 @@ export interface ColorAreaFallbackPoint {
 
 /**
  * Contrast-region options for a color area: the core
- * `ContrastRegionPathOptions`.
+ * `ContrastRegionPathOptions`, with the gamut named as a display gamut.
  */
-export type ColorAreaContrastRegionOptions = ContrastRegionPathOptions;
+export interface ColorAreaContrastRegionOptions extends Omit<
+  ContrastRegionPathOptions,
+  'gamut'
+> {
+  /**
+   * Display gamut the region is measured in and stays inside.
+   * @defaultValue 'srgb'
+   */
+  gamut?: DisplayGamut;
+}
 
 /** Options for {@link getColorAreaChromaBandPoints}. */
 export interface ColorAreaChromaBandOptions {
@@ -541,10 +553,10 @@ export function getColorAreaGamutBoundaryPoints(
     h: hue,
     alpha: 1,
   };
-  // Core accepts every GamutTarget; picker geometry is display gamuts only.
+  // Core takes a gamut descriptor; picker geometry names display gamuts.
   assertDisplayGamut(options.gamut, 'gamutBoundary()');
   const boundary = sense(toPlaneDefinition(axes, reference)).gamutBoundary({
-    gamut: options.gamut ?? 'srgb',
+    gamut: displayGamutDescriptor(options.gamut),
     hue,
     steps: options.steps,
     simplifyTolerance: options.simplifyTolerance,
@@ -599,7 +611,7 @@ export function getColorAreaContrastRegionPaths(
   const region = sense(toPlaneDefinition(axes, reference)).contrastRegion({
     ...options,
     reference,
-    gamut: options.gamut ?? 'srgb',
+    gamut: displayGamutDescriptor(options.gamut),
     hue,
   });
 
@@ -653,7 +665,7 @@ export function getColorAreaChromaBandPoints(
   assertDisplayGamut(options.gamut, 'chromaBand()');
   const band = sense(toPlaneDefinition(axes, reference)).chromaBand({
     requestedChroma: reference.c,
-    gamut: options.gamut ?? 'srgb',
+    gamut: displayGamutDescriptor(options.gamut),
     hue,
     mode: options.mode ?? 'clamped',
     steps: options.steps,

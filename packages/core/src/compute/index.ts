@@ -77,7 +77,7 @@ function getDefaultPlaneComputeScheduler(): PlaneComputeScheduler {
  *
  * const response = runPlaneCompute({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
- *   queries: [{ kind: 'gamutRegion', gamut: 'srgb' }],
+ *   queries: [{ kind: 'gamutRegion' }],
  * });
  *
  * response.backend; // → 'js'
@@ -106,7 +106,7 @@ export function runPlaneCompute(
  *
  * const packed = runPackedPlaneQueries({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
- *   queries: [{ kind: 'gamutRegion', gamut: 'srgb' }],
+ *   queries: [{ kind: 'gamutRegion' }],
  * });
  *
  * // [start, count] per path: a 16-point boundary, then a 94-point visible region.
@@ -136,7 +136,7 @@ export function runPackedPlaneQueries(
  *
  * const response = runScheduledPlaneCompute({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
- *   queries: [{ kind: 'gamutRegion', gamut: 'srgb' }],
+ *   queries: [{ kind: 'gamutRegion' }],
  * });
  *
  * response.schedule?.selectedBackend; // → 'js'
@@ -171,7 +171,7 @@ export function runScheduledPlaneCompute(
  * resetDefaultPlaneComputeTelemetry();
  * const request: PlaneComputeRequest = {
  *   plane: { model: 'oklch', fixed: { h: 250 } },
- *   queries: [{ kind: 'gamutRegion', gamut: 'srgb' }],
+ *   queries: [{ kind: 'gamutRegion' }],
  * };
  * runScheduledPlaneCompute(request);
  * runScheduledPlaneCompute(request);
@@ -199,7 +199,7 @@ export function getDefaultPlaneComputeTelemetrySnapshot() {
  *
  * runScheduledPlaneCompute({
  *   plane: { model: 'oklch', fixed: { h: 250 } },
- *   queries: [{ kind: 'gamutRegion', gamut: 'srgb' }],
+ *   queries: [{ kind: 'gamutRegion' }],
  * });
  * resetDefaultPlaneComputeTelemetry();
  *

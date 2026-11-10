@@ -18,7 +18,7 @@ export const gamutRegionSpec: PlaneQuerySpec<'gamutRegion'> = {
   budget: (query) => (query.scope === 'full' ? 6144 : 4096),
   telemetryGroup: 'gamutRegion',
   telemetrySignature: (query, plane) =>
-    `${query.gamut ?? 'srgb'}:${query.scope ?? 'viewport'}:${plane.model}:${plane.x.channel}/${plane.y.channel}`,
+    `${query.gamut?.id ?? 'srgb'}:${query.scope ?? 'viewport'}:${plane.model}:${plane.x.channel}/${plane.y.channel}`,
   pack(result, writer, label) {
     const pathStart = writer.pathCount;
     result.boundaryPaths.forEach((path, index) => {

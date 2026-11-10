@@ -7,6 +7,7 @@ import {
   type PlaneComputeRequest,
 } from '../src/compute/index.js';
 import { applyComputeTraceMetadata } from '../src/compute/trace-metadata.js';
+import { srgb } from '../src/index.js';
 
 const schedulerRequest: PlaneComputeRequest = {
   plane: {
@@ -18,7 +19,7 @@ const schedulerRequest: PlaneComputeRequest = {
   queries: [
     {
       kind: 'gamutBoundary',
-      gamut: 'srgb',
+      gamut: srgb,
       hue: 275,
       steps: 96,
       samplingMode: 'adaptive',
@@ -62,7 +63,7 @@ const gamutRegionSchedulerRequest: PlaneComputeRequest = {
   queries: [
     {
       kind: 'gamutRegion',
-      gamut: 'srgb',
+      gamut: srgb,
       scope: 'viewport',
     },
   ],
@@ -81,7 +82,7 @@ const gamutRegionDomainEdgeSchedulerRequest: PlaneComputeRequest = {
   queries: [
     {
       kind: 'gamutRegion',
-      gamut: 'srgb',
+      gamut: srgb,
       scope: 'viewport',
     },
   ],
@@ -230,12 +231,12 @@ describe('plane compute scheduler', () => {
       queries: [
         {
           kind: 'gamutRegion',
-          gamut: 'srgb',
+          gamut: srgb,
           scope: 'viewport',
         },
         {
           kind: 'gamutRegion',
-          gamut: 'srgb',
+          gamut: srgb,
           scope: 'viewport',
         },
       ],

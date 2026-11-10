@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   Color,
   CssColorFormat,
-  DisplayGamut,
   Hsl,
   Hsv,
   Oklch,
   Rgb,
 } from '@color-kit/core';
+import type { DisplayGamut } from '@color-kit/driver';
 import {
   fromHsl,
   fromHsv,

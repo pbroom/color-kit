@@ -1,4 +1,4 @@
-import { assertGamutTarget } from '../../gamut/target.js';
+import { assertGamut } from '../../gamut/target.js';
 import {
   chromaBand,
   DEFAULT_CHROMA_BAND_STEPS,
@@ -37,7 +37,7 @@ import {
  * {@link PlaneDefinition}.
  * @param query - Band options; see {@link PlaneChromaBandQuery}.
  * @returns A new result with the resolved hue and band points.
- * @throws {TypeError} When `gamut` is not a `GamutTarget`.
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor.
  * @throws {Error} On an OKLCH lightness × chroma plane with uniform sampling,
  * when `steps` is not an integer of at least 2.
  * @see {@link sense} for the fluent form.
@@ -59,8 +59,8 @@ export function getPlaneChromaBand(
 ): PlaneChromaBandResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   // Validate before the non-L×C early return so every plane rejects an
-  // unsupported gamut (such as the removed 'p3') the same way.
-  assertGamutTarget(query.gamut, 'chromaBand()');
+  // invalid gamut (such as a gamut name string) the same way.
+  assertGamut(query.gamut, 'chromaBand()');
   if (!usesLightnessAndChroma(resolvedPlane)) {
     return {
       kind: 'chromaBand',

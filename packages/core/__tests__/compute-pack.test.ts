@@ -8,16 +8,17 @@ import {
   unpackPlaneQueryResults,
   type PackedPlaneQueryResult,
 } from '../src/compute/index.js';
+import { displayP3, srgb } from '../src/index.js';
 
 function makePackedBoundaryResult(): PackedPlaneQueryResult {
   return {
-    abiVersion: 2,
+    abiVersion: 3,
     queryDescriptors: [
       {
         kind: 'gamutBoundary',
         pathStart: 0,
         pathCount: 1,
-        gamut: 'srgb',
+        gamut: srgb,
         hue: 0,
       },
     ],
@@ -176,12 +177,12 @@ describe('plane compute packing', () => {
     const queries = [
       {
         kind: 'gamutBoundary' as const,
-        gamut: 'display-p3' as const,
+        gamut: displayP3,
         samplingMode: 'adaptive' as const,
       },
       {
         kind: 'gamutRegion' as const,
-        gamut: 'srgb' as const,
+        gamut: srgb,
         scope: 'viewport' as const,
       },
       {
@@ -204,7 +205,7 @@ describe('plane compute packing', () => {
       {
         kind: 'fallbackPoint' as const,
         color: { l: 0.82, c: 0.34, h: 10, alpha: 1 },
-        gamut: 'srgb' as const,
+        gamut: srgb,
       },
       {
         kind: 'gradient' as const,
@@ -227,14 +228,14 @@ describe('plane compute packing', () => {
   it('rejects gamut-region descriptors without regionPathStart', () => {
     expect(() =>
       unpackPlaneQueryResults({
-        abiVersion: 2,
+        abiVersion: 3,
         queryDescriptors: [
           {
             kind: 'gamutRegion',
             pathStart: 0,
             pathCount: 1,
             regionPathCount: 1,
-            gamut: 'srgb',
+            gamut: srgb,
             scope: 'viewport',
             solver: 'implicit-contour',
             viewportRelation: 'intersects',
@@ -280,7 +281,7 @@ describe('plane compute packing', () => {
           kind: 'gamutBoundary',
           pathStart: 1,
           pathCount: 1,
-          gamut: 'srgb',
+          gamut: srgb,
           hue: 0,
         },
       ],
@@ -304,7 +305,7 @@ describe('plane compute packing', () => {
           pathCount: 1,
           regionPathStart: 1,
           regionPathCount: 1,
-          gamut: 'srgb',
+          gamut: srgb,
           scope: 'viewport',
           solver: 'implicit-contour',
           viewportRelation: 'intersects',
@@ -324,16 +325,16 @@ describe('plane compute packing', () => {
     const results = runPlaneQueries(rgbPlane, [
       {
         kind: 'gamutBoundary',
-        gamut: 'srgb',
+        gamut: srgb,
       },
       {
         kind: 'gamutRegion',
-        gamut: 'display-p3',
+        gamut: displayP3,
       },
       {
         kind: 'fallbackPoint',
         color: parse('#ef4444'),
-        gamut: 'display-p3',
+        gamut: displayP3,
       },
       {
         kind: 'gradient',
@@ -374,7 +375,7 @@ describe('plane compute packing', () => {
       queries: [
         {
           kind: 'gamutBoundary',
-          gamut: 'srgb',
+          gamut: srgb,
           samplingMode: 'adaptive',
         },
       ],
@@ -400,8 +401,8 @@ function strictFixture(): PackedPlaneQueryResult {
   });
   return packPlaneQueryResults(
     runPlaneQueries(resolvedPlane, [
-      { kind: 'gamutBoundary', gamut: 'srgb', steps: 8 },
-      { kind: 'gamutRegion', gamut: 'srgb' },
+      { kind: 'gamutBoundary', gamut: srgb, steps: 8 },
+      { kind: 'gamutRegion', gamut: srgb },
       {
         kind: 'contrastBoundary',
         reference: parse('#ffffff'),
@@ -416,7 +417,7 @@ function strictFixture(): PackedPlaneQueryResult {
       {
         kind: 'fallbackPoint',
         color: { l: 0.7, c: 0.3, h: 250, alpha: 1 },
-        gamut: 'srgb',
+        gamut: srgb,
       },
       {
         kind: 'gradient',
@@ -515,7 +516,7 @@ const REQUIRED_DESCRIPTOR_FIELDS: Array<[string, string]> = [
 describe('strict packed plane query ABI', () => {
   it('decodes the unmodified fixture', () => {
     const packed = strictFixture();
-    expect(packed.abiVersion).toBe(2);
+    expect(packed.abiVersion).toBe(3);
     expect(unpackPlaneQueryResults(packed)).toHaveLength(7);
   });
 
@@ -532,9 +533,10 @@ describe('strict packed plane query ABI', () => {
   );
 
   it.each([
-    ['gamutBoundary', 'gamut', 'prophoto-rgb'],
-    ['fallbackPoint', 'gamut', 'prophoto-rgb'],
-    ['gamutRegion', 'gamut', 'prophoto-rgb'],
+    // A gamut is a descriptor object; the old string ids are rejected.
+    ['gamutBoundary', 'gamut', 'srgb'],
+    ['fallbackPoint', 'gamut', 'display-p3'],
+    ['gamutRegion', 'gamut', { id: 'srgb' }],
     ['gamutRegion', 'scope', 'everything'],
     ['gamutRegion', 'solver', 'guess'],
     ['gamutRegion', 'viewportRelation', 'nearby'],
@@ -574,9 +576,9 @@ describe('strict packed plane query ABI', () => {
 
   it.each([
     ['missing', undefined],
-    ['old', 1],
-    ['future', 3],
-    ['string', '2'],
+    ['old', 2],
+    ['future', 4],
+    ['string', '3'],
   ])('rejects a %s abiVersion', (_label, abiVersion) => {
     const packed = clonePacked(strictFixture()) as unknown as Record<
       string,
@@ -589,7 +591,7 @@ describe('strict packed plane query ABI', () => {
     }
     expectDecodeError(
       packed as unknown as PackedPlaneQueryResult,
-      /abiVersion must be 2/,
+      /abiVersion must be 3/,
     );
   });
 
@@ -751,7 +753,7 @@ describe('packPlaneQueryResults() producer checks', () => {
 
   it('rejects non-finite lightness/chroma', () => {
     const [boundary] = runPlaneQueries(plane, [
-      { kind: 'gamutBoundary', gamut: 'srgb', steps: 4 },
+      { kind: 'gamutBoundary', gamut: srgb, steps: 4 },
     ]);
     if (boundary.kind !== 'gamutBoundary') throw new Error('unexpected kind');
     boundary.points[1] = { ...boundary.points[1], c: Number.NaN };
@@ -781,7 +783,7 @@ describe('packPlaneQueryResults() producer checks', () => {
 
   it('rejects finite coordinates that overflow Float32', () => {
     const [boundary] = runPlaneQueries(plane, [
-      { kind: 'gamutBoundary', gamut: 'srgb', steps: 4 },
+      { kind: 'gamutBoundary', gamut: srgb, steps: 4 },
     ]);
     if (boundary.kind !== 'gamutBoundary') throw new Error('unexpected kind');
     boundary.points[1] = { ...boundary.points[1], x: 1e40 };
@@ -815,7 +817,7 @@ describe('packPlaneQueryResults() producer checks', () => {
     ['a boolean', true, 'boolean'],
   ])('rejects %s coordinate instead of coercing it', (_, value, received) => {
     const [boundary] = runPlaneQueries(plane, [
-      { kind: 'gamutBoundary', gamut: 'srgb', steps: 4 },
+      { kind: 'gamutBoundary', gamut: srgb, steps: 4 },
     ]);
     if (boundary.kind !== 'gamutBoundary') throw new Error('unexpected kind');
     boundary.points[1] = {
@@ -851,7 +853,7 @@ describe('packPlaneQueryResults() producer checks', () => {
 
   it('packs values at the Float32 limit', () => {
     const [boundary] = runPlaneQueries(plane, [
-      { kind: 'gamutBoundary', gamut: 'srgb', steps: 4 },
+      { kind: 'gamutBoundary', gamut: srgb, steps: 4 },
     ]);
     if (boundary.kind !== 'gamutBoundary') throw new Error('unexpected kind');
     const float32Max = 3.4028234663852886e38;

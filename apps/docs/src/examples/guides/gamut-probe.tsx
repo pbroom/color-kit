@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import {
+  displayP3,
   inP3Gamut,
   inSrgbGamut,
   maxChromaAt,
+  srgb,
   type Color,
 } from '@pbroom/color-kit';
 import { toLinearP3Array, toLinearSrgbArray } from '@pbroom/color-kit/interop';
@@ -51,10 +53,10 @@ export default function GamutProbe() {
         rows={[
           ['linear sRGB', channels(toLinearSrgbArray(color))],
           ['inSrgbGamut', String(inSrgbGamut(color))],
-          ['max sRGB c', maxChromaAt(l, h, { gamut: 'srgb' }).toFixed(4)],
+          ['max sRGB c', maxChromaAt(l, h, { gamut: srgb }).toFixed(4)],
           ['linear P3', channels(toLinearP3Array(color))],
           ['inP3Gamut', String(inP3Gamut(color))],
-          ['max P3 c', maxChromaAt(l, h, { gamut: 'display-p3' }).toFixed(4)],
+          ['max P3 c', maxChromaAt(l, h, { gamut: displayP3 }).toFixed(4)],
         ]}
       />
     </div>

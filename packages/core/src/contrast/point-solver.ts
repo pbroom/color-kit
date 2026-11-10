@@ -40,9 +40,8 @@ export interface ContrastTest {
  * Binds a resolved contrast criterion to a reference as a
  * {@link ContrastTest}.
  *
- * The caller resolves the criterion, so each solver brings only the gamuts
- * it supports: `ensureContrast` the display-gamut criterion, the plane
- * `contrastPoint` query the criterion of any gamut target.
+ * The caller resolves the criterion (`resolveContrastCriterion`), which
+ * measures in whatever gamut descriptor the options carry.
  *
  * @param reference - Color every sample is measured against.
  * @param criterion - The resolved metric, threshold and measurement gamut.
@@ -144,9 +143,9 @@ export interface NearestPassingPoint {
  *    {@link firstPassingBetween} finds the first passing position on the
  *    segment from the origin to the seed. A pattern search over the
  *    direction then repeats two moves until the direction step is below the
- *    tolerance: turn to a neighbouring direction that passes at the current
+ *    tolerance: turn to a neighboring direction that passes at the current
  *    distance, and bisect inward along it. It stops at a point where the
- *    circle through it, centred on the origin, holds no passing point on
+ *    circle through it, centered on the origin, holds no passing point on
  *    either side: a local nearest point. The nearest of these is returned.
  *
  * The result always passes, and the point {@link NEAREST_POINT_TOLERANCE}

@@ -2,12 +2,11 @@ import {
   GAMUT_EPSILON,
   gamutBoundaryPath,
   maxChromaAt,
-  type GamutTarget,
 } from '../../gamut/index.js';
 import { MAX_CHROMA_SEARCH_TOLERANCE } from '../../gamut/constants.js';
 import { linearChannelGamutMargin } from '../../gamut/linear-bounds.js';
 import { inGamutSpec, scratchLinearTarget } from '../../gamut/membership.js';
-import { gamutSpec, type GamutSpec } from '../../gamut/spec.js';
+import type { Gamut } from '../../gamut/spec.js';
 import { maxHctChromaAtTone } from '../../hct/index.js';
 import type { Color } from '../../types.js';
 import { normalizeHue } from '../../utils/index.js';
@@ -69,7 +68,7 @@ function unclampedNormalize(value: number, range: [number, number]): number {
   return (value - range[0]) / span;
 }
 
-function gamutMargin(color: Color, spec: GamutSpec): number {
+function gamutMargin(color: Color, spec: Gamut): number {
   // The membership test's own channels, so the field and `inXGamut` cannot
   // drift apart.
   const linear = scratchLinearTarget(color, spec);
@@ -97,9 +96,10 @@ function gamutMargin(color: Color, spec: GamutSpec): number {
  */
 export function fieldInsideTolerance(
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): number {
-  if (resolvedPlane.model === 'hct' && gamut === 'srgb') return GAMUT_EPSILON;
+  if (resolvedPlane.model === 'hct' && gamut.id === 'srgb')
+    return GAMUT_EPSILON;
   return 0;
 }
 
@@ -124,19 +124,17 @@ function oklchChromaField(
   c: number,
   h: number,
   alpha: number,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): number {
   const value = maxChromaAt(l, h, { gamut, alpha }) - c;
   if (value >= 0 || value <= -MAX_CHROMA_SEARCH_TOLERANCE) return value;
   const color: Color = { l, c, h, alpha };
-  return inGamutSpec(color, gamutSpec(gamut))
-    ? IN_SEARCH_GAP_FIELD_VALUE
-    : value;
+  return inGamutSpec(color, gamut) ? IN_SEARCH_GAP_FIELD_VALUE : value;
 }
 
 export function createFieldEvaluator(
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): ScalarField {
   if (resolvedPlane.model === 'oklch') {
     return (point) => {
@@ -155,7 +153,7 @@ export function createFieldEvaluator(
     };
   }
 
-  if (resolvedPlane.model === 'hct' && gamut === 'srgb') {
+  if (resolvedPlane.model === 'hct' && gamut.id === 'srgb') {
     return (point) => {
       const modelColor = planeToModelColor(resolvedPlane, point, {
         clampToViewport: false,
@@ -170,9 +168,8 @@ export function createFieldEvaluator(
     };
   }
 
-  const spec = gamutSpec(gamut);
   return (point) =>
-    gamutMargin(planeToColorUnclamped(resolvedPlane, point), spec);
+    gamutMargin(planeToColorUnclamped(resolvedPlane, point), gamut);
 }
 
 /**
@@ -217,9 +214,9 @@ function canonicalChannelBounds(
 
 export function fullScopeBounds(
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): ScalarBounds {
-  const { maxChroma } = gamutSpec(gamut);
+  const { maxChroma } = gamut;
   const xDomain = canonicalChannelBounds(
     resolvedPlane.model,
     resolvedPlane.x.channel,
@@ -285,7 +282,7 @@ function buildHctBoundaryPoint(
 
 function buildAnalyticLcBoundary(
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): PlanePoint[] {
   const hue = planeHue(resolvedPlane);
   return gamutBoundaryPath(hue, {
@@ -298,7 +295,7 @@ function buildAnalyticLcBoundary(
 
 function buildAnalyticHcBoundary(
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): PlanePoint[] {
   const fixedLightness = Math.min(
     1,
@@ -362,7 +359,7 @@ function buildAnalyticHctBoundary(resolvedPlane: Plane): PlanePoint[] {
 
 export function buildDomainEdgeViewportResult(
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
   scope: PlaneGamutRegionScope,
   simplifyTolerance?: number,
 ): PlaneGamutRegionResult {
@@ -513,13 +510,13 @@ export function buildDomainEdgeViewportResult(
  */
 export function resolveGamutSolver(
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): PlaneGamutSolver {
   if (
     resolvedPlane.model === 'rgb' ||
     resolvedPlane.model === 'hsl' ||
     resolvedPlane.model === 'hsv' ||
-    (resolvedPlane.model === 'display-p3' && gamut === 'display-p3')
+    (resolvedPlane.model === 'display-p3' && gamut.id === 'display-p3')
   ) {
     return 'domain-edge';
   }
@@ -538,7 +535,7 @@ export function resolveGamutSolver(
 
   if (
     resolvedPlane.model === 'hct' &&
-    gamut === 'srgb' &&
+    gamut.id === 'srgb' &&
     ((resolvedPlane.x.channel === 'h' && resolvedPlane.y.channel === 'c') ||
       (resolvedPlane.x.channel === 'c' && resolvedPlane.y.channel === 'h') ||
       (resolvedPlane.x.channel === 't' && resolvedPlane.y.channel === 'c') ||
@@ -552,7 +549,7 @@ export function resolveGamutSolver(
 
 export function buildFullBoundaryPaths(
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
   solver: PlaneGamutSolver,
   simplifyTolerance?: number,
 ): PlanePoint[][] {
@@ -575,7 +572,7 @@ export function buildImplicitBoundaryPaths(
   sampler: ScalarSampler,
   scope: PlaneGamutRegionScope,
   resolvedPlane: Plane,
-  gamut: GamutTarget,
+  gamut: Gamut,
   simplifyTolerance?: number,
   trace?: InternalPlaneTraceContext | null,
 ): PlanePoint[][] {

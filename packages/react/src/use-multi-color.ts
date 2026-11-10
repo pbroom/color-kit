@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import type { Color, DisplayGamut } from '@color-kit/core';
+import type { Color } from '@color-kit/core';
+import type { DisplayGamut } from '@color-kit/driver';
 import {
   addMultiColorEntry,
   createMultiColorModel,

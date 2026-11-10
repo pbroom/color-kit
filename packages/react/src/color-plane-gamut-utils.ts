@@ -3,8 +3,8 @@ import {
   linearSrgbToLinearP3,
   oklabToLinearRgb,
   oklchToOklab,
-  type DisplayGamut,
 } from '@color-kit/core';
+import type { DisplayGamut } from '@color-kit/driver';
 
 export interface LinearSrgb {
   r: number;

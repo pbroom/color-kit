@@ -217,6 +217,12 @@ async function main() {
     );
     // Never let a stub replace a page (case-insensitive file systems).
     if (pages.has(file.toLowerCase())) {
+      // An export named like its own group (the `Gamut` type in the `gamut`
+      // group) has a legacy path that differs from the page documenting it
+      // only by case. That page already serves the path wherever the stub
+      // would have replaced it, so skip the stub.
+      const ownPage = symbol.href.split('#')[0];
+      if (symbol.legacyPath.toLowerCase() === ownPage.toLowerCase()) continue;
       throw new Error(`${symbol.legacyPath} would overwrite a page`);
     }
     pages.add(file.toLowerCase());

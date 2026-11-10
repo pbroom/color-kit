@@ -1,5 +1,6 @@
-export { assertDisplayGamut } from '../gamut/display.js';
-export { assertGamutTarget } from '../gamut/target.js';
+export { displayP3, rec2020, srgb } from '../gamut/spec.js';
+export type { Gamut, GamutTransfer } from '../gamut/spec.js';
+export { assertGamut } from '../gamut/target.js';
 
 export {
   colorToPlane,

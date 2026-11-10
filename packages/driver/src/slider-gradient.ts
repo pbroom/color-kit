@@ -17,6 +17,7 @@ import {
   toSrgbGamut,
 } from '@color-kit/core';
 import type { ColorSliderOrientation } from './color-slider.js';
+import { displayGamutDescriptor } from './display-gamut.js';
 
 const DEFAULT_STEPS = 64;
 
@@ -222,7 +223,7 @@ function sampleStaticHueColorFromModel(
   switch (options.model) {
     case 'oklch': {
       const cusp = maxChromaForHue(value, {
-        gamut: colorSpace,
+        gamut: displayGamutDescriptor(colorSpace),
         method: 'lut',
       });
       const next: Oklch = {

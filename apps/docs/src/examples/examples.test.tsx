@@ -36,7 +36,9 @@ describe('`// →` results', () => {
     expect(snippet).toContain('inSrgbGamut(requested); // → false');
     expect(snippet).toContain('inP3Gamut(requested); // → true');
     expect(snippet).toMatch(/toHex\(displayed\); \/\/ → '#[0-9a-f]{6}'/);
-    expect(planeSnippet).toContain("srgb.viewportRelation; // → 'intersects'");
+    expect(planeSnippet).toContain(
+      "region.viewportRelation; // → 'intersects'",
+    );
     expect(planeSnippetHtml).toContain('→');
   });
 

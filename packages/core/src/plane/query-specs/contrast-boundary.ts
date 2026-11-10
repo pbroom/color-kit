@@ -1,4 +1,4 @@
-import { assertGamutTarget } from '../../gamut/target.js';
+import { assertGamut } from '../../gamut/target.js';
 import { contrastRegionPath } from '../../contrast/index.js';
 import type { InternalPlaneTraceContext } from '../../trace/context.js';
 import { planeHue, usesLightnessAndChroma } from '../mapping.js';
@@ -39,7 +39,7 @@ import { countSinglePath, toPlaneBoundaryPoint } from './shared.js';
  * @param trace - Internal trace hook; leave it out and use
  * {@link inspectPlaneQuery} to capture a trace.
  * @returns A new result with the resolved hue and contour points.
- * @throws {TypeError} When `gamut` is not a `GamutTarget`, or an
+ * @throws {TypeError} When `gamut` is not a `Gamut` descriptor, or an
  * option removed with an earlier solver (such as `lightnessSteps`) is set.
  * @throws {Error} When the threshold or a sampling option is out of range.
  * @see {@link sense} for the fluent form.
@@ -65,9 +65,9 @@ export function getPlaneContrastBoundary(
 ): PlaneContrastBoundaryResult {
   const resolvedPlane = resolvePlaneDefinition(planeDefinition);
   // Validate before the non-L×C early return so every plane rejects an
-  // unsupported gamut (such as the removed 'p3'), a removed option, or an
+  // invalid gamut (such as a gamut name string), a removed option, or an
   // invalid criterion or sampling option the same way.
-  assertGamutTarget(query.gamut, 'contrastBoundary()');
+  assertGamut(query.gamut, 'contrastBoundary()');
   const options = toContrastRegionPathOptions(query);
   if (!usesLightnessAndChroma(resolvedPlane)) {
     assertContrastRegionPathOptions(options);

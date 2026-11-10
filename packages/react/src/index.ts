@@ -75,5 +75,6 @@ export type {
   ColorSource,
   ColorState,
   ColorUpdateEvent,
+  DisplayGamut,
   ViewModel,
 } from '@color-kit/driver';

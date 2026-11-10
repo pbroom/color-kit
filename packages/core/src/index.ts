@@ -165,6 +165,13 @@ export {
   GAMUT_EPSILON,
   GAMUT_LINEAR_MAX,
   GAMUT_LINEAR_MIN,
+  srgb,
+  displayP3,
+  rec2020,
+  assertGamut,
+  inGamut,
+  toGamut,
+  toGamutInto,
   inSrgbGamut,
   isLinearRgbInGamut,
   inP3Gamut,
@@ -180,11 +187,9 @@ export {
   gamutBoundaryPath,
   chromaBand,
 } from './gamut/index.js';
-export { assertGamutTarget } from './gamut/target.js';
-export { assertDisplayGamut } from './gamut/display.js';
 export type {
-  GamutTarget,
-  DisplayGamut,
+  Gamut,
+  GamutTransfer,
   GamutMapMethod,
   GamutMapOptions,
   GamutBoundaryPoint,

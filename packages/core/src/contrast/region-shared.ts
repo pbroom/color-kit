@@ -1,9 +1,6 @@
-import type { Color, LinearRgb } from '../types.js';
-import { toLinearSrgbInto } from '../conversion/into.js';
-import { applyMatrix3Into } from '../conversion/rec2020.js';
-import { gamutSpec, type GamutSpec } from '../gamut/spec.js';
-import { assertGamutTarget } from '../gamut/target.js';
-import type { DisplayGamut } from '../gamut/types.js';
+import type { Color } from '../types.js';
+import type { Gamut } from '../gamut/spec.js';
+import { assertGamut } from '../gamut/target.js';
 import type { PlanePoint } from '../geometry/types.js';
 import { linearToSrgbChannel } from '../utils/index.js';
 import {
@@ -234,7 +231,7 @@ function clip(value: number): number {
  * of the contrast-region solver, for every gamut descriptor.
  */
 export function createDisplayLuminance(
-  spec: GamutSpec,
+  spec: Gamut,
   metric: ContrastMetric,
 ): (r: number, g: number, b: number) => number {
   const toSrgb = spec.toLinearSrgb;
@@ -260,39 +257,18 @@ export function createDisplayLuminance(
   };
 }
 
-const QUERY_DISPLAYED: LinearRgb = { r: 0, g: 0, b: 0, alpha: 1 };
-
 /**
- * Displayed luminance of a color in a gamut the scalar metrics do not model
- * (they take display gamuts only, to stay small): the display model of
- * `relativeLuminance` / `apcaScreenLuminance` with `gamut: 'display-p3'`,
- * for any gamut descriptor.
+ * The contrast criterion of `options`: metric, threshold and margin, measured
+ * with the public metrics (`contrastRatio` / `contrastAPCA`) in
+ * `options.gamut`, whatever descriptor that is. Validates the gamut.
  */
-function queryGamutLuminance(
-  spec: GamutSpec,
-  metric: ContrastMetric,
-): (color: Color) => number {
-  const displayLuminance = createDisplayLuminance(spec, metric);
-  return (color) => {
-    const out = toLinearSrgbInto(QUERY_DISPLAYED, color);
-    if (spec.fromLinearSrgb) applyMatrix3Into(out, spec.fromLinearSrgb, out);
-    return displayLuminance(out.r, out.g, out.b);
-  };
-}
-
-/**
- * The criterion of a display gamut, measured with the public metrics. Does
- * not validate `gamut` and does not reference the gamut descriptors, so
- * display-only callers (`ensureContrast`) stay free of the other gamuts'
- * matrices.
- */
-export function resolveDisplayContrastCriterion(
+export function resolveContrastCriterion(
   options: ContrastRegionPathOptions,
-  gamut: DisplayGamut,
-  caller: string,
+  caller = 'contrastRegionPaths()',
 ): ResolvedContrastCriterion {
+  assertGamut(options.gamut, caller);
   const metric = options.metric ?? 'wcag';
-  const metricOptions: ContrastOptions = { gamut };
+  const metricOptions: ContrastOptions = { gamut: options.gamut };
   if (metric === 'apca') {
     const preset = options.apcaPreset ?? 'body';
     const threshold =
@@ -353,34 +329,6 @@ export function resolveDisplayContrastCriterion(
     luminance: (color) => relativeLuminance(color, metricOptions),
     evaluateLuminance: (sampleY, referenceY) =>
       measureLuminance(sampleY, referenceY) - threshold,
-  };
-}
-
-/**
- * The criterion of any gamut target. Display gamuts are measured with the
- * public metrics; other targets (`'rec2020'`) with the same arithmetic on a
- * luminance clipped to that gamut, which the scalar metrics do not model.
- */
-export function resolveContrastCriterion(
-  options: ContrastRegionPathOptions,
-  caller = 'contrastRegionPaths()',
-): ResolvedContrastCriterion {
-  assertGamutTarget(options.gamut, caller);
-  const gamut = options.gamut ?? 'srgb';
-  if (gamut === 'srgb' || gamut === 'display-p3') {
-    return resolveDisplayContrastCriterion(options, gamut, caller);
-  }
-  // Thresholds and contrast arithmetic do not depend on the gamut; only the
-  // displayed luminance does.
-  const base = resolveDisplayContrastCriterion(options, 'srgb', caller);
-  const luminance = queryGamutLuminance(gamutSpec(gamut), base.metric);
-  return {
-    ...base,
-    luminance,
-    measure: (sample, reference) =>
-      base.measureLuminance(luminance(sample), luminance(reference)),
-    evaluate: (sample, reference) =>
-      base.evaluateLuminance(luminance(sample), luminance(reference)),
   };
 }
 

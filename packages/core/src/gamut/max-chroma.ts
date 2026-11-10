@@ -1,8 +1,8 @@
 import type { Color } from '../types.js';
 import { clamp, normalizeHue } from '../utils/index.js';
 import { inGamutSpec } from './membership.js';
-import { gamutSpec } from './spec.js';
-import { assertGamutTarget } from './target.js';
+import { srgb } from './spec.js';
+import { assertGamut } from './target.js';
 import {
   DEFAULT_MAX_ITERATIONS,
   DEFAULT_TOLERANCE,
@@ -27,17 +27,18 @@ const PROBE: Color = { l: 0, c: 0, h: 0, alpha: 1 };
  * @param hue - OKLCH hue in degrees.
  * @param options - Target gamut and search settings.
  * @returns Chroma in `[0, options.maxChroma]`.
- * @throws {TypeError} When `options.gamut` is not a `GamutTarget`.
+ * @throws {TypeError} When `options.gamut` is not a `Gamut` descriptor (a
+ *   gamut name such as `'display-p3'` throws).
  * @see {@link maxChromaForHue}
  * @see {@link gamutBoundaryPath}
  *
  * @example
  * ```ts
- * import { maxChromaAt } from '@pbroom/color-kit';
+ * import { displayP3, maxChromaAt, rec2020 } from '@pbroom/color-kit';
  *
  * maxChromaAt(0.6, 250); // → 0.16982421875
- * maxChromaAt(0.6, 250, { gamut: 'display-p3' }); // → 0.21923828125
- * maxChromaAt(0.6, 250, { gamut: 'rec2020' }); // → 0.24578857421875
+ * maxChromaAt(0.6, 250, { gamut: displayP3 }); // → 0.21923828125
+ * maxChromaAt(0.6, 250, { gamut: rec2020 }); // → 0.24578857421875
  * ```
  */
 export function maxChromaAt(
@@ -46,13 +47,12 @@ export function maxChromaAt(
   options: MaxChromaAtOptions = {},
 ): number {
   const {
-    gamut = 'srgb',
+    gamut: spec = srgb,
     tolerance = DEFAULT_TOLERANCE,
     maxIterations = DEFAULT_MAX_ITERATIONS,
     alpha = 1,
   } = options;
-  assertGamutTarget(gamut, 'maxChromaAt()');
-  const spec = gamutSpec(gamut);
+  assertGamut(spec, 'maxChromaAt()');
   const maxChroma =
     options.maxChroma === undefined ? spec.maxChroma : options.maxChroma;
 

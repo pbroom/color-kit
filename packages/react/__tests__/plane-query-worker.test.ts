@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { srgb } from '@color-kit/core';
 import type {
   PlaneQueryWorkerRequest,
   PlaneQueryWorkerResponse,
@@ -26,7 +27,7 @@ function createWorkerRequest(
     queries: [
       {
         kind: 'gamutBoundary',
-        gamut: 'srgb',
+        gamut: srgb,
         hue: 230,
         samplingMode: 'adaptive',
         steps: 24,
@@ -55,8 +56,10 @@ async function runWorkerOnce(
 
   await import('../src/workers/plane-query.worker.ts');
   expect(typeof scope.onmessage).toBe('function');
+  // A real worker receives a structured clone: the gamut descriptor in the
+  // queries arrives as a copy, not as core's own object.
   scope.onmessage?.({
-    data: request,
+    data: structuredClone(request),
   } as MessageEvent<PlaneQueryWorkerRequest>);
   expect(responses.length).toBeGreaterThan(0);
   return responses[responses.length - 1];

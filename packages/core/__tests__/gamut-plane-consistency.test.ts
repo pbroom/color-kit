@@ -11,6 +11,7 @@ import {
 } from '../src/index.js';
 import { containsPoint } from '../src/plane/index.js';
 import type { Color } from '../src/index.js';
+import { displayP3 as P3, srgb as SRGB, type Gamut } from '../src/index.js';
 
 /**
  * inSrgbGamut/inP3Gamut and the plane gamut-region solver must classify
@@ -48,7 +49,7 @@ describe('gamut membership vs plane gamutRegion', () => {
     const lab = linearRgbToOklab({ r: 0.01, g: 0.01, b: BAND_CHANNEL });
     expect(inSrgbGamut(oklabToColor(lab))).toBe(false);
 
-    const region = sense(tinyOklabPlane(lab)).gamutRegion({ gamut: 'srgb' });
+    const region = sense(tinyOklabPlane(lab)).gamutRegion({ gamut: SRGB });
     expect(region.solver).toBe('implicit-contour');
     expect(region.viewportRelation).toBe('outside');
   });
@@ -57,7 +58,7 @@ describe('gamut membership vs plane gamutRegion', () => {
     const lab = linearRgbToOklab({ r: 0.01, g: 0.01, b: -1e-6 });
     expect(inSrgbGamut(oklabToColor(lab))).toBe(true);
 
-    const region = sense(tinyOklabPlane(lab)).gamutRegion({ gamut: 'srgb' });
+    const region = sense(tinyOklabPlane(lab)).gamutRegion({ gamut: SRGB });
     expect(region.viewportRelation).toBe('inside');
   });
 
@@ -68,7 +69,7 @@ describe('gamut membership vs plane gamutRegion', () => {
     expect(inP3Gamut(oklabToColor(lab))).toBe(false);
 
     const region = sense(tinyOklabPlane(lab)).gamutRegion({
-      gamut: 'display-p3',
+      gamut: P3,
     });
     expect(region.solver).toBe('implicit-contour');
     expect(region.viewportRelation).toBe('outside');
@@ -86,13 +87,13 @@ describe('gamut membership vs plane gamutRegion', () => {
 const SEARCH_CELL = 0.4 / 4096;
 
 type GamutCase = {
-  gamut: 'srgb' | 'display-p3';
+  gamut: Gamut;
   inGamut: (color: Color) => boolean;
 };
 
 const GAMUT_CASES: GamutCase[] = [
-  { gamut: 'srgb', inGamut: inSrgbGamut },
-  { gamut: 'display-p3', inGamut: inP3Gamut },
+  { gamut: SRGB, inGamut: inSrgbGamut },
+  { gamut: P3, inGamut: inP3Gamut },
 ];
 
 function trueBoundaryChroma(

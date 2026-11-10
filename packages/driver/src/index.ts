@@ -156,6 +156,9 @@ export type {
   ViewModel,
 } from './color-state.js';
 
+export { assertDisplayGamut, displayGamutDescriptor } from './display-gamut.js';
+export type { DisplayGamut } from './display-gamut.js';
+
 export {
   addMultiColorEntry,
   createMultiColorModel,

@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from 'react';
+import { toSvgPath, type ChromaBandMode } from '@color-kit/core';
 import {
   assertDisplayGamut,
-  toSvgPath,
-  type ChromaBandMode,
+  displayGamutDescriptor,
   type DisplayGamut,
-} from '@color-kit/core';
+} from '@color-kit/driver';
 import {
   getColorAreaChromaBandPoints,
   toColorAreaPlaneDefinition,
@@ -162,7 +162,7 @@ export function useChromaBand(
         {
           kind: 'chromaBand',
           requestedChroma: color.c,
-          gamut,
+          gamut: displayGamutDescriptor(gamut),
           hue,
           mode,
           steps: effectiveSteps,

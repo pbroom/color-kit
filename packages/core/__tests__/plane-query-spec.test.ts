@@ -19,6 +19,7 @@ import {
   PLANE_QUERY_KINDS,
   PLANE_QUERY_SPECS,
 } from '../src/plane/query-specs/index.js';
+import { displayP3, srgb } from '../src/index.js';
 
 const ALL_KINDS = [
   'gamutBoundary',
@@ -35,6 +36,8 @@ const DESCRIPTOR_NUMBER_KEYS = new Set(['hue', 'contrast', 'distance']);
 
 /** Rounds every float32-packed geometry value, leaving descriptor fields. */
 function float32Geometry<T>(value: T, key?: string): T {
+  // The gamut descriptor travels as is, not through the Float32 buffers.
+  if (key === 'gamut') return value;
   if (typeof value === 'number') {
     return (
       key && DESCRIPTOR_NUMBER_KEYS.has(key) ? value : Math.fround(value)
@@ -56,8 +59,8 @@ function float32Geometry<T>(value: T, key?: string): T {
 
 function queriesForEveryKind(hue: number): PlaneQuery[] {
   return [
-    { kind: 'gamutBoundary', gamut: 'display-p3', hue, steps: 24 },
-    { kind: 'gamutRegion', gamut: 'srgb' },
+    { kind: 'gamutBoundary', gamut: displayP3, hue, steps: 24 },
+    { kind: 'gamutRegion', gamut: srgb },
     {
       kind: 'contrastBoundary',
       reference: parse('#ffffff'),
@@ -74,14 +77,14 @@ function queriesForEveryKind(hue: number): PlaneQuery[] {
     {
       kind: 'fallbackPoint',
       color: { l: 0.72, c: 0.38, h: hue, alpha: 1 },
-      gamut: 'display-p3',
+      gamut: displayP3,
     },
     {
       kind: 'contrastPoint',
       point: { x: 0.5, y: 0.5 },
       reference: parse('#ffffff'),
       threshold: 7,
-      gamut: 'srgb',
+      gamut: srgb,
     },
     {
       kind: 'gradient',
@@ -178,7 +181,7 @@ function goldenCases(): Array<{
       name: 'gamut boundary',
       request: {
         plane: lc,
-        queries: [{ kind: 'gamutBoundary', gamut: 'display-p3', steps: 64 }],
+        queries: [{ kind: 'gamutBoundary', gamut: displayP3, steps: 64 }],
       },
       budget: 64,
       bucketKey:
@@ -186,7 +189,7 @@ function goldenCases(): Array<{
     },
     {
       name: 'gamut region default scope',
-      request: { plane: lc, queries: [{ kind: 'gamutRegion', gamut: 'srgb' }] },
+      request: { plane: lc, queries: [{ kind: 'gamutRegion', gamut: srgb }] },
       budget: 4096,
       bucketKey:
         'gamutRegion|gamutRegion:srgb:viewport:oklch:l/c|contrast:none|priority:idle|quality:medium|profile:balanced|budget:lg',
@@ -195,7 +198,7 @@ function goldenCases(): Array<{
       name: 'rgb full gamut region',
       request: {
         plane: { model: 'rgb', x: { channel: 'r' }, y: { channel: 'g' } },
-        queries: [{ kind: 'gamutRegion', gamut: 'display-p3', scope: 'full' }],
+        queries: [{ kind: 'gamutRegion', gamut: displayP3, scope: 'full' }],
       },
       budget: 6144,
       bucketKey:
@@ -255,7 +258,7 @@ function goldenCases(): Array<{
         plane: lc,
         queries: [
           { kind: 'chromaBand', requestedChroma: 0.1, steps: 24 },
-          { kind: 'fallbackPoint', color: red, gamut: 'srgb' },
+          { kind: 'fallbackPoint', color: red, gamut: srgb },
           { kind: 'gradient', from: red, to: blue, steps: 8 },
         ],
       },
@@ -454,11 +457,11 @@ describe('achromatic NaN hue inputs', () => {
     'packs fallbackPoint and gradient results on %s',
     (_name, plane) => {
       const results = runPlaneQueries(plane, [
-        { kind: 'fallbackPoint', color: gray, gamut: 'srgb' },
+        { kind: 'fallbackPoint', color: gray, gamut: srgb },
         {
           kind: 'fallbackPoint',
           color: { ...red, h: Number.NaN },
-          gamut: 'display-p3',
+          gamut: displayP3,
         },
         { kind: 'gradient', from: gray, to: red, steps: 5 },
         { kind: 'gradient', from: red, to: gray, steps: 5 },

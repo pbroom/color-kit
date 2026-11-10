@@ -325,7 +325,7 @@ export function unionRegions(
  * import { containsPoint, intersectRegions, sense } from '@pbroom/color-kit/plane';
  *
  * // Default OKLCH plane: x = lightness, y = chroma (0.4 at the top, 0 at the bottom).
- * const srgb = sense({ model: 'oklch', fixed: { h: 250 } }).gamutRegion({ gamut: 'srgb' });
+ * const srgb = sense({ model: 'oklch', fixed: { h: 250 } }).gamutRegion();
  * const darkHalf = { paths: [[{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 1 }, { x: 0, y: 1 }]] };
  * const darkInGamut = intersectRegions(srgb.visibleRegion, darkHalf);
  *
@@ -362,11 +362,16 @@ export function intersectRegions(
  * @see {@link intersectRegions}
  * @example
  * ```ts
- * import { containsPoint, differenceRegions, sense } from '@pbroom/color-kit/plane';
+ * import {
+ *   containsPoint,
+ *   differenceRegions,
+ *   displayP3,
+ *   sense,
+ * } from '@pbroom/color-kit/plane';
  *
  * const view = sense({ model: 'oklch', fixed: { h: 250 } });
- * const p3 = view.gamutRegion({ gamut: 'display-p3' }).visibleRegion;
- * const srgb = view.gamutRegion({ gamut: 'srgb' }).visibleRegion;
+ * const p3 = view.gamutRegion({ gamut: displayP3 }).visibleRegion;
+ * const srgb = view.gamutRegion().visibleRegion; // sRGB is the default
  * const p3Only = differenceRegions(p3, srgb); // colors P3 can show but sRGB cannot
  *
  * containsPoint(p3Only, { x: 0.6, y: 0.5 }); // → true

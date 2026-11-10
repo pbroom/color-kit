@@ -334,7 +334,7 @@ export type PlaneQueryTraceStage =
  * ```ts
  * import { inspectPlaneQuery } from '@pbroom/color-kit/plane';
  *
- * const { trace } = inspectPlaneQuery({ model: 'oklch', fixed: { h: 250 } }, { kind: 'gamutRegion', gamut: 'srgb' });
+ * const { trace } = inspectPlaneQuery({ model: 'oklch', fixed: { h: 250 } }, { kind: 'gamutRegion' });
  *
  * trace.summary.solver; // → 'analytic-lc'
  * trace.summary.resultPointCount; // → 110

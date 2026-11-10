@@ -10,8 +10,9 @@ import {
   type Color,
   type ContrastMetric,
   type ContrastRegionPathOptions,
-  type GamutTarget,
+  type Gamut,
 } from '../src/index.js';
+import { displayP3, srgb } from '../src/index.js';
 
 /**
  * Brute-force truth for contrast regions, shared by the contrast-region
@@ -43,7 +44,7 @@ export interface Query {
   hue: number;
   metric: ContrastMetric;
   threshold: number;
-  gamut: GamutTarget;
+  gamut: Gamut;
 }
 
 interface Point {
@@ -256,7 +257,7 @@ export function expectVerticesPass(
   reference: Color = parse(query.hex),
 ): void {
   const options = { gamut: query.gamut };
-  const inGamut = query.gamut === 'display-p3' ? inP3Gamut : inSrgbGamut;
+  const inGamut = query.gamut.id === 'display-p3' ? inP3Gamut : inSrgbGamut;
   for (const path of paths) {
     for (const point of path) {
       const sample = { l: point.l, c: point.c, h: query.hue, alpha: 1 };
@@ -312,13 +313,13 @@ export const apca = (
   hex: string,
   threshold: number,
   hue: number,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): Query => ({ hex, hue, metric: 'apca', threshold, gamut });
 export const wcag = (
   hex: string,
   threshold: number,
   hue: number,
-  gamut: GamutTarget,
+  gamut: Gamut,
 ): Query => ({ hex, hue, metric: 'wcag', threshold, gamut });
 
 /**
@@ -326,7 +327,7 @@ export const wcag = (
  * membership test, for hues where the in-gamut set is not one chroma
  * interval per lightness (the sRGB blue fold near h 264, where a thin
  * in-gamut fin runs beside the main body). Crossings are bisected between
- * neighbouring in-gamut nodes; pieces are the 8-connected components of
+ * neighboring in-gamut nodes; pieces are the 8-connected components of
  * cells whose in-gamut corners disagree. Open paths may end on the axis, the
  * lightness bounds, or next to an out-of-gamut color.
  */
@@ -337,7 +338,7 @@ export function bruteForceAbsolute(
 ): Truth {
   const margin = marginOf(query);
   const inGamut = (l: number, c: number) =>
-    (query.gamut === 'display-p3' ? inP3Gamut : inSrgbGamut)({
+    (query.gamut.id === 'display-p3' ? inP3Gamut : inSrgbGamut)({
       l,
       c,
       h: query.hue,
@@ -452,9 +453,9 @@ export function bruteForceAbsolute(
  * Each has two contour pieces.
  */
 export const FOLDED_REPROS: Query[] = [
-  apca('#949494', 0.45, 10, 'srgb'),
-  apca('#949494', 0.45, 350, 'srgb'),
-  apca('#949494', 0.45, 350, 'display-p3'),
+  apca('#949494', 0.45, 10, srgb),
+  apca('#949494', 0.45, 350, srgb),
+  apca('#949494', 0.45, 350, displayP3),
 ];
 
 /**
@@ -463,11 +464,11 @@ export const FOLDED_REPROS: Query[] = [
  * stopped short of the edge or split off a stub there.
  */
 export const EDGE_REPROS: Array<Query & { paths: number }> = [
-  { ...apca('#22aa55', 0.6, 130, 'srgb'), paths: 1 },
-  { ...apca('#595959', 0.75, 160, 'display-p3'), paths: 1 },
-  { ...apca('#22aa55', 0.45, 210, 'display-p3'), paths: 2 },
-  { ...apca('#767676', 0.45, 240, 'srgb'), paths: 1 },
-  { ...apca('#0000ff', 0.45, 210, 'display-p3'), paths: 1 },
+  { ...apca('#22aa55', 0.6, 130, srgb), paths: 1 },
+  { ...apca('#595959', 0.75, 160, displayP3), paths: 1 },
+  { ...apca('#22aa55', 0.45, 210, displayP3), paths: 2 },
+  { ...apca('#767676', 0.45, 240, srgb), paths: 1 },
+  { ...apca('#0000ff', 0.45, 210, displayP3), paths: 1 },
 ];
 
 /**
@@ -476,20 +477,20 @@ export const EDGE_REPROS: Array<Query & { paths: number }> = [
  * both gamuts.
  */
 export const REPRESENTATIVE: Query[] = [
-  wcag('#ffffff', 4.5, 100, 'display-p3'),
-  wcag('#000000', 4.5, 250, 'display-p3'),
-  wcag('#949494', 3, 270, 'display-p3'),
-  wcag('#ff0000', 3, 140, 'display-p3'),
-  wcag('#0000ff', 7, 130, 'srgb'),
-  wcag('#767676', 4.5, 30, 'srgb'),
-  apca('#ffffff', 0.75, 0, 'srgb'),
-  apca('#000000', 0.45, 0, 'display-p3'),
-  apca('#0000ff', 0.75, 140, 'display-p3'),
-  apca('#949494', 0.6, 110, 'display-p3'),
-  apca('#22aa55', 0.45, 280, 'srgb'),
-  apca('#22aa55', 0.6, 260, 'srgb'),
-  apca('#ff0000', 0.6, 120, 'display-p3'),
-  apca('#595959', 0.45, 200, 'srgb'),
+  wcag('#ffffff', 4.5, 100, displayP3),
+  wcag('#000000', 4.5, 250, displayP3),
+  wcag('#949494', 3, 270, displayP3),
+  wcag('#ff0000', 3, 140, displayP3),
+  wcag('#0000ff', 7, 130, srgb),
+  wcag('#767676', 4.5, 30, srgb),
+  apca('#ffffff', 0.75, 0, srgb),
+  apca('#000000', 0.45, 0, displayP3),
+  apca('#0000ff', 0.75, 140, displayP3),
+  apca('#949494', 0.6, 110, displayP3),
+  apca('#22aa55', 0.45, 280, srgb),
+  apca('#22aa55', 0.6, 260, srgb),
+  apca('#ff0000', 0.6, 120, displayP3),
+  apca('#595959', 0.45, 200, srgb),
 ];
 
 const SPREAD_REFERENCES = [
@@ -519,7 +520,7 @@ export const SPREAD: Query[] = SPREAD_REFERENCES.flatMap((hex, refIndex) =>
       metric,
       threshold,
       hue: (refIndex * 70 + criterionIndex * 50) % 360,
-      gamut: (refIndex + criterionIndex) % 2 === 0 ? 'srgb' : 'display-p3',
+      gamut: (refIndex + criterionIndex) % 2 === 0 ? srgb : displayP3,
     }),
   ),
 );
@@ -531,8 +532,8 @@ export const SPREAD: Query[] = SPREAD_REFERENCES.flatMap((hex, refIndex) =>
  * probe stopped at the end of its bracket.
  */
 export const FIN_REPROS: Query[] = [
-  apca('#22aa55', 0.45, 264.16, 'srgb'),
-  apca('#767676', 0.3, 264.17, 'srgb'),
+  apca('#22aa55', 0.45, 264.16, srgb),
+  apca('#767676', 0.3, 264.17, srgb),
 ];
 
 /**
@@ -541,22 +542,22 @@ export const FIN_REPROS: Query[] = [
  * that merged two pieces into one.
  */
 export const COARSE_FOLD_REPROS: Query[] = [
-  apca('#767676', 0.15, 264.18, 'srgb'),
-  apca('#22aa55', 0.45, 264.18, 'srgb'),
-  apca('#22aa55', 0.45, 264.19, 'srgb'),
-  apca('#767676', 0.2, 264.2, 'srgb'),
+  apca('#767676', 0.15, 264.18, srgb),
+  apca('#22aa55', 0.45, 264.18, srgb),
+  apca('#22aa55', 0.45, 264.19, srgb),
+  apca('#767676', 0.2, 264.2, srgb),
 ];
 
 /** A spread of the blue-fold band, checked at both sampling settings. */
 export const FOLD_BAND: Query[] = [
-  wcag('#000000', 2, 263.8, 'srgb'),
-  wcag('#ffffff', 10, 264.05, 'srgb'),
-  wcag('#767676', 3, 264.25, 'srgb'),
-  wcag('#0000ff', 2, 264.1, 'srgb'),
-  apca('#949494', 0.45, 264.0, 'srgb'),
-  apca('#000000', 0.15, 264.3, 'srgb'),
-  apca('#ff0000', 0.3, 263.95, 'srgb'),
-  apca('#595959', 0.6, 264.15, 'srgb'),
+  wcag('#000000', 2, 263.8, srgb),
+  wcag('#ffffff', 10, 264.05, srgb),
+  wcag('#767676', 3, 264.25, srgb),
+  wcag('#0000ff', 2, 264.1, srgb),
+  apca('#949494', 0.45, 264.0, srgb),
+  apca('#000000', 0.15, 264.3, srgb),
+  apca('#ff0000', 0.3, 263.95, srgb),
+  apca('#595959', 0.6, 264.15, srgb),
 ];
 
 /**
@@ -583,7 +584,7 @@ export const NOTCH_REPROS: Query[] = [
   [264.2066, 2.6278442502989727],
   [264.2066, 2.6580240354164353],
   [264.2066, 2.6882038205338987],
-].map(([hue, threshold]) => wcag('#000000', threshold, hue, 'srgb'));
+].map(([hue, threshold]) => wcag('#000000', threshold, hue, srgb));
 
 /**
  * Every chord between consecutive path points stays in the gamut per
@@ -592,10 +593,10 @@ export const NOTCH_REPROS: Query[] = [
 export function expectChordsInGamut(
   paths: Point[][],
   hue: number,
-  gamut: GamutTarget,
+  gamut: Gamut,
   samples = 32,
 ): void {
-  const inGamut = gamut === 'display-p3' ? inP3Gamut : inSrgbGamut;
+  const inGamut = gamut.id === 'display-p3' ? inP3Gamut : inSrgbGamut;
   for (const path of paths) {
     for (let index = 1; index < path.length; index += 1) {
       const a = path[index - 1];

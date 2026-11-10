@@ -1,5 +1,5 @@
 import { parse } from '@pbroom/color-kit';
-import { definePlane, sense } from '@pbroom/color-kit/plane';
+import { definePlane, displayP3, sense, srgb } from '@pbroom/color-kit/plane';
 
 // Chroma across, lightness up, at the hue of sRGB blue.
 const plane = sense(
@@ -10,13 +10,13 @@ const plane = sense(
   }),
 );
 
-const srgb = plane.gamutRegion({ gamut: 'srgb' });
-srgb.viewportRelation; // →
-srgb.visibleRegion.paths.length; // →
+const region = plane.gamutRegion({ gamut: srgb });
+region.viewportRelation; // →
+region.visibleRegion.paths.length; // →
 
 // Each boundary point carries its OKLCH lightness and chroma.
-const p3 = plane.gamutBoundary({ gamut: 'display-p3' });
-p3.points.reduce((a, b) => (b.c > a.c ? b : a));
+const edge = plane.gamutBoundary({ gamut: displayP3 });
+edge.points.reduce((a, b) => (b.c > a.c ? b : a));
 // →
 
 // Where text on white stops passing WCAG AA (4.5:1), along the gray axis.

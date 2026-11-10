@@ -9,9 +9,9 @@ import {
   type ContrastApcaRole,
   type ContrastMetric,
   type ContrastRegionLevel,
-  type DisplayGamut,
   type PlaneContrastRegionResult,
 } from '@color-kit/core';
+import { displayGamutDescriptor, type DisplayGamut } from '@color-kit/driver';
 import type { ColorAreaContrastRegionPoint } from '@color-kit/driver';
 
 // Non-rendering geometry for contrast regions: snaps solver contours onto
@@ -165,7 +165,8 @@ export function evaluateContrastCriterionScore(
   apcaPolarity: ContrastApcaPolarity | undefined,
   apcaRole: ContrastApcaRole | undefined,
 ): number {
-  const options = { gamut };
+  // Core's metrics take a gamut descriptor.
+  const options = { gamut: displayGamutDescriptor(gamut) };
   if (metric === 'apca') {
     const lc =
       (apcaRole ?? 'sample-text') === 'sample-background'

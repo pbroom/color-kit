@@ -1,6 +1,6 @@
 import type { ContrastTargetOptions } from '../contrast/point-solver.js';
 import type { ContrastRegionPathOptions } from '../contrast/types.js';
-import type { ChromaBandMode, GamutTarget } from '../gamut/index.js';
+import type { ChromaBandMode, Gamut } from '../gamut/index.js';
 import type { PlanePoint } from '../geometry/types.js';
 import type {
   PlaneGamutRegionScope,
@@ -262,9 +262,9 @@ export interface PlaneGamutBoundaryQuery {
   kind: 'gamutBoundary';
   /**
    * Gamut whose edge is traced.
-   * @defaultValue 'srgb'
+   * @defaultValue `srgb`
    */
-  gamut?: GamutTarget;
+  gamut?: Gamut;
   /**
    * OKLCH hue in degrees. Defaults to the plane's hue (see {@link planeHue}).
    */
@@ -304,9 +304,9 @@ export interface PlaneGamutRegionQuery {
   kind: 'gamutRegion';
   /**
    * Gamut whose in-gamut area is computed.
-   * @defaultValue 'srgb'
+   * @defaultValue `srgb`
    */
-  gamut?: GamutTarget;
+  gamut?: Gamut;
   /**
    * `'viewport'` clips boundary paths to the plane window; `'full'` traces
    * them across the whole channel domain. The visible region is always
@@ -353,9 +353,9 @@ export interface PlaneChromaBandQuery {
   requestedChroma?: number;
   /**
    * Gamut that bounds the band.
-   * @defaultValue 'srgb'
+   * @defaultValue `srgb`
    */
-  gamut?: GamutTarget;
+  gamut?: Gamut;
   /** OKLCH hue in degrees. Defaults to the plane's hue (see {@link planeHue}). */
   hue?: number;
   /**
@@ -395,7 +395,7 @@ export interface PlaneChromaBandQuery {
   selectedLightness?: number;
   /**
    * Upper bound of the maximum-chroma search.
-   * @defaultValue 0.4 (0.5 for `'rec2020'`)
+   * @defaultValue `gamut.maxChroma` (0.4; 0.5 for `rec2020`)
    */
   maxChroma?: number;
   /**
@@ -418,7 +418,7 @@ export interface PlaneFallbackPointQuery {
   /** Color to gamut-map; usually out of gamut. */
   color: Color;
   /** Gamut to map into. */
-  gamut: GamutTarget;
+  gamut: Gamut;
 }
 
 /**
@@ -492,7 +492,7 @@ export type PlaneQuery =
 export interface PlaneGamutBoundaryResult {
   kind: 'gamutBoundary';
   /** Gamut that was traced. */
-  gamut: GamutTarget;
+  gamut: Gamut;
   /** OKLCH hue the boundary was traced at, in degrees. */
   hue: number;
   /**
@@ -506,7 +506,7 @@ export interface PlaneGamutBoundaryResult {
 export interface PlaneGamutRegionResult {
   kind: 'gamutRegion';
   /** Gamut that was analyzed. */
-  gamut: GamutTarget;
+  gamut: Gamut;
   /** Scope the boundary paths were traced in. */
   scope: PlaneGamutRegionScope;
   /**
@@ -563,7 +563,7 @@ export interface PlaneChromaBandResult {
 export interface PlaneFallbackPointResult {
   kind: 'fallbackPoint';
   /** Gamut the color was mapped into. */
-  gamut: GamutTarget;
+  gamut: Gamut;
   /** Plane position of the mapped color, with the mapped color itself. */
   point: PlaneColorPoint;
 }

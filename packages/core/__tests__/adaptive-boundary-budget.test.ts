@@ -22,12 +22,12 @@ import {
   estimateAdaptiveBoundarySearches,
   gamutBoundaryPath,
 } from '../src/gamut/boundary-path.js';
-import type { GamutTarget } from '../src/gamut/types.js';
+import { displayP3, srgb, type Gamut } from '../src/index.js';
 
 const HUES = Array.from({ length: 24 }, (_, index) => index * 15);
-const GAMUTS: GamutTarget[] = ['srgb', 'display-p3'];
+const GAMUTS: Gamut[] = [srgb, displayP3];
 
-function meanSearches(run: (hue: number, gamut: GamutTarget) => void): number {
+function meanSearches(run: (hue: number, gamut: Gamut) => void): number {
   let total = 0;
   for (const gamut of GAMUTS) {
     for (const hue of HUES) {
