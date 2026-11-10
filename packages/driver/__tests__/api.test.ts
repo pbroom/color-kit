@@ -163,8 +163,7 @@ describe('Color API helpers', () => {
     });
     const color = parse('#3b82f6');
     const options = { gamut: 'rec2020' as DisplayGamut };
-    const hint =
-      "unknown gamut \"rec2020\". 'rec2020' is not a display gamut; use 'srgb' or 'display-p3'";
+    const hint = "unknown gamut \"rec2020\"; use 'srgb' or 'display-p3'";
 
     expect(() => getColorAreaGamutBoundaryPoints(250, axes, options)).toThrow(
       new TypeError(`gamutBoundary(): ${hint}`),
@@ -188,14 +187,12 @@ describe('Color API helpers', () => {
     expect(() => assertDisplayGamut('display-p3', 'f()')).not.toThrow();
     expect(() => assertDisplayGamut(undefined, 'f()')).not.toThrow();
     expect(() => assertDisplayGamut('p3', 'f()')).toThrow(
-      new TypeError(
-        "f(): unknown gamut \"p3\". 'p3' is not supported; use 'display-p3'",
-      ),
+      new TypeError("f(): unknown gamut \"p3\"; use 'srgb' or 'display-p3'"),
     );
     // The driver keeps the string vocabulary: a core descriptor is rejected.
     expect(() => assertDisplayGamut(displayP3, 'f()')).toThrow(
       new TypeError(
-        "f(): unknown gamut { id: \"display-p3\" }. Display gamuts are named by string here: use 'srgb' or 'display-p3'",
+        "f(): unknown gamut \"display-p3\"; use 'srgb' or 'display-p3'",
       ),
     );
   });
@@ -230,7 +227,7 @@ describe('Color API helpers', () => {
       });
 
     expect(() => fallback('p3')).toThrow(TypeError);
-    expect(() => fallback('p3')).toThrow("use 'display-p3'");
+    expect(() => fallback('p3')).toThrow("or 'display-p3'");
     expect(() => fallback('rec2020')).toThrow(TypeError);
     expect(() => fallback('rec2020')).toThrow(/unknown gamut "rec2020"/);
     expect(() => fallback(null)).toThrow(TypeError);

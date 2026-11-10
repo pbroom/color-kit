@@ -180,8 +180,7 @@ export function mapDisplayedColors(
  * colors and out-of-gamut flags with {@link mapDisplayedColors}.
  *
  * @throws {TypeError} When `options.activeGamut` is not `'srgb'` or
- * `'display-p3'` (for example the removed `'p3'` spelling). The message ends
- * `'p3' is not supported; use 'display-p3'` for `'p3'`.
+ * `'display-p3'` (for example the removed `'p3'` spelling).
  *
  * @example
  * ```ts

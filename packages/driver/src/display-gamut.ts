@@ -17,10 +17,8 @@ export type DisplayGamut = 'srgb' | 'display-p3';
  * @param gamut - Value read from caller options or state.
  * @param fn - Public function name used as the message prefix.
  * @throws {TypeError} When `gamut` is anything else (including `null` and a
- *   core gamut descriptor object). The message is
- *   `` `${fn}: unknown gamut "${gamut}"` ``; for `'p3'` it adds
- *   `'p3' is not supported; use 'display-p3'`, and for `'rec2020'` that it
- *   is not a display gamut.
+ *   core gamut descriptor object, which is named by its `id`). The message
+ *   is `` `${fn}: unknown gamut "${gamut}"; use 'srgb' or 'display-p3'` ``.
  *
  * @example
  * ```ts
@@ -28,7 +26,7 @@ export type DisplayGamut = 'srgb' | 'display-p3';
  *
  * assertDisplayGamut('display-p3', 'show()'); // returns; narrows the type
  * assertDisplayGamut('rec2020', 'show()');
- * // throws TypeError: show(): unknown gamut "rec2020". 'rec2020' is not a display gamut; use 'srgb' or 'display-p3'
+ * // throws TypeError: show(): unknown gamut "rec2020"; use 'srgb' or 'display-p3'
  * ```
  */
 export function assertDisplayGamut(
@@ -38,19 +36,10 @@ export function assertDisplayGamut(
   if (gamut === undefined || gamut === 'srgb' || gamut === 'display-p3') {
     return;
   }
-  const name =
-    typeof gamut === 'object' && gamut !== null
-      ? `{ id: ${JSON.stringify((gamut as { id?: unknown }).id)} }`
-      : `"${String(gamut)}"`;
-  const hint =
-    gamut === 'p3'
-      ? ". 'p3' is not supported; use 'display-p3'"
-      : gamut === 'rec2020'
-        ? ". 'rec2020' is not a display gamut; use 'srgb' or 'display-p3'"
-        : typeof gamut === 'object' && gamut !== null
-          ? ". Display gamuts are named by string here: use 'srgb' or 'display-p3'"
-          : '';
-  throw new TypeError(`${fn}: unknown gamut ${name}${hint}`);
+  const name = (gamut as { id?: unknown } | null)?.id ?? gamut;
+  throw new TypeError(
+    `${fn}: unknown gamut "${name}"; use 'srgb' or 'display-p3'`,
+  );
 }
 
 /**

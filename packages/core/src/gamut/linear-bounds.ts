@@ -76,15 +76,30 @@ export const GAMUT_LINEAR_MAX = /* @__PURE__ */ srgbToLinearChannel(
  * outside the encoded cube (`5.8e-6 ** (1 / 2.4)`), about 87 times the
  * reference slack.
  */
-export const REC2020_LINEAR_MIN =
-  /* @__PURE__ */ rec2020ToLinearChannel(-GAMUT_EPSILON);
+export const REC2020_LINEAR_MIN = /* @__PURE__ */ decodedLowerBound(
+  rec2020ToLinearChannel,
+);
 /**
  * Upper linear-light bound of Rec. 2020 membership:
  * `(1 + GAMUT_EPSILON) ** 2.4` (≈ 1.00018). See {@link REC2020_LINEAR_MIN}.
  */
-export const REC2020_LINEAR_MAX = /* @__PURE__ */ rec2020ToLinearChannel(
-  1 + GAMUT_EPSILON,
+export const REC2020_LINEAR_MAX = /* @__PURE__ */ decodedUpperBound(
+  rec2020ToLinearChannel,
 );
+
+/**
+ * The encoded tolerance bounds pushed through a transfer function. The
+ * per-gamut bounds call these with the decoder alone: bundlers drop an
+ * unused `@__PURE__` call only when its arguments are side-effect free, and
+ * esbuild does not treat arithmetic on an imported binding
+ * (`-GAMUT_EPSILON`) as such, so that arithmetic happens in here.
+ */
+function decodedLowerBound(decode: (encoded: number) => number): number {
+  return decode(-GAMUT_EPSILON);
+}
+function decodedUpperBound(decode: (encoded: number) => number): number {
+  return decode(1 + GAMUT_EPSILON);
+}
 
 /**
  * Signed distance (in linear light) from unclamped linear RGB channels to the

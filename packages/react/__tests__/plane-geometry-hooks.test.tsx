@@ -144,9 +144,7 @@ describe('plane geometry hooks and Rec. 2020', () => {
     quiet();
     expect(() =>
       renderHook(() => useGamutBoundary({ color }, options)),
-    ).toThrow(
-      /gamutBoundary\(\): unknown gamut "rec2020"\. 'rec2020' is not a/,
-    );
+    ).toThrow(/gamutBoundary\(\): unknown gamut "rec2020"; use 'srgb'/);
   });
 
   it('useChromaBand() throws for gamut "rec2020"', () => {

@@ -171,10 +171,13 @@ export function createPlaneQueryKey(
   query: PlaneQuery,
 ): string {
   // A gamut is keyed by its id, not by serializing its matrices per call.
+  // The id stays wrapped in an object so an invalid string gamut (the
+  // removed `gamut: 'display-p3'` form) never shares a key, and a cache hit,
+  // with a valid query.
   const gamut = (query as { gamut?: { id?: unknown } }).gamut;
   const keyed =
     typeof gamut === 'object' && gamut !== null
-      ? { ...query, gamut: gamut.id }
+      ? { ...query, gamut: { id: gamut.id } }
       : query;
   return `${stableStringify(resolvePlaneDefinition(plane))}:${stableStringify(keyed)}`;
 }

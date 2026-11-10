@@ -361,7 +361,7 @@ describe('gamut identity is by id', () => {
       kind: 'gamutRegion',
       gamut: displayP3,
     });
-    expect(key).toContain('"gamut":"display-p3"');
+    expect(key).toContain('"gamut":{"id":"display-p3"}');
     expect(key).not.toContain('lmsToLinear');
     expect(
       createPlaneQueryKey(plane, {
@@ -491,5 +491,79 @@ describe('contrast in any gamut', () => {
     expect(
       tryEnsureContrast(vivid, WHITE, { gamut: rec2020, threshold: 22 }),
     ).toBeNull();
+  });
+});
+
+describe('review regressions', () => {
+  const RGB_PLANE = definePlane({
+    model: 'rgb',
+    x: { channel: 'r' },
+    y: { channel: 'g' },
+    fixed: { b: 0 },
+  });
+
+  // A gamut strictly inside sRGB: sRGB red maps to (1.2, -0.1, -0.1).
+  const k = 1 / 1.3;
+  const fromLinearSrgb = [
+    [1.2, -0.1, -0.1],
+    [-0.1, 1.2, -0.1],
+    [-0.1, -0.1, 1.2],
+  ] as const;
+  const multiply = (
+    a: readonly (readonly number[])[],
+    b: readonly (readonly number[])[],
+  ) =>
+    a.map((row) =>
+      [0, 1, 2].map(
+        (j) => row[0] * b[0][j] + row[1] * b[1][j] + row[2] * b[2][j],
+      ),
+    );
+  const narrow = {
+    ...srgb,
+    id: 'narrow-test',
+    fromLinearSrgb,
+    toLinearSrgb: [
+      [1.1 * k, 0.1 * k, 0.1 * k],
+      [0.1 * k, 1.1 * k, 0.1 * k],
+      [0.1 * k, 0.1 * k, 1.1 * k],
+    ],
+    lmsToLinear: multiply(fromLinearSrgb, srgb.lmsToLinear),
+  } as unknown as Gamut;
+
+  it('keeps the domain-edge shortcut for gamuts that contain sRGB', () => {
+    for (const gamut of [srgb, planeDisplayP3, planeRec2020]) {
+      const region = sense(RGB_PLANE).gamutRegion({ gamut });
+      expect(region.solver).toBe('domain-edge');
+    }
+  });
+
+  it('does not report an sRGB-model plane as fully inside a narrower gamut', () => {
+    const red: Color = parse('#ff0000');
+    expect(inGamut(red, narrow)).toBe(false);
+    expect(inGamut(parse('#808080'), narrow)).toBe(true);
+    const region = sense(RGB_PLANE).gamutRegion({ gamut: narrow });
+    expect(region.solver).toBe('implicit-contour');
+    expect(region.viewportRelation).not.toBe('inside');
+  });
+
+  it('never gives a string gamut the cache key of a descriptor', () => {
+    const valid = createPlaneQueryKey(RGB_PLANE, {
+      kind: 'gamutRegion',
+      gamut: planeDisplayP3,
+    });
+    for (const gamut of ['display-p3', 'srgb', undefined]) {
+      expect(
+        createPlaneQueryKey(RGB_PLANE, {
+          kind: 'gamutRegion',
+          gamut,
+        } as unknown as PlaneQuery),
+      ).not.toBe(valid);
+    }
+    expect(
+      createPlaneQueryKey(RGB_PLANE, {
+        kind: 'gamutRegion',
+        gamut: structuredClone(planeDisplayP3),
+      }),
+    ).toBe(valid);
   });
 });

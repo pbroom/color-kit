@@ -505,6 +505,27 @@ export function buildDomainEdgeViewportResult(
 }
 
 /**
+ * Whether `gamut` contains every sRGB color, so an sRGB-model plane (`rgb`,
+ * `hsl`, `hsv`) is in gamut over its whole domain. The sRGB cube maps to a
+ * parallelepiped in the gamut's linear RGB; each channel's extremes over it
+ * are the sums of that matrix row's negative and positive entries.
+ */
+function containsSrgb(gamut: Gamut): boolean {
+  return (
+    !gamut.fromLinearSrgb ||
+    gamut.fromLinearSrgb.every((row) => {
+      let low = 0;
+      let high = 0;
+      for (const value of row) {
+        if (value < 0) low += value;
+        else high += value;
+      }
+      return low >= gamut.linearMin && high <= gamut.linearMax;
+    })
+  );
+}
+
+/**
  * Policy matrix mapping a resolved plane + gamut target to the solver
  * strategy used by `getPlaneGamutRegion()`.
  */
@@ -513,10 +534,12 @@ export function resolveGamutSolver(
   gamut: Gamut,
 ): PlaneGamutSolver {
   if (
-    resolvedPlane.model === 'rgb' ||
-    resolvedPlane.model === 'hsl' ||
-    resolvedPlane.model === 'hsv' ||
-    (resolvedPlane.model === 'display-p3' && gamut.id === 'display-p3')
+    resolvedPlane.model === 'display-p3'
+      ? gamut.id === 'display-p3'
+      : (resolvedPlane.model === 'rgb' ||
+          resolvedPlane.model === 'hsl' ||
+          resolvedPlane.model === 'hsv') &&
+        containsSrgb(gamut)
   ) {
     return 'domain-edge';
   }
