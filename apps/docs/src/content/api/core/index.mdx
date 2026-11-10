@@ -17,7 +17,9 @@ has no React dependency. `@pbroom/color-kit/core` is an alias of this entry.
   [`toRec2020Gamut`](/api/core/gamut#toRec2020Gamut))
   and geometry ([`maxChromaAt`](/api/core/gamut#maxChromaAt),
   [`gamutBoundaryPath`](/api/core/gamut#gamutBoundaryPath)) for sRGB, Display
-  P3 and Rec. 2020.
+  P3 and Rec. 2020. The generic [`inGamut`](/api/core/gamut#inGamut) and
+  [`toGamut`](/api/core/gamut#toGamut) take any gamut, including the
+  built-in `a98Rgb` (Adobe RGB (1998)).
 - **Contrast.** WCAG ([`contrastRatio`](/api/core/contrast#contrastRatio),
   [`meetsAA`](/api/core/contrast#meetsAA)), APCA
   ([`contrastAPCA`](/api/core/contrast#contrastAPCA)), contrast regions

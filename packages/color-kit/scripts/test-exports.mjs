@@ -207,6 +207,7 @@ for (const [name, id] of [
   ['srgb', 'srgb'],
   ['displayP3', 'display-p3'],
   ['rec2020', 'rec2020'],
+  ['a98Rgb', 'a98-rgb'],
 ]) {
   assert.equal(root[name].id, id, `root.${name}.id`);
   assert.equal(root[name], plane[name], `plane.${name}`);
@@ -235,6 +236,16 @@ assert.ok(
     gamut: root.rec2020,
   }) > 4,
 );
+// Adobe RGB (1998) is a descriptor only: no named helpers.
+assert.equal(
+  root.inGamut(root.parse('color(a98-rgb 0 1 0)'), root.a98Rgb),
+  true,
+  'inGamut(a98Rgb)',
+);
+assert.equal(root.maxChromaAt(0.8, 150, { gamut: plane.a98Rgb }), 0.367578125);
+for (const name of ['inA98Gamut', 'toA98Gamut', 'inA98RgbGamut']) {
+  assert.equal(name in root, false, `root.${name} does not exist`);
+}
 // The driver names its two display gamuts by string and maps them to core
 // descriptors; Rec. 2020 is not a display gamut there.
 assert.equal(typeof driver.assertDisplayGamut, 'function');
@@ -307,6 +318,8 @@ assert.equal(cjsRoot.definePlane, cjsPlane.definePlane);
 assert.equal(cjsRoot.definePlane, cjsCore.definePlane);
 assert.equal(cjsRoot.assertGamut, cjsPlane.assertGamut);
 assert.equal(cjsRoot.rec2020, cjsPlane.rec2020);
+assert.equal(cjsRoot.a98Rgb, cjsPlane.a98Rgb);
+assert.equal(cjsRoot.a98Rgb.id, 'a98-rgb');
 assert.equal(cjsRoot.displayP3.id, 'display-p3');
 assert.equal(cjsDriver.displayGamutDescriptor('display-p3'), cjsRoot.displayP3);
 assert.equal(typeof cjsRoot.inRec2020Gamut, 'function');

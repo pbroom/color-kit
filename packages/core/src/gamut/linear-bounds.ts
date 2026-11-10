@@ -1,3 +1,4 @@
+import { a98RgbToLinearChannel } from '../conversion/a98-rgb.js';
 import { rec2020ToLinearChannel } from '../conversion/rec2020.js';
 import { srgbToLinearChannel } from '../utils/index.js';
 import { GAMUT_EPSILON } from './constants.js';
@@ -100,6 +101,28 @@ function decodedLowerBound(decode: (encoded: number) => number): number {
 function decodedUpperBound(decode: (encoded: number) => number): number {
   return decode(1 + GAMUT_EPSILON);
 }
+
+/**
+ * Lower linear-light bound of Adobe RGB (1998) membership:
+ * `-(GAMUT_EPSILON ** (563 / 256))` (≈ -8.48e-10).
+ *
+ * CSS Color 4 and colorjs.io define `a98-rgb` with a pure `563 / 256` power
+ * mirrored through zero, and colorjs.io's `inGamut()` allows
+ * {@link GAMUT_EPSILON} on those encoded channels. Like the Rec. 2020 curve
+ * it has no linear toe, so the tolerance is far tighter in linear light near
+ * zero than the sRGB one (see {@link REC2020_LINEAR_MIN}).
+ */
+export const A98_RGB_LINEAR_MIN = /* @__PURE__ */ decodedLowerBound(
+  a98RgbToLinearChannel,
+);
+/**
+ * Upper linear-light bound of Adobe RGB (1998) membership:
+ * `(1 + GAMUT_EPSILON) ** (563 / 256)` (≈ 1.000165). See
+ * {@link A98_RGB_LINEAR_MIN}.
+ */
+export const A98_RGB_LINEAR_MAX = /* @__PURE__ */ decodedUpperBound(
+  a98RgbToLinearChannel,
+);
 
 /**
  * Signed distance (in linear light) from unclamped linear RGB channels to the

@@ -17,6 +17,17 @@
  * matrices are the float64 products `XYZ_to_lin_2020 · lin_sRGB_to_XYZ`,
  * `XYZ_to_lin_sRGB · lin_2020_to_XYZ` and `XYZ_to_lin_2020 · LMStoXYZ`.
  *
+ * The Adobe RGB (1998) matrices come from the CSS Color 4 sample code too
+ * (`lin_a98rgb_to_XYZ` / `XYZ_to_lin_a98rgb`, the rationals behind
+ * `LINEAR_A98_RGB_TO_XYZ_D65` in `xyz.ts`). Adobe RGB (1998) has the sRGB
+ * red and blue primaries and white point, so its green channel is the sRGB
+ * green channel and the linear-sRGB <-> linear-A98 matrices have exact zeros
+ * and an exact 1: they are the exact rational products
+ * `XYZ_to_lin_a98rgb · lin_sRGB_to_XYZ` and
+ * `XYZ_to_lin_sRGB · lin_a98rgb_to_XYZ`, rounded to float64. The
+ * LMS -> linear-A98 matrix is the float64 product
+ * `XYZ_to_lin_a98rgb · LMStoXYZ`, like the Rec. 2020 one.
+ *
  * The previous 10-significant-digit values (Ottosson's original blog post and
  * an 8-digit-derived sRGB -> P3 matrix) disagreed with the reference by up to
  * ~2e-7 per matrix entry, which put white at L = 0.99999999, C = 3.7e-8 and
@@ -111,4 +122,34 @@ export const LMS_TO_LINEAR_REC2020: Matrix3 = [
   [2.1399067304346513, -1.2463894937606177, 0.10648276332596673],
   [-0.8847358357577673, 2.1632309383612003, -0.2784951026034336],
   [-0.04857374640044399, -0.45450314971409633, 1.5030768961145402],
+];
+
+/**
+ * Linear sRGB -> linear Adobe RGB (1998)
+ * (`XYZ_to_lin_a98rgb · lin_sRGB_to_XYZ`, exact rationals rounded to
+ * float64: `47872228 / 66942405` and `11512411 / 279685764` with their
+ * complements).
+ */
+export const LINEAR_SRGB_TO_LINEAR_A98_RGB: Matrix3 = [
+  [0.7151256068556247, 0.2848743931443754, 0],
+  [0, 1, 0],
+  [0, 0.04116194845011847, 0.9588380515498816],
+];
+
+/**
+ * Linear Adobe RGB (1998) -> linear sRGB
+ * (`XYZ_to_lin_sRGB · lin_a98rgb_to_XYZ`, exact rationals rounded to
+ * float64).
+ */
+export const LINEAR_A98_RGB_TO_LINEAR_SRGB: Matrix3 = [
+  [1.3983557439607783, -0.3983557439607783, 0],
+  [0, 1, 0],
+  [0, -0.042928989294473266, 1.0429289892944733],
+];
+
+/** LMS -> linear Adobe RGB (1998) (`XYZ_to_lin_a98rgb · LMStoXYZ`). */
+export const LMS_TO_LINEAR_A98_RGB: Matrix3 = [
+  [2.554036838611557, -1.6219761806828699, 0.06793934207131358],
+  [-1.2684379732850317, 2.6097573492876887, -0.34131937600265727],
+  [-0.05623473593749384, -0.567041839566906, 1.6232765755043996],
 ];

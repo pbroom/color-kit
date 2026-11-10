@@ -54,8 +54,8 @@ export interface MaxChromaAtOptions {
    * Upper chroma search bound. If a color at this chroma is already in
    * gamut, it is returned as is, so this also acts as a chroma cap. The
    * default is the gamut's own `maxChroma`, which clears its largest chroma:
-   * `0.4` for sRGB and Display P3, `0.5` for Rec. 2020 (whose green primary
-   * reaches about 0.468).
+   * `0.4` for sRGB, Display P3 and Adobe RGB (1998), `0.5` for Rec. 2020
+   * (whose green primary reaches about 0.468).
    * @defaultValue `gamut.maxChroma`
    */
   maxChroma?: number;

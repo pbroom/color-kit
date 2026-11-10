@@ -168,6 +168,7 @@ export {
   srgb,
   displayP3,
   rec2020,
+  a98Rgb,
   assertGamut,
   inGamut,
   toGamut,

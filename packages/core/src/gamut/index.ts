@@ -20,7 +20,7 @@ export {
   toSrgbGamut,
   toSrgbGamutInto,
 } from './membership.js';
-export { displayP3, rec2020, srgb } from './spec.js';
+export { a98Rgb, displayP3, rec2020, srgb } from './spec.js';
 export type { Gamut, GamutTransfer } from './spec.js';
 export { assertGamut } from './target.js';
 export type {
