@@ -1,14 +1,20 @@
+import { A98_RGB_GAMMA } from '../conversion/a98-rgb.js';
 import {
+  LINEAR_A98_RGB_TO_LINEAR_SRGB,
   LINEAR_P3_TO_LINEAR_SRGB,
   LINEAR_REC2020_TO_LINEAR_SRGB,
+  LINEAR_SRGB_TO_LINEAR_A98_RGB,
   LINEAR_SRGB_TO_LINEAR_P3,
   LINEAR_SRGB_TO_LINEAR_REC2020,
+  LMS_TO_LINEAR_A98_RGB,
   LMS_TO_LINEAR_P3,
   LMS_TO_LINEAR_REC2020,
   LMS_TO_LINEAR_SRGB,
   type Matrix3,
 } from '../conversion/matrices.js';
 import {
+  A98_RGB_LINEAR_MAX,
+  A98_RGB_LINEAR_MIN,
   GAMUT_LINEAR_MAX,
   GAMUT_LINEAR_MIN,
   REC2020_LINEAR_MAX,
@@ -25,7 +31,8 @@ import {
  * Encoding (linear light `y` to gamma-encoded), for `y >= 0`:
  * `y <= e ? c * y : a * y ** (1 / g) - b`.
  *
- * A curve with no linear segment (a pure power, as Rec. 2020 uses) sets
+ * A curve with no linear segment (a pure power, as Rec. 2020 and Adobe RGB
+ * (1998) use) sets
  * `d` and `e` to `-1`, so the power branch always runs.
  */
 export interface GamutTransfer {
@@ -46,8 +53,8 @@ export interface GamutTransfer {
 /**
  * An RGB gamut, as plain data: the value of every `gamut` option.
  *
- * Import a built-in ({@link srgb}, {@link displayP3}, {@link rec2020}) or
- * write your own object of this shape; the library treats both the same
+ * Import a built-in ({@link srgb}, {@link displayP3}, {@link a98Rgb},
+ * {@link rec2020}) or write your own object of this shape; the library treats both the same
  * way, and a bundle only contains the gamuts it imports. A descriptor holds
  * numbers, arrays and a string only, so it survives `structuredClone` and
  * `postMessage`.
@@ -56,8 +63,10 @@ export interface GamutTransfer {
  * descriptors with the same `id` share caches and must describe the same
  * gamut. Give a custom gamut an `id` of its own.
  *
- * The built-in gamuts are not strictly nested. sRGB lies inside both others,
- * but two thin slivers of Display P3 lie outside Rec. 2020: around the P3
+ * The built-in gamuts are not strictly nested. sRGB lies inside the others
+ * and Adobe RGB (1998) inside Rec. 2020, but Display P3 and Adobe RGB (1998)
+ * each hold colors the other lacks (P3 more red, Adobe RGB more green and
+ * cyan), and two thin slivers of Display P3 lie outside Rec. 2020: around the P3
  * red primary (`color(display-p3 1 0 0)` is
  * `color(rec2020 0.889 0.277 -0.061)`) and, opposite it, around P3 cyan
  * near white. The largest difference is about 0.002 OKLCH chroma.
@@ -66,6 +75,8 @@ export interface GamutTransfer {
  * very dark colors (OKLCH lightness below about 0.05 for sRGB, 0.15 for
  * Display P3) their tolerance covers more chroma than the Rec. 2020 one, so
  * a boundary reported for them can sit outside the Rec. 2020 boundary there.
+ * The same holds for sRGB against Adobe RGB (1998), whose curve has no
+ * linear segment either.
  *
  * @example
  * ```ts
@@ -80,7 +91,8 @@ export interface Gamut {
   /**
    * Unique name of the gamut. Caches and special cases key on it, so two
    * different gamuts must not share an id. The built-in ids are the CSS
-   * `color()` space names: `'srgb'`, `'display-p3'` and `'rec2020'`.
+   * `color()` space names: `'srgb'`, `'display-p3'`, `'a98-rgb'` and
+   * `'rec2020'`.
    */
   readonly id: string;
   /**
@@ -115,7 +127,8 @@ export interface Gamut {
    * Default upper chroma bound of searches in this gamut (`maxChromaAt`,
    * boundary paths, contrast regions, full-scope plane bounds). Must exceed
    * the gamut's largest OKLCH chroma: about 0.323 for sRGB, 0.366 for
-   * Display P3 and 0.468 for Rec. 2020 (its green primary).
+   * Display P3, 0.395 for Adobe RGB (1998) and 0.468 for Rec. 2020 (the
+   * last three at their green primaries).
    */
   readonly maxChroma: number;
 }
@@ -195,4 +208,30 @@ export const rec2020: Gamut = {
   linearMin: REC2020_LINEAR_MIN,
   linearMax: REC2020_LINEAR_MAX,
   maxChroma: 0.5,
+};
+
+/**
+ * The Adobe RGB (1998) gamut (CSS `a98-rgb`): the sRGB red and blue
+ * primaries with a more saturated green, D65, and a sign-mirrored
+ * `563 / 256` power transfer curve.
+ *
+ * Its largest OKLCH chroma is 0.3947 (the green primary), so the default
+ * `maxChroma` of 0.4, the sRGB and Display P3 one, clears it.
+ *
+ * @example
+ * ```ts
+ * import { a98Rgb, maxChromaAt } from '@pbroom/color-kit';
+ *
+ * maxChromaAt(0.8, 150, { gamut: a98Rgb }); // → 0.367578125
+ * ```
+ */
+export const a98Rgb: Gamut = {
+  id: 'a98-rgb',
+  lmsToLinear: LMS_TO_LINEAR_A98_RGB,
+  fromLinearSrgb: LINEAR_SRGB_TO_LINEAR_A98_RGB,
+  toLinearSrgb: LINEAR_A98_RGB_TO_LINEAR_SRGB,
+  transfer: { g: A98_RGB_GAMMA, a: 1, b: 0, c: 1, d: -1, e: -1 },
+  linearMin: A98_RGB_LINEAR_MIN,
+  linearMax: A98_RGB_LINEAR_MAX,
+  maxChroma: 0.4,
 };

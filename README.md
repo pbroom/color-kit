@@ -243,9 +243,9 @@ From `@pbroom/color-kit/plane`: `runPlaneQuery()` `runPlaneQueries()` `PlaneQuer
 
 ### Gamut
 
-`srgb` `displayP3` `rec2020` `inGamut()` `toGamut()` `inSrgbGamut()` `inP3Gamut()` `inRec2020Gamut()` `toSrgbGamut()` `toP3Gamut()` `toRec2020Gamut()` `maxChromaAt()` `maxChromaForHue()` `gamutBoundaryPath()` `chromaBand()`
+`srgb` `displayP3` `a98Rgb` `rec2020` `inGamut()` `toGamut()` `inSrgbGamut()` `inP3Gamut()` `inRec2020Gamut()` `toSrgbGamut()` `toP3Gamut()` `toRec2020Gamut()` `maxChromaAt()` `maxChromaForHue()` `gamutBoundaryPath()` `chromaBand()`
 
-A gamut is an imported object, never a string. Every core `gamut` option, including the plane queries' and the contrast functions', takes a `Gamut` descriptor: `srgb` (the default), `displayP3`, `rec2020`, or one of your own. Bundles carry only the gamuts they import, and a custom gamut is an object of the same shape with its own `id`, so it works exactly like a built-in. Descriptors are plain data and survive `structuredClone` and `postMessage`. Passing a string such as `'display-p3'` throws a `TypeError`; replace `{ gamut: 'display-p3' }` with `{ gamut: displayP3 }`.
+A gamut is an imported object, never a string. Every core `gamut` option, including the plane queries' and the contrast functions', takes a `Gamut` descriptor: `srgb` (the default), `displayP3`, `a98Rgb` (Adobe RGB (1998), CSS `a98-rgb`), `rec2020`, or one of your own. Bundles carry only the gamuts they import, and a custom gamut is an object of the same shape with its own `id`, so it works exactly like a built-in. Descriptors are plain data and survive `structuredClone` and `postMessage`. Passing a string such as `'display-p3'` throws a `TypeError`; replace `{ gamut: 'display-p3' }` with `{ gamut: displayP3 }`.
 
 ```ts
 import {
@@ -268,7 +268,7 @@ const mine: Gamut = { ...rec2020, id: 'my-gamut' };
 maxChromaAt(0.6, 250, { gamut: mine }); // 0.24578857421875
 ```
 
-Plane query results carry the descriptor back (`result.gamut.id` is `'srgb'`, `'display-p3'` or `'rec2020'`). `toCss(color, 'rec2020')` still takes a format name and writes `color(rec2020 r g b)`. The driver and React picker state model the gamut a color is displayed in and keep taking the strings `'srgb'` or `'display-p3'` (`activeGamut`, `setActiveGamut`, hook and component `gamut` options). Rec. 2020 holds all of sRGB but not quite all of Display P3: two thin slivers of P3, around its red primary and around its cyan near white, lie outside it.
+Plane query results carry the descriptor back (`result.gamut.id` is `'srgb'`, `'display-p3'`, `'a98-rgb'` or `'rec2020'`). `toCss(color, 'rec2020')` still takes a format name and writes `color(rec2020 r g b)`. The driver and React picker state model the gamut a color is displayed in and keep taking the strings `'srgb'` or `'display-p3'` (`activeGamut`, `setActiveGamut`, hook and component `gamut` options). Rec. 2020 holds all of sRGB but not quite all of Display P3: two thin slivers of P3, around its red primary and around its cyan near white, lie outside it.
 
 ### Allocation-free variants
 
