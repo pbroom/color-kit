@@ -22,7 +22,7 @@ Everything ships in one npm package, [`@pbroom/color-kit`](./packages/color-kit)
 | `@pbroom/color-kit/compute` | Plane compute scheduling on the JS backend, with telemetry                                                           |
 | `@pbroom/color-kit/hct`     | HCT helpers, isolating the bundled Material color utilities solver                                                   |
 | `@pbroom/color-kit/interop` | Tuples and typed arrays for GPU pipelines, three.js, and WebGL/WebGPU                                                |
-| `@pbroom/color-kit/driver`  | Framework-agnostic interaction driver: color state, area/slider/input mapping, expression parsing                    |
+| `@pbroom/color-kit/driver`  | Framework-agnostic interaction driver: color state, area/slider mapping, per-channel read/write math                 |
 | `@pbroom/color-kit/react`   | React state hooks plus plane renderer and geometry hooks (optional peers: `react`, `react-dom` 19+)                  |
 
 The docs site's API section has a generated reference for every entry point (generate its data locally with `pnpm docs:api`).
@@ -102,9 +102,9 @@ const comp = complementary(blue);
 ### Driver (framework-agnostic UI logic)
 
 `@pbroom/color-kit/driver` holds the interaction math for color UI, with no
-framework dependency: area/slider/input coordinate mapping, expression
-parsing, slider gradient sampling, and the dual requested/displayed color
-state model. Use it from React, Svelte, plain DOM or canvas code.
+framework dependency: area/slider coordinate mapping, reading and writing
+single OKLCH, RGB or HSL channels, slider gradient sampling, and the dual
+requested/displayed color state model. Use it from React, Svelte, plain DOM or canvas code.
 
 ```typescript
 import { parse } from '@pbroom/color-kit';

@@ -5,8 +5,8 @@ import {
   displayGamutDescriptor,
   type DisplayGamut,
   areColorAreaAxesDistinct,
-  colorFromColorInputChannelValue,
-  colorFromColorInputKey,
+  COLOR_CHANNEL_DEFAULT_RANGES,
+  colorFromColorChannelValue,
   colorFromColorAreaKey,
   colorFromColorAreaPosition,
   colorFromColorSliderKey,
@@ -18,13 +18,17 @@ import {
   getColorAreaGamutBoundaryPoints,
   getColorAreaThumbPosition,
   formatColorStringInputValue,
-  getColorInputChannelGlyph,
-  getColorInputChannelValue,
-  parseColorInputExpression,
+  formatColorChannelValue,
+  getChangedColorChannel,
+  getColorChannelLabel,
+  getColorChannelValue,
+  normalizeColorChannelValue,
   parseColorStringInputValue,
   normalizeColorSliderPointer,
-  resolveColorInputDraftValue,
   resolveColorAreaAxes,
+  resolveColorChannelRange,
+  resolveColorChannelSteps,
+  resolveColorChannelWrap,
 } from '../src/index.js';
 
 describe('Color API helpers', () => {
@@ -300,125 +304,117 @@ describe('Color API helpers', () => {
     ).toBeCloseTo(0, 6);
   });
 
-  it('maps channel values for color input models', () => {
+  it('reads and writes channel values per color model', () => {
     const base = parse('#2563eb');
-    const rgbBlue = getColorInputChannelValue(base, 'rgb', 'b');
+    const rgbBlue = getColorChannelValue(base, 'rgb', 'b');
     expect(rgbBlue).toBeGreaterThan(200);
 
-    const fromRgb = colorFromColorInputChannelValue(base, 'rgb', 'r', 10);
-    expect(getColorInputChannelValue(fromRgb, 'rgb', 'r')).toBeCloseTo(10, 3);
+    const fromRgb = colorFromColorChannelValue(base, 'rgb', 'r', 10);
+    expect(getColorChannelValue(fromRgb, 'rgb', 'r')).toBeCloseTo(10, 3);
 
-    const hslSat = getColorInputChannelValue(base, 'hsl', 's');
+    const hslSat = getColorChannelValue(base, 'hsl', 's');
     expect(hslSat).toBeGreaterThan(60);
 
-    const fromHsl = colorFromColorInputChannelValue(base, 'hsl', 'h', 180);
-    expect(getColorInputChannelValue(fromHsl, 'hsl', 'h')).toBeCloseTo(180, 1);
+    const fromHsl = colorFromColorChannelValue(base, 'hsl', 'h', 180);
+    expect(getColorChannelValue(fromHsl, 'hsl', 'h')).toBeCloseTo(180, 1);
   });
 
-  it('exposes one-character glyphs for input scrub handles', () => {
-    expect(getColorInputChannelGlyph('oklch', 'l')).toBe('L');
-    expect(getColorInputChannelGlyph('oklch', 'alpha')).toBe('α');
-    expect(getColorInputChannelGlyph('rgb', 'r')).toBe('R');
+  it('resolves default and explicit channel ranges', () => {
+    expect(resolveColorChannelRange('rgb', 'r')).toEqual([0, 255]);
+    expect(resolveColorChannelRange('hsl', 's')).toEqual([0, 100]);
+    expect(resolveColorChannelRange('oklch', 'c')).toBe(
+      COLOR_CHANNEL_DEFAULT_RANGES.oklch.c,
+    );
+    expect(resolveColorChannelRange('oklch', 'c', [0, 0.5])).toEqual([0, 0.5]);
+    expect(() =>
+      // @ts-expect-error 'r' is not an HSL channel.
+      resolveColorChannelRange('hsl', 'r'),
+    ).toThrow('Invalid color channel "r" for "hsl" model.');
   });
 
-  it('parses color input expressions with relative math and precedence', () => {
-    expect(
-      parseColorInputExpression('10 + 5 * 2', {
-        currentValue: 0,
-        range: [0, 100],
-        allowExpressions: true,
-      }),
-    ).toBeCloseTo(20, 6);
-
-    expect(
-      parseColorInputExpression('+10', {
-        currentValue: 25,
-        range: [0, 100],
-        allowExpressions: true,
-      }),
-    ).toBeCloseTo(35, 6);
-
-    expect(
-      parseColorInputExpression('50%', {
-        currentValue: 25,
-        range: [0, 200],
-        allowExpressions: true,
-      }),
-    ).toBeCloseTo(100, 6);
+  it('wraps hue channels by default', () => {
+    expect(resolveColorChannelWrap('oklch', 'h')).toBe(true);
+    expect(resolveColorChannelWrap('hsl', 'h')).toBe(true);
+    expect(resolveColorChannelWrap('hsl', 'l')).toBe(false);
+    expect(resolveColorChannelWrap('rgb', 'r')).toBe(false);
+    expect(resolveColorChannelWrap('oklch', 'h', false)).toBe(false);
+    expect(resolveColorChannelWrap('rgb', 'r', true)).toBe(true);
   });
 
-  it('resolves color input draft values with clamping and wrapping', () => {
-    expect(
-      resolveColorInputDraftValue('500', {
-        currentValue: 0,
-        range: [0, 255],
-        wrap: false,
-        allowExpressions: true,
-      }),
-    ).toBe(255);
-
-    expect(
-      resolveColorInputDraftValue('370', {
-        currentValue: 0,
-        range: [0, 360],
-        wrap: true,
-        allowExpressions: true,
-      }),
-    ).toBeCloseTo(10, 6);
-  });
-
-  it('handles keyboard-derived color input updates including Home/End', () => {
-    const base = parse('#2563eb');
-    const stepped = colorFromColorInputKey(base, 'oklch', 'h', 'ArrowUp', {
-      step: 5,
-      range: [0, 360],
-      wrap: true,
-    });
-    expect(stepped?.value).toBeGreaterThan(0);
-
-    const home = colorFromColorInputKey(base, 'oklch', 'c', 'Home', {
-      step: 0.01,
-      range: [0, 0.4],
-      wrap: false,
-    });
-    const end = colorFromColorInputKey(base, 'oklch', 'c', 'End', {
-      step: 0.01,
-      range: [0, 0.4],
-      wrap: false,
-    });
-    const hueHome = colorFromColorInputKey(base, 'oklch', 'h', 'Home', {
+  it('resolves channel steps, ignoring unusable overrides', () => {
+    expect(resolveColorChannelSteps('oklch', 'h')).toEqual({
       step: 1,
-      range: [0, 360],
-      wrap: true,
+      fineStep: 0.1,
+      coarseStep: 10,
+      pageStep: 45,
     });
-    const hueEnd = colorFromColorInputKey(base, 'oklch', 'h', 'End', {
-      step: 1,
-      range: [0, 360],
-      wrap: true,
-    });
-
-    expect(home?.value).toBeCloseTo(0, 6);
-    expect(end?.value).toBeCloseTo(0.4, 6);
-    expect(hueHome?.value).toBeCloseTo(0, 6);
-    expect(hueEnd?.value).toBeCloseTo(360, 6);
+    expect(
+      resolveColorChannelSteps('rgb', 'r', {
+        step: 5,
+        fineStep: 0,
+        coarseStep: Number.NaN,
+        pageStep: -1,
+      }),
+    ).toEqual({ step: 5, fineStep: 0.1, coarseStep: 10, pageStep: 25 });
   });
 
-  it('normalizes negative color input key steps', () => {
-    const base = parse('oklch(0.6 0.2 100)');
-    const arrowUp = colorFromColorInputKey(base, 'oklch', 'h', 'ArrowUp', {
-      step: -5,
-      range: [0, 360],
-      wrap: true,
-    });
-    const pageDown = colorFromColorInputKey(base, 'oklch', 'h', 'PageDown', {
-      step: 1,
-      pageStep: -30,
-      range: [0, 360],
-      wrap: true,
-    });
+  it('labels channels per model', () => {
+    expect(getColorChannelLabel('oklch', 'l')).toBe('OKLCH lightness');
+    expect(getColorChannelLabel('hsl', 'l')).toBe('Lightness');
+    expect(getColorChannelLabel('rgb', 'g')).toBe('Green');
+    expect(getColorChannelLabel('rgb', 'alpha')).toBe('Opacity');
+  });
 
-    expect(arrowUp?.value).toBeCloseTo(105, 6);
-    expect(pageDown?.value).toBeCloseTo(70, 6);
+  it('reports a changed channel only for OKLCH edits', () => {
+    expect(getChangedColorChannel('oklch', 'c')).toBe('c');
+    expect(getChangedColorChannel('oklch', 'alpha')).toBe('alpha');
+    expect(getChangedColorChannel('rgb', 'alpha')).toBeUndefined();
+    expect(getChangedColorChannel('hsl', 'h')).toBeUndefined();
+  });
+
+  it('clamps or wraps channel values into a range', () => {
+    expect(normalizeColorChannelValue(500, [0, 255], false)).toBe(255);
+    expect(normalizeColorChannelValue(-3, [0, 255], false)).toBe(0);
+    expect(normalizeColorChannelValue(370, [0, 360], true)).toBeCloseTo(10, 6);
+    expect(normalizeColorChannelValue(-20, [0, 360], true)).toBeCloseTo(340, 6);
+    // The top of a wrapped range stays put instead of folding onto the start.
+    expect(normalizeColorChannelValue(360, [0, 360], true)).toBe(360);
+    expect(normalizeColorChannelValue(0, [0, 360], true)).toBe(0);
+    expect(normalizeColorChannelValue(Number.NaN, [10, 20], false)).toBe(10);
+    expect(
+      normalizeColorChannelValue(Number.POSITIVE_INFINITY, [10, 20], true),
+    ).toBe(10);
+    // Empty and inverted ranges leave the value alone.
+    expect(normalizeColorChannelValue(5, [1, 1], false)).toBe(5);
+    expect(normalizeColorChannelValue(5, [1, 0], true)).toBe(5);
+  });
+
+  it('formats channel values with trimmed decimals', () => {
+    expect(formatColorChannelValue(0.62795, 3)).toBe('0.628');
+    expect(formatColorChannelValue(120, 2)).toBe('120');
+    expect(formatColorChannelValue(59.4, 0)).toBe('59');
+    expect(formatColorChannelValue(-0.0001, 2)).toBe('0');
+    expect(formatColorChannelValue(Number.NaN, 2)).toBe('0');
+    // Precision is rounded and clamped to 0-6.
+    expect(formatColorChannelValue(0.123456789, 12)).toBe('0.123457');
+    expect(formatColorChannelValue(1.26, -2)).toBe('1');
+    expect(formatColorChannelValue(1.26, 0.6)).toBe('1.3');
+  });
+
+  it('steps a channel by composing read, normalize and write', () => {
+    const base = parse('oklch(0.6 0.2 350)');
+    const range = resolveColorChannelRange('oklch', 'h');
+    const { step } = resolveColorChannelSteps('oklch', 'h', { step: 15 });
+    const value = normalizeColorChannelValue(
+      getColorChannelValue(base, 'oklch', 'h') + step,
+      range,
+      resolveColorChannelWrap('oklch', 'h'),
+    );
+    expect(value).toBeCloseTo(5, 6);
+    expect(colorFromColorChannelValue(base, 'oklch', 'h', value)).toEqual({
+      ...base,
+      h: value,
+    });
   });
 
   it('formats endpoint OKLCH colors as gamut-mapped hex values', () => {

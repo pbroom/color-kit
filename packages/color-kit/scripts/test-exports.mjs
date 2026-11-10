@@ -139,7 +139,23 @@ assert.equal(typeof root.deltaE2000, 'function');
 assert.equal(root.deltaE2000, core.deltaE2000);
 assert.equal(typeof driver.createColorState, 'function');
 assert.equal(typeof driver.colorFromColorAreaPosition, 'function');
-assert.equal(typeof driver.parseColorInputExpression, 'function');
+assert.equal(typeof driver.getColorChannelValue, 'function');
+assert.equal(typeof driver.colorFromColorChannelValue, 'function');
+// The driver keeps per-channel color math only; the generic number-field
+// helpers (expression parsing, draft resolution, key stepping, glyphs) and
+// the "ColorInput" names were removed.
+for (const name of [
+  'parseColorInputExpression',
+  'resolveColorInputDraftValue',
+  'colorFromColorInputKey',
+  'getColorInputChannelGlyph',
+  'getColorInputPrecisionFromStep',
+  'getColorInputChannelValue',
+  'colorFromColorInputChannelValue',
+  'COLOR_INPUT_DEFAULT_RANGES',
+]) {
+  assert.equal(name in driver, false, `driver must not export ${name}`);
+}
 assert.equal(typeof driver.getSliderGradientStyles, 'function');
 assert.equal(typeof plane.definePlane, 'function');
 assert.equal(typeof plane.sense, 'function');

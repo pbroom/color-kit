@@ -88,37 +88,28 @@ export type {
 } from './slider-gradient.js';
 
 export {
-  COLOR_INPUT_DEFAULT_RANGES,
-  colorFromColorInputChannelValue,
-  colorFromColorInputKey,
-  formatColorInputChannelValue,
-  getColorInputChangedChannel,
-  getColorInputChannelGlyph,
-  getColorInputChannelValue,
-  getColorInputLabel,
-  getColorInputPrecisionFromStep,
-  normalizeColorInputValue,
-  parseColorInputExpression,
-  resolveColorInputDraftValue,
-  resolveColorInputRange,
-  resolveColorInputSteps,
-  resolveColorInputWrap,
-} from './color-input.js';
+  COLOR_CHANNEL_DEFAULT_RANGES,
+  colorFromColorChannelValue,
+  formatColorChannelValue,
+  getChangedColorChannel,
+  getColorChannelValue,
+  getColorChannelLabel,
+  normalizeColorChannelValue,
+  resolveColorChannelRange,
+  resolveColorChannelSteps,
+  resolveColorChannelWrap,
+} from './color-channel.js';
 export type {
-  ColorInputModel,
-  ColorInputChannel,
-  ColorInputChannelFor,
-  ColorInputPrimitiveExpressionOptions,
-  ColorInputSpec,
-  OklchColorInputChannel,
-  RgbColorInputChannel,
-  HslColorInputChannel,
-  ColorInputKey,
-  ColorInputStepConfig,
-  ResolveColorInputStepsOptions,
-  ParseColorInputExpressionOptions,
-  ResolveColorInputDraftValueOptions,
-} from './color-input.js';
+  ColorChannelModel,
+  ColorModelChannel,
+  ColorModelChannelFor,
+  ColorChannelSpec,
+  OklchColorModelChannel,
+  RgbColorModelChannel,
+  HslColorModelChannel,
+  ColorChannelStepConfig,
+  ResolveColorChannelStepsOptions,
+} from './color-channel.js';
 
 export {
   formatColorStringInputValue,

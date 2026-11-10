@@ -118,7 +118,11 @@ write with `setChannel`. For text,
 [`formatColorStringInputValue`](/api/driver/color-string-input#formatColorStringInputValue) and
 [`parseColorStringInputValue`](/api/driver/color-string-input#parseColorStringInputValue)
 convert between the color and any CSS color string; commit with
-`setFromString`, which keeps the hue of grays. The
+`setFromString`, which keeps the hue of grays. A number field on one RGB or
+HSL channel reads with
+[`getColorChannelValue`](/api/driver/color-channel#getColorChannelValue) and commits
+[`colorFromColorChannelValue`](/api/driver/color-channel#colorFromColorChannelValue)
+with `setRequested`. The
 [React guide](/guides/react#sliders-and-text) has a live example.
 
 ## Controlled or uncontrolled
